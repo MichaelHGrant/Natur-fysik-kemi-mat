@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lydfrekvens-synthesizer</title>
+    <!-- Inkluderer Tailwind CSS for nem styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .slider-thumb::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 24px;
+            height: 24px;
+            background-color: #3b82f6; /* Blue-500 */
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.4);
+        }
+        .slider-thumb::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            background-color: #3b82f6;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen flex items-center justify-center p-4">
+
+    <div class="bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-2xl">
+        <h1 class="text-4xl font-bold text-center mb-2 text-blue-400">Lyd Frekvens-Synthesizer</h1>
+        <p class="text-center text-gray-400 mb-8">
+            Skab og kombiner lydfrekvenser fra 20 Hz til 4 kHz.
+        </p>
+
+        <div id="frequency-container" class="space-y-6">
+            <!-- Frekvens-lag vil blive tilføjet her dynamisk af JavaScript -->
+        </div>
+
+        <div class="flex flex-col sm:flex-row justify-center items-center gap-4 mt-8">
+            <button id="add-layer-btn" class="w-full sm:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition transform hover:scale-105 shadow-lg">
+                Tilføj Frekvens
+            </button>
+            <button id="toggle-play-btn" class="w-full sm:w-auto px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl transition transform hover:scale-105 shadow-lg">
+                Afspil
+            </button>
+            <button id="reset-btn" class="w-full sm:w-auto px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition transform hover:scale-105 shadow-lg">
+                Stop og Nulstil
+            </button>
+        </div>
+        <div id="message-box" class="mt-4 p-4 text-center bg-yellow-900 text-yellow-300 rounded-lg hidden">
+            <!-- Meddelelser vises her -->
+        </div>
+    </div>
+
+    <script>
+        // Initialiserer variabler til lydgenerering
+        let audioContext;
+        let oscillators = [];
+        const maxLayers = 5;
+        let isPlaying = false;
+
+        // Referencer til DOM-elementer
+        const frequencyContainer = document.getElementById('frequency-container');
+        const addLayerBtn = document.getElementById('add-layer-btn');
+        const togglePlayBtn = document.getElementById('toggle-play-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const messageBox = document.getElementById('message-box');
+
+        // Viser en besked til brugeren
+        function showMessage(msg) {
+            messageBox.textContent = msg;
+            messageBox.classList.remove('hidden');
+            setTimeout(() => {
+                messageBox.classList.add('hidden');
+            }, 3000);
+        }
+
+        // Opretter et nyt frekvens-lag med en slider og kontroller
+        function addFrequencyLayer() {
+            // Begrænser antallet af lag til 5
+            if (oscillators.length >= maxLayers) {
+                showMessage(`Du kan kun tilføje op til ${maxLayers} frekvenser.`);
+                return;
+            }
+
+            // Opretter containeren for frekvens-laget
+            const layerDiv = document.createElement('div');
+            layerDiv.className = 'bg-gray-700 p-4 rounded-xl shadow-inner flex flex-col gap-4';
+            layerDiv.dataset.index = oscillators.length;
+
+            // --- Kontroller til frekvens og lydstyrke ---
+            const controlsDiv = document.createElement('div');
+            controlsDiv.className = 'grid grid-cols-1 sm:grid-cols-2 gap-4';
+
+            // Frekvenskontrol
+            const freqControlDiv = document.createElement('div');
+            freqControlDiv.className = 'flex flex-col gap-2';
+            const freqLabelsDiv = document.createElement('div');
+            freqLabelsDiv.className = 'flex justify-between items-center text-sm text-gray-400';
+            const freqLabel = document.createElement('span');
+            freqLabel.id = `freq-label-${oscillators.length}`;
+            freqLabel.textContent = 'Frekvens: 200 Hz';
+            const freqInput = document.createElement('input');
+            freqInput.type = 'number';
+            freqInput.min = '20';
+            freqInput.max = '4000';
+            freqInput.value = '200';
+            freqInput.className = 'w-24 bg-gray-600 text-white rounded-lg text-center px-2 py-1';
+            freqLabelsDiv.appendChild(freqLabel);
+            freqLabelsDiv.appendChild(freqInput);
+            
+            const freqSlider = document.createElement('input');
+            freqSlider.type = 'range';
+            freqSlider.min = '20';
+            freqSlider.max = '4000';
+            freqSlider.value = '200';
+            freqSlider.className = 'w-full h-2 bg-gray-600 rounded-lg appearance-none slider-thumb';
+            freqControlDiv.appendChild(freqLabelsDiv);
+            freqControlDiv.appendChild(freqSlider);
+
+            // Lydstyrke kontrol
+            const volControlDiv = document.createElement('div');
+            volControlDiv.className = 'flex flex-col gap-2';
+            const volLabelsDiv = document.createElement('div');
+            volLabelsDiv.className = 'flex justify-between items-center text-sm text-gray-400';
+            const volLabel = document.createElement('span');
+            volLabel.id = `vol-label-${oscillators.length}`;
+            volLabel.textContent = 'Lydstyrke: 50%';
+            volLabelsDiv.appendChild(volLabel);
+            
+            const volSlider = document.createElement('input');
+            volSlider.type = 'range';
+            volSlider.min = '0';
+            volSlider.max = '1';
+            volSlider.step = '0.01';
+            volSlider.value = '0.5';
+            volSlider.className = 'w-full h-2 bg-gray-600 rounded-lg appearance-none slider-thumb';
+            volControlDiv.appendChild(volLabelsDiv);
+            volControlDiv.appendChild(volSlider);
+
+            controlsDiv.appendChild(freqControlDiv);
+            controlsDiv.appendChild(volControlDiv);
+
+            // --- Knapper til forudindstillede frekvenser og fjernelse ---
+            const buttonsDiv = document.createElement('div');
+            buttonsDiv.className = 'flex flex-wrap gap-2 justify-center';
+            
+            const preset432Btn = document.createElement('button');
+            preset432Btn.className = 'px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors';
+            preset432Btn.textContent = '432 Hz';
+
+            const preset528Btn = document.createElement('button');
+            preset528Btn.className = 'px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors';
+            preset528Btn.textContent = '528 Hz';
+            
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors';
+            removeBtn.textContent = 'Fjern';
+
+            buttonsDiv.appendChild(preset432Btn);
+            buttonsDiv.appendChild(preset528Btn);
+            buttonsDiv.appendChild(removeBtn);
+
+            // Samler alle elementerne i laget
+            layerDiv.appendChild(controlsDiv);
+            layerDiv.appendChild(buttonsDiv);
+            frequencyContainer.appendChild(layerDiv);
+
+            // Opretter lyd-noder for dette lag
+            const oscillatorNode = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            // Sætter startværdier
+            oscillatorNode.type = 'sine'; // Sine-bølger er simple og rene
+            oscillatorNode.frequency.setValueAtTime(parseFloat(freqSlider.value), audioContext.currentTime);
+            // Sætter gain til 0 som standard, så lyden ikke starter automatisk
+            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+
+            // Forbinder noderne
+            oscillatorNode.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            // Start oscillator en gang for alle.
+            // Lyden styres nu udelukkende via gainNode.gain.
+            oscillatorNode.start();
+
+            // Gemmer noderne i en global array
+            oscillators.push({
+                oscillator: oscillatorNode,
+                gain: gainNode,
+                domElement: layerDiv
+            });
+
+            // Opdaterer frekvensen og label, når slideren ændres
+            freqSlider.addEventListener('input', (e) => {
+                const freq = parseFloat(e.target.value);
+                oscillatorNode.frequency.setValueAtTime(freq, audioContext.currentTime);
+                freqLabel.textContent = `Frekvens: ${freq} Hz`;
+                freqInput.value = freq;
+            });
+            
+            // Opdaterer frekvensen og slider, når tekstfeltet ændres
+            freqInput.addEventListener('input', (e) => {
+                const freq = Math.min(Math.max(parseInt(e.target.value) || 20, 20), 4000);
+                oscillatorNode.frequency.setValueAtTime(freq, audioContext.currentTime);
+                freqLabel.textContent = `Frekvens: ${freq} Hz`;
+                freqSlider.value = freq;
+            });
+
+            // Opdaterer lydstyrken og label, når slideren ændres
+            volSlider.addEventListener('input', (e) => {
+                const vol = parseFloat(e.target.value);
+                // Hvis lyden afspilles, skal gainNode.gain sættes til den valgte volumen
+                if (isPlaying) {
+                    gainNode.gain.setValueAtTime(vol, audioContext.currentTime);
+                }
+                volLabel.textContent = `Lydstyrke: ${Math.round(vol * 100)}%`;
+            });
+            
+            // Forudindstillede frekvenser
+            preset432Btn.addEventListener('click', () => {
+                const freq = 432;
+                freqInput.value = freq;
+                freqSlider.value = freq;
+                oscillatorNode.frequency.setValueAtTime(freq, audioContext.currentTime);
+                freqLabel.textContent = `Frekvens: ${freq} Hz`;
+            });
+
+            preset528Btn.addEventListener('click', () => {
+                const freq = 528;
+                freqInput.value = freq;
+                freqSlider.value = freq;
+                oscillatorNode.frequency.setValueAtTime(freq, audioContext.currentTime);
+                freqLabel.textContent = `Frekvens: ${freq} Hz`;
+            });
+
+            // Fjerner laget, når knappen trykkes
+            removeBtn.addEventListener('click', () => {
+                const index = parseInt(layerDiv.dataset.index);
+                if (oscillators[index] && oscillators[index].oscillator) {
+                    // Fjern gain og oscillator, og destruer dem for at undgå memory leaks
+                    oscillators[index].gain.disconnect();
+                    oscillators[index].oscillator.disconnect();
+                    oscillators[index].oscillator.stop();
+                }
+                
+                // Fjern DOM-elementet
+                layerDiv.remove();
+
+                // Fjern oscillator fra arrayen
+                oscillators.splice(index, 1);
+
+                // Opdater data-index for de resterende elementer
+                frequencyContainer.querySelectorAll('[data-index]').forEach((el, newIndex) => {
+                    el.dataset.index = newIndex;
+                });
+
+                // Hvis der ikke er flere oscillatorer, stopper vi afspilningen
+                if (oscillators.length === 0) {
+                    isPlaying = false;
+                    togglePlayBtn.textContent = 'Afspil';
+                    togglePlayBtn.classList.remove('bg-yellow-600', 'hover:bg-yellow-700');
+                    togglePlayBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+                }
+            });
+        }
+
+        // Toggler afspilning/pause
+        function togglePlay() {
+            if (oscillators.length === 0) {
+                showMessage('Tilføj en frekvens først!');
+                return;
+            }
+
+            if (!isPlaying) {
+                // Afspil lyden
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+                oscillators.forEach(oscillatorLayer => {
+                    // Sæt gain til den valgte volumen fra slideren
+                    const volSlider = oscillatorLayer.domElement.querySelector('input[type="range"][step="0.01"]');
+                    const vol = parseFloat(volSlider.value);
+                    oscillatorLayer.gain.gain.setValueAtTime(vol, audioContext.currentTime);
+                });
+                togglePlayBtn.textContent = 'Pause';
+                togglePlayBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+                togglePlayBtn.classList.add('bg-yellow-600', 'hover:bg-yellow-700');
+                isPlaying = true;
+            } else {
+                // Pause lyden ved at sætte gain til 0
+                oscillators.forEach(oscillatorLayer => {
+                    oscillatorLayer.gain.gain.setValueAtTime(0, audioContext.currentTime);
+                });
+                togglePlayBtn.textContent = 'Afspil';
+                togglePlayBtn.classList.remove('bg-yellow-600', 'hover:bg-yellow-700');
+                togglePlayBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+                isPlaying = false;
+            }
+        }
+
+        // Stopper alle frekvenser og rydder op
+        function resetApp() {
+            if (audioContext) {
+                oscillators.forEach(oscillatorLayer => {
+                    try {
+                        oscillatorLayer.gain.disconnect();
+                        oscillatorLayer.oscillator.disconnect();
+                        oscillatorLayer.oscillator.stop();
+                    } catch (e) {
+                        console.error('Fejl ved stop af oscillator:', e);
+                    }
+                });
+                oscillators = [];
+                frequencyContainer.innerHTML = '';
+                initializeApp(); // Genstart med et enkelt lag
+                isPlaying = false;
+                togglePlayBtn.textContent = 'Afspil';
+                togglePlayBtn.classList.remove('bg-yellow-600', 'hover:bg-yellow-700');
+                togglePlayBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+            }
+        }
+
+        // Initialiserer appen ved at oprette en lyd-kontekst og et standard lag
+        function initializeApp() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            addFrequencyLayer();
+        }
+
+        // Tilføjer event listeners til knapperne
+        addLayerBtn.addEventListener('click', addFrequencyLayer);
+        togglePlayBtn.addEventListener('click', togglePlay);
+        resetBtn.addEventListener('click', resetApp);
+        
+        // Initialiserer appen, når vinduet er fuldt indlæst
+        window.onload = initializeApp;
+
+    </script>
+
+</body>
+</html>

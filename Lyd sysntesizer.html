@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simpel Synthesizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            touch-action: manipulation; /* Forbedrer touch-respons på mobile enheder */
+        }
+        .piano-key {
+            transition: background-color 0.1s ease, transform 0.1s ease;
+        }
+        .piano-key:active {
+            transform: scale(0.98);
+        }
+        .white-key {
+            background-color: white;
+            border: 1px solid #ccc;
+            color: #333;
+        }
+        .white-key.active {
+            background-color: #a0e9ff; /* Lys blå farve ved tryk */
+        }
+        .black-key {
+            background-color: #333;
+            color: white;
+            position: relative;
+            height: 60%;
+            margin: 0 -1.25rem;
+            z-index: 10;
+        }
+        .black-key.active {
+            background-color: #555;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div class="w-full max-w-4xl p-4 md:p-6 bg-white rounded-xl shadow-lg">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-2">Simpel Synthesizer</h1>
+        <p class="text-center text-gray-500 mb-6">Klik på knapperne eller brug dit tastatur (A, S, D, F, etc.) for at spille.</p>
+
+        <!-- Kontrolpanel -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+            <!-- Bølgeform Kontrol -->
+            <div>
+                <label for="waveform" class="block text-sm font-medium text-gray-700 mb-1">Bølgeform</label>
+                <select id="waveform" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="sine">Sinus</option>
+                    <option value="square">Firkant</option>
+                    <option value="sawtooth">Savtak</option>
+                    <option value="triangle">Trekant</option>
+                </select>
+            </div>
+            <!-- Attack Kontrol -->
+            <div>
+                <label for="attack" class="block text-sm font-medium text-gray-700 mb-1">Attack: <span id="attack-value">0.02</span>s</label>
+                <input type="range" id="attack" min="0.01" max="1" step="0.01" value="0.02" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+            </div>
+            <!-- Release Kontrol -->
+            <div>
+                <label for="release" class="block text-sm font-medium text-gray-700 mb-1">Release: <span id="release-value">0.5</span>s</label>
+                <input type="range" id="release" min="0.1" max="2" step="0.1" value="0.5" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+            </div>
+        </div>
+
+        <!-- Klaver Tangenter -->
+        <div id="piano-container" class="w-full flex justify-center h-48">
+            <!-- Tangenter genereres af JavaScript -->
+        </div>
+
+        <!-- Info boks -->
+        <div id="info-box" class="mt-4 text-center text-gray-600 p-3 bg-blue-50 rounded-lg hidden">
+            AudioContext startet. Klar til at spille!
+        </div>
+    </div>
+
+    <script>
+        // Opsætning af AudioContext for at afspille lyd
+        let audioContext;
+        let oscillators = {}; // Holder styr på aktive oscillatorer for hver tone
+
+        // Funktion til at initialisere AudioContext efter brugerinteraktion
+        function initAudioContext() {
+            if (!audioContext) {
+                try {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const infoBox = document.getElementById('info-box');
+                    infoBox.textContent = 'AudioContext er startet. Klar til at spille!';
+                    infoBox.classList.remove('hidden');
+                    setTimeout(() => infoBox.classList.add('hidden'), 3000);
+                } catch (e) {
+                    console.error("Web Audio API understøttes ikke i denne browser.", e);
+                    alert("Din browser understøtter desværre ikke den nødvendige lydteknologi.");
+                }
+            }
+        }
+        
+        // Lyt efter den første brugerinteraktion (klik eller tastetryk)
+        document.body.addEventListener('click', initAudioContext, { once: true });
+        document.body.addEventListener('keydown', initAudioContext, { once: true });
+
+
+        // Hent kontrol-elementer fra DOM
+        const waveformSelect = document.getElementById('waveform');
+        const attackSlider = document.getElementById('attack');
+        const releaseSlider = document.getElementById('release');
+        const attackValueSpan = document.getElementById('attack-value');
+        const releaseValueSpan = document.getElementById('release-value');
+        const pianoContainer = document.getElementById('piano-container');
+
+        // Opdater labels for sliders
+        attackSlider.addEventListener('input', () => attackValueSpan.textContent = parseFloat(attackSlider.value).toFixed(2));
+        releaseSlider.addEventListener('input', () => releaseValueSpan.textContent = parseFloat(releaseSlider.value).toFixed(1));
+
+        // Definition af toner, frekvenser og keyboard-taster
+        const notes = [
+            { note: 'C4', freq: 261.63, key: 'a' }, { note: 'C#4', freq: 277.18, key: 'w' },
+            { note: 'D4', freq: 293.66, key: 's' }, { note: 'D#4', freq: 311.13, key: 'e' },
+            { note: 'E4', freq: 329.63, key: 'd' },
+            { note: 'F4', freq: 349.23, key: 'f' }, { note: 'F#4', freq: 369.99, key: 't' },
+            { note: 'G4', freq: 392.00, key: 'g' }, { note: 'G#4', freq: 415.30, key: 'y' },
+            { note: 'A4', freq: 440.00, key: 'h' }, { note: 'A#4', freq: 466.16, key: 'u' },
+            { note: 'B4', freq: 493.88, key: 'j' },
+            { note: 'C5', freq: 523.25, key: 'k' }
+        ];
+
+        // Funktion til at spille en tone
+        function playNote(frequency) {
+            if (!audioContext || oscillators[frequency]) return; // Spil ikke hvis kontekst mangler eller tonen allerede spiller
+
+            const now = audioContext.currentTime;
+            const attackTime = parseFloat(attackSlider.value);
+            const releaseTime = parseFloat(releaseSlider.value);
+
+            // Opret GainNode for at kontrollere volumen (envelope)
+            const gainNode = audioContext.createGain();
+            gainNode.connect(audioContext.destination);
+            gainNode.gain.setValueAtTime(0, now);
+            gainNode.gain.linearRampToValueAtTime(1, now + attackTime); // Attack
+
+            // Opret Oscillator for at generere selve lyden
+            const oscillator = audioContext.createOscillator();
+            oscillator.type = waveformSelect.value;
+            oscillator.frequency.setValueAtTime(frequency, now);
+            oscillator.connect(gainNode);
+            oscillator.start(now);
+
+            // Gem referencer til oscillator og gain node
+            oscillators[frequency] = { oscillator, gainNode, releaseTime };
+            
+            return gainNode; // Returner gainNode for at kunne stoppe tonen
+        }
+
+        // Funktion til at stoppe en tone
+        function stopNote(frequency) {
+            const activeNode = oscillators[frequency];
+            if (!audioContext || !activeNode) return;
+
+            const now = audioContext.currentTime;
+            const { oscillator, gainNode, releaseTime } = activeNode;
+            
+            // Anvend release
+            gainNode.gain.cancelScheduledValues(now);
+            gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+            gainNode.gain.linearRampToValueAtTime(0, now + releaseTime);
+
+            // Stop oscillatoren efter release-tiden er gået
+            oscillator.stop(now + releaseTime);
+            
+            // Fjern referencen
+            delete oscillators[frequency];
+        }
+        
+        // Generer klaver tangenter dynamisk
+        notes.forEach(({ note, freq, key }) => {
+            const isBlackKey = note.includes('#');
+            const keyElement = document.createElement('div');
+            
+            keyElement.className = `piano-key flex-1 flex items-end justify-center p-2 cursor-pointer select-none text-xs font-medium rounded-md ${isBlackKey ? 'black-key' : 'white-key'}`;
+            keyElement.dataset.freq = freq;
+            keyElement.dataset.key = key;
+            keyElement.innerHTML = `<span>${note}<br>(${key.toUpperCase()})</span>`;
+
+            // Tilføj event listeners for mus og touch
+            const startHandler = (e) => {
+                e.preventDefault();
+                initAudioContext(); // Sørg for at audio er startet
+                if (!oscillators[freq]) { // Undgå at starte hvis den allerede spiller (fra keyboard)
+                    playNote(freq);
+                    keyElement.classList.add('active');
+                }
+            };
+
+            const endHandler = (e) => {
+                e.preventDefault();
+                stopNote(freq);
+                keyElement.classList.remove('active');
+            };
+
+            keyElement.addEventListener('mousedown', startHandler);
+            keyElement.addEventListener('mouseup', endHandler);
+            keyElement.addEventListener('mouseleave', endHandler); // Stop tonen hvis musen forlader tangenten
+
+            keyElement.addEventListener('touchstart', startHandler);
+            keyElement.addEventListener('touchend', endHandler);
+
+            pianoContainer.appendChild(keyElement);
+        });
+
+        // Tilføj event listeners for keyboard
+        const keyMap = notes.reduce((map, note) => {
+            map[note.key] = note.freq;
+            return map;
+        }, {});
+
+        const activeKeys = new Set();
+
+        window.addEventListener('keydown', (e) => {
+            const freq = keyMap[e.key];
+            if (freq && !activeKeys.has(e.key)) {
+                playNote(freq);
+                activeKeys.add(e.key);
+                const keyElement = document.querySelector(`.piano-key[data-key="${e.key}"]`);
+                if (keyElement) keyElement.classList.add('active');
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            const freq = keyMap[e.key];
+            if (freq) {
+                stopNote(freq);
+                activeKeys.delete(e.key);
+                const keyElement = document.querySelector(`.piano-key[data-key="${e.key}"]`);
+                if (keyElement) keyElement.classList.remove('active');
+            }
+        });
+
+    </script>
+</body>
+</html>
