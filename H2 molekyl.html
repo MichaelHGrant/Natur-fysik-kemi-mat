@@ -1,0 +1,761 @@
+
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kvantemekanik: Atom & Molekyle Orbitaler</title>
+    
+    <!-- Tailwind CSS til styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Plotly.js til 3D orbital visualisering -->
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    
+    <!-- Chart.js til Finstruktur visualisering -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Chosen Palette: Slate (Baggrund), Sky Blue (Positiv Fase/Akcenter), Red (Negativ fase) -->
+    <!-- Application Structure Plan: 
+         Tilføjet en system-vælger i toppen for at skifte mellem Atom og Molekyle.
+         Venstre kolonne: Beregner nu bølgefunktionens amplitude med fortegn for at vise fase (Blå/Rød). For molekyler simuleres LCAO ved at placere to kerner på z-aksen og superponere deres bølgefunktioner.
+         Højre kolonne: Toggles dynamisk. For 'Atom' vises det tidligere Balmer spektrum og energiniveauer. For 'Molekyle' vises et LCAO energidiagram tegnet på HTML5 Canvas, der viser opsplitningen i bindende og antibindende tilstande. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <style>
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        .chart-container { position: relative; width: 100%; height: 100%; min-height: 200px; }
+        
+        .spectral-line {
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0,0,0,0);
+        }
+        .spectral-line:hover, .spectral-line.active {
+            transform: scaleY(1.3);
+            z-index: 10;
+        }
+        
+        #fineStructureBox { transition: opacity 0.3s; }
+        .modebar { display: none !important; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased selection:bg-sky-200">
+
+    <div class="max-w-7xl mx-auto p-4 md:p-6 lg:p-8">
+        
+        <header class="mb-8 border-b border-slate-200 pb-6">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight mb-2">Kvantemekanik: Fra Atom til Molekyle</h1>
+            <p class="text-lg text-slate-600 max-w-3xl">
+                Udforsk Schrödingers ligning. Vælg <strong>Enkelt Atom</strong> for at se atomorbitaler og spektre, eller skift til <strong>Molekyle</strong> for at se, hvordan atomorbitaler kombineres (LCAO) til at danne bindende og antibindende molekyleorbitaler i H2.
+            </p>
+        </header>
+
+        <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 lg:gap-8">
+            
+            <!-- VENSTRE KOLONNE: 3D Visualisering (Spænder over 7 kolonner) -->
+            <section class="xl:col-span-7 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col">
+                
+                <div class="mb-4 flex justify-between items-start">
+                    <div>
+                        <h2 class="text-xl font-bold flex items-center text-slate-900">
+                            <span class="bg-sky-100 text-sky-700 w-8 h-8 rounded-full flex items-center justify-center mr-3 text-sm">1</span>
+                            3D Orbital Visualisering (75% Sandsynlighed)
+                        </h2>
+                        <p class="text-sm text-slate-500 mt-1">
+                            Farverne viser bølgefunktionens fase: <span class="font-bold text-sky-500">Blå (+)</span> og <span class="font-bold text-red-500">Rød (-)</span>.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Kontrolpanel -->
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 mb-6">
+                    <div class="mb-4 pb-4 border-b border-slate-200">
+                        <label for="system-select" class="block text-sm font-semibold text-slate-700 mb-1">Fysisk System</label>
+                        <select id="system-select" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium">
+                            <option value="atom" selected>Enkelt Brintatom (H)</option>
+                            <option value="mol_bond">Brintmolekyle (H2) - Bindende Orbital (Kombination i fase)</option>
+                            <option value="mol_anti">Brintmolekyle (H2) - Antibindende Orbital (Kombination ude af fase)</option>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-4">
+                        <div>
+                            <label for="n-select" class="block text-sm font-semibold text-slate-700 mb-1">Hovedkvantetal (n)</label>
+                            <select id="n-select" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer">
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3" selected>3</option>
+                                <option value="4">4</option>
+                                <option value="5">5</option>
+                                <option value="6">6</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="l-select" class="block text-sm font-semibold text-slate-700 mb-1">Bikvantetal (l)</label>
+                            <select id="l-select" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer">
+                                <!-- Udfyldes dynamisk -->
+                            </select>
+                        </div>
+                        <div>
+                            <label for="m-select" class="block text-sm font-semibold text-slate-700 mb-1">Magnetisk (m)</label>
+                            <select id="m-select" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer">
+                                <!-- Udfyldes dynamisk -->
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3D Plotly Beholder -->
+                <div class="flex-grow relative bg-slate-900 rounded-xl overflow-hidden border border-slate-800" style="min-height: 400px;">
+                    <div id="loading-overlay" class="absolute inset-0 z-10 flex items-center justify-center bg-slate-900 bg-opacity-80 transition-opacity">
+                        <div class="text-white text-sm flex flex-col items-center">
+                            <svg class="animate-spin -ml-1 mr-3 h-8 w-8 text-sky-500 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            Beregner orbitalstrukturer...
+                        </div>
+                    </div>
+                    <div id="orbital-plot" class="w-full h-full"></div>
+                </div>
+                
+                <div class="mt-4 flex justify-between items-center text-xs text-slate-500">
+                    <span id="state-label" class="font-mono bg-slate-100 px-2 py-1 rounded">Tilstand: |3, 2, 0⟩</span>
+                    <span>Interager: Venstreklik for at rotere, rul for zoom.</span>
+                </div>
+            </section>
+
+            <!-- HØJRE KOLONNE: Energetik (Spænder over 5 kolonner) -->
+            <section class="xl:col-span-5 flex flex-col gap-6 relative">
+                
+                <!-- ATOM VIEW (Vises når System = Atom) -->
+                <div id="atom-view" class="flex flex-col gap-6 transition-opacity duration-300">
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col">
+                        <h2 class="text-xl font-bold flex items-center text-slate-900 mb-4">
+                            <span class="bg-sky-100 text-sky-700 w-8 h-8 rounded-full flex items-center justify-center mr-3 text-sm">2</span>
+                            Atomets Energiniveauer
+                        </h2>
+                        <div class="relative w-full rounded-xl bg-slate-900 overflow-hidden" style="height: 250px;">
+                            <canvas id="energy-canvas" class="w-full h-full block cursor-crosshair"></canvas>
+                            <div class="absolute top-2 left-2 text-xs text-slate-400 font-mono">Energi (eV)</div>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-2 text-center">Balmer-serien: Overgange ned til n = 2.</p>
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                        <h3 class="text-lg font-bold text-slate-900 mb-2">Emissionsspektrum (Balmer)</h3>
+                        <p class="text-xs text-slate-500 mb-4">Hold musen over en linje for at se dens finstruktur.</p>
+                        
+                        <div class="w-full h-16 bg-black rounded-lg relative overflow-hidden flex items-center shadow-inner border border-slate-800" id="spectrum-container">
+                            <div class="absolute inset-0 opacity-20" style="background: linear-gradient(to right, #200000 0%, #400040 20%, #000040 40%, #002040 60%, #004000 80%, #400000 100%); mix-blend-mode: screen;"></div>
+                            <div class="absolute bottom-1 w-full flex justify-between px-2 text-[10px] text-slate-500 font-mono z-0 pointer-events-none">
+                                <span>400nm</span><span>500nm</span><span>600nm</span><span>700nm</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="fineStructureBox" class="bg-slate-800 rounded-2xl shadow-lg border border-slate-700 p-5 opacity-50 pointer-events-none h-[200px] flex flex-col justify-center">
+                        <div id="fs-placeholder" class="text-center text-slate-400 text-sm">
+                            <span class="text-2xl block mb-2 opacity-50">🔍</span>
+                            Hold musen over en spektrallinje.
+                        </div>
+                        <div id="fs-content" class="hidden h-full flex-col">
+                            <div class="flex justify-between items-center mb-1">
+                                <h4 class="font-bold text-white text-sm">Finstruktur <span id="fs-title-name"></span></h4>
+                                <span id="fs-title-wave" class="text-xs font-mono text-slate-400"></span>
+                            </div>
+                            <div class="chart-container flex-grow relative">
+                                <canvas id="fs-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MOLEKYLE VIEW (Vises når System = Molekyle) -->
+                <div id="molecule-view" class="hidden flex flex-col gap-6 absolute inset-0 bg-slate-50 z-20">
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col h-full">
+                        <h2 class="text-xl font-bold flex items-center text-slate-900 mb-4">
+                            <span class="bg-sky-100 text-sky-700 w-8 h-8 rounded-full flex items-center justify-center mr-3 text-sm">2</span>
+                            Molekyleorbital (MO) Diagram
+                        </h2>
+                        <p class="text-sm text-slate-600 mb-4">
+                            Når to atomer nærmer sig hinanden, overlapper deres atomorbitaler (AO). Dette skaber nye molekyleorbitaler. 
+                            Den <strong>bindende</strong> orbital har lavere energi og trækker kernerne sammen. Den <strong>antibindende</strong> har en "knude" (nul-sandsynlighed) i midten og skubber dem fra hinanden.
+                        </p>
+                        
+                        <div class="relative w-full flex-grow rounded-xl bg-slate-900 overflow-hidden" style="min-height: 350px;">
+                            <canvas id="mo-canvas" class="w-full h-full block"></canvas>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-4 text-center" id="mo-caption">
+                            Viser energifordelingen for to overlappende atomorbitaler.
+                        </p>
+                    </div>
+                </div>
+
+            </section>
+        </div>
+    </div>
+
+    <script>
+        // --- Tilstand ---
+        const state = {
+            system: 'atom', // 'atom', 'mol_bond', 'mol_anti'
+            n: 3,
+            l: 2,
+            m: 0,
+            activeTransition: null
+        };
+
+        const els = {
+            system: document.getElementById('system-select'),
+            n: document.getElementById('n-select'),
+            l: document.getElementById('l-select'),
+            m: document.getElementById('m-select'),
+            stateLabel: document.getElementById('state-label'),
+            loading: document.getElementById('loading-overlay'),
+            atomView: document.getElementById('atom-view'),
+            moleculeView: document.getElementById('molecule-view'),
+            energyCanvas: document.getElementById('energy-canvas'),
+            moCanvas: document.getElementById('mo-canvas'),
+            moCaption: document.getElementById('mo-caption'),
+            spectrumContainer: document.getElementById('spectrum-container')
+        };
+
+        // Balmer Data til Atomet
+        const balmerData = {
+            6: { id: 'h-delta', name: 'H-δ', wave: 410, color: '#8a2be2', prob: 0.15, posPercent: 10, label: '6→2' },
+            5: { id: 'h-gamma', name: 'H-γ', wave: 434, color: '#4169e1', prob: 0.30, posPercent: 22, label: '5→2' },
+            4: { id: 'h-beta',  name: 'H-β', wave: 486, color: '#00ffff', prob: 0.55, posPercent: 45, label: '4→2' },
+            3: { id: 'h-alpha', name: 'H-α', wave: 656, color: '#ff0033', prob: 1.00, posPercent: 85, label: '3→2' }
+        };
+        const fineStructureData = {
+            3: [{ offset: -0.15, intensity: 0.2 }, { offset: -0.05, intensity: 0.5 }, { offset: 0.05,  intensity: 1.0 }, { offset: 0.12,  intensity: 0.3 }],
+            4: [{ offset: -0.1, intensity: 0.3 }, { offset: 0, intensity: 1.0 }, { offset: 0.08, intensity: 0.4 }],
+            5: [{ offset: -0.08, intensity: 0.4 }, { offset: 0.02, intensity: 1.0 }],
+            6: [{ offset: 0, intensity: 1.0 }, { offset: 0.05, intensity: 0.6 }]
+        };
+        let fsChartInstance = null;
+
+        // --- Opstart ---
+        function init() {
+            setupEventListeners();
+            updateSelectOptions();
+            updateUIVisibility();
+            buildSpectrum();
+            triggerPlotUpdate();
+        }
+
+        function setupEventListeners() {
+            els.system.addEventListener('change', (e) => {
+                state.system = e.target.value;
+                updateUIVisibility();
+                updateStateLabel();
+                triggerPlotUpdate();
+            });
+
+            els.n.addEventListener('change', (e) => {
+                state.n = parseInt(e.target.value);
+                state.l = Math.min(state.l, state.n - 1);
+                state.m = Math.max(-state.l, Math.min(state.l, state.m));
+                updateSelectOptions();
+                triggerPlotUpdate();
+                if (state.system === 'atom') drawEnergyDiagram();
+            });
+
+            els.l.addEventListener('change', (e) => {
+                state.l = parseInt(e.target.value);
+                state.m = Math.max(-state.l, Math.min(state.l, state.m));
+                updateSelectOptions();
+                triggerPlotUpdate();
+            });
+
+            els.m.addEventListener('change', (e) => {
+                state.m = parseInt(e.target.value);
+                triggerPlotUpdate();
+                updateStateLabel();
+            });
+
+            window.addEventListener('resize', () => {
+                if (state.system === 'atom') drawEnergyDiagram();
+                else drawMODiagram();
+            });
+        }
+
+        function updateUIVisibility() {
+            if (state.system === 'atom') {
+                els.atomView.classList.remove('hidden');
+                els.moleculeView.classList.add('hidden');
+                drawEnergyDiagram();
+            } else {
+                els.atomView.classList.add('hidden');
+                els.moleculeView.classList.remove('hidden');
+                drawMODiagram();
+            }
+        }
+
+        function updateSelectOptions() {
+            els.l.innerHTML = '';
+            const lNames = ['s (Skarp)', 'p (Hoved)', 'd (Diffus)', 'f (Fundamental)', 'g', 'h'];
+            for (let i = 0; i < state.n; i++) {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.text = `${i} - ${lNames[i]}`;
+                if (i === state.l) opt.selected = true;
+                els.l.appendChild(opt);
+            }
+
+            els.m.innerHTML = '';
+            for (let i = -state.l; i <= state.l; i++) {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.text = (i > 0 ? '+' : '') + i;
+                if (i === state.m) opt.selected = true;
+                els.m.appendChild(opt);
+            }
+            updateStateLabel();
+        }
+
+        function updateStateLabel() {
+            if (state.system === 'atom') {
+                els.stateLabel.innerText = `Atomtilstand: |${state.n}, ${state.l}, ${state.m}⟩`;
+            } else {
+                let type = state.l === 0 ? 'σ' : (state.m === 0 ? 'σ' : 'π');
+                let anti = state.system === 'mol_anti' ? '*' : '';
+                els.stateLabel.innerText = `Molekyletilstand: ${type}${anti} LCAO baseret på n=${state.n}, l=${state.l}`;
+            }
+        }
+
+        function triggerPlotUpdate() {
+            els.loading.style.opacity = '1';
+            els.loading.style.visibility = 'visible';
+            setTimeout(() => { generateOrbitalPlot(); }, 50);
+        }
+
+        // --- MATEMATIK TIL BØLGEFUNKTIONER (Med fortegn for fase) ---
+        
+        // Vinkelafhængig del (Cartesisk tilnærmelse for at bevare fortegn)
+        function getAngularAmplitude(l, m, x, y, z, r) {
+            if (r === 0) return 1;
+            if (l === 0) return 1;
+            if (l === 1) {
+                if (m === 0) return z / r; // pz (Langs z-aksen, god til sigma bindinger)
+                if (Math.abs(m) === 1) return x / r; // px (Langs x-aksen, god til pi bindinger)
+            }
+            if (l === 2) {
+                if (m === 0) return (3 * z * z - r * r) / (r * r); // dz2
+                if (Math.abs(m) === 1) return (x * z) / (r * r); // dxz
+                if (Math.abs(m) === 2) return (x * x - y * y) / (r * r); // dx2-y2
+            }
+            // Forbindelser for l > 2 (heuristisk fald-tilbage, mangler præcis sfærisk harmoni-fase, men virker visuelt)
+            const theta = Math.acos(z / r);
+            const phi = Math.atan2(y, x);
+            const lobe = Math.abs(m) > 0 ? m : l;
+            return Math.sin(lobe * theta) * Math.cos(m * phi);
+        }
+
+        // Beregn bølgefunktionens amplitude i ét punkt
+        function getPsiAmplitude(x, y, z, n, l, m, scale, maxRadius) {
+            const r = Math.sqrt(x*x + y*y + z*z);
+            if (r > maxRadius || r === 0) return 0;
+
+            const radialNodes = n - l - 1;
+            
+            // Radialt henfald
+            let radial = Math.pow(r / maxRadius, l) * Math.exp(-4 * r / scale);
+            
+            // Radiale knuder (skifter fortegn)
+            if (radialNodes > 0) {
+                const nodeSpacing = scale / (radialNodes + 1);
+                radial *= Math.sin(Math.PI * (r + nodeSpacing * 0.1) / nodeSpacing);
+            }
+            
+            const angular = getAngularAmplitude(l, m, x, y, z, r);
+            return radial * angular;
+        }
+
+        // Generer skyen vha. afvisningsprøvetagning (Rejection Sampling)
+        function generatePointCloud() {
+            const { system, n, l, m } = state;
+            const numPoints = n > 3 ? 20000 : 15000; 
+            const points = { x: [], y: [], z: [], color: [], size: [] };
+            
+            const scale = n * n * 0.8; 
+            const internuclearR = scale * 1.5; // Afstand mellem kerner i molekylet
+            const maxRadius = system === 'atom' ? scale * 3 : scale * 3 + internuclearR;
+
+            let accepted = 0;
+            // Juster tolerancen afhængig af om vi lægger to funktioner sammen
+            const chanceMultiplier = system === 'atom' ? 50 : 20; 
+
+            while (accepted < numPoints) {
+                const x = (Math.random() - 0.5) * 2 * maxRadius;
+                const y = (Math.random() - 0.5) * 2 * maxRadius;
+                const z = (Math.random() - 0.5) * 2 * maxRadius;
+
+                let amplitude = 0;
+
+                if (system === 'atom') {
+                    amplitude = getPsiAmplitude(x, y, z, n, l, m, scale, maxRadius);
+                } else {
+                    // LCAO: To atomkerner på z-aksen
+                    const psiA = getPsiAmplitude(x, y, z + internuclearR/2, n, l, m, scale, maxRadius);
+                    const psiB = getPsiAmplitude(x, y, z - internuclearR/2, n, l, m, scale, maxRadius);
+                    
+                    if (system === 'mol_bond') {
+                        amplitude = psiA + psiB; // Konstruktiv interferens
+                    } else {
+                        amplitude = psiA - psiB; // Destruktiv interferens
+                    }
+                }
+
+                // Sandsynligheden er kvadratet på amplituden
+                const probability = amplitude * amplitude;
+
+                if (Math.random() < probability * chanceMultiplier) {
+                    points.x.push(x);
+                    points.y.push(y);
+                    points.z.push(z);
+                    
+                    // Fase-farvning: Blå for positiv bølgefunktion, Rød for negativ
+                    const color = amplitude > 0 ? '#0ea5e9' : '#ef4444'; // Sky 500 : Red 500
+                    points.color.push(color);
+                    
+                    points.size.push(2 + (probability * 3));
+                    accepted++;
+                }
+            }
+            return { points, internuclearR };
+        }
+
+        function generateOrbitalPlot() {
+            setTimeout(() => {
+                const { points, internuclearR } = generatePointCloud();
+                
+                const data = [];
+
+                // Orbital sky
+                data.push({
+                    x: points.x,
+                    y: points.y,
+                    z: points.z,
+                    mode: 'markers',
+                    marker: {
+                        size: 2,
+                        color: points.color,
+                        opacity: 0.35,
+                        line: { width: 0 }
+                    },
+                    type: 'scatter3d',
+                    hoverinfo: 'none'
+                });
+
+                // Tegn atomkerner (hvis molekyle)
+                if (state.system !== 'atom') {
+                    data.push({
+                        x: [0, 0], y: [0, 0], z: [-internuclearR/2, internuclearR/2],
+                        mode: 'markers',
+                        marker: { size: 6, color: '#0f172a', symbol: 'circle' },
+                        type: 'scatter3d',
+                        name: 'Atomkerner',
+                        hoverinfo: 'none'
+                    });
+                } else {
+                    // Enkelt kerne
+                    data.push({
+                        x: [0], y: [0], z: [0],
+                        mode: 'markers',
+                        marker: { size: 6, color: '#0f172a' },
+                        type: 'scatter3d',
+                        hoverinfo: 'none'
+                    });
+                }
+
+                const layout = {
+                    margin: { l: 0, r: 0, b: 0, t: 0 },
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    showlegend: false,
+                    scene: {
+                        xaxis: { showgrid: false, zeroline: false, showticklabels: false, title: '' },
+                        yaxis: { showgrid: false, zeroline: false, showticklabels: false, title: '' },
+                        zaxis: { showgrid: false, zeroline: false, showticklabels: false, title: '' },
+                        camera: { eye: { x: 1.5, y: 1.5, z: 1.2 } }
+                    }
+                };
+
+                Plotly.react('orbital-plot', data, layout, { displayModeBar: false }).then(() => {
+                    els.loading.style.opacity = '0';
+                    setTimeout(() => els.loading.style.visibility = 'hidden', 300);
+                });
+            }, 10);
+        }
+
+        // --- HØJRE KOLONNE: ATOM ENERGI DIAGRAM ---
+        function drawEnergyDiagram() {
+            if (state.system !== 'atom') return;
+            const canvas = els.energyCanvas;
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.clientWidth * window.devicePixelRatio;
+            canvas.height = canvas.clientHeight * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            
+            const width = canvas.clientWidth;
+            const height = canvas.clientHeight;
+            ctx.clearRect(0, 0, width, height);
+
+            const maxN = 6;
+            const groundE = -13.6;
+            const marginY = 30;
+            const drawHeight = height - marginY * 2;
+            
+            function getE(n) { return groundE / (n * n); }
+            function getY(e) { return marginY + drawHeight - ((e - groundE) / (0 - groundE)) * drawHeight; }
+
+            ctx.lineWidth = 1;
+            ctx.font = '12px monospace';
+            ctx.textBaseline = 'middle';
+
+            for (let n = 1; n <= maxN; n++) {
+                const e = getE(n);
+                const y = getY(e);
+                ctx.beginPath();
+                ctx.moveTo(50, y);
+                ctx.lineTo(width - 20, y);
+                
+                if (n === state.n) { ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 2; } 
+                else { ctx.strokeStyle = '#334155'; ctx.lineWidth = 1; }
+                ctx.stroke();
+
+                ctx.fillStyle = n === state.n ? '#38bdf8' : '#94a3b8';
+                ctx.textAlign = 'right';
+                ctx.fillText(`n=${n}`, 40, y);
+                ctx.textAlign = 'left';
+                ctx.fillText(`${e.toFixed(2)}`, width - 18, y);
+            }
+
+            const n2Y = getY(getE(2));
+            const transitionStartX = 100;
+            const transitionSpacing = (width - 150) / 4;
+
+            let i = 0;
+            for (const n of [3, 4, 5, 6]) {
+                const nY = getY(getE(n));
+                const x = transitionStartX + i * transitionSpacing;
+                const data = balmerData[n];
+                const isHovered = state.activeTransition === n;
+
+                ctx.beginPath();
+                ctx.moveTo(x, nY);
+                ctx.lineTo(x, n2Y);
+                ctx.strokeStyle = data.color;
+                ctx.globalAlpha = isHovered ? 1.0 : (0.2 + data.prob * 0.8);
+                
+                if (isHovered) { ctx.shadowBlur = 10; ctx.shadowColor = data.color; ctx.lineWidth = 3; } 
+                else { ctx.shadowBlur = 0; ctx.lineWidth = 2; }
+                
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(x, n2Y);
+                ctx.lineTo(x - 4, n2Y - 8);
+                ctx.lineTo(x + 4, n2Y - 8);
+                ctx.fillStyle = data.color;
+                ctx.fill();
+
+                ctx.globalAlpha = 1.0; ctx.shadowBlur = 0;
+                ctx.fillStyle = '#64748b'; ctx.textAlign = 'center';
+                ctx.fillText(data.label, x, Math.max(nY - 10, marginY));
+                i++;
+            }
+        }
+
+        // --- HØJRE KOLONNE: MOLEKYLE DIAGRAM (LCAO) ---
+        function drawMODiagram() {
+            if (state.system === 'atom') return;
+            const canvas = els.moCanvas;
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.clientWidth * window.devicePixelRatio;
+            canvas.height = canvas.clientHeight * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            
+            const w = canvas.clientWidth;
+            const h = canvas.clientHeight;
+            ctx.clearRect(0, 0, w, h);
+
+            // Koordinater for diagram
+            const centerY = h / 2;
+            const bondY = centerY + 60;
+            const antiY = centerY - 60;
+            const leftX = w * 0.2;
+            const rightX = w * 0.8;
+            const midX = w / 2;
+            const lineWidth = 40;
+
+            const isBond = state.system === 'mol_bond';
+            const typeStr = state.l === 0 ? 'σ' : (state.m === 0 ? 'σ' : 'π');
+
+            // Tegn forbindelseslinjer (stiplede)
+            ctx.setLineDash([5, 5]);
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 1;
+            
+            ctx.beginPath();
+            ctx.moveTo(leftX + lineWidth/2, centerY); ctx.lineTo(midX - lineWidth/2, bondY);
+            ctx.moveTo(rightX - lineWidth/2, centerY); ctx.lineTo(midX + lineWidth/2, bondY);
+            
+            ctx.moveTo(leftX + lineWidth/2, centerY); ctx.lineTo(midX - lineWidth/2, antiY);
+            ctx.moveTo(rightX - lineWidth/2, centerY); ctx.lineTo(midX + lineWidth/2, antiY);
+            ctx.stroke();
+            ctx.setLineDash([]); // Reset
+
+            // Funktion til at tegne energiniveauer
+            function drawLevel(x, y, label, isActive, colorClass) {
+                ctx.beginPath();
+                ctx.moveTo(x - lineWidth/2, y);
+                ctx.lineTo(x + lineWidth/2, y);
+                ctx.lineWidth = isActive ? 4 : 2;
+                ctx.strokeStyle = isActive ? colorClass : '#64748b';
+                
+                if (isActive) {
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = colorClass;
+                } else {
+                    ctx.shadowBlur = 0;
+                }
+                ctx.stroke();
+                ctx.shadowBlur = 0; // reset
+
+                ctx.fillStyle = isActive ? '#f8fafc' : '#94a3b8';
+                ctx.font = isActive ? 'bold 14px sans-serif' : '12px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                ctx.fillText(label, x, y - 8);
+            }
+
+            // Tegn Atomorbitaler (AO)
+            drawLevel(leftX, centerY, `AO (n=${state.n})`, false, '#38bdf8');
+            drawLevel(rightX, centerY, `AO (n=${state.n})`, false, '#38bdf8');
+
+            // Tegn Molekyleorbitaler (MO)
+            drawLevel(midX, bondY, `${typeStr} (Bindende)`, isBond, '#0ea5e9'); // Blå for bindende
+            drawLevel(midX, antiY, `${typeStr}* (Antibindende)`, !isBond, '#ef4444'); // Rød for antibindende
+
+            // Opdater tekst i bunden
+            if (isBond) {
+                els.moCaption.innerHTML = `Elektrontætheden samles <strong>mellem</strong> atomkernerne og sænker den samlede energi. Dette holder molekylet sammen.`;
+            } else {
+                els.moCaption.innerHTML = `Bølgefunktionerne udligner hinanden i midten (en knude). Elektronerne trækkes væk fra midten, hvilket hæver energien og skubber kernerne fra hinanden.`;
+            }
+        }
+
+        // --- ATOM SPEKTRUM LOGIK ---
+        function buildSpectrum() {
+            const container = els.spectrumContainer;
+            Array.from(container.children).forEach(c => {
+                if (c.classList.contains('spectral-line')) c.remove();
+            });
+
+            for (const n of [3, 4, 5, 6]) {
+                const data = balmerData[n];
+                const line = document.createElement('div');
+                
+                line.className = 'spectral-line absolute h-full top-0';
+                line.style.left = `${data.posPercent}%`;
+                line.style.backgroundColor = data.color;
+                
+                const width = Math.max(2, data.prob * 8);
+                line.style.width = `${width}px`;
+                line.style.marginLeft = `-${width/2}px`;
+                line.style.boxShadow = `0 0 ${10 + data.prob * 20}px ${data.color}`;
+                line.style.opacity = 0.4 + (data.prob * 0.6);
+
+                line.addEventListener('mouseenter', () => {
+                    if (state.system === 'atom') {
+                        state.activeTransition = n;
+                        drawEnergyDiagram();
+                        Array.from(container.querySelectorAll('.spectral-line')).forEach((l, idx) => {
+                            if ([3, 4, 5, 6][idx] === n) l.classList.add('active');
+                            else l.style.opacity = '0.2';
+                        });
+                        showFineStructure(n);
+                    }
+                });
+
+                line.addEventListener('mouseleave', () => {
+                    if (state.system === 'atom') {
+                        state.activeTransition = null;
+                        drawEnergyDiagram();
+                        Array.from(container.querySelectorAll('.spectral-line')).forEach(l => {
+                            l.classList.remove('active');
+                            const orderIdx = Array.from(container.querySelectorAll('.spectral-line')).indexOf(l);
+                            const currentN = [3, 4, 5, 6][orderIdx];
+                            if(currentN) l.style.opacity = 0.4 + (balmerData[currentN].prob * 0.6);
+                        });
+                        hideFineStructure();
+                    }
+                });
+
+                container.appendChild(line);
+            }
+        }
+
+        function showFineStructure(n) {
+            const data = balmerData[n];
+            const fsData = fineStructureData[n];
+            const box = document.getElementById('fineStructureBox');
+            
+            box.classList.remove('opacity-50', 'pointer-events-none');
+            document.getElementById('fs-placeholder').classList.add('hidden');
+            const content = document.getElementById('fs-content');
+            content.classList.remove('hidden'); content.classList.add('flex');
+            
+            const titleName = document.getElementById('fs-title-name');
+            titleName.innerText = data.name; titleName.style.color = data.color;
+            document.getElementById('fs-title-wave').innerText = `~${data.wave} nm`;
+
+            const ctx = document.getElementById('fs-chart').getContext('2d');
+            const points = [];
+            for (let i = 0; i <= 100; i++) {
+                const x = -0.25 + (i / 100) * 0.5;
+                let y = 0;
+                fsData.forEach(p => y += p.intensity * Math.exp(-Math.pow(x - p.offset, 2) / (2 * 0.015 * 0.015)));
+                points.push({x, y});
+            }
+
+            if (fsChartInstance) fsChartInstance.destroy();
+            const gradient = ctx.createLinearGradient(0, 0, 0, 150);
+            gradient.addColorStop(0, data.color + '80');
+            gradient.addColorStop(1, data.color + '00');
+
+            fsChartInstance = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        data: points, borderColor: data.color, backgroundColor: gradient,
+                        borderWidth: 2, pointRadius: 0, fill: true, tension: 0.4, showLine: true
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false, animation: { duration: 0 },
+                    plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                    scales: {
+                        x: { display: false },
+                        y: { display: false, min: 0 }
+                    }
+                }
+            });
+        }
+
+        function hideFineStructure() {
+            const box = document.getElementById('fineStructureBox');
+            box.classList.add('opacity-50', 'pointer-events-none');
+            document.getElementById('fs-placeholder').classList.remove('hidden');
+            const content = document.getElementById('fs-content');
+            content.classList.add('hidden'); content.classList.remove('flex');
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Akustisk Lydudbredelse i Rør med Flow</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #fafaf9; 
+            color: #292524;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 40vh;
+            min-height: 350px;
+            max-height: 500px;
+        }
+        input[type=range] {
+            accent-color: #0d9488;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+<!-- Chosen Palette: Warm Neutrals (Stone) with Teal Accents -->
+
+<!-- Application Structure Plan: The SPA is divided into a two-column layout on desktop (stacking on mobile) to balance theoretical exposition with interactive exploration. The left column acts as the "recreated paper", systematically walking the user through the mathematical derivation (Wave Equation -> Lorentz Transform -> Damping -> Transmission Loss) using MathJax for high-quality typography. The right column features an interactive dashboard. This structure was chosen because understanding the math requires linear reading, while the implications of the math are best understood through immediate visual feedback (the interactive chart). The user can read the theory and instantly test the parameters (Mach number, duct length, absorption) to see the resulting Transmission Loss, fulfilling both the "Inform" and "Change" goals. -->
+
+<!-- Visualization & Content Choices: 
+1. Theoretical Text & MathJax -> Goal: Inform/Explain -> Presentation: Typeset mathematics -> Justification: Recreating a handwritten mathematical paper requires accurate formula rendering. MathJax provides the standard.
+2. Transmission Loss Chart -> Goal: Change/Compare -> Presentation: Line Chart (Chart.js/Canvas) -> Interaction: Sliders update Mach number, Length, and Absorption coefficient -> Justification: Allows the user to physically "feel" the effect of the Lorentz-derived flow attenuation formula. As they slide the Mach number, they see the TL curve shift, demonstrating convective effects on sound attenuation. NO SVG or Mermaid is used. -->
+
+<!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    
+    <header class="border-b border-stone-300 pb-6 mb-10">
+        <h1 class="text-3xl md:text-4xl font-bold text-stone-800 tracking-tight">Akustisk Lydudbredelse i Absorptionsrør med Flow</h1>
+        <p class="mt-2 text-lg text-stone-600">Genskabelse af den relativistiske udledning af Transmission Loss inspireret af M.L. Munjal.</p>
+    </header>
+
+    <main class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+        
+        <section class="space-y-8 text-stone-700 leading-relaxed">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                <h2 class="text-2xl font-semibold text-stone-800 mb-4">1. Introduktion og Bølgeligningen</h2>
+                <p class="mb-4">
+                    Denne sektion opsummerer kernen i den tabte artikel. Problemet omhandler beregning af lyddæmpning (Transmission Loss, TL) i et rør beklædt med et lydabsorberende materiale, hvor der samtidig er en jævn gasstrøm (mean flow).
+                </p>
+                <p>
+                    Den konvektive bølgeligning i én dimension for lydtrykket $p$ i en gas med strømningshastighed $V$ (og Mach-tal $M = V/c$, hvor $c$ er lydens hastighed) kan skrives som:
+                </p>
+                <div class="overflow-x-auto py-2">
+                    $$ \frac{1}{c^2}\frac{\partial^2 p}{\partial t^2} - (1-M^2)\frac{\partial^2 p}{\partial x^2} + \frac{2M}{c}\frac{\partial^2 p}{\partial x \partial t} = 0 $$
+                </div>
+                <p class="mt-4 text-sm text-stone-500 italic">Ligningen inkluderer konvektive led, der gør direkte løsning med komplekse randbetingelser vanskelig.</p>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                <h2 class="text-2xl font-semibold text-stone-800 mb-4">2. Lorentz-Transformationen</h2>
+                <p class="mb-4">
+                    Inspirationen fra den specielle relativitetsteori består i at transformere koordinatsystemet til et, der bevæger sig med flowet, for at eliminere krydsleddet i differentialligningen. Vi introducerer en "akustisk Lorentz-faktor":
+                </p>
+                <div class="overflow-x-auto py-2">
+                    $$ \gamma = \frac{1}{\sqrt{1-M^2}} $$
+                </div>
+                <p class="mb-4">
+                    Vi definerer nu de transformerede koordinater $(x', t')$:
+                </p>
+                <div class="overflow-x-auto py-2">
+                    $$ x' = \gamma (x - V t) \quad \text{og} \quad t' = \gamma \left(t - \frac{V x}{c^2}\right) $$
+                </div>
+                <p>
+                    Ved at anvende kædereglen på den konvektive bølgeligning forsvinder de konvektive led, og ligningen reduceres til den standardiserede, stationære d'Alembert-bølgeligning i det mærkede system:
+                </p>
+                <div class="overflow-x-auto py-2 text-teal-700 font-medium">
+                    $$ \frac{\partial^2 p}{\partial x'^2} - \frac{1}{c^2}\frac{\partial^2 p}{\partial t'^2} = 0 $$
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                <h2 class="text-2xl font-semibold text-stone-800 mb-4">3. Dæmpning og Invers Transformation</h2>
+                <p class="mb-4">
+                    I det transformerende system er der intet flow. Lydudbredelsen i et rør med absorptionsmateriale kan her beskrives simpelt ved et komplekst bølgetal $k' = \frac{\omega'}{c} - i\alpha'$, hvor $\alpha'$ er dæmpningskoefficienten uden flow.
+                </p>
+                <p class="mb-4">
+                    Løsningen antager formen $p \propto e^{i(\omega' t' - k' x')}$. For at finde løsningen i det fysiske system, indsættes de inverse Lorentz-transformationer tilbage i fasen:
+                </p>
+                <div class="overflow-x-auto py-2">
+                    $$ \phi = \omega' \gamma \left(t - \frac{V x}{c^2}\right) - k' \gamma (x - V t) $$
+                </div>
+                <p class="mb-4">
+                    Ved at isolere koefficienten foran $x$ i det fysiske system, fås det nye komplekse bølgetal $k_{flow}$. Den imaginære del af dette bølgetal repræsenterer den effektive spatielle dæmpning $\alpha_{flow}$ i tilstedeværelsen af flow. Approksimativt findes for lydudbredelse *med* strømningsretningen (medstrøms):
+                </p>
+                <div class="overflow-x-auto py-2">
+                    $$ \alpha_{flow} \approx \frac{\alpha_0}{1 + M} $$
+                </div>
+                <p class="mt-4 font-semibold">Transmission Loss (TL)</p>
+                <p>
+                    Transmission Loss over en længde $L$ kan derefter beregnes ud fra den velkendte relation:
+                </p>
+                <div class="overflow-x-auto py-2 text-teal-700 font-medium">
+                    $$ \text{TL} = 8.686 \cdot \alpha_{flow} \cdot L \quad \text{[dB]} $$
+                </div>
+            </div>
+        </section>
+
+        <section class="space-y-6">
+            <div class="bg-stone-100 p-6 rounded-xl border border-stone-300 sticky top-6">
+                <h2 class="text-2xl font-semibold text-stone-800 mb-2">Interaktiv TL Beregner</h2>
+                <p class="text-stone-600 mb-6 text-sm">
+                    Udforsk hvordan flow (Mach-tal), rørets længde og materialets basisabsorption påvirker den samlede lyddæmpning (Transmission Loss) på tværs af frekvensspektret, baseret på den udledte Lorentz-transformation.
+                </p>
+
+                <div class="space-y-5 mb-8">
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <label for="machSlider" class="text-sm font-medium text-stone-700">Mach-tal ($M$)</label>
+                            <span id="machValue" class="text-sm font-bold text-teal-700">0.00</span>
+                        </div>
+                        <input type="range" id="machSlider" min="-0.8" max="0.8" step="0.05" value="0" class="w-full h-2 bg-stone-300 rounded-lg appearance-none cursor-pointer">
+                        <div class="flex justify-between text-xs text-stone-500 mt-1">
+                            <span>Modstrøms (-0.8)</span>
+                            <span>Ingen (0)</span>
+                            <span>Medstrøms (+0.8)</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <label for="lengthSlider" class="text-sm font-medium text-stone-700">Rørlængde ($L$) [meter]</label>
+                            <span id="lengthValue" class="text-sm font-bold text-teal-700">2.0 m</span>
+                        </div>
+                        <input type="range" id="lengthSlider" min="0.5" max="10" step="0.5" value="2.0" class="w-full h-2 bg-stone-300 rounded-lg appearance-none cursor-pointer">
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <label for="alphaSlider" class="text-sm font-medium text-stone-700">Basis Absorption ($a$)</label>
+                            <span id="alphaValue" class="text-sm font-bold text-teal-700">0.05</span>
+                        </div>
+                        <input type="range" id="alphaSlider" min="0.01" max="0.2" step="0.01" value="0.05" class="w-full h-2 bg-stone-300 rounded-lg appearance-none cursor-pointer">
+                        <p class="text-xs text-stone-500 mt-1">Styrer $\alpha_0$. Antaget frekvensafhængig model: $\alpha_0(f) = a \cdot \sqrt{f}$</p>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-lg shadow-inner border border-stone-200">
+                    <div class="chart-container">
+                        <canvas id="tlChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="mt-4 p-4 bg-teal-50 rounded-lg border border-teal-100">
+                    <h3 class="font-semibold text-teal-800 text-sm mb-1">Dynamisk Analyse:</h3>
+                    <p id="analysisText" class="text-sm text-teal-700">
+                        Ved M=0 er dæmpningen symmetrisk. Juster skyderne for at observere adfærden.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="mt-16 pt-8 border-t border-stone-300 text-center text-sm text-stone-500">
+        <p>Genskabt interaktivt forskningsnotat. Baseret på koncepter fra Munjal's "Acoustics of Ducts and Mufflers".</p>
+    </footer>
+
+</div>
+
+<script>
+    const machSlider = document.getElementById('machSlider');
+    const lengthSlider = document.getElementById('lengthSlider');
+    const alphaSlider = document.getElementById('alphaSlider');
+    
+    const machValueDisplay = document.getElementById('machValue');
+    const lengthValueDisplay = document.getElementById('lengthValue');
+    const alphaValueDisplay = document.getElementById('alphaValue');
+    const analysisText = document.getElementById('analysisText');
+
+    let tlChartInstance = null;
+    const frequencies = [63, 125, 250, 500, 1000, 2000, 4000, 8000];
+
+    function calculateTL(M, L, a, f) {
+        const alpha0 = a * Math.sqrt(f);
+        const alphaFlow = alpha0 / (1 + M);
+        return 8.686 * alphaFlow * L;
+    }
+
+    function generateChartData() {
+        const M = parseFloat(machSlider.value);
+        const L = parseFloat(lengthSlider.value);
+        const a = parseFloat(alphaSlider.value);
+
+        return frequencies.map(f => calculateTL(M, L, a, f));
+    }
+
+    function updateAnalysisText(M, L) {
+        if (M > 0.05) {
+            analysisText.innerHTML = `Med et <strong>medstrøms flow</strong> (M = ${M.toFixed(2)}) forlænges de akustiske bølger, og interaktionstiden med det absorberende materiale mindskes. Dette resulterer i en <strong>reduceret</strong> Transmission Loss.`;
+        } else if (M < -0.05) {
+            analysisText.innerHTML = `Med et <strong>modstrøms flow</strong> (M = ${M.toFixed(2)}) presses de akustiske bølger sammen mod flowet. Interaktionstiden med materialet øges, hvilket <strong>øger</strong> Transmission Loss betydeligt.`;
+        } else {
+            analysisText.innerHTML = `Når der <strong>ikke er noget flow</strong> (M $\\approx$ 0), er Transmission Loss udelukkende styret af rørets længde (${L} m) og materialets frekvensafhængige absorption.`;
+        }
+    }
+
+    function initChart() {
+        const ctx = document.getElementById('tlChart').getContext('2d');
+        const initialData = generateChartData();
+
+        tlChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: frequencies,
+                datasets: [{
+                    label: 'Transmission Loss (dB)',
+                    data: initialData,
+                    borderColor: '#0d9488',
+                    backgroundColor: 'rgba(13, 148, 136, 0.1)',
+                    borderWidth: 3,
+                    pointBackgroundColor: '#0f766e',
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `TL: ${context.parsed.y.toFixed(1)} dB`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Frekvens (Hz)',
+                            color: '#57534e',
+                            font: { weight: 'bold' }
+                        },
+                        grid: {
+                            color: '#e7e5e4'
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Transmission Loss (dB)',
+                            color: '#57534e',
+                            font: { weight: 'bold' }
+                        },
+                        grid: {
+                            color: '#e7e5e4'
+                        },
+                        min: 0,
+                        max: 200 
+                    }
+                }
+            }
+        });
+    }
+
+    function updateApp() {
+        const M = parseFloat(machSlider.value);
+        const L = parseFloat(lengthSlider.value);
+        const a = parseFloat(alphaSlider.value);
+
+        machValueDisplay.textContent = M > 0 ? `+${M.toFixed(2)}` : M.toFixed(2);
+        lengthValueDisplay.textContent = `${L.toFixed(1)} m`;
+        alphaValueDisplay.textContent = a.toFixed(2);
+
+        tlChartInstance.data.datasets[0].data = generateChartData();
+        tlChartInstance.update();
+
+        updateAnalysisText(M, L);
+        
+        if (window.MathJax) {
+            MathJax.typesetPromise([analysisText]).catch((err) => console.log(err.message));
+        }
+    }
+
+    machSlider.addEventListener('input', updateApp);
+    lengthSlider.addEventListener('input', updateApp);
+    alphaSlider.addEventListener('input', updateApp);
+
+    document.addEventListener('DOMContentLoaded', () => {
+        initChart();
+        updateApp();
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vandbølge Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow: hidden; /* Forhindrer scrollbars */
+        }
+        canvas {
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex flex-col items-center justify-center h-screen">
+
+    <div class="text-center mb-4">
+        <h1 class="text-3xl md:text-4xl font-bold text-cyan-300">Vandbølge Simulator</h1>
+        <p class="mt-2 text-lg text-gray-400">Klik på vandoverfladen for at skabe en bølge.</p>
+    </div>
+
+    <div class="w-full max-w-2xl aspect-video bg-black rounded-lg shadow-2xl shadow-cyan-500/20">
+        <canvas id="waterCanvas"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('waterCanvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+        // Størrelsen på vores grid. Lavere tal giver bedre ydeevne.
+        const resolution = 2; 
+        let cols, rows;
+        
+        // To arrays til at holde styr på bølgens højde nu og i forrige frame.
+        let current, previous;
+        // Array til at holde styr på plask-partikler
+        let particles = [];
+
+        // Dæmpningsfaktor.
+        const damping = 0.98;
+
+        function setup() {
+            // Sæt canvas størrelse til at matche containeren
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+
+            cols = Math.floor(canvas.width / resolution);
+            rows = Math.floor(canvas.height / resolution);
+
+            // Initialiser vores 2D arrays med nuller
+            current = new Array(cols).fill(0).map(() => new Array(rows).fill(0));
+            previous = new Array(cols).fill(0).map(() => new Array(rows).fill(0));
+            particles = [];
+        }
+
+        // Funktion til at tilføje en dråbe/forstyrrelse i bølge-simulationen
+        function createDrop(x, y) {
+            const dropStrength = 1000;
+            const dropRadius = 10;
+
+            for (let i = -dropRadius; i < dropRadius; i++) {
+                for (let j = -dropRadius; j < dropRadius; j++) {
+                    if (x + i >= 0 && x + i < cols && y + j >= 0 && y + j < rows) {
+                        const dist = Math.sqrt(i * i + j * j);
+                        if (dist < dropRadius) {
+                            const strength = dropStrength * (Math.cos(dist / dropRadius * Math.PI) + 1) / 2;
+                            previous[x + i][y + j] += strength;
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Funktion til at skabe et visuelt plask med partikler
+        function createSplash(x, y) {
+            const splashParticles = 40; // Antal dråber i plasket
+            for (let i = 0; i < splashParticles; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 4 + 1; // Tilfældig udadgående hastighed
+                particles.push({
+                    x: x * resolution, // Konverter grid-koordinater til canvas-koordinater
+                    y: y * resolution,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    vz: Math.random() * 5 + 2, // Start-hastighed opad
+                    life: 80, // Levetid i frames
+                    gravity: 0.15
+                });
+            }
+        }
+
+        function update() {
+            // Bølge-udbredelses algoritme
+            for (let i = 1; i < cols - 1; i++) {
+                for (let j = 1; j < rows - 1; j++) {
+                    current[i][j] =
+                        (previous[i - 1][j] +
+                         previous[i + 1][j] +
+                         previous[i][j - 1] +
+                         previous[i][j + 1]) / 2 -
+                        current[i][j];
+                    current[i][j] *= damping;
+                }
+            }
+
+            // Byt om på de to buffers
+            let temp = previous;
+            previous = current;
+            current = temp;
+        }
+
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vz -= p.gravity; // Anvend tyngdekraft
+                p.y -= p.vz * 0.2; // Simuler en bue ved at justere y-position
+                p.life -= 1;
+
+                if (p.life <= 0) {
+                    particles.splice(i, 1); // Fjern partiklen når dens levetid er udløbet
+                }
+            }
+        }
+
+        function render() {
+            // Undgå at køre, hvis canvas ikke har en størrelse endnu
+            if (canvas.width === 0 || canvas.height === 0) return;
+
+            // Tegn vandoverfladen
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+
+            for (let i = 1; i < cols - 1; i++) {
+                for (let j = 1; j < rows - 1; j++) {
+                    const xDiff = current[i - 1][j] - current[i + 1][j];
+                    const yDiff = current[i][j - 1] - current[i][j + 1];
+                    const shade = Math.floor(100 + xDiff + yDiff);
+
+                    for (let x = 0; x < resolution; x++) {
+                        for (let y = 0; y < resolution; y++) {
+                            const px = i * resolution + x;
+                            const py = j * resolution + y;
+                            const index = (px + py * canvas.width) * 4;
+
+                            data[index] = shade;
+                            data[index + 1] = shade + 20;
+                            data[index + 2] = shade + 40;
+                            data[index + 3] = 255;
+                        }
+                    }
+                }
+            }
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        function renderParticles() {
+            // Tegn plask-partiklerne ovenpå vandet
+            for (const p of particles) {
+                ctx.beginPath();
+                const opacity = Math.max(0, p.life / 80); // Fade ud
+                ctx.fillStyle = `rgba(200, 220, 255, ${opacity * 0.7})`;
+                // Størrelsen aftager, når partiklen "falder"
+                const radius = Math.max(0, 1.5 + p.vz * 0.2);
+                ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Hoved-loop for animationen
+        function animate() {
+            update();
+            render();
+            updateParticles();
+            renderParticles();
+            requestAnimationFrame(animate);
+        }
+
+        // Event listener for at skabe dråber med musen
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const gridX = Math.floor((e.clientX - rect.left) / resolution);
+            const gridY = Math.floor((e.clientY - rect.top) / resolution);
+            createDrop(gridX, gridY);
+            createSplash(gridX, gridY);
+        });
+
+        // Håndter vindues-ændringer
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(setup, 100); // Vent lidt før gen-initialisering
+        });
+        
+        // Start simulationen når siden er fuldt indlæst
+        window.onload = () => {
+            setup();
+            // Tilføj en start-dråbe for at vise noget fra start
+            const startX = Math.floor(cols / 2);
+            const startY = Math.floor(rows / 2);
+            createDrop(startX, startY);
+            createSplash(startX, startY);
+            animate();
+        };
+
+    </script>
+</body>
+</html>

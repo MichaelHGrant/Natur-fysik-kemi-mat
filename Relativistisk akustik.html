@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Akustisk Lydudbredelse i Rør med Flow</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #fafaf9; /* Tailwind stone-50 */
+            color: #292524; /* Tailwind stone-800 */
+        }
+        
+        /* Required Chart Container Styling */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 40vh;
+            min-height: 300px;
+            max-height: 450px;
+        }
+        
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+
+        input[type=range] {
+            accent-color: #0d9488; /* Tailwind teal-600 */
+        }
+
+        /* Custom scrollbar for theoretical text if it gets too long */
+        .theory-scroll {
+            scrollbar-width: thin;
+            scrollbar-color: #d6d3d1 #f5f5f4;
+        }
+        .theory-scroll::-webkit-scrollbar {
+            width: 8px;
+        }
+        .theory-scroll::-webkit-scrollbar-track {
+            background: #f5f5f4; 
+        }
+        .theory-scroll::-webkit-scrollbar-thumb {
+            background-color: #d6d3d1; 
+            border-radius: 20px;
+        }
+    </style>
+</head>
+<body class="antialiased selection:bg-teal-200 selection:text-teal-900">
+
+<!-- Chosen Palette: Warm Neutrals (Stone) with Teal Accents -->
+
+<!-- Application Structure Plan: The SPA uses a responsive two-column grid layout on large screens (stacking on smaller devices) to balance mathematical theory with interactive exploration. The left column acts as the "recreated paper", systematically walking the user through the mathematical derivation (Wave Equation -> Lorentz Transform -> Damping -> Transmission Loss) using MathJax for high-quality, readable typography. The right column features an interactive dashboard. This architecture ensures the user can read the linear theoretical progression while simultaneously interacting with the parameters (Mach number, duct length, absorption) to see the immediate effect on the Transmission Loss curve. This fulfills both the "Inform" (theory) and "Change" (interactive graph) goals effectively within a single view. -->
+
+<!-- Visualization & Content Choices: 
+1. Theoretical Text & MathJax -> Goal: Inform/Explain -> Presentation: Typeset mathematics -> Interaction: Scrolling/Reading -> Justification: Recreating a mathematical paper requires precise formula rendering to be comprehensible. MathJax provides the industry standard for this.
+2. Transmission Loss Chart -> Goal: Change/Compare -> Presentation: Line Chart (Chart.js/Canvas) -> Interaction: Sliders update Mach number, Length, and Base Absorption. -> Justification: Allows the user to intuitively grasp the physical implications of the Lorentz-derived formula. As they adjust the Mach number, they see the TL curve shift dynamically, physically demonstrating the convective effects on sound attenuation (e.g., downstream vs. upstream flow). NO SVG or Mermaid is used. -->
+
+<!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+    
+    <header class="border-b border-stone-300 pb-6 mb-8 lg:mb-12">
+        <h1 class="text-3xl md:text-4xl lg:text-5xl font-bold text-stone-800 tracking-tight">Akustisk Lydudbredelse i Rør med Flow</h1>
+        <p class="mt-3 text-lg text-stone-600 max-w-3xl">En genskabelse af den tabte udledning: Relativistisk transformation af bølgeligningen til beregning af Transmission Loss i absorptionsbeklædte rør, inspireret af M.L. Munjal.</p>
+    </header>
+
+    <main class="grid grid-cols-1 lg:grid-cols-12 gap-10">
+        
+        <!-- Left Column: Theoretical Derivation -->
+        <section class="lg:col-span-7 space-y-8 text-stone-700 leading-relaxed theory-scroll lg:h-[80vh] lg:overflow-y-auto lg:pr-6">
+            
+            <div class="mb-6">
+                <p class="text-sm uppercase tracking-wider font-semibold text-teal-700 mb-2">Teoretisk Genskabelse</p>
+                <p class="text-stone-600">Dette afsnit rekapitulerer matematikken bag at konvertere et komplekst konvektivt akustisk problem til et simplere stationært problem ved hjælp af en transformation kendt fra den specielle relativitetsteori.</p>
+            </div>
+
+            <article class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-stone-200 relative">
+                <div class="absolute top-0 left-0 w-1.5 h-full bg-teal-600 rounded-l-2xl"></div>
+                <h2 class="text-2xl font-bold text-stone-800 mb-4">1. Den Konvektive Bølgeligning</h2>
+                <p class="mb-4">
+                    Vi betragter et ensartet rør beklædt med et lydabsorberende materiale. I røret strømmer en gas (f.eks. udstødningsgas) med en konstant middelhastighed $V$. Lydens hastighed i gassen er $c$. Vi definerer Mach-tallet som $M = V/c$.
+                </p>
+                <p class="mb-4">
+                    Lydtrykket $p(x,t)$ i én dimension, forudsat et jævnt flow, styres af den konvektive bølgeligning:
+                </p>
+                <div class="overflow-x-auto py-3 bg-stone-50 rounded-lg text-center mb-4">
+                    $$ \frac{1}{c^2}\frac{\partial^2 p}{\partial t^2} - (1-M^2)\frac{\partial^2 p}{\partial x^2} + \frac{2M}{c}\frac{\partial^2 p}{\partial x \partial t} = 0 $$
+                </div>
+                <p class="text-sm text-stone-500 italic">
+                    Krydsleddet $\frac{\partial^2 p}{\partial x \partial t}$ opstår på grund af flowet og komplicerer tilføjelsen af dæmpningsleddet direkte, da løsningerne bliver asymmetriske.
+                </p>
+            </article>
+
+            <article class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-stone-200 relative">
+                <div class="absolute top-0 left-0 w-1.5 h-full bg-teal-600 rounded-l-2xl"></div>
+                <h2 class="text-2xl font-bold text-stone-800 mb-4">2. Lorentz-Transformationen</h2>
+                <p class="mb-4">
+                    For at løse ligningen elegant, kan vi skifte til et referencesystem, der bevæger sig med flowet. Ved at anvende en matematisk form identisk med Lorentz-transformationen fra relativitetsteorien, kan vi eliminere krydsleddet. Vi introducerer "Lorentz-faktoren" for akustik:
+                </p>
+                <div class="overflow-x-auto py-2 text-center">
+                    $$ \gamma = \frac{1}{\sqrt{1-M^2}} $$
+                </div>
+                <p class="mb-4 mt-2">
+                    De transformerede koordinater $(x', t')$ defineres som:
+                </p>
+                <div class="overflow-x-auto py-3 bg-stone-50 rounded-lg text-center mb-4">
+                    $$ x' = \gamma (x - V t) \quad \text{og} \quad t' = \gamma \left(t - \frac{V x}{c^2}\right) $$
+                </div>
+                <p class="mb-4">
+                    Ved indsættelse af disse i den konvektive ligning via kædereglen, forsvinder Mach-afhængigheden fuldstændigt i det nye koordinatsystem. Vi står tilbage med den simple d'Alembert-bølgeligning for mediet i hvile:
+                </p>
+                <div class="overflow-x-auto py-2 text-teal-800 font-medium text-center text-lg">
+                    $$ \frac{\partial^2 p}{\partial x'^2} - \frac{1}{c^2}\frac{\partial^2 p}{\partial t'^2} = 0 $$
+                </div>
+            </article>
+
+            <article class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-stone-200 relative">
+                <div class="absolute top-0 left-0 w-1.5 h-full bg-teal-600 rounded-l-2xl"></div>
+                <h2 class="text-2xl font-bold text-stone-800 mb-4">3. Dæmpning og Invers Transformation</h2>
+                <p class="mb-4">
+                    I det transformerende hvile-system $(x', t')$ kan effekten af det absorberende materiale let inkorporeres ved at tillade et komplekst bølgetal $k' = k'_r - i\alpha'_0$, hvor $\alpha'_0$ er den spatielle dæmpningskoefficient uden flow. Løsningen for en plan bølge er proportional med $e^{i(\omega' t' - k' x')}$.
+                </p>
+                <p class="mb-4">
+                    For at finde løsningen i det oprindelige laboratorie-system $(x, t)$, indsætter vi vores inverse transformationer i bølgefasen $\phi$:
+                </p>
+                <div class="overflow-x-auto py-2 text-center">
+                    $$ \phi = \omega' \gamma \left(t - \frac{V x}{c^2}\right) - k' \gamma (x - V t) $$
+                </div>
+                <p class="mb-4">
+                    Ved at samle de led, der indeholder $x$, kan vi identificere det effektive komplekse bølgetal med flow, $k_{flow}$. Dæmpningen er den imaginære del af dette bølgetal. Efter algebraisk reduktion (og antagelse om primær lydudbredelse $k_r \approx \omega/c$), finder vi at den konvektive dæmpning $\alpha_{flow}$ approksimeres ved:
+                </p>
+                <div class="overflow-x-auto py-3 bg-stone-50 rounded-lg text-center mb-4 text-xl text-teal-900 font-semibold">
+                    $$ \alpha_{flow}^{\pm} = \frac{\alpha_0}{1 \pm M} $$
+                </div>
+                <p class="text-sm text-stone-500 mb-4">
+                    Hvor "$+$" angiver medstrøms (downstream) lydudbredelse, og "$-$" angiver modstrøms (upstream). $\alpha_0$ er dæmpningen uden flow.
+                </p>
+                <p class="font-semibold text-stone-800 mt-6">Transmission Loss (TL)</p>
+                <p class="mb-2">
+                    Den samlede lyddæmpning, Transmission Loss, over en rørlængde $L$ udregnes herefter i decibel (dB) ved relationen $20 \log_{10}(e) \approx 8.686$:
+                </p>
+                <div class="overflow-x-auto py-3 border-2 border-teal-100 bg-teal-50/50 rounded-xl text-center">
+                    $$ \text{TL} = 8.686 \cdot \frac{\alpha_0(f)}{1 \pm M} \cdot L \quad \text{[dB]} $$
+                </div>
+            </article>
+        </section>
+
+        <!-- Right Column: Interactive Dashboard -->
+        <section class="lg:col-span-5 space-y-6">
+            <div class="bg-stone-100 p-6 md:p-8 rounded-2xl border border-stone-200 sticky top-8 shadow-inner">
+                
+                <div class="mb-6 border-b border-stone-200 pb-4">
+                    <h2 class="text-2xl font-bold text-stone-800 mb-2">Interaktiv TL Beregner</h2>
+                    <p class="text-stone-600 text-sm leading-relaxed">
+                        Brug denne model til at se, hvordan resultatet fra den matematiske udledning opfører sig i praksis. Visualiseringen antager medstrøms/modstrøms udbredelse og en basisabsorption $\alpha_0$, der vokser logaritmisk med frekvensen.
+                    </p>
+                </div>
+
+                <!-- Controls -->
+                <div class="space-y-6 mb-8">
+                    <!-- Slider 1: Mach Number -->
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-stone-100">
+                        <div class="flex justify-between mb-2">
+                            <label for="machSlider" class="text-sm font-bold text-stone-700">Flow Hastighed ($M$)</label>
+                            <span id="machValue" class="text-sm font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded">0.00 M</span>
+                        </div>
+                        <input type="range" id="machSlider" min="-0.8" max="0.8" step="0.05" value="0" class="w-full h-2 bg-stone-200 rounded-lg appearance-none cursor-pointer">
+                        <div class="flex justify-between text-[10px] uppercase font-bold text-stone-400 mt-2 tracking-wide">
+                            <span>Modstrøms (-0.8)</span>
+                            <span>Stille (0)</span>
+                            <span>Medstrøms (+0.8)</span>
+                        </div>
+                    </div>
+
+                    <!-- Slider 2: Length -->
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-stone-100">
+                        <div class="flex justify-between mb-2">
+                            <label for="lengthSlider" class="text-sm font-bold text-stone-700">Rørlængde ($L$)</label>
+                            <span id="lengthValue" class="text-sm font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded">2.0 m</span>
+                        </div>
+                        <input type="range" id="lengthSlider" min="0.5" max="10" step="0.5" value="2.0" class="w-full h-2 bg-stone-200 rounded-lg appearance-none cursor-pointer">
+                    </div>
+
+                    <!-- Slider 3: Absorption -->
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-stone-100">
+                        <div class="flex justify-between mb-2">
+                            <label for="alphaSlider" class="text-sm font-bold text-stone-700">Basis Dæmpning ($a$)</label>
+                            <span id="alphaValue" class="text-sm font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded">0.05</span>
+                        </div>
+                        <input type="range" id="alphaSlider" min="0.01" max="0.15" step="0.01" value="0.05" class="w-full h-2 bg-stone-200 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                </div>
+
+                <!-- Chart Container -->
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-stone-200 mb-6">
+                    <h3 class="text-xs font-bold text-stone-400 uppercase tracking-widest mb-3 text-center">Frekvensspektrum</h3>
+                    <div class="chart-container">
+                        <canvas id="tlChart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- Dynamic Insight Text -->
+                <div class="p-5 bg-teal-800 text-teal-50 rounded-xl shadow-md border border-teal-900 relative overflow-hidden">
+                    <div class="absolute -right-4 -top-4 opacity-10 text-6xl">💡</div>
+                    <h3 class="font-bold text-teal-200 text-sm mb-2 uppercase tracking-wider">Fysisk Konsekvens</h3>
+                    <p id="analysisText" class="text-sm leading-relaxed">
+                        Når $M = 0$, er mediet i hvile. Dæmpningen påvirkes udelukkende af rørets længe og beklædningens egenskaber.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="mt-16 pt-8 border-t border-stone-300 text-center text-sm text-stone-500">
+        <p>Interaktiv rekonstruktion af noter vedr. relativistiske transformationer i akustik. <br>Designet til at demonstrere sammenhængen mellem matematisk udledning og fysisk anvendelse.</p>
+    </footer>
+
+</div>
+
+<script>
+    // --- Application State & Elements ---
+    const machSlider = document.getElementById('machSlider');
+    const lengthSlider = document.getElementById('lengthSlider');
+    const alphaSlider = document.getElementById('alphaSlider');
+    
+    const machValueDisplay = document.getElementById('machValue');
+    const lengthValueDisplay = document.getElementById('lengthValue');
+    const alphaValueDisplay = document.getElementById('alphaValue');
+    const analysisText = document.getElementById('analysisText');
+
+    let tlChartInstance = null;
+    
+    // Octave band frequencies for realistic acoustics plotting
+    const frequencies = [63, 125, 250, 500, 1000, 2000, 4000, 8000];
+
+    // --- Core Logic based on Derivation ---
+    // Formula derived in text: TL = 8.686 * (alpha0 / (1 + M)) * L
+    // We simulate alpha0 having a frequency dependence, typical for porous materials: alpha0(f) ~ a * sqrt(f)
+    function calculateTL(M, L, a, f) {
+        // Base absorption coefficient (frequency dependent simulation)
+        const alpha0 = a * Math.sqrt(f);
+        // Lorentz-derived flow effect
+        // Note: slider positive M = downstream (1+M), negative M = upstream (1-M)
+        const alphaFlow = alpha0 / (1 + M); 
+        // Transmission loss calculation
+        return 8.686 * alphaFlow * L;
+    }
+
+    function generateChartData() {
+        const M = parseFloat(machSlider.value);
+        const L = parseFloat(lengthSlider.value);
+        const a = parseFloat(alphaSlider.value);
+
+        return frequencies.map(f => calculateTL(M, L, a, f));
+    }
+
+    // --- UI Update Logic ---
+    function updateAnalysisText(M, L) {
+        if (M > 0.05) {
+            analysisText.innerHTML = `Med et <strong>medstrøms flow (M = +${M.toFixed(2)})</strong> trækkes lydbølgerne ud, og kontakttiden med absorptionsmaterialet mindskes. Dette svarer til faldet i grafen: flowet forringer dæmpningen.`;
+        } else if (M < -0.05) {
+            analysisText.innerHTML = `Med et <strong>modstrøms flow (M = ${M.toFixed(2)})</strong> presses lydbølgerne sammen af gassen. Interaktionstiden med materialet øges drastisk, hvilket resulterer i en markant forbedret lyddæmpning (Transmission Loss).`;
+        } else {
+            analysisText.innerHTML = `Når der er <strong>stille (M $\\approx$ 0)</strong>, er dæmpningen symmetrisk og udelukkende dikteret af de geometriske (${L} m) og materielle parametre. Dette er standardtilstanden uden konvektive effekter.`;
+        }
+    }
+
+    // --- Chart.js Initialization ---
+    function initChart() {
+        const ctx = document.getElementById('tlChart').getContext('2d');
+        const initialData = generateChartData();
+
+        Chart.defaults.font.family = "'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+        Chart.defaults.color = '#57534e'; // stone-600
+
+        tlChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: frequencies,
+                datasets: [{
+                    label: 'Transmission Loss (dB)',
+                    data: initialData,
+                    borderColor: '#0d9488', // teal-600
+                    backgroundColor: 'rgba(13, 148, 136, 0.15)',
+                    borderWidth: 3,
+                    pointBackgroundColor: '#0f766e', // teal-700
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    fill: true,
+                    tension: 0.4 // Smooth curve
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false, // CRITICAL: Allows the chart container CSS to dictate size
+                plugins: {
+                    legend: {
+                        display: false // Hide legend as there's only one dataset and context is clear
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(41, 37, 36, 0.9)', // stone-800
+                        titleFont: { size: 14, weight: 'bold' },
+                        bodyFont: { size: 13 },
+                        padding: 10,
+                        cornerRadius: 8,
+                        displayColors: false,
+                        callbacks: {
+                            title: function(context) {
+                                return context[0].label + ' Hz';
+                            },
+                            label: function(context) {
+                                return 'Dæmpning: ' + context.parsed.y.toFixed(1) + ' dB';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'category',
+                        title: {
+                            display: true,
+                            text: 'Frekvens (Hz)',
+                            font: { weight: 'bold', size: 12 }
+                        },
+                        grid: {
+                            display: false,
+                            drawBorder: false
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Transmission Loss (dB)',
+                            font: { weight: 'bold', size: 12 }
+                        },
+                        grid: {
+                            color: '#e7e5e4', // stone-200
+                            borderDash: [5, 5]
+                        },
+                        min: 0,
+                        max: 300, // Fixed scale to visually emphasize changes rather than auto-scaling completely
+                        ticks: {
+                            stepSize: 50
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // --- Main Update Controller ---
+    function updateApp() {
+        const M = parseFloat(machSlider.value);
+        const L = parseFloat(lengthSlider.value);
+        const a = parseFloat(alphaSlider.value);
+
+        // Update UI Badges
+        machValueDisplay.textContent = (M > 0 ? '+' : '') + M.toFixed(2) + ' M';
+        lengthValueDisplay.textContent = L.toFixed(1) + ' m';
+        alphaValueDisplay.textContent = a.toFixed(2);
+
+        // Adjust chart max scale slightly based on extreme upstream values to keep it readable
+        if (M < -0.5 && L > 5) {
+             tlChartInstance.options.scales.y.max = 800;
+        } else if (M < -0.3 && L > 4) {
+             tlChartInstance.options.scales.y.max = 500;
+        } else {
+             tlChartInstance.options.scales.y.max = 300;
+        }
+
+        // Update Chart Data
+        tlChartInstance.data.datasets[0].data = generateChartData();
+        tlChartInstance.update();
+
+        // Update Text & Trigger MathJax if necessary
+        updateAnalysisText(M, L);
+        
+        // MathJax typesetting for dynamic content (if math symbols are added dynamically)
+        if (window.MathJax && window.MathJax.typesetPromise) {
+            MathJax.typesetPromise([analysisText]).catch((err) => console.log('MathJax error:', err.message));
+        }
+    }
+
+    // --- Event Listeners ---
+    machSlider.addEventListener('input', updateApp);
+    lengthSlider.addEventListener('input', updateApp);
+    alphaSlider.addEventListener('input', updateApp);
+
+    // --- Boot Sequence ---
+    document.addEventListener('DOMContentLoaded', () => {
+        initChart();
+        updateApp(); // Run once to set initial state text and labels
+    });
+</script>
+</body>
+</html>
