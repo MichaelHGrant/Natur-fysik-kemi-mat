@@ -1,342 +1,965 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="da">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Brintatom Orbital Visning</title>
-    <a href="index.html" class="back-link">← Tilbage til forsiden</a>  
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #111827; /* Dark blue-gray background */
-            color: #E5E7EB; /* Light gray text */
-            overflow: hidden; /* Prevent scrollbars from appearing */
-        }
-        #info-panel {
-            background-color: rgba(17, 24, 39, 0.8); /* Semi-transparent dark background */
-            backdrop-filter: blur(10px);
-            border-left: 1px solid #374151;
-        }
-        .orbital-button {
-            transition: all 0.2s ease-in-out;
-            border: 1px solid transparent;
-            /* Added a subtle shadow to make text more readable against the 3D view */
-            text-shadow: 0px 0px 5px rgba(0, 0, 0, 0.7);
-        }
-        .orbital-button.active {
-            background-color: #3B82F6;
-            color: #FFFFFF;
-            font-weight: 500;
-            border-color: #60A5FA;
-        }
-        canvas {
-            display: block;
-            position: absolute;
-            top: 0;
-            left: 0;
-            z-index: 0;
-        }
-        .ui-container {
-            position: relative;
-            z-index: 10;
-        }
-    </style>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>Brintatomet - Optimeret n=3 & Spektrum</title>
+   <!-- Tailwind CSS CDN for styling -->
+   <script src="https://cdn.tailwindcss.com"></script>
+   <!-- Three.js CDN for 3D rendering -->
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+   <!-- OrbitControls for camera interaction -->
+   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+   <!-- D3.js CDN for spectrum visualization -->
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+   <style>
+       body {
+           margin: 0;
+           overflow: hidden; /* Forhindrer scrollbars på grund af canvas */
+           font-family: 'Inter', sans-serif; /* Bruger Inter font */
+           background-color: #0f172a; /* Mørk baggrund */
+           color: #e2e8f0; /* Lys tekstfarve */
+           display: flex;
+           flex-direction: column;
+           height: 100vh;
+       }
+       #app-container {
+           display: flex;
+           flex-grow: 1;
+           position: relative;
+       }
+       #canvas-container {
+           flex-grow: 1;
+           position: relative;
+           min-width: 300px; /* Minimum bredde for synlighed */
+           min-height: 300px; /* Minimum højde for synlighed */
+       }
+       canvas {
+           display: block;
+           width: 100%;
+           height: 100%;
+       }
+       #info-box {
+           position: absolute;
+           top: 1rem;
+           left: 1rem;
+           background-color: rgba(30, 41, 59, 0.8); /* Mørkere semi-transparent baggrund */
+           padding: 0.75rem 1rem;
+           border-radius: 0.5rem;
+           box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+           max-width: 90%;
+           text-align: center;
+           z-index: 10; /* Sikrer, at den er over canvas */
+       }
+       #orbital-info {
+           position: absolute;
+           top: 1rem;
+           right: 1rem;
+           background-color: rgba(30, 41, 59, 0.8);
+           padding: 0.75rem 1rem;
+           border-radius: 0.5rem;
+           box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+           z-index: 10;
+           text-align: left;
+           min-width: 180px;
+       }
+       #loading-indicator {
+           position: absolute;
+           top: 50%;
+           left: 50%;
+           transform: translate(-50%, -50%);
+           background-color: rgba(0, 0, 0, 0.7);
+           color: white;
+           padding: 1rem 2rem;
+           border-radius: 0.5rem;
+           z-index: 20;
+           display: flex; /* Vises som standard for at vise initial status */
+           align-items: center;
+           justify-content: center;
+       }
+       #controls {
+           position: absolute;
+           bottom: 1rem;
+           left: 50%;
+           transform: translateX(-50%);
+           display: flex;
+           flex-wrap: wrap; /* Tillader knapper at bryde om på mindre skærme */
+           gap: 0.75rem;
+           background-color: rgba(30, 41, 59, 0.8);
+           padding: 1rem 1.5rem;
+           border-radius: 0.75rem;
+           box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+           justify-content: center;
+           z-index: 10; /* Sikrer, at den er over canvas */
+       }
+       .orbital-button {
+           @apply px-4 py-2 rounded-lg font-semibold transition-all duration-200 ease-in-out;
+           @apply bg-blue-600 hover:bg-blue-700 text-white shadow-md;
+           border: none;
+           cursor: pointer;
+           min-width: 80px; /* Sikrer, at knapper har en minimumsbredde */
+       }
+       .orbital-button.active {
+           @apply bg-blue-800 ring-2 ring-blue-400;
+       }
+       #spectrum-panel {
+           width: 400px; /* Bredere til D3.js diagram */
+           background-color: #1e293b; /* Lidt lysere mørk baggrund */
+           padding: 1.5rem;
+           overflow-y: auto; /* Aktiverer scrolling for indhold */
+           box-shadow: -4px 0 6px rgba(0, 0, 0, 0.1);
+           z-index: 5; /* Under infoboks og kontroller */
+           display: flex;
+           flex-direction: column;
+           gap: 1rem;
+       }
+       #spectrum-panel h2 {
+           @apply text-xl font-bold text-blue-300 mb-2;
+       }
+       #spectrum-panel h3 {
+           @apply text-lg font-semibold text-blue-200 mt-4 mb-1;
+       }
+       #spectrum-svg-container {
+           width: 100%;
+           height: 400px; /* Fast højde for SVG */
+           border: 1px solid #334155;
+           border-radius: 0.5rem;
+           background-color: #0f172a;
+       }
+       .energy-level {
+           stroke: #e2e8f0;
+           stroke-width: 1px;
+       }
+       .transition-line {
+           stroke-width: 2px;
+           opacity: 0.7;
+           cursor: pointer; /* Nu med klikinteraktion */
+       }
+       .transition-line:hover {
+           opacity: 1.0;
+           stroke-width: 3px;
+       }
+       .energy-label {
+           fill: #e2e8f0;
+           font-size: 10px;
+           text-anchor: end;
+       }
+       .wavelength-label {
+           fill: #e2e8f0;
+           font-size: 9px;
+           text-anchor: middle;
+       }
+       .series-label {
+           fill: #cbd5e1;
+           font-size: 11px;
+           text-anchor: middle;
+       }
+
+       /* Responsive justeringer for mindre skærme */
+       @media (max-width: 1024px) {
+           #app-container {
+               flex-direction: column; /* Stabler vertikalt på mindre skærme */
+           }
+           #spectrum-panel {
+               width: 100%; /* Fuld bredde, når stablet */
+               max-height: 40vh; /* Begrænser højde for at undgå at tage for meget plads */
+               box-shadow: 0 -4px 6px rgba(0, 0, 0, 0.1); /* Skygge øverst */
+           }
+           #info-box {
+               left: 0.5rem;
+               right: 0.5rem;
+               top: 0.5rem;
+               padding: 0.5rem 0.75rem;
+               font-size: 0.875rem; /* Mindre skrift på mobil */
+           }
+           #orbital-info {
+               right: 0.5rem;
+               left: 0.5rem;
+               top: 4.5rem; /* Justerer position for ikke at overlappe infoboks */
+               padding: 0.5rem 0.75rem;
+               font-size: 0.875rem;
+               text-align: center;
+           }
+           #controls {
+               left: 0.5rem;
+               right: 0.5rem;
+               bottom: 0.5rem;
+               transform: none;
+               padding: 0.75rem 1rem;
+               gap: 0.5rem;
+               flex-direction: row; /* Beholder række-retning for knapper */
+           }
+           .orbital-button {
+               padding: 0.6rem 1rem;
+               font-size: 0.85rem;
+               min-width: unset; /* Fjerner minimumsbredde for bedre ombrydning */
+               flex-grow: 1; /* Tillader knapper at vokse og fylde plads */
+           }
+           #spectrum-svg-container {
+               height: 300px; /* Justerer højde for mobil */
+           }
+           .energy-label, .wavelength-label, .series-label {
+               font-size: 8px; /* Mindre skrift for D3 labels på mobil */
+           }
+       }
+   </style>
 </head>
-<body class="flex flex-col md:flex-row h-screen w-screen">
+<body>
+   <div id="app-container">
+       <div id="canvas-container">
+           <div id="info-box" class="text-center">
+               <h1 class="text-xl md:text-2xl font-bold mb-2">Brintatom Orbital Visning</h1>
+               <p class="text-sm md:text-base">Udforsk elektronorbitalernes sandsynlighedsfordeling. Brug musen til at rotere og zoome.</p>
+           </div>
+           <div id="orbital-info" class="text-sm">
+               <h3 class="font-bold text-blue-300 mb-1">Valgt Orbital: <span id="current-orbital-name">1s</span></h3>
+               <p>Niveau ($n$): <span id="orbital-n">1</span></p>
+               <p>Form ($l$): <span id="orbital-l">0</span> (s-orbital)</p>
+               <p>Orientering ($m_l$): <span id="orbital-ml">0</span></p>
+           </div>
+           <div id="loading-indicator">Initialiserer...</div>
+           <div id="controls">
+               <button class="orbital-button active" data-orbital="1s">1s</button>
+               <button class="orbital-button" data-orbital="2s">2s</button>
+               <button class="orbital-button" data-orbital="2pz">2p$_z$</button>
+               <button class="orbital-button" data-orbital="2px">2p$_x$</button>
+               <button class="orbital-button" data-orbital="2py">2p$_y$</button>
+               <button class="orbital-button" data-orbital="3s">3s</button>
+               <button class="orbital-button" data-orbital="3pz">3p$_z$</button>
+               <button class="orbital-button" data-orbital="3px">3p$_x$</button>
+               <button class="orbital-button" data-orbital="3py">3p$_y$</button>
+               <button class="orbital-button" data-orbital="3dz2">3d$_{z^2}$</button>
+               <button class="orbital-button" data-orbital="3dxy">3d$_{xy}$</button>
+               <button class="orbital-button" data-orbital="3dxz">3d$_{xz}$</button>
+               <button class="orbital-button" data-orbital="3dyz">3d$_{yz}$</button>
+               <button class="orbital-button" data-orbital="3dx2y2">3d$_{x^2-y^2}$</button>
+           </div>
+       </div>
+       <div id="spectrum-panel">
+           <h2>Brint Spektrum Information</h2>
+           <p class="text-sm text-gray-400">
+               Når elektroner i et brintatom skifter mellem energiniveauer, udsender eller absorberer de fotoner med specifikke bølgelængder.
+               Klik på en linje for at se den tilsvarende orbitalovergang!
+           </p>
+           <div id="spectrum-svg-container"></div>
+       </div>
+   </div>
+   <script>
+       // Globale variabler for Three.js scene
+       let scene, camera, renderer, controls;
+       let currentOrbitalMesh;
+       const PARTICLE_COUNT = 200000; // Antal partikler til at repræsentere orbitalen (reduceret for ydeevne)
+       const ORBITAL_COLOR = new THREE.Color(0x63b3ed); // En flot blå farve (Tailwind blue-400 ækvivalent)
+       const AXIS_COLOR = 0xcccccc; // Lys grå til akser
+       const canvasContainer = document.getElementById('canvas-container');
+       const loadingIndicator = document.getElementById('loading-indicator');
 
-    <!-- 3D Canvas Container -->
-    <div id="canvas-container" class="flex-grow h-full w-full"></div>
+       // Bohr radius for skalering (ca. 0.0529 nm eller 0.529 Å)
+       const BOHR_RADIUS_ANGSTROM = 0.529;
+       const VISUAL_SCALE_FACTOR = 10; // Skalafaktor for renderingstørrelse (1 enhed i Three.js = 0.1 Ångstrom)
 
-    <!-- UI Overlay -->
-    <div class="ui-container absolute top-0 left-0 w-full h-full p-6 md:p-8 flex flex-col pointer-events-none">
-        <!-- Header -->
-        <div class="text-center md:text-left">
-            <h1 class="text-3xl md:text-4xl font-bold text-white" style="text-shadow: 0px 0px 8px rgba(0, 0, 0, 0.7);">Brintatom Orbital Visning</h1>
-            <p class="text-lg text-gray-300 mt-1">Udforsk elektronorbitalernes sandsynlighedsfordeling.</p>
-            <p class="text-md text-gray-400">Brug musen til at rotere og zoome.</p>
-        </div>
+       // Orbital kvantetal mapping og beskrivelser
+       const orbitalQuantumNumbers = {
+           '1s': { n: 1, l: 0, ml: 0, name: '1s', description: 'Sfærisk, ingen knudepunkter' },
+           '2s': { n: 2, l: 0, ml: 0, name: '2s', description: 'Sfærisk med én radial knude' },
+           '2pz': { n: 2, l: 1, ml: 0, name: '2p$_z$', description: 'Håndvægt langs z-aksen, knudeplan ved z=0' },
+           '2px': { n: 2, l: 1, ml: 1, name: '2p$_x$', description: 'Håndvægt langs x-aksen, knudeplan ved x=0' },
+           '2py': { n: 2, l: 1, ml: -1, name: '2p$_y$', description: 'Håndvægt langs y-aksen, knudeplan ved y=0' },
+           '3s': { n: 3, l: 0, ml: 0, name: '3s', description: 'Sfærisk med to radiale knudepunkter' },
+           '3pz': { n: 3, l: 1, ml: 0, name: '3p$_z$', description: 'Håndvægt langs z-aksen, én radial knude' },
+           '3px': { n: 3, l: 1, ml: 1, name: '3p$_x$', description: 'Håndvægt langs x-aksen, én radial knude' },
+           '3py': { n: 3, l: 1, ml: -1, name: '3p$_y$', description: 'Håndvægt langs y-aksen, én radial knude' },
+           '3dz2': { n: 3, l: 2, ml: 0, name: '3d$_{z^2}$', description: 'Håndvægt langs z-aksen med en donut i xy-planet' },
+           '3dxy': { n: 3, l: 2, ml: 2, name: '3d$_{xy}$', description: 'Fire lapper i xy-planet, mellem akserne' },
+           '3dxz': { n: 3, l: 2, ml: 1, name: '3d$_{xz}$', description: 'Fire lapper i xz-planet, mellem akserne' },
+           '3dyz': { n: 3, l: 2, ml: -1, name: '3d$_{yz}$', description: 'Fire lapper i yz-planet, mellem akserne' },
+           '3dx2y2': { n: 3, l: 2, ml: -2, name: '3d$_{x^2-y^2}$', description: 'Fire lapper i xy-planet, langs akserne' },
+       };
 
-        <!-- Orbital Selection Buttons -->
-        <div id="orbital-controls" class="mt-auto w-full md:w-auto pointer-events-auto">
-             <!-- The container for the buttons is now transparent -->
-             <div class="p-3 flex flex-col gap-3">
-                <!-- n=1 -->
-                <div class="flex flex-wrap justify-center md:justify-start gap-2">
-                    <button data-orbital="1s" class="orbital-button active px-4 py-2 rounded-lg bg-gray-700/70 hover:bg-gray-600">1s</button>
-                </div>
-                <!-- n=2 -->
-                <div class="flex flex-wrap justify-center md:justify-start gap-2">
-                    <button data-orbital="2s" class="orbital-button px-4 py-2 rounded-lg bg-gray-700/70 hover:bg-gray-600">2s</button>
-                    <button data-orbital="2px" class="orbital-button px-4 py-2 rounded-lg bg-gray-700/70 hover:bg-gray-600">2p<sub>x</sub></button>
-                    <button data-orbital="2py" class="orbital-button px-4 py-2 rounded-lg bg-gray-700/70 hover:bg-gray-600">2p<sub>y</sub></button>
-                    <button data-orbital="2pz" class="orbital-button px-4 py-2 rounded-lg bg-gray-700/70 hover:bg-gray-600">2p<sub>z</sub></button>
-                </div>
-                <!-- n=3 -->
-                <div class="flex flex-wrap justify-center md:justify-start gap-2 border-t border-gray-600/50 pt-3">
-                    <button data-orbital="3s" class="orbital-button px-4 py-2 rounded-lg bg-gray-700/70 hover:bg-gray-600">3s</button>
-                    <button data-orbital="3px" class="orbital-button px-4 py-2 rounded-lg bg-gray-700/70 hover:bg-gray-600">3p<sub>x</sub></button>
-                    <button data-orbital="3py" class="orbital-button px-4 py-2 rounded-lg bg-gray-700/70 hover:bg-gray-600">3p<sub>y</sub></button>
-                    <button data-orbital="3pz" class="orbital-button px-4 py-2 rounded-lg bg-gray-700/70 hover:bg-gray-600">3p<sub>z</sub></button>
-                </div>
-                 <div class="flex flex-wrap justify-center md:justify-start gap-2">
-                    <button data-orbital="3d_xy" class="orbital-button px-3 py-1 text-sm rounded-lg bg-gray-700/70 hover:bg-gray-600">3d<sub>xy</sub></button>
-                    <button data-orbital="3d_yz" class="orbital-button px-3 py-1 text-sm rounded-lg bg-gray-700/70 hover:bg-gray-600">3d<sub>yz</sub></button>
-                    <button data-orbital="3d_xz" class="orbital-button px-3 py-1 text-sm rounded-lg bg-gray-700/70 hover:bg-gray-600">3d<sub>x²-y²</sub></button>
-                    <button data-orbital="3d_z2" class="orbital-button px-3 py-1 text-sm rounded-lg bg-gray-700/70 hover:bg-gray-600">3d<sub>z²</sub></button>
-                </div>
-            </div>
-        </div>
-    </div>
+       const lMap = {
+           0: 's-orbital',
+           1: 'p-orbital',
+           2: 'd-orbital',
+           3: 'f-orbital', // Inkluderet for komplethed, selvom 4f ikke er en knap
+       };
 
-    <!-- Info Panel -->
-    <div id="info-panel" class="w-full md:w-96 h-auto md:h-full flex-shrink-0 p-6 overflow-y-auto pointer-events-auto">
-        <h2 class="text-2xl font-bold text-white mb-4">Brint Spektrum Information</h2>
-        <p class="text-gray-300 mb-4">
-            Når en elektron "falder" til et lavere energiniveau (f.eks. fra n=3 til n=2), udsendes en foton. Energien svarer til en bestemt farve i spektret. Dette er brintatomets linjespektrum.
-        </p>
-        
-        <div class="relative mt-8 bg-gray-900 p-4 rounded-lg">
-            <h3 class="text-lg font-semibold mb-2">Energiniveauer & Balmer-serien</h3>
-            <div class="relative h-80 w-full">
-                <!-- Energy Levels -->
-                <div class="absolute w-full border-t border-dashed border-gray-500" style="bottom: 100%;"><span class="absolute right-0 -top-3 text-xs text-gray-400">0 eV</span></div>
-                <div class="absolute w-full border-t border-gray-500" style="bottom: 95%;"><span class="absolute right-full mr-2 text-xs text-gray-400">n=6</span></div>
-                <div class="absolute w-full border-t border-gray-500" style="bottom: 92%;"><span class="absolute right-full mr-2 text-xs text-gray-400">n=5</span></div>
-                <div class="absolute w-full border-t border-gray-500" style="bottom: 85%;"><span class="absolute right-full mr-2 text-xs text-gray-400">n=4</span></div>
-                <div class="absolute w-full border-t border-gray-500" style="bottom: 65%;"><span class="absolute right-full mr-2 text-xs text-gray-400">n=3</span></div>
-                <div class="absolute w-full border-t-2 border-blue-400" style="bottom: 25%;"><span class="absolute right-full mr-2 text-xs text-blue-300 font-bold">n=2</span></div>
-                <div class="absolute w-full border-t border-gray-500" style="bottom: 0%;"><span class="absolute right-full mr-2 text-xs text-gray-400">n=1</span></div>
+       // --- Matematiske Funktioner for Brintbølgefunktioner ---
 
-                <!-- Spectral Lines (Balmer Series) -->
-                <!-- n=3 -> n=2 (Red) -->
-                <div class="group absolute w-px bg-red-500" style="left: 80%; top: 35%; height: 40%;">
-                    <div class="absolute bottom-0 left-1/2 w-2 h-2 border-r-2 border-b-2 border-red-500 transform -translate-x-1/2 translate-y-1/2 rotate-45"></div>
-                    <span class="absolute top-0 left-1/2 -translate-x-1/2 -mt-5 px-1.5 py-0.5 rounded-md bg-gray-700 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity">656.3 nm</span>
-                </div>
-                <!-- n=4 -> n=2 (Cyan) -->
-                <div class="group absolute w-px bg-cyan-400" style="left: 60%; top: 15%; height: 60%;">
-                    <div class="absolute bottom-0 left-1/2 w-2 h-2 border-r-2 border-b-2 border-cyan-400 transform -translate-x-1/2 translate-y-1/2 rotate-45"></div>
-                    <span class="absolute top-0 left-1/2 -translate-x-1/2 -mt-5 px-1.5 py-0.5 rounded-md bg-gray-700 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity">486.1 nm</span>
-                </div>
-                 <!-- n=5 -> n=2 (Blue-Violet) -->
-                <div class="group absolute w-px bg-blue-400" style="left: 40%; top: 8%; height: 67%;">
-                    <div class="absolute bottom-0 left-1/2 w-2 h-2 border-r-2 border-b-2 border-blue-400 transform -translate-x-1/2 translate-y-1/2 rotate-45"></div>
-                    <span class="absolute top-0 left-1/2 -translate-x-1/2 -mt-5 px-1.5 py-0.5 rounded-md bg-gray-700 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity">434.1 nm</span>
-                </div>
-                <!-- n=6 -> n=2 (Violet) - ADDED -->
-                <div class="group absolute w-px bg-violet-400" style="left: 20%; top: 5%; height: 70%;">
-                    <div class="absolute bottom-0 left-1/2 w-2 h-2 border-r-2 border-b-2 border-violet-400 transform -translate-x-1/2 translate-y-1/2 rotate-45"></div>
-                    <span class="absolute top-0 left-1/2 -translate-x-1/2 -mt-5 px-1.5 py-0.5 rounded-md bg-gray-700 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity">410.2 nm</span>
-                </div>
-            </div>
-             <div class="text-center mt-4 text-xs text-gray-400">
-                Synlige linjer i Balmer-serien (overgange til n=2)
-            </div>
-        </div>
-    </div>
+       // Associated Laguerre Polynomials (for radial del)
+       // L_n^k(x)
+       function L(n, k, x) {
+           // Denne implementering dækker n op til 4 og k op til 7, som er tilstrækkeligt for 4f orbitaler.
+           // For mere generelle tilfælde ville en rekursiv eller iterativ formel være nødvendig.
+           if (k === 0) {
+               if (n === 0) return 1;
+               if (n === 1) return -x + 1;
+               if (n === 2) return (x * x - 4 * x + 2) / 2;
+               if (n === 3) return (-x * x * x + 9 * x * x - 18 * x + 6) / 6;
+               if (n === 4) return (x * x * x * x - 16 * x * x * x + 72 * x * x - 96 * x + 24) / 24;
+           } else if (k === 1) {
+               if (n === 0) return -1;
+               if (n === 1) return x - 2;
+               if (n === 2) return (-x * x + 6 * x - 6) / 2;
+               if (n === 3) return (x * x * x - 12 * x * x + 36 * x - 24) / 6;
+           } else if (k === 3) {
+               if (n === 0) return -1 / 6;
+               if (n === 1) return (x - 4) / 6;
+               if (n === 2) return (-x * x + 8 * x - 12) / 12;
+           } else if (k === 5) {
+               if (n === 0) return -1 / 120;
+               if (n === 1) return (x - 6) / 120;
+           } else if (k === 7) { // For 4f (n-l-1 = 0, 2l+1 = 7)
+               if (n === 0) return -1 / 5040;
+           }
+           return 0; // Skal ikke nås for gyldige input op til 4f
+       }
 
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js",
-            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"
-        }
-    }
-    </script>
+       // Fakultetsfunktion
+       function factorial(k) {
+           if (k < 0) return 0;
+           if (k === 0 || k === 1) return 1;
+           let res = 1;
+           for (let i = 2; i <= k; i++) {
+               res *= i;
+           }
+           return res;
+       }
 
-    <script type="module">
-        import * as THREE from 'three';
-        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+       // Radial Bølgefunktion R_nl(r)
+       function radialWaveFunction(n, l, r) {
+           const rho = 2 * r / (n * BOHR_RADIUS_ANGSTROM * VISUAL_SCALE_FACTOR);
+           // Normaliseringskonstant beregning
+           const normFactor = Math.sqrt(
+               (8 * Math.pow(1 / (n * BOHR_RADIUS_ANGSTROM * VISUAL_SCALE_FACTOR), 3) * factorial(n - l - 1)) /
+               (2 * n * factorial(n + l))
+           );
+           return normFactor * Math.pow(rho, l) * Math.exp(-rho / 2) * L(n - l - 1, 2 * l + 1, rho);
+       }
 
-        let scene, camera, renderer, controls;
-        let points;
-        const canvasContainer = document.getElementById('canvas-container');
+       // Reelle Sfæriske Harmoniske (Vinkel del)
+       // Dette er de former, der bruges til p_x, p_y, d_xy osv.
+       function angularWaveFunction(l, ml, theta, phi) {
+           const cosTheta = Math.cos(theta);
+           const sinTheta = Math.sin(theta);
 
-        function init() {
-            scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(75, canvasContainer.clientWidth / canvasContainer.clientHeight, 0.1, 1000);
-            camera.position.z = 25;
-
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-            renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
-            canvasContainer.appendChild(renderer.domElement);
-
-            controls = new OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
-            controls.dampingFactor = 0.05;
-            controls.minDistance = 5;
-            controls.maxDistance = 150;
-            controls.autoRotate = true;
-            controls.autoRotateSpeed = 0.3;
-
-            window.addEventListener('resize', onWindowResize, false);
-            animate();
-        }
-
-        const a0 = 1; // Bohr radius
-
-        // Squared wave functions |ψ|^2 for probability density
-        const waveFunctions = {
-            '1s': (x, y, z) => {
-                const r = Math.sqrt(x*x + y*y + z*z);
-                return Math.exp(-2 * r / a0);
-            },
-            '2s': (x, y, z) => {
-                const r = Math.sqrt(x*x + y*y + z*z);
-                const term = 2 - r / a0;
-                return Math.pow(term, 2) * Math.exp(-r / a0);
-            },
-            '2px': (x, y, z) => {
-                const r = Math.sqrt(x*x + y*y + z*z);
-                return Math.pow(x, 2) * Math.exp(-r / a0);
-            },
-            '2py': (x, y, z) => {
-                const r = Math.sqrt(x*x + y*y + z*z);
-                return Math.pow(y, 2) * Math.exp(-r / a0);
-            },
-            '2pz': (x, y, z) => {
-                const r = Math.sqrt(x*x + y*y + z*z);
-                return Math.pow(z, 2) * Math.exp(-r / a0);
-            },
-            '3s': (x, y, z) => {
-                const r = Math.sqrt(x*x + y*y + z*z);
-                const term = 27 - 18 * r/a0 + 2 * Math.pow(r/a0, 2);
-                return Math.pow(term, 2) * Math.exp(-2 * r / (3*a0));
-            },
-            '3px': (x, y, z) => {
-                const r = Math.sqrt(x*x + y*y + z*z);
-                const radial_part = 6 - r/a0;
-                return Math.pow(x, 2) * Math.pow(radial_part, 2) * Math.exp(-2 * r / (3*a0));
-            },
-            '3py': (x, y, z) => {
-                const r = Math.sqrt(x*x + y*y + z*z);
-                const radial_part = 6 - r/a0;
-                return Math.pow(y, 2) * Math.pow(radial_part, 2) * Math.exp(-2 * r / (3*a0));
-            },
-            '3pz': (x, y, z) => {
-                const r = Math.sqrt(x*x + y*y + z*z);
-                const radial_part = 6 - r/a0;
-                return Math.pow(z, 2) * Math.pow(radial_part, 2) * Math.exp(-2 * r / (3*a0));
-            },
-            '3d_xy': (x, y, z) => {
-                const r = Math.sqrt(x*x + y*y + z*z);
-                return Math.pow(x * y, 2) * Math.exp(-2 * r / (3*a0));
-            },
-            '3d_yz': (x, y, z) => {
-                const r = Math.sqrt(x*x + y*y + z*z);
-                return Math.pow(y * z, 2) * Math.exp(-2 * r / (3*a0));
-            },
-            '3d_xz': (x, y, z) => {
-                const r = Math.sqrt(x*x + y*y + z*z);
-                return Math.pow(x * z, 2) * Math.exp(-2 * r / (3*a0));
-            },
-            '3d_x²-y²': (x, y, z) => {
-                const r = Math.sqrt(x*x + y*y + z*z);
-                return Math.pow(x*x - y*y, 2) * Math.exp(-2 * r / (3*a0));
-            },
-            '3d_z2': (x, y, z) => {
-                const r = Math.sqrt(x*x + y*y + z*z);
-                return Math.pow(2*z*z - x*x - y*y, 2) * Math.exp(-2 * r / (3*a0));
-            }
-        };
-
-        const orbitalParams = {
-            '1s': { box: 15, maxProb: 1.0 },
-            '2s': { box: 30, maxProb: 0.22 },
-            '2p': { box: 30, maxProb: 0.55 },
-            '3s': { box: 60, maxProb: 0.05 },
-            '3p': { box: 60, maxProb: 0.2 },
-            '3d': { box: 60, maxProb: 0.8 }
-        };
-
-        function getOrbitalParams(orbitalName) {
-            if (orbitalName.startsWith('3d')) return orbitalParams['3d'];
-            if (orbitalName.startsWith('3p')) return orbitalParams['3p'];
-            if (orbitalName.startsWith('2p')) return orbitalParams['2p'];
-            return orbitalParams[orbitalName];
-        }
-
-        function generateOrbital(orbitalName) {
-            if (points) {
-                scene.remove(points);
-                points.geometry.dispose();
-                points.material.dispose();
-            }
-
-            const particles = 70000;
-            const positions = [];
-            const colors = [];
-            const color = new THREE.Color();
-
-            const waveFunc = waveFunctions[orbitalName];
-            const params = getOrbitalParams(orbitalName);
-            const boundingBoxSize = params.box;
-            const maxProb = params.maxProb;
-
-            let pointsGenerated = 0;
-            while (pointsGenerated < particles) {
-                const x = (Math.random() - 0.5) * boundingBoxSize;
-                const y = (Math.random() - 0.5) * boundingBoxSize;
-                const z = (Math.random() - 0.5) * boundingBoxSize;
-
-                const prob = waveFunc(x, y, z);
-
-                if (prob > Math.random() * maxProb) {
-                    positions.push(x, y, z);
-                    const r = Math.sqrt(x*x + y*y + z*z);
-                    color.setHSL(0.55 + (z / boundingBoxSize) * 0.2, 0.9, 0.5 + r / boundingBoxSize * 0.3);
-                    colors.push(color.r, color.g, color.b);
-                    pointsGenerated++;
+           if (l === 0 && ml === 0) { // s-orbital
+               return 1 / Math.sqrt(4 * Math.PI);
+           } else if (l === 1) { // p-orbitaler
+               if (ml === 0) { // pz
+                   return Math.sqrt(3 / (4 * Math.PI)) * cosTheta;
+               } else if (ml === 1) { // px (bruger m_l = +1)
+                   return Math.sqrt(3 / (4 * Math.PI)) * sinTheta * Math.cos(phi);
+               } else if (ml === -1) { // py (bruger m_l = -1)
+                   return Math.sqrt(3 / (4 * Math.PI)) * sinTheta * Math.sin(phi);
+               }
+           } else if (l === 2) { // d-orbitaler
+               if (ml === 0) { // dz2
+                   return Math.sqrt(5 / (16 * Math.PI)) * (3 * cosTheta * cosTheta - 1);
+               } else if (ml === 1) { // dxz (bruger m_l = +1)
+                   return Math.sqrt(15 / (4 * Math.PI)) * cosTheta * sinTheta * Math.cos(phi);
+               } else if (ml === -1) { // dyz (bruger m_l = -1)
+                   return Math.sqrt(15 / (4 * Math.PI)) * cosTheta * sinTheta * Math.sin(phi);
+               } else if (ml === 2) { // dxy (bruger m_l = +2)
+                   return Math.sqrt(15 / (16 * Math.PI)) * sinTheta * sinTheta * Math.sin(2 * phi);
+               } else if (ml === -2) { // dx2-y2 (bruger m_l = -2)
+                   return Math.sqrt(15 / (16 * Math.PI)) * sinTheta * sinTheta * Math.cos(2 * phi);
+               }
+           } else if (l === 3) { // f-orbitaler (kun 4fxyz som repræsentant for demo)
+                if (ml === 1) { // 4f_xyz (repræsentativ for demo, bruger m_l = +1 for enkelhed)
+                   return Math.sqrt(35 / (4 * Math.PI)) * sinTheta * sinTheta * cosTheta * Math.sin(phi) * Math.cos(phi); // Simplified for visual
                 }
-            }
+           }
+           return 0; // Skal ikke ske for gyldige l,ml
+       }
 
-            const geometry = new THREE.BufferGeometry();
-            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+       // Fuld bølgefunktion Psi_nlm(r, theta, phi)
+       function psi(n, l, ml, r, theta, phi) {
+           const R = radialWaveFunction(n, l, r);
+           const A = angularWaveFunction(l, ml, theta, phi);
+           return R * A;
+       }
 
-            const material = new THREE.PointsMaterial({
-                size: orbitalName.startsWith('3') ? 0.15 : 0.1,
-                vertexColors: true,
-                blending: THREE.AdditiveBlending,
-                transparent: true,
-                opacity: 0.75,
-                depthWrite: false
-            });
+       // Sandsynlighedstæthed |Psi|^2
+       function probabilityDensity(n, l, ml, r, theta, phi) {
+           const val = psi(n, l, ml, r, theta, phi);
+           return val * val;
+       }
 
-            points = new THREE.Points(geometry, material);
-            scene.add(points);
-        }
+       /**
+        * Genererer punkter for en orbital ved hjælp af rejection sampling baseret på sandsynlighedstætheden.
+        * @param {number} n Hovedkvantetal.
+        * @param {number} l Azimutalt kvantetal.
+        * @param {number} ml Magnetisk kvantetal (eller en proxy for reelle orbitaler).
+        * @param {number} count Antal partikler.
+        * @param {number} maxRadius Maksimal radius at sample indenfor (bestemmer bounding box).
+        * @returns {Float32Array} Array af x, y, z koordinater.
+        */
+       function generateOrbitalPoints(n, l, ml, count, maxRadius) {
+           console.log(`Genererer punkter for n=${n}, l=${l}, ml=${ml} med maxRadius=${maxRadius}`);
+           const positions = new Float32Array(count * 3);
+           let acceptedPoints = 0;
+           let attempts = 0;
+           const maxAttempts = count * 500; // Øget antal forsøg for bedre sampling for komplekse orbitaler
 
-        const buttons = document.querySelectorAll('.orbital-button');
-        buttons.forEach(button => {
-            button.addEventListener('click', () => {
-                controls.autoRotate = false;
-                buttons.forEach(btn => btn.classList.remove('active'));
-                button.classList.add('active');
-                const orbitalName = button.dataset.orbital;
-                generateOrbital(orbitalName);
-            });
-        });
+           // Estimeret maks. sandsynlighed for normalisering i rejection sampling
+           // Disse værdier er grove estimater fundet ved trial and error for god sampling.
+           // De afhænger af normaliseringen og de specifikke funktioner.
+           let maxProbEstimate = 0.00001; // Generel lav værdi som fallback
 
-        function animate() {
-            requestAnimationFrame(animate);
-            controls.update();
-            renderer.render(scene, camera);
-        }
+           if (n === 1 && l === 0) maxProbEstimate = 0.005; // 1s
+           else if (n === 2 && l === 0) maxProbEstimate = 0.0008; // 2s
+           else if (n === 2 && l === 1) maxProbEstimate = 0.0006; // 2p
+           else if (n === 3 && l === 0) maxProbEstimate = 0.0002; // 3s
+           else if (n === 3 && l === 1) maxProbEstimate = 0.00015; // 3p
+           else if (n === 3 && l === 2) maxProbEstimate = 0.0001; // 3d
+           else if (n === 4 && l === 0) maxProbEstimate = 0.00008; // 4s
+           else if (n === 4 && l === 1) maxProbEstimate = 0.00006; // 4p
+           else if (n === 4 && l === 2) maxProbEstimate = 0.00004; // 4d
+           else if (n === 4 && l === 3) maxProbEstimate = 0.00002; // 4f
 
-        function onWindowResize() {
-            if (canvasContainer.clientWidth > 0 && canvasContainer.clientHeight > 0) {
-                camera.aspect = canvasContainer.clientWidth / canvasContainer.clientHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
-            }
-        }
+           while (acceptedPoints < count && attempts < maxAttempts) {
+               attempts++;
 
-        init();
-        generateOrbital('1s');
-    </script>
+               // Generer tilfældige kartesiske koordinater inden for en terning
+               const x = (Math.random() * 2 - 1) * maxRadius;
+               const y = (Math.random() * 2 - 1) * maxRadius;
+               const z = (Math.random() * 2 - 1) * maxRadius;
+
+               const r = Math.sqrt(x * x + y * y + z * z);
+
+               // Spring punkter over uden for sfæren eller for tæt på origo (undgå division med nul for vinkel del)
+               if (r > maxRadius || r < 0.001 * VISUAL_SCALE_FACTOR) {
+                   continue;
+               }
+
+               const theta = Math.acos(z / r); // Polær vinkel
+               const phi = Math.atan2(y, x);   // Azimutal vinkel
+
+               const prob = probabilityDensity(n, l, ml, r, theta, phi);
+
+               // Rejection sampling: accepter, hvis tilfældig værdi er mindre end normaliseret sandsynlighed
+               if (Math.random() < prob / maxProbEstimate) {
+                   positions[acceptedPoints * 3] = x;
+                   positions[acceptedPoints * 3 + 1] = y;
+                   positions[acceptedPoints * 3 + 2] = z;
+                   acceptedPoints++;
+               }
+           }
+
+           if (acceptedPoints < count) {
+               console.warn(`Kunne ikke generere alle ${count} partikler for n=${n}, l=${l}, ml=${ml}. Genererede ${acceptedPoints}. Max forsøg nået.`);
+               // Hvis ikke nok punkter, fyld resten med nuller
+               for (let i = acceptedPoints; i < count; i++) {
+                   positions[i * 3] = 0;
+                   positions[i * 3 + 1] = 0;
+                   positions[i * 3 + 2] = 0;
+               }
+           } else {
+               console.log(`Succesfuldt genereret ${acceptedPoints} partikler for n=${n}, l=${l}, ml=${ml}.`);
+           }
+           return positions;
+       }
+
+       /**
+        * Viser den valgte orbital ved at generere dens punkter og tilføje dem til scenen.
+        * Bruger InstancedMesh for ydeevneoptimering.
+        * @param {string} orbitalKey Nøgle til orbitalen (f.eks. '1s', '2s', '2pz').
+        */
+       async function displayOrbital(orbitalKey) {
+           console.log(`Viser orbital: ${orbitalKey}`);
+           loadingIndicator.textContent = `Genererer ${orbitalKey} orbital...`;
+           loadingIndicator.style.display = 'flex'; // Vis indlæsningsindikator
+
+           // Fjern tidligere orbital-mesh, hvis det findes
+           if (currentOrbitalMesh) {
+               scene.remove(currentOrbitalMesh);
+               currentOrbitalMesh.geometry.dispose(); // Rydder op i geometri
+               currentOrbitalMesh.material.dispose(); // Rydder op i materiale
+               currentOrbitalMesh = null; // Rydder reference
+               console.log('Tidligere orbital-mesh fjernet.');
+           }
+
+           const quantumNumbers = orbitalQuantumNumbers[orbitalKey];
+           if (!quantumNumbers) {
+               console.error('Ukendt orbital type:', orbitalKey);
+               loadingIndicator.textContent = 'Fejl: Ukendt orbital type.';
+               return;
+           }
+
+           // Opdater orbital info display
+           document.getElementById('current-orbital-name').innerHTML = quantumNumbers.name;
+           document.getElementById('orbital-n').textContent = quantumNumbers.n;
+           document.getElementById('orbital-l').textContent = `${quantumNumbers.l} (${lMap[quantumNumbers.l]})`;
+           document.getElementById('orbital-ml').textContent = quantumNumbers.ml;
+
+           let positions;
+           let cameraZoom;
+           // Bestem maks. radius og kamera-zoom baseret på n
+           let maxRadius; // For at definere bounding box for sampling
+           if (quantumNumbers.n === 1) {
+               maxRadius = 5 * VISUAL_SCALE_FACTOR;
+               cameraZoom = 5;
+           } else if (quantumNumbers.n === 2) {
+               maxRadius = 10 * VISUAL_SCALE_FACTOR;
+               cameraZoom = 8;
+           } else if (quantumNumbers.n === 3) {
+               maxRadius = 15 * VISUAL_SCALE_FACTOR;
+               cameraZoom = 12;
+           } else if (quantumNumbers.n === 4) {
+               maxRadius = 20 * VISUAL_SCALE_FACTOR;
+               cameraZoom = 15;
+           } else {
+               maxRadius = 25 * VISUAL_SCALE_FACTOR; // Standard for højere n (hvis de tilføjes)
+               cameraZoom = 18;
+           }
+
+           // Indstil kamera position og mål for bedre visning af den valgte orbital
+           controls.target.set(0, 0, 0); // Kigger altid på centrum
+           camera.position.set(0, 0, cameraZoom); // Justerer Z position for zoom
+           controls.update(); // Opdaterer kontroller for at anvende ny mål/position
+
+           // Generer punkter asynkront for at undgå at fryse UI
+           const generatedPositions = await new Promise(resolve => {
+               setTimeout(() => { // Tillad UI at opdatere før tung beregning
+                   resolve(generateOrbitalPoints(quantumNumbers.n, quantumNumbers.l, quantumNumbers.ml, PARTICLE_COUNT, maxRadius));
+               }, 10);
+           });
+
+           // Instanced rendering opsætning
+           const instanceGeometry = new THREE.SphereGeometry(0.02 * VISUAL_SCALE_FACTOR, 8, 8); // Radius, widthSegments, heightSegments
+           const instanceMaterial = new THREE.MeshBasicMaterial({
+               color: ORBITAL_COLOR,
+               size: 0.05 * VISUAL_SCALE_FACTOR, // Juster partikelstørrelse med visuel skala
+               blending: THREE.AdditiveBlending, // For en glødende effekt
+               transparent: true,
+               opacity: 0.7 // Gør partikler let gennemsigtige
+           });
+
+           currentOrbitalMesh = new THREE.InstancedMesh(instanceGeometry, instanceMaterial, PARTICLE_COUNT);
+           currentOrbitalMesh.userData.orbitalKey = orbitalKey; // Gem nøgle til sammenligning i animation
+
+           const dummy = new THREE.Object3D(); // Hjælpeobjekt til at indstille matrix
+
+           for (let i = 0; i < PARTICLE_COUNT; i++) {
+               dummy.position.set(generatedPositions[i * 3], generatedPositions[i * 3 + 1], generatedPositions[i * 3 + 2]);
+               dummy.updateMatrix();
+               currentOrbitalMesh.setMatrixAt(i, dummy.matrix);
+           }
+
+           currentOrbitalMesh.instanceMatrix.needsUpdate = true;
+           scene.add(currentOrbitalMesh);
+           console.log('Nyt orbital-mesh tilføjet til scene.');
+           loadingIndicator.style.display = 'none'; // Skjul indlæsningsindikator
+       }
+
+       /**
+        * Funktion til at oprette en midlertidig foton-burst effekt
+        * @param {THREE.Vector3} position Centrums position for burst.
+        * @param {THREE.Color} color Fotonens farve.
+        * @param {number} duration Animationens varighed i millisekunder.
+        */
+       function createPhotonBurst(position, color, duration = 800) {
+           console.log('Opretter foton-burst.');
+           const geometry = new THREE.SphereGeometry(0.1 * VISUAL_SCALE_FACTOR, 16, 16);
+           const material = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 1.0 });
+           const photonMesh = new THREE.Mesh(geometry, material);
+           photonMesh.position.copy(position);
+           scene.add(photonMesh);
+
+           const startTime = performance.now();
+           const initialScale = 0.1 * VISUAL_SCALE_FACTOR;
+           const finalScale = 2 * VISUAL_SCALE_FACTOR; // Hvor meget den udvider sig
+
+           function animatePhoton() {
+               const elapsed = performance.now() - startTime;
+               const progress = elapsed / duration;
+
+               if (progress < 1) {
+                   photonMesh.scale.setScalar(initialScale + (finalScale - initialScale) * progress);
+                   photonMesh.material.opacity = 1.0 * (1 - progress);
+                   requestAnimationFrame(animatePhoton);
+               } else {
+                   scene.remove(photonMesh);
+                   photonMesh.geometry.dispose();
+                   photonMesh.material.dispose();
+                   console.log('Foton-burst animation afsluttet.');
+               }
+           }
+           animatePhoton();
+       }
+
+       /**
+        * Animerer en overgang mellem to orbitaler.
+        * Viser 'til'-orbitalen og opretter en foton-burst.
+        * @param {string} fromOrbitalKey Nøgle til den oprindelige orbital (til kontekst).
+        * @param {string} toOrbitalKey Nøgle til den endelige orbital.
+        * @param {string} wavelengthColor CSS farvestreng for fotonen.
+        */
+       async function animateOrbitalTransition(fromOrbitalKey, toOrbitalKey, wavelengthColor) {
+           console.log(`Animerer overgang fra ${fromOrbitalKey} til ${toOrbitalKey}`);
+           // Fjern aktiv klasse fra alle orbital-knapper
+           document.querySelectorAll('.orbital-button').forEach(btn => btn.classList.remove('active'));
+           // Aktiver knappen, der svarer til mål-orbitalen
+           const targetButton = document.querySelector(`.orbital-button[data-orbital="${toOrbitalKey}"]`);
+           if (targetButton) {
+               targetButton.classList.add('active');
+           }
+
+           // Vis 'fra'-orbitalen først, hvis den er forskellig fra den nuværende
+           if (currentOrbitalMesh && currentOrbitalMesh.userData.orbitalKey !== fromOrbitalKey) {
+               await displayOrbital(fromOrbitalKey);
+               // Indstil initial opacitet for fade-ud
+               if (currentOrbitalMesh) {
+                   currentOrbitalMesh.material.opacity = 0.7;
+                   currentOrbitalMesh.userData.orbitalKey = fromOrbitalKey; // Gem nøgle til sammenligning
+               }
+               await new Promise(resolve => setTimeout(resolve, 1000)); // Vis oprindelig orbital et stykke tid
+           } else if (!currentOrbitalMesh) {
+               // Hvis ingen orbital aktuelt vises, vis bare 'fra'-orbitalen
+               await displayOrbital(fromOrbitalKey);
+               if (currentOrbitalMesh) {
+                   currentOrbitalMesh.material.opacity = 0.7;
+                   currentOrbitalMesh.userData.orbitalKey = fromOrbitalKey;
+               }
+               await new Promise(resolve => setTimeout(resolve, 1000));
+           }
+
+
+           // Fade ud nuværende orbital (som nu er 'fra'-orbitalen)
+           const fadeOutDuration = 1000;
+           const startTimeFadeOut = performance.now();
+           const initialOpacity = currentOrbitalMesh ? currentOrbitalMesh.material.opacity : 0.7; // Hent nuværende opacitet
+           const meshToFadeOut = currentOrbitalMesh; // Referer til det mesh, der skal fade ud
+
+           if (meshToFadeOut) {
+               await new Promise(resolve => {
+                   function animateFadeOut() {
+                       const elapsed = performance.now() - startTimeFadeOut;
+                       const progress = elapsed / fadeOutDuration;
+                       if (progress < 1) {
+                           meshToFadeOut.material.opacity = initialOpacity * (1 - progress);
+                           requestAnimationFrame(animateFadeOut);
+                       } else {
+                           meshToFadeOut.material.opacity = 0;
+                           scene.remove(meshToFadeOut);
+                           meshToFadeOut.geometry.dispose();
+                           meshToFadeOut.material.dispose();
+                           currentOrbitalMesh = null; // Ryd reference
+                           resolve();
+                       }
+                   }
+                   requestAnimationFrame(animateFadeOut);
+               });
+           }
+
+           // Vis den nye ('til') orbital
+           await displayOrbital(toOrbitalKey);
+           if (currentOrbitalMesh) {
+               currentOrbitalMesh.material.opacity = 0; // Start gennemsigtig for fade-ind
+               currentOrbitalMesh.userData.orbitalKey = toOrbitalKey; // Gem nøgle
+           }
+
+           // Fade ind 'til'-orbital
+           const fadeInDuration = 1000;
+           const startTimeFadeIn = performance.now();
+           const meshToFadeIn = currentOrbitalMesh;
+
+           if (meshToFadeIn) {
+               await new Promise(resolve => {
+                   function animateFadeIn() {
+                       const elapsed = performance.now() - startTimeFadeIn;
+                       const progress = elapsed / fadeInDuration;
+                       if (progress < 1) {
+                           meshToFadeIn.material.opacity = 0.7 * progress;
+                           requestAnimationFrame(animateFadeIn);
+                       } else {
+                           meshToFadeIn.material.opacity = 0.7;
+                           resolve();
+                       }
+                   }
+                   requestAnimationFrame(animateFadeIn);
+               });
+           }
+
+           // Opret foton-burst effekt i centrum
+           const photonColor = new THREE.Color(wavelengthColor);
+           createPhotonBurst(new THREE.Vector3(0, 0, 0), photonColor);
+       }
+
+       /**
+        * Konverterer en bølgelængde (nm) til en omtrentlig RGB farve.
+        * Dette er en forenklet mapping til visualiseringsformål.
+        * @param {number} wavelength Bølgelængde i nanometer.
+        * @returns {string} CSS farvestreng (f.eks. 'rgb(255, 0, 0)').
+        */
+       function wavelengthToColor(wavelength) {
+           let r = 0, g = 0, b = 0;
+
+           if (wavelength >= 380 && wavelength < 440) { // Violet
+               r = -(wavelength - 440) / (440 - 380);
+               b = 1.0;
+           } else if (wavelength >= 440 && wavelength < 490) { // Blå
+               g = (wavelength - 440) / (490 - 440);
+               b = 1.0;
+           } else if (wavelength >= 490 && wavelength < 510) { // Cyan
+               g = 1.0;
+               b = -(wavelength - 510) / (510 - 490);
+           } else if (wavelength >= 510 && wavelength < 580) { // Grøn til Gul
+               r = (wavelength - 510) / (580 - 510);
+               g = 1.0;
+           } else if (wavelength >= 580 && wavelength < 645) { // Gul til Orange
+               r = 1.0;
+               g = -(wavelength - 645) / (645 - 580);
+           } else if (wavelength >= 645 && wavelength < 780) { // Rød
+               r = 1.0;
+           } else {
+               // For UV og IR, brug en placeholder farve eller gør den gennemsigtig
+               return 'rgba(100, 100, 100, 0.5)'; // Grå for ikke-synlig
+           }
+
+           // Intensiver farver for bedre synlighed
+           r = Math.min(255, Math.round(r * 255 * 1.5));
+           g = Math.min(255, Math.round(g * 255 * 1.5));
+           b = Math.min(255, Math.round(b * 255 * 1.5));
+
+           return `rgb(${r}, ${g}, ${b})`;
+       }
+
+       /**
+        * Tegner brintspektrets energiniveaudiagram ved hjælp af D3.js.
+        */
+       function drawSpectrumDiagram() {
+           console.log('Tegner spektrumdiagram.');
+           const container = document.getElementById('spectrum-svg-container');
+           if (!container) {
+               console.error('drawSpectrumDiagram: spectrum-svg-container ikke fundet!');
+               return;
+           }
+           const width = container.offsetWidth;
+           const height = container.offsetHeight;
+
+           // Ryd tidligere SVG-indhold
+           d3.select(container).select('svg').remove();
+
+           const svg = d3.select(container).append('svg')
+               .attr('width', width)
+               .attr('height', height);
+
+           const margin = { top: 20, right: 30, bottom: 20, left: 50 };
+           const innerWidth = width - margin.left - margin.right;
+           const innerHeight = height - margin.top - margin.bottom;
+
+           const g = svg.append('g')
+               .attr('transform', `translate(${margin.left},${margin.top})`);
+
+           // Brint energiniveauer (i eV) - Inkluderer kun de nødvendige for Lyman, Balmer, Paschen
+           const energyLevels = [
+               { n: 1, energy: -13.6 },
+               { n: 2, energy: -13.6 / 4 },
+               { n: 3, energy: -13.6 / 9 },
+               { n: 4, energy: -13.6 / 16 },
+               { n: 5, energy: -13.6 / 25 },
+               { n: 6, energy: -13.6 / 36 }, // Højeste nødvendige for Paschen
+               { n: Infinity, energy: 0 } // Ioniseringsgrænse
+           ];
+
+           // Skalaer for energiniveauer (y-akse)
+           const yScale = d3.scaleLinear()
+               .domain([energyLevels[energyLevels.length - 1].energy, energyLevels[0].energy]) // Fra 0 til -13.6
+               .range([0, innerHeight]); // Inverterer rækkevidde for visuel repræsentation (højere energi er højere på diagram)
+
+           // Tegn energiniveau-linjer
+           g.selectAll('.energy-level')
+               .data(energyLevels)
+               .enter()
+               .append('line')
+               .attr('class', 'energy-level')
+               .attr('x1', 0)
+               .attr('x2', innerWidth)
+               .attr('y1', d => yScale(d.energy))
+               .attr('y2', d => yScale(d.energy));
+
+           // Tilføj energiniveau-etiketter
+           g.selectAll('.energy-label')
+               .data(energyLevels)
+               .enter()
+               .append('text')
+               .attr('class', 'energy-label')
+               .attr('x', -5)
+               .attr('y', d => yScale(d.energy) + 3)
+               .text(d => d.n === Infinity ? 'Ionisation (0 eV)' : `n=${d.n} (${d.energy.toFixed(2)} eV)`);
+
+           // Brintspektrum-overgange - Kun Lyman, Balmer, Paschen
+           const transitions = [
+               // Lyman-serien (n_final = 1, UV)
+               { from: 2, to: 1, series: 'Lyman', wavelength: 121.6, color: 'rgba(150, 150, 255, 0.7)', fromOrbital: '2s', toOrbital: '1s' },
+               { from: 3, to: 1, series: 'Lyman', wavelength: 102.6, color: 'rgba(120, 120, 255, 0.7)', fromOrbital: '3s', toOrbital: '1s' },
+               { from: 4, to: 1, series: 'Lyman', wavelength: 97.3, color: 'rgba(100, 100, 255, 0.7)', fromOrbital: '3pz', toOrbital: '1s' }, // Bruger 3p som repræsentant for n=4
+               { from: 5, to: 1, series: 'Lyman', wavelength: 95.0, color: 'rgba(80, 80, 255, 0.7)', fromOrbital: '3dz2', toOrbital: '1s' }, // Bruger 3d som repræsentant for n=5
+
+               // Balmer-serien (n_final = 2, Synligt lys)
+               { from: 3, to: 2, series: 'Balmer', wavelength: 656.3, color: wavelengthToColor(656.3), fromOrbital: '3s', toOrbital: '2pz' }, // H-alfa
+               { from: 4, to: 2, series: 'Balmer', wavelength: 486.1, color: wavelengthToColor(486.1), fromOrbital: '3pz', toOrbital: '2s' }, // H-beta
+               { from: 5, to: 2, series: 'Balmer', wavelength: 434.0, color: wavelengthToColor(434.0), fromOrbital: '3dz2', toOrbital: '2pz' }, // H-gamma
+               { from: 6, to: 2, series: 'Balmer', wavelength: 410.2, color: wavelengthToColor(410.2), fromOrbital: '3dxy', toOrbital: '2s' }, // H-delta
+
+               // Paschen-serien (n_final = 3, Infrarød)
+               { from: 4, to: 3, series: 'Paschen', wavelength: 1875.1, color: 'rgba(255, 150, 150, 0.7)', fromOrbital: '3s', toOrbital: '3pz' }, // Bruger 3s som repræsentant for n=4
+               { from: 5, to: 3, series: 'Paschen', wavelength: 1281.8, color: 'rgba(255, 120, 120, 0.7)', fromOrbital: '3pz', toOrbital: '3s' }, // Bruger 3p som repræsentant for n=5
+               { from: 6, to: 3, series: 'Paschen', wavelength: 1093.8, color: 'rgba(255, 100, 100, 0.7)', fromOrbital: '3dz2', toOrbital: '3pz' }, // Bruger 3d som repræsentant for n=6
+           ];
+
+           // X-skala for overgange (bare for at sprede dem horisontalt)
+           const xScale = d3.scaleBand()
+               .domain(transitions.map((d, i) => i))
+               .range([0, innerWidth])
+               .padding(0.1);
+
+           // Tegn overgangslinjer
+           g.selectAll('.transition-line')
+               .data(transitions)
+               .enter()
+               .append('line')
+               .attr('class', 'transition-line')
+               .attr('x1', (d, i) => xScale(i) + xScale.bandwidth() / 2)
+               .attr('x2', (d, i) => xScale(i) + xScale.bandwidth() / 2)
+               .attr('y1', d => yScale(energyLevels.find(e => e.n === d.from).energy))
+               .attr('y2', d => yScale(energyLevels.find(e => e.n === d.to).energy))
+               .attr('stroke', d => d.color)
+               .on('click', (event, d) => animateOrbitalTransition(d.fromOrbital, d.toOrbital, d.color))
+               .append('title') // Tooltip for hover
+               .text(d => `Overgang: n=${d.from} til n=${d.to}\nSerie: ${d.series}\nBølgelængde: ${d.wavelength} nm`);
+
+           // Tilføj bølgelængde-etiketter til overgange
+           g.selectAll('.wavelength-label')
+               .data(transitions)
+               .enter()
+               .append('text')
+               .attr('class', 'wavelength-label')
+               .attr('x', (d, i) => xScale(i) + xScale.bandwidth() / 2)
+               .attr('y', d => (yScale(energyLevels.find(e => e.n === d.from).energy) + yScale(energyLevels.find(e => e.n === d.to).energy)) / 2)
+               .attr('dy', '-0.5em') // Forskydning lidt over linjen
+               .text(d => `${d.wavelength} nm`);
+
+           // Tilføj serie-etiketter
+           const seriesLabels = [
+               { series: 'Lyman', startIdx: 0, endIdx: 3, color: 'rgba(150, 150, 255, 0.7)' },
+               { series: 'Balmer', startIdx: 4, endIdx: 7, color: wavelengthToColor(656.3) },
+               { series: 'Paschen', startIdx: 8, endIdx: 10, color: wavelengthToColor(1875.1) },
+           ];
+
+           seriesLabels.forEach(sLabel => {
+               const startX = xScale(sLabel.startIdx);
+               const endX = xScale(sLabel.endIdx) + xScale.bandwidth();
+               const midX = (startX + endX) / 2;
+               const topY = yScale(energyLevels.find(e => e.n === 1).energy) - 20;
+
+               g.append('text')
+                   .attr('class', 'series-label')
+                   .attr('x', midX)
+                   .attr('y', topY)
+                   .text(`${sLabel.series}-serien`);
+           });
+           console.log('D3 spektrumtegning fuldført.');
+       }
+
+
+       // Initialiser Three.js scenen
+       function initThreeJs() {
+           console.log('initThreeJs: Starter initialisering.');
+           const container = document.getElementById('canvas-container');
+           if (!container) {
+               console.error('initThreeJs: canvas-container ikke fundet!');
+               loadingIndicator.textContent = 'Fejl: Canvas-container ikke fundet.';
+               throw new Error('Canvas container element not found.'); // Kaster fejl for at stoppe udførelse
+           }
+
+           scene = new THREE.Scene();
+           scene.background = new THREE.Color(0x0f172a);
+           console.log('initThreeJs: Scene oprettet.');
+
+           camera = new THREE.PerspectiveCamera(75, container.offsetWidth / container.offsetHeight, 0.1, 1000);
+           camera.position.z = 10;
+           console.log('initThreeJs: Kamera oprettet.');
+
+           renderer = new THREE.WebGLRenderer({ antialias: true });
+           renderer.setSize(container.offsetWidth, container.offsetHeight);
+           container.appendChild(renderer.domElement);
+           console.log('initThreeJs: Renderer oprettet og tilføjet.');
+
+           controls = new THREE.OrbitControls(camera, renderer.domElement);
+           controls.enableDamping = true;
+           controls.dampingFactor = 0.05;
+           controls.screenSpacePanning = false;
+           controls.minDistance = 2;
+           controls.maxDistance = 20;
+           console.log('initThreeJs: OrbitControls oprettet.');
+
+           const ambientLight = new THREE.AmbientLight(0x404040, 2);
+           scene.add(ambientLight);
+           const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+           directionalLight.position.set(5, 5, 5).normalize();
+           scene.add(directionalLight);
+           console.log('initThreeJs: Lys tilføjet.');
+
+           const axesHelper = new THREE.AxesHelper(3);
+           axesHelper.material.color.set(AXIS_COLOR);
+           scene.add(axesHelper);
+           console.log('initThreeJs: Akser tilføjet.');
+
+           window.addEventListener('resize', onWindowResize, false);
+           console.log('initThreeJs: Resize lytter tilføjet.');
+           console.log('initThreeJs: Initialisering fuldført.');
+       }
+
+       // Funktion til at håndtere vinduesstørrelsesændringer
+       function onWindowResize() {
+           console.log('onWindowResize: Vinduet ændret størrelse.');
+           if (camera && renderer && canvasContainer) {
+               camera.aspect = canvasContainer.offsetWidth / canvasContainer.offsetHeight;
+               camera.updateProjectionMatrix();
+               renderer.setSize(canvasContainer.offsetWidth, canvasContainer.offsetHeight);
+           }
+           drawSpectrumDiagram(); // Tegn D3.js spektrum igen ved størrelsesændring
+       }
+
+       // Animationsløkke for Three.js
+       function animateThreeJs() {
+           requestAnimationFrame(animateThreeJs);
+           if (controls && renderer && scene && camera) {
+               controls.update();
+               renderer.render(scene, camera);
+           }
+       }
+
+       // Initialiser alt, når vinduet indlæses
+       window.onload = function() {
+           console.log('window.onload: Vinduet indlæst. Initialiserer applikation.');
+           try {
+               initThreeJs(); // Initialiserer Three.js
+               animateThreeJs(); // Starter animationsløkken
+               drawSpectrumDiagram(); // Tegner spektrumdiagrammet
+               displayOrbital('1s'); // Viser 1s orbitalen som standard
+
+               // Opsæt event listeners for orbital knapper
+               document.querySelectorAll('.orbital-button').forEach(button => {
+                   button.addEventListener('click', (event) => {
+                       document.querySelectorAll('.orbital-button').forEach(btn => btn.classList.remove('active'));
+                       event.target.classList.add('active');
+                       displayOrbital(event.target.dataset.orbital);
+                   });
+               });
+
+               loadingIndicator.textContent = 'Loaded successfully!';
+               loadingIndicator.style.backgroundColor = 'rgba(0, 128, 0, 0.7)'; // Grøn baggrund for succes
+               setTimeout(() => { loadingIndicator.style.display = 'none'; }, 1500); // Skjul efter et stykke tid
+           } catch (error) {
+               console.error('window.onload: Fejl under initialisering:', error);
+               loadingIndicator.textContent = `Fejl: ${error.message}. Tjek konsol.`;
+               loadingIndicator.style.backgroundColor = 'rgba(255, 0, 0, 0.7)'; // Rød baggrund for fejl
+           }
+           console.log('window.onload: Applikationsinitialisering fuldført.');
+       };
+   </script>
 </body>
 </html>
