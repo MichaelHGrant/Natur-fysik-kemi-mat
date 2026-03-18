@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brintatom Orbital Visning</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* Dark blue-gray background */
+            color: #E5E7EB; /* Light gray text */
+            overflow: hidden; /* Prevent scrollbars from appearing */
+        }
+        #info-panel {
+            background-color: rgba(17, 24, 39, 0.8); /* Semi-transparent dark background */
+            backdrop-filter: blur(10px);
+            border-left: 1px solid #374151;
+        }
+        .orbital-button {
+            transition: all 0.2s ease-in-out;
+            border: 1px solid transparent;
+            text-shadow: 0px 0px 5px rgba(0, 0, 0, 0.7);
+        }
+        .orbital-button:focus {
+            outline: none; /* Fjerner den blå fokus-ramme */
+        }
+        .orbital-button.active {
+            background-color: #3B82F6;
+            color: #FFFFFF;
+            font-weight: 500;
+            border-color: #60A5FA;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .no-select {
+            -webkit-user-select: none; /* Safari */
+            -ms-user-select: none; /* IE 10+ */
+            user-select: none; /* Standard */
+        }
+        /* Custom Slider Styles */
+        input[type=range] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+            width: 100%;
+        }
+        /* Track */
+        input[type=range]::-webkit-slider-runnable-track {
+            background: #374151;
+            height: 0.25rem;
+            border-radius: 1rem;
+        }
+        input[type=range]::-moz-range-track {
+            background: #374151;
+            height: 0.25rem;
+            border-radius: 1rem;
+        }
+        /* Thumb */
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            margin-top: -6px; /* Center thumb on track */
+            background-color: #60A5FA;
+            height: 1.25rem;
+            width: 1.25rem;
+            border-radius: 50%;
+            border: 2px solid #1f2937;
+        }
+        input[type=range]::-moz-range-thumb {
+            background-color: #60A5FA;
+            height: 1.25rem;
+            width: 1.25rem;
+            border-radius: 50%;
+            border: 2px solid #1f2937;
+        }
+    </style>
+</head>
+<body class="flex flex-col md:flex-row h-screen w-screen">
+
+    <!-- 3D Canvas Container -->
+    <div id="canvas-container" class="flex-grow h-full w-full"></div>
+
+    <!-- UI Overlay -->
+    <div class="absolute top-0 left-0 w-full h-full p-2 md:p-4 flex flex-col pointer-events-none">
+        <!-- Header -->
+        <div class="text-center md:text-left no-select">
+            <h1 class="text-2xl md:text-3xl font-bold text-white" style="text-shadow: 0px 0px 8px rgba(0, 0, 0, 0.7);">Brintatom Orbital Visning</h1>
+            <p class="text-base text-gray-300 mt-1">Udforsk elektronorbitalernes sandsynlighedsfordeling.</p>
+        </div>
+
+        <!-- Controls Container -->
+        <div class="mt-auto w-full md:max-w-2xl pointer-events-auto">
+            <!-- Orbital Selection Buttons -->
+            <div id="orbital-controls" class="p-1 flex flex-col gap-1">
+                 <!-- n=1 -->
+                 <div data-n-level="1" class="flex flex-wrap justify-center md:justify-start gap-1">
+                     <button data-orbital="1s" class="orbital-button active px-2 py-1 text-xs rounded-md bg-gray-700/70">1s</button>
+                 </div>
+                 <!-- n=2 -->
+                 <div data-n-level="2" class="hidden flex-wrap justify-center md:justify-start gap-1">
+                     <button data-orbital="2s" class="orbital-button px-2 py-1 text-xs rounded-md bg-gray-700/70">2s</button>
+                     <button data-orbital="2p" class="orbital-button px-2 py-1 text-xs rounded-md bg-gray-700/70">2p</button>
+                 </div>
+                 <!-- n=3 -->
+                 <div data-n-level="3" class="hidden flex-wrap justify-center md:justify-start gap-1">
+                     <button data-orbital="3s" class="orbital-button px-2 py-1 text-xs rounded-md bg-gray-700/70">3s</button>
+                     <button data-orbital="3p" class="orbital-button px-2 py-1 text-xs rounded-md bg-gray-700/70">3p</button>
+                     <button data-orbital="3d" class="orbital-button px-2 py-1 text-xs rounded-md bg-gray-700/70">3d</button>
+                 </div>
+                <!-- n=4 -->
+                 <div data-n-level="4" class="hidden flex-wrap justify-center md:justify-start gap-1">
+                     <button data-orbital="4s" class="orbital-button px-2 py-1 text-xs rounded-md bg-gray-700/70">4s</button>
+                     <button data-orbital="4p" class="orbital-button px-2 py-1 text-xs rounded-md bg-gray-700/70">4p</button>
+                     <button data-orbital="4d" class="orbital-button px-2 py-1 text-xs rounded-md bg-gray-700/70">4d</button>
+                     <button data-orbital="4f" class="orbital-button px-2 py-1 text-xs rounded-md bg-gray-700/70">4f</button>
+                 </div>
+                <!-- n=5 -->
+                 <div data-n-level="5" class="hidden flex-wrap justify-center md:justify-start gap-1">
+                     <button data-orbital="5s" class="orbital-button px-2 py-1 text-xs rounded-md bg-gray-700/70">5s</button>
+                     <button data-orbital="5p" class="orbital-button px-2 py-1 text-xs rounded-md bg-gray-700/70">5p</button>
+                     <button data-orbital="5d" class="orbital-button px-2 py-1 text-xs rounded-md bg-gray-700/70">5d</button>
+                     <button data-orbital="5f" class="orbital-button px-2 py-1 text-xs rounded-md bg-gray-700/70">5f</button>
+                     <button data-orbital="5g" class="orbital-button px-2 py-1 text-xs rounded-md bg-gray-700/70">5g</button>
+                 </div>
+                <!-- n=6 -->
+                 <div data-n-level="6" class="hidden flex-wrap justify-center md:justify-start gap-1">
+                     <button data-orbital="6s" class="orbital-button px-2 py-1 text-xs rounded-md bg-gray-700/70">6s</button>
+                     <button data-orbital="6p" class="orbital-button px-2 py-1 text-xs rounded-md bg-gray-700/70">6p</button>
+                     <button data-orbital="6d" class="orbital-button px-2 py-1 text-xs rounded-md bg-gray-700/70">6d</button>
+                     <button data-orbital="6f" class="orbital-button px-2 py-1 text-xs rounded-md bg-gray-700/70">6f</button>
+                     <button data-orbital="6g" class="orbital-button px-2 py-1 text-xs rounded-md bg-gray-700/70">6g</button>
+                     <button data-orbital="6h" class="orbital-button px-2 py-1 text-xs rounded-md bg-gray-700/70">6h</button>
+                 </div>
+            </div>
+            <!-- Sliders -->
+            <div class="p-3 bg-gray-800/50 rounded-lg mt-2 backdrop-filter backdrop-blur-sm">
+                <div class="flex items-end gap-4 text-white">
+                    <!-- Rotation Sliders -->
+                    <div id="rotation-sliders" class="flex-grow flex justify-between items-center gap-4">
+                        <div class="flex flex-col items-center flex-grow">
+                            <label for="x-slider" class="font-mono text-sm">X</label>
+                            <input id="x-slider" type="range" min="-3.14" max="3.14" value="0" step="0.01">
+                        </div>
+                        <div class="flex flex-col items-center flex-grow">
+                            <label for="y-slider" class="font-mono text-sm">Y</label>
+                            <input id="y-slider" type="range" min="-3.14" max="3.14" value="0" step="0.01">
+                        </div>
+                        <div class="flex flex-col items-center flex-grow">
+                            <label for="z-slider" class="font-mono text-sm">Z</label>
+                            <input id="z-slider" type="range" min="-3.14" max="3.14" value="0" step="0.01">
+                        </div>
+                    </div>
+                    <!-- N Dropdown -->
+                    <div class="flex flex-col items-center">
+                        <label for="n-select" class="font-mono text-sm">n</label>
+                        <select id="n-select" class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-1.5">
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                            <option value="6">6</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info Panel -->
+    <div id="info-panel" class="w-full md:w-80 h-auto md:h-full flex-shrink-0 p-4 overflow-y-auto pointer-events-auto">
+        <h2 class="text-xl font-bold text-white mb-2">Brint Spektrum Info</h2>
+        <p class="text-xs text-gray-300 mb-2">
+            Pilens lysstyrke afspejler sandsynligheden for overgangen. Før musen over en pil for info.
+        </p>
+        
+        <div class="relative mt-4 bg-gray-900 p-2 rounded-lg">
+            <h3 class="text-base font-semibold mb-2">Energiniveauer & Balmer-serien</h3>
+            <div class="relative h-64 w-full">
+                <!-- Energy Levels -->
+                <div class="absolute w-full border-t border-dashed border-gray-500" style="bottom: 100%;"><span class="absolute right-0 -top-3 text-xs text-gray-400">0 eV</span></div>
+                <div class="absolute w-full border-t border-gray-500" style="bottom: 95%;"><span class="absolute right-full mr-2 text-xs text-gray-400">n=6</span></div>
+                <div class="absolute w-full border-t border-gray-500" style="bottom: 92%;"><span class="absolute right-full mr-2 text-xs text-gray-400">n=5</span></div>
+                <div class="absolute w-full border-t border-gray-500" style="bottom: 85%;"><span class="absolute right-full mr-2 text-xs text-gray-400">n=4</span></div>
+                <div class="absolute w-full border-t border-gray-500" style="bottom: 65%;"><span class="absolute right-full mr-2 text-xs text-gray-400">n=3</span></div>
+                <div class="absolute w-full border-t-2 border-blue-400" style="bottom: 25%;"><span class="absolute right-full mr-2 text-xs text-blue-300 font-bold">n=2</span></div>
+                <div class="absolute w-full border-t border-gray-500" style="bottom: 0%;"><span class="absolute right-full mr-2 text-xs text-gray-400">n=1</span></div>
+
+                <!-- Spectral Lines (Balmer Series) -->
+                <div class="group spectral-line-group" data-transition="n=3 → n=2 (656.3 nm)" data-fine-structure="Fin-struktur: Opsplittes af overgange som 3s→2p, 3p→2s, 3d→2p, etc.">
+                    <div class="absolute w-px bg-red-500 pointer-events-auto cursor-pointer" style="left: 80%; top: 35%; height: 40%;">
+                        <div class="absolute bottom-0 left-1/2 w-2 h-2 border-r-2 border-b-2 border-red-500 transform -translate-x-1/2 translate-y-1/2 rotate-45"></div>
+                    </div>
+                </div>
+                 <div class="group spectral-line-group" data-transition="n=4 → n=2 (486.1 nm)" data-fine-structure="Fin-struktur: Opsplittes af overgange som 4s→2p, 4p→2s, 4d→2p, etc.">
+                    <div class="absolute w-px bg-cyan-400/60 pointer-events-auto cursor-pointer" style="left: 60%; top: 15%; height: 60%;">
+                        <div class="absolute bottom-0 left-1/2 w-2 h-2 border-r-2 border-b-2 border-cyan-400/60 transform -translate-x-1/2 translate-y-1/2 rotate-45"></div>
+                    </div>
+                </div>
+                <div class="group spectral-line-group" data-transition="n=5 → n=2 (434.1 nm)" data-fine-structure="Fin-struktur: Opsplittes af overgange som 5s→2p, 5p→2s, 5d→2p, etc.">
+                    <div class="absolute w-px pointer-events-auto cursor-pointer" style="left: 40%; top: 8%; height: 67%; background-color: rgba(96, 165, 250, 0.4);">
+                        <div class="absolute bottom-0 left-1/2 w-2 h-2 border-r-2 border-b-2 transform -translate-x-1/2 translate-y-1/2 rotate-45" style="border-color: rgba(96, 165, 250, 0.4);"></div>
+                    </div>
+                </div>
+                <div class="group spectral-line-group" data-transition="n=6 → n=2 (410.2 nm)" data-fine-structure="Fin-struktur: Opsplittes af overgange som 6s→2p, 6p→2s, 6d→2p, etc.">
+                    <div class="absolute w-px pointer-events-auto cursor-pointer" style="left: 20%; top: 5%; height: 70%; background-color: rgba(139, 92, 246, 0.25);">
+                        <div class="absolute bottom-0 left-1/2 w-2 h-2 border-r-2 border-b-2 transform -translate-x-1/2 translate-y-1/2 rotate-45" style="border-color: rgba(139, 92, 246, 0.25);"></div>
+                    </div>
+                </div>
+            </div>
+             <div class="text-center mt-2 text-xs text-gray-400">
+                 Synlige linjer i Balmer-serien
+             </div>
+        </div>
+        <div id="spectrum-info-box" class="mt-4 p-3 bg-gray-900/50 rounded-lg text-xs h-24">
+             <p class="text-gray-400">Før musen over en overgang for at se detaljer.</p>
+        </div>
+        <div id="spectrum-tooltip" class="absolute hidden bg-gray-900 border border-gray-700 rounded-lg p-2 text-xs pointer-events-none shadow-lg z-50"></div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        let scene, camera, renderer, controls;
+        let points;
+        const canvasContainer = document.getElementById('canvas-container');
+        let autoRotateTimeout;
+        const manualRotation = new THREE.Euler(0, 0, 0);
+
+        function init() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, canvasContainer.clientWidth / canvasContainer.clientHeight, 0.1, 1000);
+            camera.position.z = 250; 
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            canvasContainer.appendChild(renderer.domElement);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.rotateSpeed = 2.5;
+            controls.minDistance = 5;
+            controls.maxDistance = 600; 
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 1.0;
+
+            controls.addEventListener('start', () => {
+                clearTimeout(autoRotateTimeout);
+                controls.autoRotate = false;
+            });
+            controls.addEventListener('end', () => {
+                resumeAutoRotation();
+            });
+
+            // Slider and Select event listeners
+            const xSlider = document.getElementById('x-slider');
+            const ySlider = document.getElementById('y-slider');
+            const zSlider = document.getElementById('z-slider');
+            const nSelect = document.getElementById('n-select');
+            const orbitalButtonContainers = document.querySelectorAll('[data-n-level]');
+
+            const handleSliderInput = () => {
+                controls.autoRotate = false;
+                manualRotation.set(xSlider.value, ySlider.value, zSlider.value);
+                if (points) {
+                    points.rotation.copy(manualRotation);
+                }
+                resumeAutoRotation();
+            };
+            
+            nSelect.addEventListener('change', () => {
+                const selectedN = nSelect.value;
+                orbitalButtonContainers.forEach(container => {
+                    if (container.dataset.nLevel === selectedN) {
+                        container.classList.remove('hidden');
+                        container.classList.add('flex');
+                    } else {
+                        container.classList.add('hidden');
+                        container.classList.remove('flex');
+                    }
+                });
+                // Automatically click the 's' orbital of the new level
+                const firstButton = document.querySelector(`[data-n-level="${selectedN}"] button`);
+                if(firstButton) {
+                    firstButton.click();
+                }
+            });
+
+            xSlider.addEventListener('input', handleSliderInput);
+            ySlider.addEventListener('input', handleSliderInput);
+            zSlider.addEventListener('input', handleSliderInput);
+            
+            // Info box logic
+            const spectralLineGroups = document.querySelectorAll('.spectral-line-group');
+            const infoBox = document.getElementById('spectrum-info-box');
+            const defaultInfoText = infoBox.innerHTML;
+
+            spectralLineGroups.forEach(group => {
+                group.addEventListener('mouseenter', () => {
+                    const transitionText = group.dataset.transition;
+                    const fineStructureText = group.dataset.fineStructure;
+                    infoBox.innerHTML = `<div class="font-bold">${transitionText}</div><div class="mt-1 text-gray-400">${fineStructureText}</div>`;
+                });
+                
+                group.addEventListener('mouseleave', () => {
+                     infoBox.innerHTML = defaultInfoText;
+                });
+            });
+
+
+            window.addEventListener('resize', onWindowResize, false);
+            animate();
+        }
+        
+        function resumeAutoRotation() {
+            clearTimeout(autoRotateTimeout);
+            autoRotateTimeout = setTimeout(() => {
+                if (controls) controls.autoRotate = true;
+            }, 3000); 
+        }
+
+        const a0 = 1; // Bohr radius
+
+        const waveFunctions = {
+            '1s': (x, y, z) => {
+                const r = Math.sqrt(x*x + y*y + z*z);
+                return Math.exp(-2 * r / a0);
+            },
+            '2s': (x, y, z) => {
+                const r = Math.sqrt(x*x + y*y + z*z);
+                const term = 2 - r / a0;
+                return Math.pow(term, 2) * Math.exp(-r / a0);
+            },
+            '2p': (x, y, z) => {
+                const r = Math.sqrt(x*x + y*y + z*z);
+                return Math.pow(z, 2) * Math.exp(-r / a0);
+            },
+            '3s': (x, y, z) => {
+                const r = Math.sqrt(x*x + y*y + z*z);
+                const term = 27 - 18 * r/a0 + 2 * Math.pow(r/a0, 2);
+                return Math.pow(term, 2) * Math.exp(-2 * r / (3*a0));
+            },
+            '3p': (x, y, z) => {
+                const r = Math.sqrt(x*x + y*y + z*z);
+                const radial_part = 6 - r/a0;
+                return Math.pow(z, 2) * Math.pow(radial_part, 2) * Math.exp(-2 * r / (3*a0));
+            },
+            '3d': (x, y, z) => {
+                const r = Math.sqrt(x*x + y*y + z*z);
+                return Math.pow(x * y, 2) * Math.exp(-2 * r / (3*a0));
+            },
+            '4s': (x, y, z) => {
+                const r = Math.sqrt(x*x + y*y + z*z);
+                const term = (1 - (3/4)*r + (1/8)*r*r - (1/192)*r*r*r);
+                return Math.pow(term, 2) * Math.exp(-r/2);
+            },
+            '4p': (x,y,z) => {
+                const r = Math.sqrt(x*x+y*y+z*z);
+                const radial = (1 - r/4 + r*r/80);
+                return Math.pow(z * radial, 2) * Math.exp(-r/2);
+            },
+            '4d': (x,y,z) => {
+                const r = Math.sqrt(x*x+y*y+z*z);
+                const radial = (1 - r/12);
+                return Math.pow(x*y*radial, 2) * Math.exp(-r/2);
+            },
+            '4f': (x,y,z) => {
+                const r = Math.sqrt(x*x+y*y+z*z);
+                return Math.pow(z*(5*z*z - 3*r*r), 2) * Math.exp(-r/2);
+            },
+            '5s': (x, y, z) => {
+                const r = Math.sqrt(x*x + y*y + z*z);
+                const term = 1 - r + 0.2*r*r - (1/15)*r*r*r + (1/360)*r*r*r*r;
+                return Math.pow(term, 2) * Math.exp(-2*r/5);
+            },
+            '5p': (x,y,z) => {
+                const r = Math.sqrt(x*x+y*y+z*z);
+                const radial = 1 - (3/8)*r + (1/40)*r*r - (1/1200)*r*r*r;
+                return Math.pow(z * radial, 2) * Math.exp(-2*r/5);
+            },
+            '5d': (x,y,z) => {
+                const r = Math.sqrt(x*x+y*y+z*z);
+                const radial = 1 - r/6 + r*r/168;
+                return Math.pow(x*y*radial, 2) * Math.exp(-2*r/5);
+            },
+             '5f': (x,y,z) => {
+                const r = Math.sqrt(x*x+y*y+z*z);
+                const radial = 1 - r/20;
+                return Math.pow(z*(5*z*z - 3*r*r) * radial, 2) * Math.exp(-2*r/5);
+            },
+            '5g': (x,y,z) => {
+                 const r = Math.sqrt(x*x+y*y+z*z);
+                 return Math.pow(x*y*(x*x-y*y), 2) * Math.exp(-2*r/5);
+            },
+            '6s': (x,y,z) => {
+                const r = Math.sqrt(x*x+y*y+z*z);
+                const term = 1 - (5/6)*r + (1/4)*r*r - (1/36)*r*r*r + (1/576)*r*r*r*r - (1/20736)*r*r*r*r*r;
+                return Math.pow(term, 2) * Math.exp(-r/3);
+            },
+            '6p': (x,y,z) => {
+                const r = Math.sqrt(x*x+y*y+z*z);
+                const radial = 1 - r/2 + r*r/10 - r*r*r/180 + r*r*r*r/5400;
+                return Math.pow(z * radial, 2) * Math.exp(-r/3);
+            },
+            '6d': (x,y,z) => {
+                const r = Math.sqrt(x*x+y*y+z*z);
+                const radial = 1 - r/10 + r*r/360 - r*r*r/15120;
+                return Math.pow(x*y*radial, 2) * Math.exp(-r/3);
+            },
+            '6f': (x,y,z) => {
+                const r = Math.sqrt(x*x+y*y+z*z);
+                const radial = 1 - r/30 + r*r/1080;
+                return Math.pow(z*(5*z*z-3*r*r)*radial, 2) * Math.exp(-r/3);
+            },
+            '6g': (x,y,z) => {
+                const r = Math.sqrt(x*x+y*y+z*z);
+                const radial = 1 - r/42;
+                return Math.pow(x*y*(x*x-y*y)*radial, 2) * Math.exp(-r/3);
+            },
+            '6h': (x,y,z) => {
+                const r = Math.sqrt(x*x+y*y+z*z);
+                return Math.pow(z * (33*z*z*z*z - 30*z*z*r*r + 5*r*r*r*r), 2) * Math.exp(-r/3);
+            }
+        };
+
+        const orbitalParams = {
+            '1s': { box: 15, maxProb: 1.0 },
+            '2s': { box: 30, maxProb: 0.22 },
+            '2p': { box: 30, maxProb: 0.55 },
+            '3s': { box: 60, maxProb: 0.05 },
+            '3p': { box: 60, maxProb: 0.2 },
+            '3d': { box: 60, maxProb: 0.8 },
+            '4s': { box: 100, maxProb: 0.01 },
+            '4p': { box: 100, maxProb: 0.05 },
+            '4d': { box: 100, maxProb: 0.25 },
+            '4f': { box: 100, maxProb: 1.5 },
+            '5s': { box: 150, maxProb: 0.005 },
+            '5p': { box: 150, maxProb: 0.02 },
+            '5d': { box: 150, maxProb: 0.1 },
+            '5f': { box: 150, maxProb: 0.8 },
+            '5g': { box: 150, maxProb: 4.0 },
+            '6s': { box: 200, maxProb: 0.001 },
+            '6p': { box: 200, maxProb: 0.005 },
+            '6d': { box: 200, maxProb: 0.02 },
+            '6f': { box: 200, maxProb: 0.1 },
+            '6g': { box: 200, maxProb: 0.8 },
+            '6h': { box: 200, maxProb: 4.0 },
+        };
+
+        function getOrbitalParams(orbitalName) {
+            const baseName = orbitalName.slice(0, 2);
+            return orbitalParams[baseName] || orbitalParams[orbitalName];
+        }
+
+        function generateOrbital(orbitalName) {
+            if (points) {
+                scene.remove(points);
+                points.geometry.dispose();
+                points.material.dispose();
+            }
+
+            const particles = 70000;
+            const positions = [];
+            const colors = [];
+            const color = new THREE.Color();
+
+            const waveFunc = waveFunctions[orbitalName] || waveFunctions['1s'];
+            const params = getOrbitalParams(orbitalName) || orbitalParams['1s'];
+            const boundingBoxSize = params.box;
+            const maxProb = params.maxProb;
+
+            let pointsGenerated = 0;
+            while (pointsGenerated < particles) {
+                const x = (Math.random() - 0.5) * boundingBoxSize;
+                const y = (Math.random() - 0.5) * boundingBoxSize;
+                const z = (Math.random() - 0.5) * boundingBoxSize;
+
+                const prob = waveFunc(x, y, z);
+
+                if (prob > Math.random() * maxProb) {
+                    positions.push(x, y, z);
+                    const r = Math.sqrt(x*x + y*y + z*z);
+                    color.setHSL(0.55 + (z / boundingBoxSize) * 0.2, 0.9, 0.5 + r / boundingBoxSize * 0.3);
+                    colors.push(color.r, color.g, color.b);
+                    pointsGenerated++;
+                }
+            }
+
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+            const material = new THREE.PointsMaterial({
+                size: orbitalName.startsWith('6') ? 0.4 : (orbitalName.startsWith('5') ? 0.3 : (orbitalName.startsWith('4') ? 0.25 : (orbitalName.startsWith('3') ? 0.15 : 0.1))),
+                vertexColors: true,
+                blending: THREE.AdditiveBlending,
+                transparent: true,
+                opacity: 0.75,
+                depthWrite: false
+            });
+
+            points = new THREE.Points(geometry, material);
+            scene.add(points);
+        }
+
+        const buttons = document.querySelectorAll('.orbital-button');
+        buttons.forEach(button => {
+            button.addEventListener('click', () => {
+                if (controls) controls.autoRotate = false;
+                
+                buttons.forEach(btn => btn.classList.remove('active'));
+                
+                button.classList.add('active');
+                
+                const orbitalName = button.dataset.orbital;
+                generateOrbital(orbitalName);
+
+                button.blur();
+            });
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            if (canvasContainer.clientWidth > 0 && canvasContainer.clientHeight > 0) {
+                camera.aspect = canvasContainer.clientWidth / canvasContainer.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
+            }
+        }
+
+        init();
+        generateOrbital('1s');
+    </script>
+</body>
+</html>
