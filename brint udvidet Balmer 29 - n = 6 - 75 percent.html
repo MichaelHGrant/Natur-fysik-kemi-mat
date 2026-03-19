@@ -3,254 +3,227 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Brintatom Orbital Visning - Fuld Mobil Support</title>
+    <title>Brintatom - Ultra Tæt Elektronsky</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #0f172a;
-            color: #f8fafc;
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
+        body { font-family: sans-serif; background: #020617; color: white; margin: 0; overflow: hidden; }
+        #app { display: flex; flex-direction: column; height: 100vh; width: 100vw; }
+        #canvas-container { flex: 1; position: relative; background: #000; }
+        #ui-panel { height: 40%; background: #0f172a; border-top: 2px solid #1e293b; padding: 20px; overflow-y: auto; }
+        
         @media (min-width: 768px) {
-            body { flex-direction: row; overflow: hidden; }
+            #app { flex-direction: row; }
+            #ui-panel { width: 400px; height: 100%; border-top: none; border-left: 2px solid #1e293b; }
         }
-        #canvas-container {
-            flex: 1;
-            height: 45vh; /* 45% af skærmen på mobil */
-            min-height: 300px;
-            position: relative;
-            background: #000;
-        }
-        @media (min-width: 768px) {
-            #canvas-container { height: 100vh; }
-        }
-        #ui-panel {
-            width: 100%;
-            background: #1e293b;
-            padding: 1.5rem;
-            border-top: 2px solid #334155;
-            z-index: 50;
-            overflow-y: auto;
-        }
-        @media (min-width: 768px) {
-            #ui-panel { width: 380px; height: 100vh; border-top: none; border-left: 2px solid #334155; }
-        }
-        input[type=range] {
-            -webkit-appearance: none;
-            width: 100%;
-            height: 40px;
-            background: transparent;
-            touch-action: none;
-        }
-        input[type=range]::-webkit-slider-runnable-track {
-            background: #334155;
-            height: 8px;
-            border-radius: 4px;
-        }
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            height: 26px;
-            width: 26px;
-            border-radius: 50%;
-            background: #3b82f6;
-            margin-top: -9px;
-            border: 2px solid #0f172a;
-        }
-        .orbital-button {
-            background: #334155;
-            padding: 12px;
-            border-radius: 10px;
-            font-size: 14px;
-            border: 1px solid #475569;
-            flex: 1 1 70px;
-            text-align: center;
-            color: white;
-        }
-        .orbital-button.active {
-            background: #3b82f6;
-            border-color: #60a5fa;
-            font-weight: bold;
-        }
+
+        .orb-btn { background: #1e293b; border: 1px solid #334155; padding: 12px; border-radius: 8px; color: #94a3b8; font-size: 14px; cursor: pointer; transition: 0.2s; }
+        .orb-btn.active { background: #3b82f6; border-color: #60a5fa; color: white; box-shadow: 0 0 15px rgba(59, 130, 246, 0.5); }
+        
+        input[type=range] { width: 100%; height: 35px; touch-action: none; }
+        select { background: #1e293b; color: white; padding: 12px; border-radius: 8px; width: 100%; border: 1px solid #334155; }
     </style>
 </head>
 <body>
 
+<div id="app">
     <div id="canvas-container">
-        <div class="absolute top-4 left-4 z-10 pointer-events-none">
-            <h1 class="text-xl font-bold text-white drop-shadow-md">3D Orbitaler</h1>
-            <p class="text-xs text-blue-300">n = 1 til 6</p>
+        <div class="absolute top-4 left-4 z-10">
+            <h1 class="text-xl font-bold text-white">Brintatom Orbitaler</h1>
+            <div id="status" class="text-xs text-blue-400">Venter på valg...</div>
         </div>
-        <div id="loader" class="hidden absolute inset-0 flex items-center justify-center bg-black/50 z-20">
-            <span class="bg-blue-600 px-4 py-2 rounded-full text-xs">Beregner...</span>
+        <div id="loader" class="hidden absolute inset-0 flex items-center justify-center bg-black/40 z-20">
+            <div class="bg-blue-600 px-6 py-3 rounded-full text-sm font-bold animate-pulse">Genererer 150.000 positioner...</div>
         </div>
     </div>
 
     <div id="ui-panel">
         <div class="space-y-6">
             <div>
-                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-2">Hovedkvantetal (n)</label>
-                <select id="n-select" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-4 text-white outline-none">
-                    <option value="1">n = 1</option>
+                <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Hovedkvantetal (n)</label>
+                <select id="n-select" class="mt-1">
+                    <option value="1">n = 1 (Lille / Tæt)</option>
                     <option value="2">n = 2</option>
                     <option value="3">n = 3</option>
                     <option value="4">n = 4</option>
                     <option value="5">n = 5</option>
-                    <option value="6">n = 6</option>
+                    <option value="6">n = 6 (Kæmpe / Udvidet)</option>
                 </select>
             </div>
 
             <div>
-                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-3">Vælg Orbital</label>
-                <div id="orbital-button-container" class="flex flex-wrap gap-2"></div>
+                <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Underskal (l)</label>
+                <div id="l-btns" class="grid grid-cols-3 gap-2 mt-2"></div>
             </div>
 
-            <div class="bg-slate-900/50 p-5 rounded-2xl border border-slate-800">
-                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-4">Rotation</label>
-                <input id="x-slider" type="range" min="0" max="6.28" value="0" step="0.01">
-                <input id="y-slider" type="range" min="0" max="6.28" value="0" step="0.01">
-                <input id="z-slider" type="range" min="0" max="6.28" value="0" step="0.01">
+            <div class="pt-4 border-t border-slate-800">
+                <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Rotation & Zoom</label>
+                <div class="mt-2 space-y-1">
+                    <input id="rot-x" type="range" min="0" max="6.28" step="0.01" value="0">
+                    <input id="rot-y" type="range" min="0" max="6.28" step="0.01" value="0">
+                </div>
             </div>
-            
-            <p class="text-[10px] text-slate-500 text-center">Brug én finger til rotation, to til zoom.</p>
+
+            <p class="text-[10px] text-slate-500 italic">Info: Højere n-værdier kræver flere beregninger. Hvis din mobil er langsom, så vent 2-3 sekunder efter klik.</p>
         </div>
     </div>
+</div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
-    <script>
-        // Almindelig JavaScript uden 'import'
-        var scene, camera, renderer, controls, points;
-        var container = document.getElementById('canvas-container');
-        var loader = document.getElementById('loader');
+<script>
+    var scene, camera, renderer, controls, points;
+    var container = document.getElementById('canvas-container');
+    var loader = document.getElementById('loader');
+    var status = document.getElementById('status');
 
-        var waveFunctions = {
-            '1s': function(r, z, x, y) { return Math.exp(-2*r); },
-            '2s': function(r, z, x, y) { return Math.pow(2-r, 2) * Math.exp(-r); },
-            '2p': function(r, z, x, y) { return z*z * Math.exp(-r); },
-            '3s': function(r, z, x, y) { return Math.pow(27-18*r+2*r*r, 2) * Math.exp(-2*r/3); },
-            '3p': function(r, z, x, y) { return z*z * Math.pow(6-r, 2) * Math.exp(-2*r/3); },
-            '3d': function(r, z, x, y) { return (x*y*x*y) * Math.exp(-2*r/3); },
-            '4s': function(r, z, x, y) { return Math.exp(-r/2); },
-            '4p': function(r, z, x, y) { return z*z * Math.exp(-r/2); },
-            '4d': function(r, z, x, y) { return (x*x*y*y) * Math.exp(-r/2); },
-            '4f': function(r, z, x, y) { return (x*y*z*x*y*z) * Math.exp(-r/2); },
-            '5s': function(r, z, x, y) { return Math.exp(-0.4*r); },
-            '6s': function(r, z, x, y) { return Math.exp(-0.33*r); }
-        };
+    // Forbedrede bølgefunktioner
+    var waveFuncs = {
+        '1s': function(r, z, x, y) { return Math.exp(-2*r); },
+        '2s': function(r, z, x, y) { return Math.pow(2-r, 2) * Math.exp(-r); },
+        '2p': function(r, z, x, y) { return z*z * Math.exp(-r); },
+        '3s': function(r, z, x, y) { return Math.pow(27-18*r+2*r*r, 2) * Math.exp(-2*r/3); },
+        '3p': function(r, z, x, y) { return z*z * Math.pow(6-r, 2) * Math.exp(-2*r/3); },
+        '3d': function(r, z, x, y) { return (x*y*x*y) * Math.exp(-2*r/3); },
+        '4s': function(r, z, x, y) { return Math.pow(1-0.7*r+0.1*r*r, 2) * Math.exp(-r/2); },
+        '4p': function(r, z, x, y) { return z*z * Math.exp(-r/2); },
+        '4d': function(r, z, x, y) { return (x*y*x*y) * Math.exp(-r/2); },
+        '4f': function(r, z, x, y) { return (x*y*z*x*y*z) * Math.exp(-r/2); },
+        '5s': function(r, z, x, y) { return Math.exp(-0.4*r); },
+        '6s': function(r, z, x, y) { return Math.exp(-0.33*r); }
+    };
 
-        var nParams = {
-            '1': { box: 15, maxP: 1.0, sub: ['1s'] },
-            '2': { box: 30, maxP: 0.5, sub: ['2s', '2p'] },
-            '3': { box: 60, maxP: 0.2, sub: ['3s', '3p', '3d'] },
-            '4': { box: 100, maxP: 0.1, sub: ['4s', '4p', '4d', '4f'] },
-            '5': { box: 150, maxP: 0.05, sub: ['5s'] },
-            '6': { box: 210, maxP: 0.02, sub: ['6s'] }
-        };
+    var nConfig = {
+        '1': { box: 12, maxP: 1.0, sub: ['1s'] },
+        '2': { box: 25, maxP: 0.6, sub: ['2s', '2p'] },
+        '3': { box: 55, maxP: 0.3, sub: ['3s', '3p', '3d'] },
+        '4': { box: 95, maxP: 0.15, sub: ['4s', '4p', '4d', '4f'] },
+        '5': { box: 145, maxP: 0.08, sub: ['5s'] },
+        '6': { box: 210, maxP: 0.04, sub: ['6s'] }
+    };
 
-        function init() {
-            scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 3000);
+    function init() {
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 5000);
+        
+        renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio > 1 ? 2 : 1);
+        container.appendChild(renderer.domElement);
+
+        controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        setupUI();
+        updateBtns('1');
+        generate('1s');
+        animate();
+    }
+
+    function generate(name) {
+        loader.classList.remove('hidden');
+        status.innerText = "Beregner sky for " + name + "...";
+
+        // Timeout sikrer at loaderen vises før browseren fryser i beregningen
+        setTimeout(function() {
+            if (points) { scene.remove(points); points.geometry.dispose(); points.material.dispose(); }
             
-            renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true });
-            renderer.setSize(container.clientWidth, container.clientHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            container.appendChild(renderer.domElement);
+            var n = name[0];
+            var conf = nConfig[n];
+            var func = waveFuncs[name] || waveFuncs[n+'s'];
+            
+            // HER SKRUER VI OP: 150.000 positioner!
+            var targetCount = 150000; 
+            var positions = new Float32Array(targetCount * 3);
+            var colors = new Float32Array(targetCount * 3);
+            var color = new THREE.Color();
 
-            controls = new THREE.OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
+            var found = 0;
+            var attempts = 0;
+            var box = conf.box;
 
-            setupUI();
-            updateButtons('1');
-            generate('1s');
-            animate();
-        }
-
-        function generate(name) {
-            loader.classList.remove('hidden');
-            setTimeout(function() {
-                if (points) { scene.remove(points); points.geometry.dispose(); points.material.dispose(); }
+            while (found < targetCount && attempts < 2000000) {
+                var x = (Math.random()-0.5)*box;
+                var y = (Math.random()-0.5)*box;
+                var z = (Math.random()-0.5)*box;
+                var r = Math.sqrt(x*x + y*y + z*z);
                 
-                var n = name[0];
-                var p = nParams[n];
-                var count = window.innerWidth < 768 ? 20000 : 60000;
-                var positions = [];
-                var colors = [];
-                var func = waveFunctions[name] || waveFunctions[n + 's'];
-                var color = new THREE.Color();
+                if (func(r, z, x, y) > Math.random() * conf.maxP) {
+                    var idx = found * 3;
+                    positions[idx] = x;
+                    positions[idx+1] = y;
+                    positions[idx+2] = z;
 
-                for (var i = 0; i < count; i++) {
-                    var x = (Math.random()-0.5)*p.box;
-                    var y = (Math.random()-0.5)*p.box;
-                    var z = (Math.random()-0.5)*p.box;
-                    var r = Math.sqrt(x*x + y*y + z*z);
-                    
-                    if (func(r, z, x, y) > Math.random() * p.maxP) {
-                        positions.push(x, y, z);
-                        color.setHSL(0.55 + (z/p.box)*0.1, 0.8, 0.5);
-                        colors.push(color.r, color.g, color.b);
-                    }
+                    // Farve baseret på radius (energi)
+                    color.setHSL(0.55 + (r/box)*0.1, 0.8, 0.5);
+                    colors[idx] = color.r;
+                    colors[idx+1] = color.g;
+                    colors[idx+2] = color.b;
+                    found++;
                 }
+                attempts++;
+            }
 
-                var geo = new THREE.BufferGeometry();
-                geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-                geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-                
-                points = new THREE.Points(geo, new THREE.PointsMaterial({
-                    size: n > 3 ? 0.4 : 0.18, vertexColors: true, transparent: true, opacity: 0.7
-                }));
-                scene.add(points);
-                camera.position.z = p.box * 1.5;
-                loader.classList.add('hidden');
-            }, 50);
-        }
+            var geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.BufferAttribute(positions.slice(0, found * 3), 3));
+            geo.setAttribute('color', new THREE.BufferAttribute(colors.slice(0, found * 3), 3));
+            
+            // Additive Blending gør skyen tættere at se på
+            points = new THREE.Points(geo, new THREE.PointsMaterial({
+                size: n > 3 ? 0.45 : 0.25, 
+                vertexColors: true, 
+                transparent: true, 
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            }));
+            
+            scene.add(points);
+            camera.position.z = box * 1.6;
+            loader.classList.add('hidden');
+            status.innerText = name + " - " + found.toLocaleString() + " positioner markeret";
+        }, 100);
+    }
 
-        function updateButtons(n) {
-            var btnContainer = document.getElementById('orbital-button-container');
-            btnContainer.innerHTML = '';
-            nParams[n].sub.forEach(function(orb) {
-                var btn = document.createElement('button');
-                btn.className = 'orbital-button' + (orb === n+'s' ? ' active' : '');
-                btn.innerText = orb;
-                btn.onclick = function() {
-                    document.querySelectorAll('.orbital-button').forEach(function(b) { b.classList.remove('active'); });
-                    btn.classList.add('active');
-                    generate(orb);
-                };
-                btnContainer.appendChild(btn);
-            });
-        }
-
-        function setupUI() {
-            var nSel = document.getElementById('n-select');
-            nSel.onchange = function() { updateButtons(nSel.value); generate(nSel.value+'s'); };
-
-            var rx = document.getElementById('x-slider');
-            var ry = document.getElementById('y-slider');
-            var rz = document.getElementById('z-slider');
-            var upRot = function() { if(points) points.rotation.set(rx.value, ry.value, rz.value); };
-            rx.oninput = upRot; ry.oninput = upRot; rz.oninput = upRot;
-
-            window.onresize = function() {
-                camera.aspect = container.clientWidth / container.clientHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(container.clientWidth, container.clientHeight);
+    function updateBtns(n) {
+        var container = document.getElementById('l-btns');
+        container.innerHTML = '';
+        nConfig[n].sub.forEach(function(s) {
+            var b = document.createElement('button');
+            b.className = 'orb-btn' + (s === n+'s' ? ' active' : '');
+            b.innerText = s;
+            b.onclick = function() {
+                document.querySelectorAll('.orb-btn').forEach(function(x) { x.classList.remove('active'); });
+                b.classList.add('active');
+                generate(s);
             };
-        }
+            container.appendChild(b);
+        });
+    }
 
-        function animate() {
-            requestAnimationFrame(animate);
-            if (controls) controls.update();
-            renderer.render(scene, camera);
-        }
+    function setupUI() {
+        var nSel = document.getElementById('n-select');
+        nSel.onchange = function() { updateBtns(nSel.value); generate(nSel.value+'s'); };
 
-        init();
-    </script>
+        var rx = document.getElementById('rot-x');
+        var ry = document.getElementById('rot-y');
+        var upRot = function() { if(points) points.rotation.set(rx.value, ry.value, 0); };
+        rx.oninput = upRot; ry.oninput = upRot;
+
+        window.onresize = function() {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        };
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        if (controls) controls.update();
+        renderer.render(scene, camera);
+    }
+
+    init();
+</script>
 </body>
 </html>
