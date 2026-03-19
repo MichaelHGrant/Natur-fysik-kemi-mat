@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Brintatom - Komplet & Stabil Model</title>
+    <title>Brintatom - Perfekt Sfærisk Model</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { font-family: 'Inter', sans-serif; background: #020617; color: white; margin: 0; overflow: hidden; }
@@ -16,7 +16,7 @@
             #ui-panel { width: 400px; height: 100%; border-top: none; border-left: 2px solid #1e293b; }
         }
 
-        select { background: #1e293b; color: white; border: 1px solid #334155; border-radius: 8px; padding: 10px; width: 100%; font-size: 16px; }
+        select { background: #1e293b; color: white; border: 1px solid #334155; border-radius: 8px; padding: 10px; width: 100%; font-size: 16px; margin-top: 4px; }
         .orb-btn { background: #1e293b; border: 1px solid #334155; padding: 8px; border-radius: 6px; color: #94a3b8; font-size: 12px; cursor: pointer; text-align: center; }
         .orb-btn.active { background: #3b82f6; border-color: #60a5fa; color: white; font-weight: bold; }
         input[type=range] { width: 100%; height: 30px; touch-action: none; }
@@ -27,12 +27,12 @@
 
 <div id="app">
     <div id="canvas-container">
-        <div class="absolute top-4 left-4 z-10 bg-black/40 p-2 rounded-lg pointer-events-none">
-            <h1 class="text-lg font-bold text-white">Orbital Model</h1>
-            <p id="label-info" class="text-blue-400 font-mono text-xs">Vælg orbital...</p>
+        <div class="absolute top-4 left-4 z-10 bg-black/50 p-3 rounded-xl border border-white/10 pointer-events-none">
+            <h1 class="text-lg font-bold text-white">Hydrogen Orbitaler</h1>
+            <p id="label-info" class="text-blue-400 font-mono text-xs">Indlæser...</p>
         </div>
         <div id="loader" class="hidden absolute inset-0 flex items-center justify-center bg-black/60 z-50">
-            <div class="bg-blue-600 px-4 py-2 rounded-full text-xs font-bold animate-pulse">Beregner...</div>
+            <div class="text-blue-400 font-bold animate-pulse text-sm uppercase tracking-widest">Genererer jævn elektronsky...</div>
         </div>
     </div>
 
@@ -49,7 +49,7 @@
                 </div>
                 <div>
                     <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Energi (E<sub>n</sub>)</label>
-                    <div class="bg-slate-900 p-2 rounded border border-slate-800 text-blue-400 font-mono text-sm mt-1" id="energy-val">-13.6 eV</div>
+                    <div class="bg-slate-900 p-2.5 rounded-lg border border-slate-800 text-blue-400 font-mono text-sm mt-1" id="energy-val">-13.60 eV</div>
                 </div>
             </div>
 
@@ -59,20 +59,21 @@
             </div>
 
             <div>
-                <h3 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Synligt Spektrum (Balmer)</h3>
-                <div id="spec-box" class="h-10 bg-black rounded relative border border-slate-800 cursor-pointer"></div>
+                <h3 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Klik på linje (Balmer n&rarr;2)</h3>
+                <div id="spec-box" class="h-12 bg-black rounded-lg relative border border-slate-800 cursor-pointer overflow-hidden"></div>
             </div>
 
             <div class="pt-4 border-t border-slate-800">
-                <label class="text-[10px] font-bold text-slate-500 uppercase mb-2 block">Rotation</label>
+                <label class="text-[10px] font-bold text-slate-500 uppercase mb-2 block text-center">Rotation & Zoom</label>
                 <div class="grid grid-cols-2 gap-4">
                     <input id="rot-x" type="range" min="0" max="6.28" step="0.1">
                     <input id="rot-y" type="range" min="0" max="6.28" step="0.1">
                 </div>
             </div>
 
-            <div class="text-[9px] text-slate-600 text-center italic">
-                Blå = Positiv fase (+) | Rød = Negativ fase (-)
+            <div class="flex justify-between text-[10px] text-slate-500 px-2 italic">
+                <span class="flex items-center gap-1"><span class="w-2 h-2 bg-blue-500 rounded-full"></span> Fase (+)</span>
+                <span class="flex items-center gap-1"><span class="w-2 h-2 bg-red-500 rounded-full"></span> Fase (-)</span>
             </div>
         </div>
     </div>
@@ -87,26 +88,26 @@
     const loader = document.getElementById('loader');
     const lNames = ['s', 'p', 'd', 'f', 'g', 'h'];
 
-    // MATEMATIK: Alle bølgefunktioner fra s til h
+    // MATEMATIK: Jævn fordeling uden pol-artefakter (spyd)
     const orbitalFuncs = {
         's': (r, th, ph, n) => {
             let lag = 1;
             if(n==2) lag = (1 - 0.5*r);
             if(n==3) lag = (1 - 0.66*r + 0.07*r*r);
-            if(n>=4) lag = (1 - 0.2*r);
+            if(n>=4) lag = (1 - 0.15*r);
             return lag * Math.exp(-r/n);
         },
         'p': (r, th, ph, n) => (r * Math.exp(-r/n)) * Math.cos(th),
         'd': (r, th, ph, n) => (r*r * Math.exp(-r/n)) * (3*Math.cos(th)**2 - 1),
         'f': (r, th, ph, n) => (r**3 * Math.exp(-r/n)) * (5*Math.cos(th)**3 - 3*Math.cos(th)),
-        'g': (r, th, ph, n) => (r**4 * Math.exp(-r/n)) * Math.sin(th)**4 * Math.cos(4*ph),
-        'h': (r, th, ph, n) => (r**5 * Math.exp(-r/n)) * Math.sin(th)**5 * Math.cos(5*ph)
+        'g': (r, th, ph, n) => (r**4 * Math.exp(-r/n)) * Math.pow(Math.sin(th), 4) * Math.cos(4*ph),
+        'h': (r, th, ph, n) => (r**5 * Math.exp(-r/n)) * Math.pow(Math.sin(th), 5) * Math.cos(5*ph)
     };
 
     function init() {
         scene = new THREE.Scene();
         camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 5000);
-        camera.position.z = 50;
+        camera.position.z = 60;
 
         renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true });
         renderer.setSize(container.clientWidth, container.clientHeight);
@@ -131,7 +132,7 @@
         setTimeout(() => {
             if (points) { scene.remove(points); points.geometry.dispose(); points.material.dispose(); }
             
-            const count = window.innerWidth < 768 ? 80000 : 150000;
+            const count = window.innerWidth < 768 ? 100000 : 200000;
             const pos = new Float32Array(count * 3);
             const cols = new Float32Array(count * 3);
             const func = orbitalFuncs[lType] || orbitalFuncs['s'];
@@ -140,21 +141,22 @@
             const color = new THREE.Color();
             let found = 0, attempts = 0;
 
-            // FAIL-SAFE: Kør kun i max 100ms for at undgå frys
             const startTime = Date.now();
 
-            while (found < count && attempts < 2000000) {
-                if (attempts % 5000 === 0 && (Date.now() - startTime) > 100) break;
+            while (found < count && attempts < 5000000) {
+                // FAIL-SAFE for mobil
+                if (attempts % 10000 === 0 && (Date.now() - startTime) > 150) break;
 
+                // FIX FOR SPYD-EFFEKT: Jævn sfærisk sampling
                 let r = Math.random() * maxR;
-                let th = Math.random() * Math.PI;
+                let u = Math.random(); 
+                let th = Math.acos(1 - 2 * u); // Dette fjerner pol-klumpning!
                 let ph = Math.random() * Math.PI * 2;
 
                 let val = func(r, th, ph, n);
-                let prob = val * val * (r*r); // r^2 er volume elementet
+                let prob = val * val * (r*r); 
 
-                // Dynamisk sandsynligheds-skalering så alle n-værdier er tydelige
-                const threshold = (n === 1) ? 0.4 : (0.1 / (n*0.5));
+                const threshold = (n === 1) ? 0.3 : (0.05 / (n*0.5));
 
                 if (prob > Math.random() * threshold) {
                     let idx = found * 3;
@@ -174,7 +176,7 @@
             geo.setAttribute('color', new THREE.BufferAttribute(cols.slice(0, found * 3), 3));
             
             points = new THREE.Points(geo, new THREE.PointsMaterial({ 
-                size: n * 0.15, vertexColors: true, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending 
+                size: n * 0.16, vertexColors: true, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending 
             }));
             scene.add(points);
             camera.position.z = maxR * 1.3;
@@ -223,12 +225,13 @@
     function drawSpectrum() {
         const box = document.getElementById('spec-box');
         const lines = [
-            {n:3, c:'#ff0000', nm:656}, {n:4, c:'#00ffff', nm:486}, 
-            {n:5, c:'#4b0082', nm:434}, {n:6, c:'#8b00ff', nm:410}
+            {n:3, c:'#ff0000', label:'Hα'}, {n:4, c:'#00ffff', label:'Hβ'}, 
+            {n:5, c:'#4b0082', label:'Hγ'}, {n:6, c:'#8b00ff', label:'Hδ'}
         ];
         lines.forEach(l => {
             const d = document.createElement('div');
-            d.className = 'spec-line'; d.style.backgroundColor = l.c; d.style.left = (l.n-2)*18 + '%';
+            d.className = 'spec-line'; d.style.backgroundColor = l.c; d.style.left = (l.n-2.5)*18 + '%';
+            d.style.boxShadow = `0 0 10px ${l.c}`;
             d.onclick = () => { document.getElementById('n-val').value = l.n; updateModel(l.n + 's'); };
             box.appendChild(d);
         });
