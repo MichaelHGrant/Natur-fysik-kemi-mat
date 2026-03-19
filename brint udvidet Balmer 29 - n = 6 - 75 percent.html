@@ -2,7 +2,258 @@
 <html lang="da">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Brintatom - Præcis Kvantemodel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #020617; color: white; margin: 0; overflow: hidden; }
+        #app { display: flex; flex-direction: column; height: 100vh; width: 100vw; }
+        #canvas-container { flex: 1; position: relative; background: #000; }
+        #ui-panel { height: 55%; background: #0f172a; border-top: 2px solid #1e293b; padding: 15px; overflow-y: auto; }
+        
+        @media (min-width: 768px) {
+            #app { flex-direction: row; }
+            #ui-panel { width: 450px; height: 100%; border-top: none; border-left: 2px solid #1e293b; }
+        }
+
+        select, button { background: #1e293b; color: white; border: 1px solid #334155; border-radius: 8px; padding: 10px; outline: none; }
+        .active-line { border: 2px solid #3b82f6; box-shadow: 0 0 15px #3b82f6; }
+        input[type=range] { width: 100%; height: 35px; touch-action: none; cursor: pointer; }
+        
+        .spec-line { position: absolute; width: 3px; height: 100%; cursor: pointer; transition: 0.2s; border-radius: 2px; }
+        .spec-line:hover { width: 8px; z-index: 100; transform: scaleY(1.1); }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <div id="canvas-container">
+        <div class="absolute top-4 left-4 z-10 pointer-events-none">
+            <h1 class="text-xl font-bold">Kvantemekanisk Model</h1>
+            <p id="orbital-name" class="text-blue-400 font-mono text-sm">1s orbital (m=0)</p>
+        </div>
+        <div id="loader" class="hidden absolute inset-0 flex items-center justify-center bg-black/80 z-50">
+            <div class="text-center">
+                <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                <p class="text-blue-400 text-xs font-bold uppercase tracking-widest">Genererer bølgefunktion...</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="ui-panel">
+        <div class="space-y-6">
+            <div class="flex justify-between items-center bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+                <div>
+                    <span class="text-[10px] text-slate-500 uppercase font-bold">Energi</span>
+                    <p id="energy-val" class="text-lg font-mono text-blue-400">-13.60 eV</p>
+                </div>
+                <div class="text-right">
+                    <span class="text-[10px] text-slate-500 uppercase font-bold">Bohr Radius</span>
+                    <p class="text-lg font-mono text-white"><span id="radius-val">0.53</span> Å</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2">
+                <div>
+                    <label class="text-[9px] font-bold text-slate-500 uppercase mb-1 block">n (Skal)</label>
+                    <select id="n-select" class="w-full">
+                        <option value="1">1 (K)</option><option value="2">2 (L)</option>
+                        <option value="3">3 (M)</option><option value="4">4 (N)</option>
+                        <option value="5">5 (O)</option><option value="6">6 (P)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-[9px] font-bold text-slate-500 uppercase mb-1 block">l (Sub)</label>
+                    <select id="l-select" class="w-full"></select>
+                </div>
+                <div>
+                    <label class="text-[9px] font-bold text-slate-500 uppercase mb-1 block">m (Mag)</label>
+                    <select id="m-select" class="w-full"></select>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <h3 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Balmer Serien (Synlig n &rarr; 2)</h3>
+                <div id="balmer-spec" class="h-10 bg-black rounded relative border border-slate-800 overflow-visible"></div>
+                
+                <h3 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Lyman (UV) & Paschen (IR)</h3>
+                <div id="other-spec" class="h-10 bg-black rounded relative border border-slate-800"></div>
+            </div>
+
+            <div class="pt-2 border-t border-slate-800">
+                <label class="text-[10px] font-bold text-slate-500 uppercase mb-2 block">Rotation (X / Y)</label>
+                <div class="flex gap-4">
+                    <input id="rot-x" type="range" min="0" max="6.28" step="0.01" value="0">
+                    <input id="rot-y" type="range" min="0" max="6.28" step="0.01" value="0">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+<script>
+    var scene, camera, renderer, controls, points;
+    const container = document.getElementById('canvas-container');
+    const loader = document.getElementById('loader');
+
+    const Rh = 13.6057; 
+    const lNames = ['s', 'p', 'd', 'f', 'g', 'h'];
+
+    // PRÆCISE BØLGEFUNKTIONER (inkl. fase)
+    const waveFunctions = {
+        's': (r, x, y, z, n) => Math.exp(-r / n),
+        'p': (r, x, y, z, n, m) => {
+            if (m == 0) return z * Math.exp(-r / n);
+            if (m == 1) return x * Math.exp(-r / n);
+            return y * Math.exp(-r / n);
+        },
+        'd': (r, x, y, z, n, m) => {
+            if (m == 0) return (2*z*z - x*x - y*y) * Math.exp(-r / n);
+            if (m == 1) return (x * z) * Math.exp(-r / n);
+            if (m == 2) return (x*x - y*y) * Math.exp(-r / n);
+            if (m == -1) return (y * z) * Math.exp(-r / n);
+            return (x * y) * Math.exp(-r / n);
+        },
+        'f': (r, x, y, z, n, m) => (x * y * z) * Math.exp(-r / n)
+    };
+
+    function init() {
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 5000);
+        camera.position.z = 40;
+
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        container.appendChild(renderer.domElement);
+
+        controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.enablePan = false; // Låser atomet i midten
+        controls.target.set(0, 0, 0);
+
+        setupUI();
+        drawSpectrums();
+        updateModel();
+        animate();
+    }
+
+    function generatePoints(n, l, m) {
+        loader.classList.remove('hidden');
+        setTimeout(() => {
+            if (points) { scene.remove(points); points.geometry.dispose(); points.material.dispose(); }
+            
+            const box = n * n * 8; // Øget boks-størrelse for at undgå kube-effekt
+            const count = 150000;
+            const pos = new Float32Array(count * 3);
+            const cols = new Float32Array(count * 3);
+            
+            const lType = lNames[l] || 's';
+            const func = waveFunctions[lType] || waveFunctions['s'];
+            
+            // maxP skalering for at gøre s-orbitalen rund
+            const maxP = Math.pow(n, 2) * 0.5;
+
+            let found = 0, attempts = 0;
+            while (found < count && attempts < 5000000) {
+                let x = (Math.random()-0.5)*box, y = (Math.random()-0.5)*box, z = (Math.random()-0.5)*box;
+                let r = Math.sqrt(x*x + y*y + z*z);
+                
+                let val = func(r, x, y, z, n, m);
+                let prob = val * val; // Sandsynlighedstæthed
+
+                if (prob > Math.random() * maxP) {
+                    let idx = found * 3;
+                    pos[idx] = x; pos[idx+1] = y; pos[idx+2] = z;
+                    
+                    // Farve efter fase
+                    if (val > 0) { cols[idx]=0.2; cols[idx+1]=0.6; cols[idx+2]=1; }
+                    else { cols[idx]=1; cols[idx+1]=0.3; cols[idx+2]=0.3; }
+                    found++;
+                }
+                attempts++;
+            }
+            
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.BufferAttribute(pos.slice(0, found * 3), 3));
+            geo.setAttribute('color', new THREE.BufferAttribute(cols.slice(0, found * 3), 3));
+            
+            points = new THREE.Points(geo, new THREE.PointsMaterial({ 
+                size: n * 0.12, vertexColors: true, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending 
+            }));
+            scene.add(points);
+            camera.position.z = box * 1.3;
+            loader.classList.add('hidden');
+        }, 30);
+    }
+
+    function updateModel() {
+        const n = parseInt(document.getElementById('n-select').value);
+        const l = parseInt(document.getElementById('l-select').value) || 0;
+        const m = parseInt(document.getElementById('m-select').value) || 0;
+        
+        document.getElementById('energy-val').innerText = (-Rh / (n * n)).toFixed(2) + " eV";
+        document.getElementById('radius-val').innerText = (0.529 * n * n).toFixed(2);
+        document.getElementById('orbital-name').innerText = n + lNames[l] + " orbital (m=" + m + ")";
+        
+        generatePoints(n, l, m);
+    }
+
+    function setupUI() {
+        const nSel = document.getElementById('n-select'), lSel = document.getElementById('l-select'), mSel = document.getElementById('m-select');
+
+        const updateL = () => {
+            const n = parseInt(nSel.value);
+            lSel.innerHTML = '';
+            for(let i=0; i<n; i++) lSel.innerHTML += `<option value="${i}">${lNames[i]}</option>`;
+            updateM();
+        };
+
+        const updateM = () => {
+            const l = parseInt(lSel.value);
+            mSel.innerHTML = '';
+            for(let i=-l; i<=l; i++) mSel.innerHTML += `<option value="${i}">${i}</option>`;
+            updateModel();
+        };
+
+        nSel.onchange = updateL; lSel.onchange = updateM; mSel.onchange = updateModel;
+        updateL();
+
+        const rx = document.getElementById('rot-x'), ry = document.getElementById('rot-y');
+        const upRot = () => { if(points) points.rotation.set(rx.value, ry.value, 0); controls.autoRotate = false; };
+        rx.oninput = upRot; ry.oninput = upRot;
+    }
+
+    function drawSpectrums() {
+        const balmer = document.getElementById('balmer-spec'), other = document.getElementById('other-spec');
+        const lines = [
+            { n: 3, c: '#ff3333', label: '656nm', s: 'b' }, { n: 4, c: '#33ffff', label: '486nm', s: 'b' },
+            { n: 5, c: '#4b0082', label: '434nm', s: 'b' }, { n: 6, c: '#8b00ff', label: '410nm', s: 'b' },
+            { n: 2, c: '#64748b', label: 'Lyman', s: 'o' }, { n: 4, c: '#b91c1c', label: 'Paschen', s: 'o' }
+        ];
+
+        lines.forEach(l => {
+            const line = document.createElement('div');
+            line.className = 'spec-line';
+            line.style.backgroundColor = l.c;
+            line.style.left = (l.s == 'b' ? (l.n-2)*18 : l.n*12) + '%';
+            line.onclick = () => { document.getElementById('n-select').value = l.n; document.getElementById('n-select').dispatchEvent(new Event('change')); };
+            (l.s == 'b' ? balmer : other).appendChild(line);
+        });
+    }
+
+    function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); }
+    init();
+</script>
+</body>
+</html>="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Brintatom - Komplet Model (n, l, m)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
