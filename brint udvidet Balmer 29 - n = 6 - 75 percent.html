@@ -3,24 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Brintatom - Ultra High Density Model</title>
+    <title>Brintatom - Auto-Exposure Model</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { font-family: 'Inter', sans-serif; background: #020617; color: white; margin: 0; overflow: hidden; }
         #app { display: flex; flex-direction: column; height: 100vh; width: 100vw; }
         #canvas-container { flex: 1; position: relative; background: #000; }
-        #ui-panel { height: 50%; background: #0f172a; border-top: 2px solid #1e293b; padding: 20px; overflow-y: auto; }
+        #ui-panel { height: 45%; background: #0f172a; border-top: 2px solid #1e293b; padding: 20px; overflow-y: auto; }
         
         @media (min-width: 768px) {
             #app { flex-direction: row; }
             #ui-panel { width: 420px; height: 100%; border-top: none; border-left: 2px solid #1e293b; }
         }
 
-        select, button { background: #1e293b; color: white; border: 1px solid #334155; border-radius: 8px; padding: 12px; outline: none; width: 100%; }
+        select, button { background: #1e293b; color: white; border: 1px solid #334155; border-radius: 8px; padding: 12px; outline: none; }
         input[type=range] { width: 100%; height: 35px; touch-action: none; cursor: pointer; }
-        
-        .spec-line { position: absolute; width: 4px; height: 100%; cursor: pointer; border-radius: 2px; transition: 0.2s; }
-        .spec-line:hover { transform: scaleX(2); z-index: 50; }
+        .spec-line { position: absolute; width: 4px; height: 100%; cursor: pointer; border-radius: 2px; }
     </style>
 </head>
 <body>
@@ -28,33 +26,33 @@
 <div id="app">
     <div id="canvas-container">
         <div class="absolute top-4 left-4 z-10 pointer-events-none">
-            <h1 class="text-xl font-bold">Kvantemekanisk Model</h1>
-            <p id="orbital-label" class="text-blue-400 font-mono text-sm">1s (m=0)</p>
+            <h1 class="text-xl font-bold">Orbital Visning</h1>
+            <p id="info-text" class="text-blue-400 font-mono text-xs">Indlæser...</p>
         </div>
         <div id="loader" class="hidden absolute inset-0 flex items-center justify-center bg-black/80 z-50">
             <div class="text-center">
                 <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                <p id="loader-text" class="text-blue-400 text-xs font-bold uppercase tracking-widest">Indlæser 500.000 punkter...</p>
+                <p class="text-blue-400 text-xs font-bold uppercase tracking-widest">Optimerer eksponering...</p>
             </div>
         </div>
     </div>
 
     <div id="ui-panel">
-        <div class="space-y-6">
+        <div class="space-y-5">
             <div class="grid grid-cols-2 gap-4 bg-slate-900/50 p-4 rounded-xl border border-slate-800">
-                <div><span class="text-[9px] text-slate-500 uppercase font-bold">Energi (E)</span><p id="energy-val" class="font-mono text-blue-400">-13.60 eV</p></div>
-                <div class="text-right"><span class="text-[9px] text-slate-500 uppercase font-bold">Radius (r)</span><p class="font-mono text-white"><span id="radius-val">0.53</span> Å</p></div>
+                <div><span class="text-[9px] text-slate-500 uppercase font-bold">Energiniveau</span><p id="energy-val" class="font-mono text-blue-400">-13.6 eV</p></div>
+                <div class="text-right"><span class="text-[9px] text-slate-500 uppercase font-bold">Skal</span><p id="shell-val" class="font-mono text-white">K-skal</p></div>
             </div>
 
-            <div class="grid grid-cols-3 gap-3">
+            <div class="grid grid-cols-3 gap-2">
                 <div><label class="text-[9px] font-bold text-slate-500 uppercase mb-1 block">n</label><select id="n-select"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select></div>
                 <div><label class="text-[9px] font-bold text-slate-500 uppercase mb-1 block">l</label><select id="l-select"></select></div>
                 <div><label class="text-[9px] font-bold text-slate-500 uppercase mb-1 block">m</label><select id="m-select"></select></div>
             </div>
 
-            <div class="space-y-4">
-                <h3 class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Interaktivt Spektrum (Klik på linjer)</h3>
-                <div id="balmer-spec" class="h-10 bg-black rounded relative border border-slate-800 overflow-visible"></div>
+            <div class="space-y-2">
+                <h3 class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Interaktivt Spektrum</h3>
+                <div id="balmer-spec" class="h-8 bg-black rounded relative border border-slate-800"></div>
             </div>
 
             <div class="pt-4 border-t border-slate-800">
@@ -76,28 +74,32 @@
     const container = document.getElementById('canvas-container');
     const loader = document.getElementById('loader');
     const lNames = ['s', 'p', 'd', 'f', 'g', 'h'];
+    const shells = ['-', 'K', 'L', 'M', 'N', 'O', 'P'];
 
-    // Bølgefunktioner (Matematisk korrekt fase)
+    // Matematiske bølgefunktioner inkl. noder
     const waveFuncs = {
-        's': (r, x, y, z, n) => Math.exp(-r / n),
+        's': (r, x, y, z, n) => {
+            // Tilføjer noder for n > 1 (simplificeret Laguerre polynomium effekt)
+            let node = 1;
+            if (n === 2) node = (1 - r/2);
+            if (n === 3) node = (1 - 2*r/3 + 2*r*r/27);
+            return node * Math.exp(-r / n);
+        },
         'p': (r, x, y, z, n, m) => {
-            if (m == 0) return z * Math.exp(-r/n);
-            if (m == 1) return x * Math.exp(-r/n);
-            return y * Math.exp(-r/n);
+            let node = (n === 3) ? (1 - r/6) : 1;
+            let ang = (m === 0) ? z : (m === 1 ? x : y);
+            return ang * node * Math.exp(-r / n);
         },
         'd': (r, x, y, z, n, m) => {
-            if (m == 0) return (2*z*z - x*x - y*y) * Math.exp(-r/n);
-            if (m == 1) return (x * z) * Math.exp(-r/n);
-            if (m == -1) return (y * z) * Math.exp(-r/n);
-            if (m == 2) return (x*x - y*y) * Math.exp(-r/n);
-            return (x * y) * Math.exp(-r/n);
+            let ang = (m === 0) ? (2*z*z - x*x - y*y) : (m === 1 ? x*z : (m === 2 ? x*x-y*y : x*y));
+            return ang * Math.exp(-r / n);
         }
     };
 
     function init() {
         scene = new THREE.Scene();
         camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 5000);
-        camera.position.z = 40;
+        camera.position.z = 50;
 
         renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setSize(container.clientWidth, container.clientHeight);
@@ -107,7 +109,6 @@
         controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.enablePan = false;
-        controls.target.set(0,0,0);
 
         setupUI();
         drawSpectrum();
@@ -117,38 +118,35 @@
 
     function generatePoints(n, l, m) {
         loader.classList.remove('hidden');
-        const lType = lNames[l];
-        // Hvis s-orbital, brug ekstremt mange punkter
-        const isS = lType === 's';
-        const targetCount = isS ? (window.innerWidth < 768 ? 200000 : 500000) : 150000;
-        
-        document.getElementById('loader-text').innerText = "Genererer " + targetCount.toLocaleString() + " punkter...";
-
         setTimeout(() => {
             if (points) { scene.remove(points); points.geometry.dispose(); points.material.dispose(); }
             
-            const box = n * n * (isS ? 6 : 10); // Tættere boks for s-orbitaler
-            const pos = new Float32Array(targetCount * 3);
-            const cols = new Float32Array(targetCount * 3);
-            const func = waveFuncs[lType] || waveFuncs['s'];
-            const maxP = Math.pow(n, isS ? 1 : 2) * 0.5;
+            const lType = lNames[l];
+            const isS = lType === 's';
+            
+            // AUTO-SCALING LOGIK
+            const box = n * n * (isS ? 8 : 12); 
+            const count = 200000; // Flere punkter for tæthed
+            const pos = new Float32Array(count * 3);
+            const cols = new Float32Array(count * 3);
+            
+            // AUTO-EXPOSURE: Justerer maxP så svage orbitaler bliver synlige
+            const maxP = isS ? (0.2 / n) : (0.1 * Math.pow(n, -2)); 
 
             let found = 0, attempts = 0;
-            const radiusLimit = box / 2;
+            const func = waveFuncs[lType] || waveFuncs['s'];
 
-            while (found < targetCount && attempts < 8000000) {
+            while (found < count && attempts < 6000000) {
                 let x = (Math.random()-0.5)*box, y = (Math.random()-0.5)*box, z = (Math.random()-0.5)*box;
                 let r = Math.sqrt(x*x + y*y + z*z);
-                
-                // SFÆRISK REJECTION: fjerner kube-looket
-                if (r > radiusLimit) { attempts++; continue; }
+                if (r > box/2) { attempts++; continue; }
 
                 let val = func(r, x, y, z, n, m);
                 if (val*val > Math.random() * maxP) {
                     let idx = found * 3;
                     pos[idx] = x; pos[idx+1] = y; pos[idx+2] = z;
-                    if (val > 0) { cols[idx]=0.25; cols[idx+1]=0.55; cols[idx+2]=1; } // Blå (+)
-                    else { cols[idx]=1; cols[idx+1]=0.25; cols[idx+2]=0.25; } // Rød (-)
+                    if (val > 0) { cols[idx]=0.3; cols[idx+1]=0.6; cols[idx+2]=1; }
+                    else { cols[idx]=1; cols[idx+1]=0.3; cols[idx+2]=0.3; }
                     found++;
                 }
                 attempts++;
@@ -158,13 +156,14 @@
             geo.setAttribute('position', new THREE.BufferAttribute(pos.slice(0, found * 3), 3));
             geo.setAttribute('color', new THREE.BufferAttribute(cols.slice(0, found * 3), 3));
             
+            // DYNAMISK PUNKTSTØRRELSE: Vokser med n for at bevare synlighed
             points = new THREE.Points(geo, new THREE.PointsMaterial({ 
-                size: isS ? n*0.1 : n*0.15, vertexColors: true, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending 
+                size: n * 0.22, vertexColors: true, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending 
             }));
             scene.add(points);
-            camera.position.z = box * 1.5;
+            camera.position.z = box * 1.4;
             loader.classList.add('hidden');
-        }, 50);
+        }, 30);
     }
 
     function updateModel() {
@@ -173,15 +172,14 @@
         const m = parseInt(document.getElementById('m-select').value) || 0;
         
         document.getElementById('energy-val').innerText = (-13.6 / (n*n)).toFixed(2) + " eV";
-        document.getElementById('radius-val').innerText = (0.53 * n * n).toFixed(2);
-        document.getElementById('orbital-label').innerText = n + lNames[l] + " (m=" + m + ")";
+        document.getElementById('shell-val').innerText = shells[n] + "-skal";
+        document.getElementById('info-text').innerText = n + lNames[l] + " orbital (m=" + m + ")";
         
         generatePoints(n, l, m);
     }
 
     function setupUI() {
         const nSel = document.getElementById('n-select'), lSel = document.getElementById('l-select'), mSel = document.getElementById('m-select');
-        
         const updateL = () => {
             const n = nSel.value; lSel.innerHTML = '';
             for(let i=0; i<n; i++) lSel.innerHTML += `<option value="${i}">${lNames[i]}</option>`;
@@ -192,27 +190,24 @@
             for(let i=-l; i<=l; i++) mSel.innerHTML += `<option value="${i}">${i}</option>`;
             updateModel();
         };
-
         nSel.onchange = updateL; lSel.onchange = updateM; mSel.onchange = updateModel;
         updateL();
 
         const rx = document.getElementById('rot-x'), ry = document.getElementById('rot-y');
-        const upRot = () => { if(points) points.rotation.set(rx.value, ry.value, 0); controls.autoRotate = false; };
+        const upRot = () => { if(points) points.rotation.set(rx.value, ry.value, 0); };
         rx.oninput = upRot; ry.oninput = upRot;
     }
 
     function drawSpectrum() {
         const balmer = document.getElementById('balmer-spec');
-        const lines = [
-            { n: 3, c: '#ff4444' }, { n: 4, c: '#44ffff' }, { n: 5, c: '#4b0082' }, { n: 6, c: '#8b00ff' }
-        ];
+        const lines = [{n:3, c:'#ff4444'}, {n:4, c:'#44ffff'}, {n:5, c:'#4b0082'}, {n:6, c:'#8b00ff'}];
         lines.forEach(l => {
-            const line = document.createElement('div');
-            line.className = 'spec-line';
-            line.style.backgroundColor = l.c;
-            line.style.left = (l.n-2)*18 + '%';
-            line.onclick = () => { document.getElementById('n-select').value = l.n; document.getElementById('n-select').dispatchEvent(new Event('change')); };
-            balmer.appendChild(line);
+            const el = document.createElement('div');
+            el.className = 'spec-line';
+            el.style.backgroundColor = l.c;
+            el.style.left = (l.n-2)*18 + '%';
+            el.onclick = () => { document.getElementById('n-select').value = l.n; document.getElementById('n-select').dispatchEvent(new Event('change')); };
+            balmer.appendChild(el);
         });
     }
 
