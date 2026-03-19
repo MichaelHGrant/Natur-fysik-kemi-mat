@@ -3,24 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Brintatom - Præcise Orbitalformer (n=1-6)</title>
+    <title>Brintatom - Orbitaler, Fase & Spektrum</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { font-family: sans-serif; background: #020617; color: white; margin: 0; overflow: hidden; }
+        body { font-family: 'Inter', sans-serif; background: #020617; color: white; margin: 0; overflow: hidden; }
         #app { display: flex; flex-direction: column; height: 100vh; width: 100vw; }
         #canvas-container { flex: 1; position: relative; background: #000; }
-        #ui-panel { height: 45%; background: #0f172a; border-top: 2px solid #1e293b; padding: 20px; overflow-y: auto; }
+        #ui-panel { height: 50%; background: #0f172a; border-top: 2px solid #1e293b; padding: 20px; overflow-y: auto; }
         
         @media (min-width: 768px) {
             #app { flex-direction: row; }
-            #ui-panel { width: 400px; height: 100%; border-top: none; border-left: 2px solid #1e293b; }
+            #ui-panel { width: 420px; height: 100%; border-top: none; border-left: 2px solid #1e293b; }
         }
 
-        .orb-btn { background: #1e293b; border: 1px solid #334155; padding: 10px; border-radius: 8px; color: #94a3b8; font-size: 13px; transition: 0.2s; text-align: center; }
+        .orb-btn { background: #1e293b; border: 1px solid #334155; padding: 10px; border-radius: 8px; color: #94a3b8; font-size: 13px; transition: 0.2s; }
         .orb-btn.active { background: #3b82f6; border-color: #60a5fa; color: white; box-shadow: 0 0 15px rgba(59, 130, 246, 0.5); }
         
-        input[type=range] { width: 100%; height: 35px; touch-action: none; cursor: pointer; }
+        input[type=range] { width: 100%; height: 30px; touch-action: none; cursor: pointer; }
         select { background: #1e293b; color: white; padding: 12px; border-radius: 8px; width: 100%; border: 1px solid #334155; font-size: 16px; }
+
+        .phase-plus { color: #60a5fa; font-bold; } /* Blå */
+        .phase-minus { color: #f87171; font-bold; } /* Rød */
     </style>
 </head>
 <body>
@@ -28,20 +31,20 @@
 <div id="app">
     <div id="canvas-container">
         <div class="absolute top-4 left-4 z-10 pointer-events-none">
-            <h1 class="text-xl font-bold text-white">Orbitalformer</h1>
+            <h1 class="text-xl font-bold">Brint Spektrum & Fase</h1>
             <div id="status" class="text-xs text-blue-400">Klar</div>
         </div>
         <div id="loader" class="hidden absolute inset-0 flex items-center justify-center bg-black/70 z-20">
-            <div class="bg-blue-600 px-6 py-3 rounded-full text-sm font-bold animate-pulse">Genererer 150.000 positioner...</div>
+            <div class="text-blue-400 font-bold animate-pulse">Beregner fase-skift...</div>
         </div>
     </div>
 
     <div id="ui-panel">
         <div class="space-y-6">
             <div>
-                <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Hovedkvantetal (n)</label>
+                <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Energiniveau (n)</label>
                 <select id="n-select" class="mt-1">
-                    <option value="1">n = 1</option>
+                    <option value="1">n = 1 (Grundtilstand)</option>
                     <option value="2">n = 2</option>
                     <option value="3">n = 3</option>
                     <option value="4">n = 4</option>
@@ -51,18 +54,34 @@
             </div>
 
             <div>
-                <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Vælg Underskal (l)</label>
+                <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Orbital & Fase</label>
                 <div id="l-btns" class="grid grid-cols-4 gap-2 mt-2"></div>
+                <div class="mt-2 text-[10px] flex gap-4">
+                    <span class="flex items-center gap-1"><span class="w-2 h-2 bg-blue-500 rounded-full"></span> Positiv fase (+)</span>
+                    <span class="flex items-center gap-1"><span class="w-2 h-2 bg-red-500 rounded-full"></span> Negativ fase (-)</span>
+                </div>
+            </div>
+
+            <div id="spectrum-panel" class="bg-black/40 p-4 rounded-xl border border-slate-800 space-y-3">
+                <h3 class="text-xs font-bold text-blue-400 uppercase tracking-widest">Spektral Analyse</h3>
+                <div class="grid grid-cols-2 gap-4 text-xs">
+                    <div>
+                        <p class="text-slate-500">Energi (E<sub>n</sub>)</p>
+                        <p id="energy-val" class="font-mono text-white">-13.60 eV</p>
+                    </div>
+                    <div>
+                        <p class="text-slate-500">Balmer-linje (n→2)</p>
+                        <p id="balmer-val" class="font-mono text-white">-</p>
+                    </div>
+                </div>
+                <div id="spectral-preview" class="h-2 w-full rounded-full bg-gray-800 overflow-hidden hidden">
+                    <div id="spectral-color" class="h-full w-full"></div>
+                </div>
             </div>
 
             <div class="pt-4 border-t border-slate-800">
-                <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Rotation (X & Y)</label>
                 <input id="rot-x" type="range" min="0" max="6.28" step="0.01" value="0">
                 <input id="rot-y" type="range" min="0" max="6.28" step="0.01" value="0">
-            </div>
-
-            <div class="text-[10px] text-slate-500 p-3 bg-slate-900/50 rounded-lg">
-                <b>Tip:</b> p-orbitalen er manual-formet (2 lober). d-orbitalen har 4 lober. f og g har endnu flere komplekse lober.
             </div>
         </div>
     </div>
@@ -75,37 +94,29 @@
     var scene, camera, renderer, controls, points;
     var container = document.getElementById('canvas-container');
     var loader = document.getElementById('loader');
-    var status = document.getElementById('status');
 
-    // SKÆRPET MATEMATIK FOR TYDELIGE LOBER
-    // Her bruger vi vinkelafhængigheder (x, y, z relationer) for at skabe de præcise former
+    // Rydbergs formel konstanter
+    const Rh = 13.6057; // eV
+    const h = 4.1357e-15; // eV·s
+    const c = 299792458; // m/s
+
+    // Bølgefunktioner med fortegn (Fase)
     var waveFuncs = {
-        's': function(r, x, y, z, n) { return Math.exp(-r / n); },
-        'p': function(r, x, y, z, n) { 
-            return (z*z) * Math.exp(-r / n); // Tydelig manual-form langs Z-aksen
-        },
-        'd': function(r, x, y, z, n) { 
-            return (x*z * x*z) * Math.exp(-r / n); // 4 lober
-        },
-        'f': function(r, x, y, z, n) { 
-            return (x*y*z * x*y*z) * Math.exp(-r / n); // 8 lober
-        },
-        'g': function(r, x, y, z, n) { 
-            // G-orbital (l=4) - kræver kompleks vinkelstruktur
-            return Math.pow(z * (5*z*z - 3*r*r), 2) * Math.exp(-r / n);
-        },
-        'h': function(r, x, y, z, n) {
-            return Math.pow(x*y*z * (x*x - y*y), 2) * Math.exp(-r / n);
-        }
+        's': function(r, x, y, z, n) { return Math.exp(-r/n); },
+        'p': function(r, x, y, z, n) { return z * Math.exp(-r/n); }, // z kan være neg. -> rød farve
+        'd': function(r, x, y, z, n) { return (x * z) * Math.exp(-r/n); },
+        'f': function(r, x, y, z, n) { return (x * y * z) * Math.exp(-r/n); },
+        'g': function(r, x, y, z, n) { return (z * (5*z*z - 3*r*r)) * Math.exp(-r/n); },
+        'h': function(r, x, y, z, n) { return (x * y * z * (x*x - y*y)) * Math.exp(-r/n); }
     };
 
     var nConfig = {
-        '1': { box: 12, maxP: 1.0, sub: ['s'] },
-        '2': { box: 28, maxP: 2.0, sub: ['s', 'p'] },
-        '3': { box: 55, maxP: 4.0, sub: ['s', 'p', 'd'] },
-        '4': { box: 90, maxP: 15.0, sub: ['s', 'p', 'd', 'f'] },
-        '5': { box: 140, maxP: 40.0, sub: ['s', 'p', 'd', 'f', 'g'] },
-        '6': { box: 200, maxP: 100.0, sub: ['s', 'p', 'd', 'f', 'g', 'h'] }
+        '1': { box: 15, maxP: 1, sub: ['s'] },
+        '2': { box: 30, maxP: 2, sub: ['s', 'p'] },
+        '3': { box: 60, maxP: 4, sub: ['s', 'p', 'd'] },
+        '4': { box: 100, maxP: 15, sub: ['s', 'p', 'd', 'f'] },
+        '5': { box: 150, maxP: 40, sub: ['s', 'p', 'd', 'f', 'g'] },
+        '6': { box: 220, maxP: 100, sub: ['s', 'p', 'd', 'f', 'g', 'h'] }
     };
 
     function init() {
@@ -118,8 +129,7 @@
         controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         setupUI();
-        updateButtons('1');
-        generate('1s');
+        updateDisplay('1s');
         animate();
     }
 
@@ -133,43 +143,77 @@
             
             var conf = nConfig[n];
             var func = waveFuncs[type] || waveFuncs['s'];
-            var targetCount = 150000; 
-            var positions = new Float32Array(targetCount * 3);
-            var colors = new Float32Array(targetCount * 3);
-            var color = new THREE.Color();
+            var count = 150000; 
+            var pos = new Float32Array(count * 3);
+            var cols = new Float32Array(count * 3);
             var found = 0, attempts = 0, box = conf.box;
 
-            while (found < targetCount && attempts < 5000000) {
+            while (found < count && attempts < 4000000) {
                 var x = (Math.random()-0.5)*box;
                 var y = (Math.random()-0.5)*box;
                 var z = (Math.random()-0.5)*box;
                 var r = Math.sqrt(x*x + y*y + z*z);
                 
-                // Vi kvadrerer sandsynligheden for at gøre loberne skarpere
-                var prob = func(r, x, y, z, n);
+                var val = func(r, x, y, z, n);
+                var prob = val * val; // Sandsynlighedstæthed |ψ|²
+
                 if (prob > Math.random() * conf.maxP) {
                     var idx = found * 3;
-                    positions[idx] = x;
-                    positions[idx+1] = y;
-                    positions[idx+2] = z;
-                    color.setHSL(0.6, 0.8, 0.4 + (r/box)*0.2);
-                    colors[idx] = color.r; colors[idx+1] = color.g; colors[idx+2] = color.b;
+                    pos[idx] = x; pos[idx+1] = y; pos[idx+2] = z;
+                    
+                    // FASE FARVNING: Blå for positiv (+), Rød for negativ (-)
+                    if (val > 0) {
+                        cols[idx] = 0.2; cols[idx+1] = 0.5; cols[idx+2] = 1.0; // Blå
+                    } else {
+                        cols[idx] = 1.0; cols[idx+1] = 0.2; cols[idx+2] = 0.2; // Rød
+                    }
                     found++;
                 }
                 attempts++;
             }
 
             var geo = new THREE.BufferGeometry();
-            geo.setAttribute('position', new THREE.BufferAttribute(positions.slice(0, found * 3), 3));
-            geo.setAttribute('color', new THREE.BufferAttribute(colors.slice(0, found * 3), 3));
+            geo.setAttribute('position', new THREE.BufferAttribute(pos.slice(0, found * 3), 3));
+            geo.setAttribute('color', new THREE.BufferAttribute(cols.slice(0, found * 3), 3));
+            
             points = new THREE.Points(geo, new THREE.PointsMaterial({
-                size: n > 3 ? 0.4 : 0.2, vertexColors: true, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false
+                size: n > 3 ? 0.4 : 0.2, vertexColors: true, transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false
             }));
             scene.add(points);
             camera.position.z = box * 1.5;
             loader.classList.add('hidden');
-            status.innerText = "Viser " + n + type + " (" + found.toLocaleString() + " punkter)";
         }, 50);
+    }
+
+    function updateDisplay(fullName) {
+        var n = parseInt(fullName[0]);
+        // Beregn Energi: En = -13.6 / n^2
+        var energy = -Rh / (n * n);
+        document.getElementById('energy-val').innerText = energy.toFixed(2) + " eV";
+
+        // Beregn Balmer spektrum hvis n > 2
+        var balmerBox = document.getElementById('balmer-val');
+        var preview = document.getElementById('spectral-preview');
+        var colorBar = document.getElementById('spectral-color');
+
+        if (n > 2) {
+            var dE = Rh * (1/4 - 1/(n*n)); // Overgang til n=2
+            var lambda = (h * c) / dE * 1e9; // nm
+            balmerBox.innerText = lambda.toFixed(1) + " nm";
+            preview.classList.remove('hidden');
+            
+            // Simpel farve-estimering baseret på nm
+            var hex = "#ffffff";
+            if (n==3) hex = "#ff0000"; // 656nm Rød
+            if (n==4) hex = "#00ffff"; // 486nm Cyan
+            if (n==5) hex = "#0000ff"; // 434nm Blå
+            if (n==6) hex = "#8b00ff"; // 410nm Violet
+            colorBar.style.backgroundColor = hex;
+        } else {
+            balmerBox.innerText = "-";
+            preview.classList.add('hidden');
+        }
+        generate(fullName);
     }
 
     function updateButtons(n) {
@@ -177,13 +221,12 @@
         btnContainer.innerHTML = '';
         nConfig[n].sub.forEach(function(s) {
             var b = document.createElement('button');
-            b.className = 'orb-btn';
-            if (s === 's') b.classList.add('active');
+            b.className = 'orb-btn' + (s === 's' ? ' active' : '');
             b.innerHTML = n + '<b>' + s + '</b>';
             b.onclick = function() {
                 document.querySelectorAll('.orb-btn').forEach(function(x) { x.classList.remove('active'); });
                 b.classList.add('active');
-                generate(n + s);
+                updateDisplay(n + s);
             };
             btnContainer.appendChild(b);
         });
@@ -191,7 +234,7 @@
 
     function setupUI() {
         document.getElementById('n-select').onchange = function() { 
-            updateButtons(this.value); generate(this.value + 's'); 
+            updateButtons(this.value); updateDisplay(this.value + 's'); 
         };
         var rx = document.getElementById('rot-x'), ry = document.getElementById('rot-y');
         var upRot = function() { if(points) points.rotation.set(rx.value, ry.value, 0); };
