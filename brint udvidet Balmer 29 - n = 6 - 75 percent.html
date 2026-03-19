@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Interaktivt Brint Spektrum & Orbitaler</title>
+    <title>Brintatom - Komplet Model (n, l, m)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { font-family: 'Inter', sans-serif; background: #020617; color: white; margin: 0; overflow: hidden; }
@@ -16,69 +16,69 @@
             #ui-panel { width: 450px; height: 100%; border-top: none; border-left: 2px solid #1e293b; }
         }
 
-        .orb-btn { background: #1e293b; border: 1px solid #334155; padding: 8px; border-radius: 6px; color: #94a3b8; font-size: 12px; cursor: pointer; }
-        .orb-btn.active { background: #3b82f6; border-color: #60a5fa; color: white; }
+        select, button { background: #1e293b; color: white; border: 1px solid #334155; border-radius: 8px; padding: 10px; outline: none; transition: 0.2s; }
+        .active { background: #3b82f6; border-color: #60a5fa; box-shadow: 0 0 10px rgba(59, 130, 246, 0.4); }
         
         input[type=range] { width: 100%; height: 30px; touch-action: none; }
         
-        /* Spektrum styling */
-        .spectrum-container { background: #000; height: 60px; position: relative; border-radius: 4px; border: 1px solid #334155; cursor: crosshair; }
-        .spec-line { position: absolute; width: 2px; height: 100%; cursor: pointer; transition: width 0.2s; }
-        .spec-line:hover { width: 6px; z-index: 10; }
-        .spec-label { position: absolute; bottom: -18px; font-size: 9px; color: #64748b; transform: translateX(-50%); white-space: nowrap; }
+        /* Spektrum */
+        .spec-container { background: #000; height: 40px; position: relative; border: 1px solid #334155; margin-bottom: 20px; border-radius: 4px; }
+        .spec-line { position: absolute; width: 2px; height: 100%; cursor: pointer; transition: 0.2s; }
+        .spec-line:hover { width: 6px; z-index: 50; transform: scaleY(1.2); }
     </style>
 </head>
 <body>
 
 <div id="app">
     <div id="canvas-container">
-        <div class="absolute top-4 left-4 z-10 pointer-events-none">
-            <h1 class="text-lg font-bold">Brint Spektrum & Orbitaler</h1>
-            <div id="status" class="text-xs text-blue-400">Klik på en spektrallinje eller vælg n</div>
-        </div>
-        <div id="loader" class="hidden absolute inset-0 flex items-center justify-center bg-black/70 z-20 text-blue-400 font-bold">Beregner...</div>
+        <div id="loader" class="hidden absolute inset-0 flex items-center justify-center bg-black/70 z-50 text-blue-400 font-bold">Beregner positioner...</div>
     </div>
 
     <div id="ui-panel">
         <div class="space-y-6">
-            <div class="grid grid-cols-2 gap-4">
+            <div class="flex justify-between items-end border-b border-slate-800 pb-2">
                 <div>
-                    <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Energiniveau (n)</label>
-                    <select id="n-select" class="w-full bg-slate-800 p-3 rounded-lg mt-1 text-white border border-slate-700">
-                        <option value="1">n = 1</option><option value="2">n = 2</option>
-                        <option value="3">n = 3</option><option value="4">n = 4</option>
-                        <option value="5">n = 5</option><option value="6">n = 6</option>
+                    <h2 class="text-xs font-bold text-slate-500 uppercase">Energiniveau</h2>
+                    <p id="energy-val" class="text-xl font-mono text-blue-400">-13.60 eV</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-[10px] text-slate-500">RADIUS ~ <span id="radius-val">0.53</span> Å</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2">
+                <div>
+                    <label class="text-[9px] font-bold text-slate-500 uppercase">n (Skal)</label>
+                    <select id="n-select" class="w-full text-sm">
+                        <option value="1">1</option><option value="2">2</option>
+                        <option value="3">3</option><option value="4">4</option>
+                        <option value="5">5</option><option value="6">6</option>
                     </select>
                 </div>
                 <div>
-                    <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Fase-farver</label>
-                    <div class="mt-2 text-[10px] space-y-1">
-                        <div class="flex items-center gap-2"><span class="w-2 h-2 bg-blue-500 rounded-full"></span> Positiv (+)</div>
-                        <div class="flex items-center gap-2"><span class="w-2 h-2 bg-red-500 rounded-full"></span> Negativ (-)</div>
-                    </div>
+                    <label class="text-[9px] font-bold text-slate-500 uppercase">l (Form)</label>
+                    <select id="l-select" class="w-full text-sm"></select>
+                </div>
+                <div>
+                    <label class="text-[9px] font-bold text-slate-500 uppercase">m (Orientering)</label>
+                    <select id="m-select" class="w-full text-sm"></select>
                 </div>
             </div>
 
-            <div id="l-btns" class="grid grid-cols-4 gap-2"></div>
-
-            <div class="space-y-4 pt-4 border-t border-slate-800">
-                <h3 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Emissionsspektrum (Klik på en linje)</h3>
+            <div class="pt-4">
+                <h3 class="text-[9px] font-bold text-slate-500 uppercase mb-2">Balmer Serien (Synlig n &rarr; 2)</h3>
+                <div id="balmer-spec" class="spec-container"></div>
                 
-                <div class="space-y-6">
-                    <div>
-                        <span class="text-[9px] text-slate-400 uppercase">Balmer Serien (Synligt lys, n &rarr; 2)</span>
-                        <div id="balmer-spectrum" class="spectrum-container mt-1"></div>
-                    </div>
-                    <div>
-                        <span class="text-[9px] text-slate-400 uppercase">Lyman (UV, n &rarr; 1) & Paschen (IR, n &rarr; 3)</span>
-                        <div id="other-spectrum" class="spectrum-container mt-1"></div>
-                    </div>
-                </div>
+                <h3 class="text-[9px] font-bold text-slate-500 uppercase mb-2">Lyman (UV n &rarr; 1) & Paschen (IR n &rarr; 3)</h3>
+                <div id="other-spec" class="spec-container"></div>
             </div>
 
-            <div class="flex gap-4 items-center pt-2">
-                <div class="flex-grow"><input id="rot-x" type="range" min="0" max="6.28" step="0.01" value="0"></div>
-                <div class="flex-grow"><input id="rot-y" type="range" min="0" max="6.28" step="0.01" value="0"></div>
+            <div class="bg-slate-900/50 p-4 rounded-xl">
+                <label class="text-[9px] font-bold text-slate-500 uppercase">Manuel Rotation</label>
+                <div class="flex gap-4 mt-2">
+                    <input id="rot-x" type="range" min="0" max="6.28" step="0.01" value="0">
+                    <input id="rot-y" type="range" min="0" max="6.28" step="0.01" value="0">
+                </div>
             </div>
         </div>
     </div>
@@ -92,66 +92,76 @@
     const container = document.getElementById('canvas-container');
     const loader = document.getElementById('loader');
 
-    const Rh = 13.6057; // Rydberg konstant i eV
+    // Fysiske konstanter
+    const Rh = 13.6057; 
+    const lNames = ['s', 'p', 'd', 'f', 'g', 'h'];
 
-    // Bølgefunktioner med fase (+/-)
-    const waveFuncs = {
-        's': (r, x, y, z, n) => Math.exp(-r/n),
-        'p': (r, x, y, z, n) => z * Math.exp(-r/n),
-        'd': (r, x, y, z, n) => (x * z) * Math.exp(-r/n),
-        'f': (r, x, y, z, n) => (x * y * z) * Math.exp(-r/n),
-        'g': (r, x, y, z, n) => (z * (5*z*z - 3*r*r)) * Math.exp(-r/n),
-        'h': (r, x, y, z, n) => (x * y * z * (x*x - y*y)) * Math.exp(-r/n)
-    };
-
-    const nParams = {
-        '1': { box: 15, maxP: 1, sub: ['s'] },
-        '2': { box: 30, maxP: 2, sub: ['s', 'p'] },
-        '3': { box: 60, maxP: 4, sub: ['s', 'p', 'd'] },
-        '4': { box: 100, maxP: 15, sub: ['s', 'p', 'd', 'f'] },
-        '5': { box: 150, maxP: 40, sub: ['s', 'p', 'd', 'f', 'g'] },
-        '6': { box: 220, maxP: 100, sub: ['s', 'p', 'd', 'f', 'g', 'h'] }
+    // Avanceret bølgefunktion med m-orientering
+    const orbitalFuncs = {
+        's': (r, x, y, z) => Math.exp(-r),
+        'p': {
+            '0': (r, x, y, z) => z * Math.exp(-r/2),      // pz
+            '1': (r, x, y, z) => x * Math.exp(-r/2),      // px
+            '-1': (r, x, y, z) => y * Math.exp(-r/2)      // py
+        },
+        'd': {
+            '0': (r, x, y, z) => (2*z*z - x*x - y*y) * Math.exp(-r/3),
+            '1': (r, x, y, z) => (x * z) * Math.exp(-r/3),
+            '-1': (r, x, y, z) => (y * z) * Math.exp(-r/3),
+            '2': (r, x, y, z) => (x*x - y*y) * Math.exp(-r/3),
+            '-2': (r, x, y, z) => (x * y) * Math.exp(-r/3)
+        },
+        'f': (r, x, y, z) => (x * y * z) * Math.exp(-r/4),
+        'g': (r, x, y, z) => Math.pow(z * (5*z*z - 3*r*r), 2) * Math.exp(-r/5),
+        'h': (r, x, y, z) => Math.pow(x*y*z * (x*x - y*y), 2) * Math.exp(-r/6)
     };
 
     function init() {
         scene = new THREE.Scene();
         camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 5000);
+        camera.position.set(0, 0, 40);
+
         renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true });
         renderer.setSize(container.clientWidth, container.clientHeight);
-        renderer.setPixelRatio(window.devicePixelRatio > 1 ? 2 : 1);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         container.appendChild(renderer.domElement);
+
         controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
-        
+        controls.enablePan = false; // FIX: Forhindrer at atomet flyttes fra centrum
+        controls.target.set(0, 0, 0); // FIX: Låser fokus på (0,0,0)
+
         setupUI();
         drawSpectrums();
-        updateSelection('1s');
+        updateModel();
         animate();
     }
 
-    function generateOrbital(fullName) {
+    function generatePoints(n, l, m) {
         loader.classList.remove('hidden');
-        const n = parseInt(fullName[0]);
-        const type = fullName.slice(1);
-        
         setTimeout(() => {
             if (points) { scene.remove(points); points.geometry.dispose(); points.material.dispose(); }
-            const conf = nParams[n];
-            const func = waveFuncs[type] || waveFuncs['s'];
-            const count = 150000; 
+            
+            const box = n * n * 6; // Dynamisk boksstørrelse baseret på n
+            const count = 150000;
             const pos = new Float32Array(count * 3);
             const cols = new Float32Array(count * 3);
-            let found = 0, attempts = 0, box = conf.box;
+            
+            const lType = lNames[l];
+            const func = (typeof orbitalFuncs[lType] === 'function') ? orbitalFuncs[lType] : (orbitalFuncs[lType][m] || orbitalFuncs[lType]['0']);
+
+            let found = 0, attempts = 0;
+            const maxP = Math.pow(n, 4) * 0.1;
 
             while (found < count && attempts < 4000000) {
                 let x = (Math.random()-0.5)*box, y = (Math.random()-0.5)*box, z = (Math.random()-0.5)*box;
                 let r = Math.sqrt(x*x + y*y + z*z);
-                let val = func(r, x, y, z, n);
-                if (val*val > Math.random() * conf.maxP) {
+                let val = func(r, x, y, z);
+                if (val*val > Math.random() * maxP) {
                     let idx = found * 3;
                     pos[idx] = x; pos[idx+1] = y; pos[idx+2] = z;
-                    if (val > 0) { cols[idx]=0.2; cols[idx+1]=0.5; cols[idx+2]=1; }
-                    else { cols[idx]=1; cols[idx+1]=0.2; cols[idx+2]=0.2; }
+                    if (val > 0) { cols[idx]=0.2; cols[idx+1]=0.6; cols[idx+2]=1; }
+                    else { cols[idx]=1; cols[idx+1]=0.3; cols[idx+2]=0.3; }
                     found++;
                 }
                 attempts++;
@@ -159,74 +169,83 @@
             const geo = new THREE.BufferGeometry();
             geo.setAttribute('position', new THREE.BufferAttribute(pos.slice(0, found * 3), 3));
             geo.setAttribute('color', new THREE.BufferAttribute(cols.slice(0, found * 3), 3));
-            points = new THREE.Points(geo, new THREE.PointsMaterial({ size: n > 3 ? 0.4 : 0.2, vertexColors: true, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false }));
+            points = new THREE.Points(geo, new THREE.PointsMaterial({ size: n*0.1, vertexColors: true, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending }));
             scene.add(points);
-            camera.position.z = box * 1.5;
             loader.classList.add('hidden');
         }, 50);
     }
 
-    function drawSpectrums() {
-        const balmer = document.getElementById('balmer-spectrum');
-        const other = document.getElementById('other-spectrum');
+    function updateModel() {
+        const n = parseInt(document.getElementById('n-select').value);
+        const l = parseInt(document.getElementById('l-select').value) || 0;
+        const m = document.getElementById('m-select').value || '0';
         
-        // Balmer Linjer (n -> 2)
-        const balmerData = [
-            { n: 3, color: '#ff0000', label: 'Hα (656nm)' },
-            { n: 4, color: '#00ffff', label: 'Hβ (486nm)' },
-            { n: 5, color: '#4b0082', label: 'Hγ (434nm)' },
-            { n: 6, color: '#8b00ff', label: 'Hδ (410nm)' }
-        ];
-
-        balmerData.forEach((line, i) => {
-            const el = document.createElement('div');
-            el.className = 'spec-line';
-            el.style.left = (20 + i * 20) + '%';
-            el.style.backgroundColor = line.color;
-            el.style.boxShadow = `0 0 10px ${line.color}`;
-            el.onclick = () => { document.getElementById('n-select').value = line.n; updateSelection(line.n + 's'); };
-            
-            const lbl = document.createElement('div');
-            lbl.className = 'spec-label';
-            lbl.innerText = line.label;
-            el.appendChild(lbl);
-            balmer.appendChild(el);
-        });
-
-        // Lyman (n -> 1) i grå (UV)
-        [2,3,4,5,6].forEach((n, i) => {
-            const el = document.createElement('div');
-            el.className = 'spec-line';
-            el.style.left = (5 + i * 8) + '%';
-            el.style.backgroundColor = '#475569';
-            el.onclick = () => { document.getElementById('n-select').value = n; updateSelection(n + 's'); };
-            other.appendChild(el);
-        });
-    }
-
-    function updateSelection(fullName) {
-        const n = fullName[0];
-        const btnContainer = document.getElementById('l-btns');
-        btnContainer.innerHTML = '';
-        nParams[n].sub.forEach(s => {
-            const b = document.createElement('button');
-            b.className = 'orb-btn' + (fullName.slice(1) === s ? ' active' : '');
-            b.innerHTML = n + '<b>' + s + '</b>';
-            b.onclick = () => updateSelection(n + s);
-            btnContainer.appendChild(b);
-        });
-        generateOrbital(fullName);
+        // Opdater info
+        document.getElementById('energy-val').innerText = (-Rh / (n * n)).toFixed(2) + " eV";
+        document.getElementById('radius-val').innerText = (0.529 * n * n).toFixed(2);
+        
+        generatePoints(n, l, m);
     }
 
     function setupUI() {
-        document.getElementById('n-select').onchange = function() { updateSelection(this.value + 's'); };
+        const nSel = document.getElementById('n-select');
+        const lSel = document.getElementById('l-select');
+        const mSel = document.getElementById('m-select');
+
+        const updateL = () => {
+            const n = parseInt(nSel.value);
+            lSel.innerHTML = '';
+            for(let i=0; i<n; i++) {
+                lSel.innerHTML += `<option value="${i}">${lNames[i]}</option>`;
+            }
+            updateM();
+        };
+
+        const updateM = () => {
+            const l = parseInt(lSel.value);
+            mSel.innerHTML = '';
+            for(let i=-l; i<=l; i++) {
+                mSel.innerHTML += `<option value="${i}">${i}</option>`;
+            }
+            updateModel();
+        };
+
+        nSel.onchange = updateL;
+        lSel.onchange = updateM;
+        mSel.onchange = updateModel;
+
+        updateL(); // Initial kørsel
+
+        // Rotation sliders
         const rx = document.getElementById('rot-x'), ry = document.getElementById('rot-y');
-        const upRot = () => { if(points) points.rotation.set(rx.value, ry.value, 0); };
+        const upRot = () => { if(points) points.rotation.set(rx.value, ry.value, 0); controls.autoRotate = false; };
         rx.oninput = upRot; ry.oninput = upRot;
-        window.onresize = () => { camera.aspect = container.clientWidth / container.clientHeight; camera.updateProjectionMatrix(); renderer.setSize(container.clientWidth, container.clientHeight); };
     }
 
-    function animate() { requestAnimationFrame(animate); if (controls) controls.update(); renderer.render(scene, camera); }
+    function drawSpectrums() {
+        const balmer = document.getElementById('balmer-spec');
+        const other = document.getElementById('other-spec');
+        const lines = [
+            { n: 3, c: '#ff0000', nm: 656, serie: 'balmer' },
+            { n: 4, c: '#00ffff', nm: 486, serie: 'balmer' },
+            { n: 5, c: '#4b0082', nm: 434, serie: 'balmer' },
+            { n: 6, c: '#8b00ff', nm: 410, serie: 'balmer' },
+            { n: 2, c: '#475569', nm: 121, serie: 'lyman' },
+            { n: 3, c: '#475569', nm: 102, serie: 'lyman' },
+            { n: 4, c: '#b91c1c', nm: 1875, serie: 'paschen' }
+        ];
+
+        lines.forEach(l => {
+            const el = document.createElement('div');
+            el.className = 'spec-line';
+            el.style.backgroundColor = l.c;
+            el.style.left = (l.serie === 'balmer' ? (l.n-2)*15 : (l.n)*10) + '%';
+            el.onclick = () => { document.getElementById('n-select').value = l.n; document.getElementById('n-select').dispatchEvent(new Event('change')); };
+            (l.serie === 'balmer' ? balmer : other).appendChild(el);
+        });
+    }
+
+    function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); }
     init();
 </script>
 </body>
