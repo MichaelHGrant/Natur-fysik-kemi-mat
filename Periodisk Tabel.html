@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interaktiv Periodisk Tabel: Spektroskopi og Egenskaber</title>
+    <style>
+        :root {
+            --bg-color: #0d1117; 
+            --text-color: #c9d1d9;
+            --cell-bg: #161b22;
+            --border-color: #30363d;
+            
+            --diatomic-nonmetal: #a1ffc3;
+            --noble-gas: #c0ffff;
+            --alkali-metal: #ff6666;
+            --alkaline-earth-metal: #ffdead;
+            --metalloid: #cccc99;
+            --polyatomic-nonmetal: #e7ff8f;
+            --post-transition-metal: #cccccc;
+            --transition-metal: #f0a0a0;
+            --lanthanide: #ffbfff;
+            --actinide: #ff99cc;
+            --unknown: #e0e0e0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            line-height: 1.6;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            max-width: 800px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            color: #ffffff;
+        }
+
+      .periodic-table {
+            all: unset;
+            display: grid;
+            grid-template-columns: repeat(18, minmax(45px, 1fr));
+            grid-template-rows: repeat(10, minmax(50px, auto));
+            gap: 5px;
+            max-width: 1400px;
+            width: 100%;
+        }
+
+      .element {
+            background-color: var(--cell-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 6px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease, filter 0.2s ease;
+            position: relative;
+            grid-column: var(--xpos);
+            grid-row: var(--ypos);
+            filter: brightness(0.85);
+        }
+
+      .element:hover,.element:focus {
+            transform: scale(1.15) translateY(-5px);
+            z-index: 100;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
+            border-color: rgba(255, 255, 255, 0.9);
+            filter: brightness(1.1);
+            outline: none;
+        }
+
+      .el-number {
+            font-size: 0.75rem;
+            align-self: flex-start;
+            opacity: 0.9;
+            font-weight: 600;
+        }
+
+      .el-symbol {
+            font-size: 1.6rem;
+            font-weight: 800;
+            align-self: center;
+            margin: 2px 0;
+            text-decoration: none;
+        }
+
+      .el-name {
+            font-size: 0.65rem;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+      .diatomic-nonmetal { border-top: 4px solid var(--diatomic-nonmetal); }
+      .noble-gas { border-top: 4px solid var(--noble-gas); }
+      .alkali-metal { border-top: 4px solid var(--alkali-metal); }
+      .alkaline-earth-metal { border-top: 4px solid var(--alkaline-earth-metal); }
+      .metalloid { border-top: 4px solid var(--metalloid); }
+      .polyatomic-nonmetal { border-top: 4px solid var(--polyatomic-nonmetal); }
+      .post-transition-metal { border-top: 4px solid var(--post-transition-metal); }
+      .transition-metal { border-top: 4px solid var(--transition-metal); }
+      .lanthanide { border-top: 4px solid var(--lanthanide); }
+      .actinide { border-top: 4px solid var(--actinide); }
+      .unknown { border-top: 4px solid var(--unknown); }
+
+        dialog {
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            background-color: var(--cell-bg);
+            color: var(--text-color);
+            max-width: 700px;
+            width: 95%;
+            padding: 0;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8);
+        }
+
+        dialog::backdrop {
+            background-color: rgba(1, 4, 9, 0.85);
+            backdrop-filter: blur(5px);
+        }
+
+      .modal-content {
+            padding: 30px;
+            position: relative;
+        }
+
+        #close-modal {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 50%;
+            color: #fff;
+            width: 36px;
+            height: 36px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: background 0.2s;
+        }
+
+        #close-modal:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+      .modal-header {
+            display: flex;
+            align-items: center;
+            gap: 25px;
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+      .symbol-box {
+            width: 100px;
+            height: 100px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 3rem;
+            font-weight: 800;
+            border-radius: 10px;
+            background-color: #21262d;
+            border: 2px solid transparent;
+        }
+
+      .properties-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+            background-color: #0d1117;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+      .prop-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+      .prop-item.label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #8b949e;
+            margin-bottom: 4px;
+        }
+
+      .prop-item.value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #e6edf3;
+        }
+
+      .spectra-section {
+            margin-top: 30px;
+        }
+
+      .spectra-hint {
+            font-size: 0.85rem;
+            color: #8b949e;
+            margin-bottom: 15px;
+        }
+
+        #modal-spectra-img {
+            width: 100%;
+            height: auto;
+            border: 2px solid #30363d;
+            border-radius: 6px;
+            background-color: #000;
+        }
+
+      .alert-box {
+            background-color: rgba(218, 54, 51, 0.1);
+            border-left: 4px solid #da3633;
+            padding: 15px;
+            border-radius: 0 4px 4px 0;
+            color: #ff7b72;
+        }
+
+        @media (max-width: 1024px) {
+         .periodic-table {
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
+            }
+            
+         .periodic-table >.element {
+                display: inline-flex;
+                width: 60px;
+                height: 60px;
+                margin: 2px;
+                vertical-align: top;
+                grid-column: auto!important;
+                grid-row: auto!important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Det Periodiske System: Egenskaber & Emissionsspektre</h1>
+        <p>En dybdegående interaktiv visualisering baseret på kvantemekaniske og spektroskopiske data.</p>
+    </header>
+
+    <main>
+        <ol id="periodic-table-grid" class="periodic-table" aria-label="Periodisk System"></ol>
+    </main>
+
+    <dialog id="element-modal" aria-labelledby="modal-name">
+        <div class="modal-content">
+            <button id="close-modal" aria-label="Luk vindue">X</button>
+            <div class="modal-header">
+                <div id="modal-symbol-box" class="symbol-box" aria-hidden="true"></div>
+                <div class="modal-titles">
+                    <h2 id="modal-name">Indlæser Element...</h2>
+                    <p id="modal-category" class="category-label">Indlæser Kategori...</p>
+                </div>
+            </div>
+            
+            <div class="modal-body">
+                <section class="properties-grid">
+                    <h3>Fysiske og Kemiske Egenskaber</h3>
+                    <div class="prop-item"><span class="label">Atomnummer:</span> <span id="modal-number" class="value"></span></div>
+                    <div class="prop-item"><span class="label">Atommasse:</span> <span id="modal-mass" class="value"></span> u</div>
+                    <div class="prop-item"><span class="label">Elektronkonfiguration:</span> <span id="modal-electron" class="value"></span></div>
+                    <div class="prop-item"><span class="label">Smeltepunkt:</span> <span id="modal-melt" class="value"></span> K</div>
+                    <div class="prop-item"><span class="label">Kogepunkt:</span> <span id="modal-boil" class="value"></span> K</div>
+                </section>
+                
+                <section class="description">
+                    <h3>Videnskabelig Opsummering</h3>
+                    <p id="modal-summary"></p>
+                </section>
+
+                <section class="spectra-section">
+                    <h3>Synligt Emissionsspektrum</h3>
+                    <p class="spectra-hint">Synlige emissionslinjer frembragt ved elektroners overgang mellem kvantetilstande til lavere energiniveauer.</p>
+                    <div id="spectra-container">
+                        <img id="modal-spectra-img" src="" alt="Emissionsspektrum" loading="lazy" style="display: none;">
+                        <div id="spectra-unavailable" class="alert-box" style="display: none;">
+                            <p><strong>Ingen data:</strong> Visuelle spektraldata i det synlige område er ikke tilgængelige for dette element i den aktuelle database. Dette forekommer oftest ved stærkt radioaktive eller syntetiske elementer.</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </dialog>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const gridContainer = document.getElementById('periodic-table-grid');
+            const modal = document.getElementById('element-modal');
+            const closeModalBtn = document.getElementById('close-modal');
+            
+            let elementsDatabase = new Array();
+
+            const dataUrl = 'https://raw.githubusercontent.com/Bowserinator/Periodic-Table-JSON/master/PeriodicTableJSON.json';
+
+            async function fetchPeriodicData() {
+                try {
+                    const response = await fetch(dataUrl);
+                    if (!response.ok) {
+                        throw new Error('Netværksfejl: ' + response.status + ' ' + response.statusText);
+                    }
+                    const data = await response.json();
+                    elementsDatabase = data.elements;
+                    renderPeriodicTable(elementsDatabase);
+                } catch (error) {
+                    console.error("Kritisk fejl under initialisering af applikation:", error);
+                    gridContainer.innerHTML = '<li class="alert-box" style="grid-column: 1 / -1; list-style: none;">Systemet kunne ikke initialisere databasen. Sørg for at du har internetforbindelse. Fejlbeskrivelse: ' + error.message + '</li>';
+                }
+            }
+
+            function renderPeriodicTable(elements) {
+                const fragment = document.createDocumentFragment();
+
+                elements.forEach(element => {
+                    const cell = document.createElement('li');
+                    cell.classList.add('element');
+                    
+                    let categoryClass = element.category.replace(/\s+/g, '-').toLowerCase();
+                    if(categoryClass.includes('unknown')) {
+                        categoryClass = 'unknown';
+                    }
+                    
+                    cell.classList.add(categoryClass);
+                    cell.style.setProperty('--xpos', element.xpos);
+                    cell.style.setProperty('--ypos', element.ypos);
+
+                    cell.innerHTML = '<span class="el-number">' + element.number + '</span>' +
+                                     '<abbr class="el-symbol" title="' + element.name + '">' + element.symbol + '</abbr>' +
+                                     '<span class="el-name">' + element.name + '</span>';
+
+                    cell.setAttribute('tabindex', '0');
+
+                    cell.addEventListener('click', () => populateAndOpenModal(element, categoryClass));
+                    cell.addEventListener('keydown', (e) => {
+                        if(e.key === 'Enter') populateAndOpenModal(element, categoryClass);
+                    });
+
+                    fragment.appendChild(cell);
+                });
+
+                gridContainer.appendChild(fragment);
+            }
+
+            function populateAndOpenModal(element, cssCategoryClass) {
+                document.getElementById('modal-name').textContent = element.name;
+                document.getElementById('modal-category').textContent = element.category.toUpperCase();
+                document.getElementById('modal-number').textContent = element.number;
+                
+                document.getElementById('modal-mass').textContent = element.atomic_mass? element.atomic_mass : 'N/A';
+                document.getElementById('modal-electron').textContent = element.electron_configuration? element.electron_configuration : 'Ukendt';
+                document.getElementById('modal-melt').textContent = element.melt? element.melt : 'Ukendt';
+                document.getElementById('modal-boil').textContent = element.boil? element.boil : 'Ukendt';
+                document.getElementById('modal-summary').textContent = element.summary? element.summary : 'Ingen opsummering tilgængelig i databasen.';
+
+                const symbolBox = document.getElementById('modal-symbol-box');
+                symbolBox.textContent = element.symbol;
+                symbolBox.className = 'symbol-box'; 
+                symbolBox.style.borderColor = 'var(--' + cssCategoryClass + ')';
+
+                const spectraImg = document.getElementById('modal-spectra-img');
+                const spectraUnavailable = document.getElementById('spectra-unavailable');
+
+                if (element.spectral_img) {
+                    let spectraUrl = element.spectral_img;
+                    
+                    // KONVERTERINGSLOGIK TIL WIKIPEDIA BILLEDER:
+                    // Hvis linket peger på en webside (starter med File:), trækker vi navnet ud og bygger det direkte link
+                    if (spectraUrl.includes("File:")) {
+                        let filename = spectraUrl.split("File:")[1];
+                        spectraImg.src = "https://en.wikipedia.org/wiki/Special:FilePath/" + filename;
+                    } else {
+                        spectraImg.src = spectraUrl;
+                    }
+
+                    spectraImg.alt = 'Fuld opløsning af det synlige emissionsspektrum for grundstoffet ' + element.name;
+                    spectraImg.style.display = 'block';
+                    spectraUnavailable.style.display = 'none';
+                } else {
+                    spectraImg.style.display = 'none';
+                    spectraUnavailable.style.display = 'block';
+                }
+
+                modal.showModal();
+            }
+
+            closeModalBtn.addEventListener('click', () => {
+                modal.close();
+            });
+
+            modal.addEventListener('click', (e) => {
+                const dialogDimensions = modal.getBoundingClientRect();
+                if (
+                    e.clientX < dialogDimensions.left ||
+                    e.clientX > dialogDimensions.right ||
+                    e.clientY < dialogDimensions.top ||
+                    e.clientY > dialogDimensions.bottom
+                ) {
+                    modal.close();
+                }
+            });
+
+            fetchPeriodicData();
+        });
+    </script>
+</body>
+</html>
