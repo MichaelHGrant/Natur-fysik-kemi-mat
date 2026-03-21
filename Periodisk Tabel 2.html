@@ -2,313 +2,256 @@
 <html lang="da">
 <head>
     <meta charset="UTF-8">
-    <title>Newton's Cannon - Interactive</title>
+    <title>Newtons Kanon Simulation</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #e0e5ec; padding: 20px; display: flex; justify-content: center; }
-       .app-container { background: #f0f0f0; border: 2px solid #a0a0a0; padding: 10px; width: 1000px; display: grid; grid-template-columns: 200px 500px 250px; gap: 15px; box-shadow: 4px 4px 15px rgba(0,0,0,0.2); }
-       .toolbar { grid-column: 1 / -1; display: flex; gap: 10px; background: #fff; padding: 10px; border: 1px solid #ccc; align-items: center; }
-        button { padding: 5px 15px; font-size: 14px; cursor: pointer; background: #e1e1e1; border: 1px solid #999; border-radius: 3px; }
-        button:hover { background: #d1d1d1; }
-       .input-group { display: flex; flex-direction: column; font-size: 12px; }
-       .input-group input { width: 80px; }
-       .stats-panel { grid-column: 1 / -1; display: flex; justify-content: space-between; font-size: 12px; padding: 5px 10px; background: #fff; border: 1px solid #ccc; }
-       .stat-box { display: flex; flex-direction: column; align-items: flex-start; }
-       .stat-value { font-weight: bold; margin-top: 3px; }
-       .canvas-container { position: relative; width: 500px; height: 500px; background: #f5f5f5; border: 1px inset #888; overflow: hidden; }
-        canvas { position: absolute; top: 0; left: 0; }
-       .controls-panel { display: flex; flex-direction: column; gap: 20px; padding: 10px; background: #fff; border: 1px solid #ccc; }
-       .slider-group-horizontal { display: flex; align-items: center; justify-content: space-between; font-size: 12px; }
-       .vertical-sliders { display: flex; justify-content: space-between; height: 200px; margin-top: 20px; }
-       .v-slider { display: flex; flex-direction: column; align-items: center; font-size: 11px; }
-        input[type=range][orient=vertical] { writing-mode: bt-lr; -webkit-appearance: slider-vertical; width: 20px; height: 150px; }
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #d3d3d3;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+       .container {
+            background-color: #f0f0f0;
+            border: 2px solid #999;
+            padding: 20px;
+            display: flex;
+            gap: 20px;
+            box-shadow: 2px 2px 10px rgba(0,0,0,0.3);
+        }
+        canvas {
+            background-color: white;
+            border: 1px solid #ccc;
+        }
+       .panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 250px;
+        }
+       .button-group {
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            padding: 10px;
+            font-size: 14px;
+            cursor: pointer;
+            flex: 1;
+        }
+       .slider-group {
+            display: flex;
+            flex-direction: column;
+            font-size: 14px;
+        }
+       .slider-group span {
+            font-weight: bold;
+            color: #0055aa;
+        }
+        input[type=range] {
+            width: 100%;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
 
-<div class="app-container">
-    <div class="toolbar">
-        <button id="btnStart">Start</button>
-        <button id="btnStop">Stop</button>
-        <div class="input-group">
-            <label>Delay</label>
-            <input type="text" value="10000" disabled>
-        </div>
-        <div style="flex-grow: 1;"></div>
-        <div class="stat-box" style="margin-right: 20px;">
-            <span>Mass of Earth [10^24 kg]</span>
-            <span class="stat-value">5.97219</span>
-        </div>
-        <button id="btnReset">Reset</button>
-    </div>
+<div class="container">
+    <canvas id="simCanvas" width="500" height="500"></canvas>
 
-    <div class="stats-panel">
-        <div class="stat-box">
-            <span>Gravitational konstant [10^11]</span>
-            <span class="stat-value">6.6738</span>
-        </div>
-        <div class="stat-box">
-            <span>Time Increment [0.01 s]</span>
-            <input type="number" id="inpTimeInc" value="100" style="width: 50px;">
-        </div>
-        <div class="stat-box">
-            <span>Time [s]</span>
-            <span class="stat-value" id="valTime">0.00</span>
-        </div>
-        <div class="stat-box">
-            <span>Apogee [km]</span>
-            <span class="stat-value" id="valApogee">7371.0</span>
-        </div>
-        <div class="stat-box">
-            <span>Perigee [km]</span>
-            <span class="stat-value" id="valPerigee">7371.0</span>
-        </div>
-        <div class="stat-box">
-            <span>Height [km]</span>
-            <span class="stat-value" id="valHeightTop">1000</span>
-        </div>
-    </div>
-
-    <div></div>
-
-    <div class="canvas-container">
-        <canvas id="trailCanvas" width="500" height="500"></canvas>
-        <canvas id="spriteCanvas" width="500" height="500"></canvas>
-    </div>
-
-    <div class="controls-panel">
-        <div>
-            <button id="btnCollision" style="width: 100%; margin-bottom: 10px;">Collision with Earth: ON</button>
-            <button id="btnPath" style="width: 100%;">Don't show path</button>
+    <div class="panel">
+        <div class="button-group">
+            <button id="btnStart">Start</button>
+            <button id="btnStop">Stop</button>
+            <button id="btnReset">Reset</button>
         </div>
 
-        <div class="slider-group-horizontal">
-            <span>Power</span>
-            <span id="valPower">2.0</span>
-            <input type="range" id="sldPower" min="1.0" max="3.0" step="0.01" value="2.0" style="width: 100px;">
+        <div class="slider-group">
+            <label>Hastighed [m/s]: <span id="valSpeed">7200</span></label>
+            <input type="range" id="inpSpeed" min="0" max="12000" step="10" value="7200">
         </div>
 
-        <div class="vertical-sliders">
-            <div class="v-slider">
-                <span>Height [km]</span>
-                <span id="valHeightBtn" style="margin-bottom: 5px;">1000</span>
-                <input type="range" id="sldHeight" orient="vertical" min="0" max="30000" step="10" value="1000">
-            </div>
-            <div class="v-slider">
-                <span>Radius [km]</span>
-                <span id="valRadius" style="margin-bottom: 5px;">6371</span>
-                <input type="range" id="sldRadius" orient="vertical" min="1000" max="10000" step="1" value="6371">
-            </div>
-            <div class="v-slider">
-                <span>Angle [deg]</span>
-                <span id="valAngle" style="margin-bottom: 5px;">0</span>
-                <input type="range" id="sldAngle" orient="vertical" min="-90" max="90" step="1" value="0">
-            </div>
-            <div class="v-slider">
-                <span>Speed [m/s]</span>
-                <span id="valSpeed" style="margin-bottom: 5px;">7200</span>
-                <input type="range" id="sldSpeed" orient="vertical" min="0" max="12000" step="10" value="7200">
-            </div>
+        <div class="slider-group">
+            <label>Højde [km]: <span id="valHeight">1000</span></label>
+            <input type="range" id="inpHeight" min="0" max="30000" step="100" value="1000">
+        </div>
+
+        <div class="slider-group">
+            <label>Jordens Radius [km]: <span id="valRadius">6371</span></label>
+            <input type="range" id="inpRadius" min="1000" max="10000" step="1" value="6371">
+        </div>
+
+        <div class="slider-group">
+            <label>Vinkel [deg]: <span id="valAngle">0</span></label>
+            <input type="range" id="inpAngle" min="-90" max="90" step="1" value="0">
+        </div>
+
+        <div class="slider-group">
+            <label>Gravity Power: <span id="valPower">2.00</span></label>
+            <input type="range" id="inpPower" min="1.0" max="3.0" step="0.01" value="2.0">
         </div>
     </div>
 </div>
 
 <script>
-    // Fysiske konstanter
-    const G_BASE = 6.6738e-11;          
-    const M_BASE = 5.97219e24;          
-    const MU = G_BASE * M_BASE;         
+    // Fysiske konstanter fra billedet
+    const G = 6.6738e-11;
+    const M = 5.97219e24;
+    const GM = G * M;
 
-    // DOM Elementer
-    const trailCtx = document.getElementById('trailCanvas').getContext('2d');
-    const spriteCtx = document.getElementById('spriteCanvas').getContext('2d');
+    // Hent HTML-elementerne
+    const canvas = document.getElementById("simCanvas");
+    const ctx = canvas.getContext("2d");
 
-    // Fysik State variabler
+    const btnStart = document.getElementById("btnStart");
+    const btnStop = document.getElementById("btnStop");
+    const btnReset = document.getElementById("btnReset");
+
+    const inpSpeed = document.getElementById("inpSpeed");
+    const inpHeight = document.getElementById("inpHeight");
+    const inpRadius = document.getElementById("inpRadius");
+    const inpAngle = document.getElementById("inpAngle");
+    const inpPower = document.getElementById("inpPower");
+
+    const valSpeed = document.getElementById("valSpeed");
+    const valHeight = document.getElementById("valHeight");
+    const valRadius = document.getElementById("valRadius");
+    const valAngle = document.getElementById("valAngle");
+    const valPower = document.getElementById("valPower");
+
+    // Simuleringstilstand (State)
     let isRunning = false;
-    let collisionEnabled = true;
-    let showPath = true;
-    let elapsedSimTime = 0;
-    let state = { x: 0, y: 0, vx: 0, vy: 0 };
+    let x = 0;
+    let y = 0;
+    let vx = 0;
+    let vy = 0;
+    let trail =;
 
-    // Skalering af koordinater til de 500 pixels bredde/højde lærred
-    const CANVAS_DIM = 500;
-    const PIXELS_PER_KM = (CANVAS_DIM / 2) / 35000;
+    // Skaleringsfaktor for grafikken (1 pixel svarer til ca. 80 km, så høje kredsløb kan ses)
+    const scale = 250 / 40000000; 
 
-    function initializeState() {
-        const height_m = parseFloat(document.getElementById('sldHeight').value) * 1000;
-        const radius_m = parseFloat(document.getElementById('sldRadius').value) * 1000;
-        const speed = parseFloat(document.getElementById('sldSpeed').value);
-        const angle_deg = parseFloat(document.getElementById('sldAngle').value);
-        
-        const initial_r = radius_m + height_m;
-        state.x = 0;
-        state.y = initial_r;
+    // Funktion til at genstarte kredsløbet
+    function resetSimulation() {
+        isRunning = false;
+        trail =;
 
-        const angle_rad = angle_deg * (Math.PI / 180);
-        state.vx = speed * Math.cos(angle_rad);
-        state.vy = speed * Math.sin(angle_rad);
+        // Hent værdier fra sliderne og omregn til meter og radianer
+        let speed = parseFloat(inpSpeed.value);
+        let height = parseFloat(inpHeight.value) * 1000; 
+        let radius = parseFloat(inpRadius.value) * 1000; 
+        let angle_rad = parseFloat(inpAngle.value) * Math.PI / 180;
 
-        elapsedSimTime = 0;
-        document.getElementById('valTime').innerText = "0.00";
-        
-        updateAnalyticalOrbits();
-        clearAndDrawEarth();
-        drawSprite();
+        // Kanonen placeres på toppen af Jorden + bjerg-højden
+        x = 0;
+        y = radius + height;
+
+        // Udregn starthastighed for x og y
+        vx = speed * Math.cos(angle_rad);
+        vy = speed * Math.sin(angle_rad);
+
+        drawGraphics();
     }
 
-    function updateAnalyticalOrbits() {
-        const r_mag = Math.sqrt(state.x * state.x + state.y * state.y);
-        const v_mag_sq = state.vx * state.vx + state.vy * state.vy;
-        
-        const energy = (v_mag_sq / 2) - (MU / r_mag);
-        const h = state.x * state.vy - state.y * state.vx;
-        
-        if (energy >= 0) {
-            document.getElementById('valApogee').innerText = "Escape (\u221E)";
-            document.getElementById('valPerigee').innerText = (r_mag / 1000).toFixed(1); 
-            return;
+    // Funktion til at tegne Jorden og kanonkuglen
+    function drawGraphics() {
+        // Ryd lærredet hver frame
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Gem standardtilstanden og flyt centrum til midten af lærredet
+        ctx.save();
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.scale(1, -1); // Vend y-aksen, så opad er positivt (matematisk standard)
+
+        let radius_m = parseFloat(inpRadius.value) * 1000;
+
+        // 1. Tegn den grønne Jordklode
+        ctx.beginPath();
+        ctx.arc(0, 0, radius_m * scale, 0, 2 * Math.PI);
+        ctx.fillStyle = "#00cc00"; // Grøn
+        ctx.fill();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = "black";
+        ctx.stroke();
+
+        // 2. Tegn kanonkuglens spor (banen)
+        if (trail.length > 0) {
+            ctx.beginPath();
+            ctx.moveTo(trail.x * scale, trail.y * scale);
+            for (let i = 1; i < trail.length; i++) {
+                ctx.lineTo(trail[i].x * scale, trail[i].y * scale);
+            }
+            ctx.strokeStyle = "#333333";
+            ctx.stroke();
         }
 
-        const a = -MU / (2 * energy);
-        const eccSq = 1 + (2 * energy * h * h) / (MU * MU);
-        const ecc = Math.sqrt(Math.max(0, eccSq));
+        // 3. Tegn selve kanonkuglen/satellitten
+        ctx.beginPath();
+        ctx.arc(x * scale, y * scale, 4, 0, 2 * Math.PI);
+        ctx.fillStyle = "red"; // Rød
+        ctx.fill();
+
+        ctx.restore();
+    }
+
+    // Matematikken (Newtons love)
+    function physicsLoop() {
+        if (!isRunning) return;
+
+        let radius_m = parseFloat(inpRadius.value) * 1000;
+        let power = parseFloat(inpPower.value);
         
-        const apogee_km = (a * (1 + ecc)) / 1000;
-        const perigee_km = (a * (1 - ecc)) / 1000;
+        let dt = 1;         // Tids-skridt per beregning
+        let subSteps = 100; // Antal gange fysikken beregnes per billede (for høj fart)
 
-        document.getElementById('valApogee').innerText = apogee_km.toFixed(1);
-        document.getElementById('valPerigee').innerText = perigee_km.toFixed(1);
-    }
+        for (let i = 0; i < subSteps; i++) {
+            let r = Math.sqrt(x*x + y*y);
 
-    function clearAndDrawEarth() {
-        trailCtx.fillStyle = '#f5f5f5';
-        trailCtx.fillRect(0, 0, CANVAS_DIM, CANVAS_DIM);
-
-        const radius_km = parseFloat(document.getElementById('sldRadius').value);
-        const earthRadiusPx = radius_km * PIXELS_PER_KM;
-
-        trailCtx.beginPath();
-        trailCtx.arc(250, 250, earthRadiusPx, 0, 2 * Math.PI);
-        trailCtx.fillStyle = '#00cc00'; 
-        trailCtx.fill();
-        trailCtx.lineWidth = 1;
-        trailCtx.strokeStyle = '#000';
-        trailCtx.stroke();
-    }
-
-    function drawSprite() {
-        spriteCtx.clearRect(0, 0, CANVAS_DIM, CANVAS_DIM);
-
-        const px_x = 250 + (state.x / 1000) * PIXELS_PER_KM;
-        const px_y = 250 - (state.y / 1000) * PIXELS_PER_KM;
-
-        spriteCtx.beginPath();
-        spriteCtx.arc(px_x, px_y, 3, 0, 2 * Math.PI);
-        spriteCtx.fillStyle = '#ff0000'; 
-        spriteCtx.fill();
-    }
-
-    function physicsStep(dt) {
-        const radius_m = parseFloat(document.getElementById('sldRadius').value) * 1000;
-        const power = parseFloat(document.getElementById('sldPower').value);
-        const r_mag = Math.sqrt(state.x * state.x + state.y * state.y);
-
-        if (collisionEnabled && r_mag <= radius_m) {
-            isRunning = false;
-            return;
-        }
-
-        const a_mag = -MU / Math.pow(r_mag, power);
-        const ax = a_mag * (state.x / r_mag);
-        const ay = a_mag * (state.y / r_mag);
-
-        state.vx += ax * dt;
-        state.vy += ay * dt;
-        state.x += state.vx * dt;
-        state.y += state.vy * dt;
-
-        elapsedSimTime += dt;
-
-        if (showPath) {
-            const px_x = 250 + (state.x / 1000) * PIXELS_PER_KM;
-            const px_y = 250 - (state.y / 1000) * PIXELS_PER_KM;
-            trailCtx.fillStyle = '#000'; 
-            trailCtx.fillRect(px_x, px_y, 1, 1);
-        }
-    }
-
-    function animate() {
-        if (isRunning) {
-            const dt = parseFloat(document.getElementById('inpTimeInc').value);
-            const subSteps = 10;
-            const sub_dt = dt / subSteps;
-
-            for (let i = 0; i < subSteps; i++) {
-                if(!isRunning) break;
-                physicsStep(sub_dt);
+            // Stop simulationen hvis satellitten rammer Jorden
+            if (r <= radius_m) {
+                isRunning = false;
+                break;
             }
 
-            document.getElementById('valTime').innerText = elapsedSimTime.toFixed(1);
-            updateAnalyticalOrbits();
-            drawSprite();
+            // Beregn tyngdeaccelerationen: a = -GM / r^power
+            let a_mag = -GM / Math.pow(r, power);
+            let ax = a_mag * (x / r);
+            let ay = a_mag * (y / r);
+
+            // Opdater hastighed og position
+            vx += ax * dt;
+            vy += ay * dt;
+            x += vx * dt;
+            y += vy * dt;
         }
-        requestAnimationFrame(animate);
+
+        // Tilføj den nye position til sporet (hvis den kører)
+        if (isRunning) {
+            trail.push({x: x, y: y});
+        }
     }
 
-    // Faste og sikre Event Listeners
-    document.getElementById('btnStart').addEventListener('click', function() { isRunning = true; });
-    document.getElementById('btnStop').addEventListener('click', function() { isRunning = false; });
-    document.getElementById('btnReset').addEventListener('click', function() {
-        isRunning = false;
-        initializeState();
-    });
+    // Selve animations-motoren i browseren
+    function animate() {
+        physicsLoop();
+        drawGraphics();
+        requestAnimationFrame(animate); // Bed browseren om at tegne næste billede
+    }
 
-    document.getElementById('btnCollision').addEventListener('click', function() {
-        collisionEnabled =!collisionEnabled;
-        this.innerText = collisionEnabled? "Collision with Earth: ON" : "Collision with Earth: OFF";
-    });
+    // Forbind knapperne
+    btnStart.onclick = function() { isRunning = true; };
+    btnStop.onclick = function() { isRunning = false; };
+    btnReset.onclick = resetSimulation;
 
-    document.getElementById('btnPath').addEventListener('click', function() {
-        showPath =!showPath;
-        this.innerText = showPath? "Don't show path" : "Show path";
-        if (!showPath) {
-            clearAndDrawEarth();
-        }
-    });
+    // Forbind sliderne så tallene opdateres live
+    inpSpeed.oninput = function() { valSpeed.innerText = this.value; resetSimulation(); };
+    inpHeight.oninput = function() { valHeight.innerText = this.value; resetSimulation(); };
+    inpRadius.oninput = function() { valRadius.innerText = this.value; resetSimulation(); };
+    inpAngle.oninput = function() { valAngle.innerText = this.value; resetSimulation(); };
+    inpPower.oninput = function() { valPower.innerText = parseFloat(this.value).toFixed(2); resetSimulation(); };
 
-    // Sliders
-    document.getElementById('sldHeight').addEventListener('input', function() {
-        document.getElementById('valHeightTop').innerText = this.value;
-        document.getElementById('valHeightBtn').innerText = this.value;
-        if (!isRunning) initializeState();
-    });
-
-    document.getElementById('sldRadius').addEventListener('input', function() {
-        document.getElementById('valRadius').innerText = this.value;
-        if (!isRunning) initializeState();
-    });
-
-    document.getElementById('sldAngle').addEventListener('input', function() {
-        document.getElementById('valAngle').innerText = this.value;
-        if (!isRunning) initializeState();
-    });
-
-    document.getElementById('sldSpeed').addEventListener('input', function() {
-        document.getElementById('valSpeed').innerText = this.value;
-        if (!isRunning) initializeState();
-    });
-
-    document.getElementById('sldPower').addEventListener('input', function() {
-        document.getElementById('valPower').innerText = this.value;
-        if (!isRunning) initializeState();
-    });
-
-    document.getElementById('inpTimeInc').addEventListener('input', function() {
-        // Opdaterer bare værdien internt ved ændring
-    });
-
-    // Opstart af simulation
-    initializeState();
-    requestAnimationFrame(animate);
+    // Klargør og start programmet
+    resetSimulation();
+    animate();
 
 </script>
 </body>
