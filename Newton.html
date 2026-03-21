@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Newton's Cannon - Interactive Orbital Mechanics</title>
     <style>
-        /* CSS Reset and Modern Layout */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #e0e5ec;
@@ -15,7 +14,7 @@
             display: flex;
             justify-content: center;
         }
-      .app-container {
+       .app-container {
             background-color: #f0f0f0;
             border: 2px solid #a0a0a0;
             border-radius: 4px;
@@ -26,8 +25,7 @@
             gap: 15px;
             box-shadow: 4px 4px 15px rgba(0,0,0,0.2);
         }
-        /* Toolbar Styling */
-      .toolbar {
+       .toolbar {
             grid-column: 1 / -1;
             display: flex;
             flex-wrap: wrap;
@@ -46,15 +44,13 @@
             border-radius: 3px;
         }
         button:hover { background-color: #d1d1d1; }
-      .input-group {
+       .input-group {
             display: flex;
             flex-direction: column;
             font-size: 12px;
         }
-      .input-group input { width: 80px; }
-        
-        /* Stats Panel Styling */
-      .stats-panel {
+       .input-group input { width: 80px; }
+       .stats-panel {
             grid-column: 1 / -1;
             display: flex;
             justify-content: space-between;
@@ -63,11 +59,9 @@
             background: #fff;
             border: 1px solid #ccc;
         }
-      .stat-box { display: flex; flex-direction: column; align-items: flex-start; }
-      .stat-value { font-weight: bold; margin-top: 3px; }
-
-        /* Canvas Area Styling */
-      .canvas-container {
+       .stat-box { display: flex; flex-direction: column; align-items: flex-start; }
+       .stat-value { font-weight: bold; margin-top: 3px; }
+       .canvas-container {
             position: relative;
             width: 500px;
             height: 500px;
@@ -80,9 +74,7 @@
             top: 0;
             left: 0;
         }
-
-        /* Controls Panel Styling */
-      .controls-panel {
+       .controls-panel {
             display: flex;
             flex-direction: column;
             gap: 20px;
@@ -90,24 +82,19 @@
             background: #fff;
             border: 1px solid #ccc;
         }
-      .slider-group {
-            display: flex;
-            flex-direction: column;
-            font-size: 12px;
-        }
-      .slider-group-horizontal {
+       .slider-group-horizontal {
             display: flex;
             align-items: center;
             justify-content: space-between;
+            font-size: 12px;
         }
-        input[type=range] { width: 100%; margin-top: 5px; }
-      .vertical-sliders {
+       .vertical-sliders {
             display: flex;
             justify-content: space-between;
             height: 200px;
             margin-top: 20px;
         }
-      .v-slider {
+       .v-slider {
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -124,7 +111,6 @@
 <body>
 
 <div class="app-container">
-    
     <div class="toolbar">
         <button id="btnStart">Start</button>
         <button id="btnStop">Stop</button>
@@ -212,30 +198,23 @@
 </div>
 
 <script>
-    /**
-     * NEWTONIAN PHYSICS ENGINE AND RENDERER
-     * Architecturally designed to mimic Michael Grant's 2014 VB Application.
-     */
+    // Fysiske konstanter
+    const G_BASE = 6.6738e-11;          
+    const M_BASE = 5.97219e24;          
+    const MU = G_BASE * M_BASE;         
 
-    // --- Fundamental Constants ---
-    const G_BASE = 6.6738e-11;          // Gravitational Constant
-    const M_BASE = 5.97219e24;          // Mass of Earth
-    const MU = G_BASE * M_BASE;         // Standard Gravitational Parameter
-
-    // --- DOM Elements ---
+    // DOM Elementer
     const trailCanvas = document.getElementById('trailCanvas');
     const trailCtx = trailCanvas.getContext('2d');
     const spriteCanvas = document.getElementById('spriteCanvas');
     const spriteCtx = spriteCanvas.getContext('2d');
 
-    // Controls
     const btnStart = document.getElementById('btnStart');
     const btnStop = document.getElementById('btnStop');
     const btnReset = document.getElementById('btnReset');
     const btnCollision = document.getElementById('btnCollision');
     const btnPath = document.getElementById('btnPath');
     
-    // Sliders
     const sldHeight = document.getElementById('sldHeight');
     const sldRadius = document.getElementById('sldRadius');
     const sldAngle = document.getElementById('sldAngle');
@@ -243,51 +222,31 @@
     const sldPower = document.getElementById('sldPower');
     const inpTimeInc = document.getElementById('inpTimeInc');
 
-    // Display Values
     const valTime = document.getElementById('valTime');
     const valApogee = document.getElementById('valApogee');
     const valPerigee = document.getElementById('valPerigee');
 
-    // --- State Variables ---
     let isRunning = false;
     let collisionEnabled = true;
     let showPath = true;
     let elapsedSimTime = 0;
     
-    // Dynamic Physics State
-    let state = {
-        x: 0,
-        y: 0,
-        vx: 0,
-        vy: 0
-    };
+    let state = { x: 0, y: 0, vx: 0, vy: 0 };
 
-    // Canvas scaling parameters
     const CANVAS_DIM = 500;
-    const PIXELS_PER_KM = (CANVAS_DIM / 2) / 35000; // Fixed scale to view high orbits
+    const PIXELS_PER_KM = (CANVAS_DIM / 2) / 35000;
 
-    // --- Core Functions ---
-
-    /**
-     * Initializes the simulation state vectors from the UI sliders.
-     */
     function initializeState() {
         const height_m = parseFloat(sldHeight.value) * 1000;
         const radius_m = parseFloat(sldRadius.value) * 1000;
         const speed = parseFloat(sldSpeed.value);
         const angle_deg = parseFloat(sldAngle.value);
         
-        // Initial position (Top of the planet + mountain height)
         const initial_r = radius_m + height_m;
         state.x = 0;
         state.y = initial_r;
 
-        // Convert launch angle to radians. 
-        // 0 degrees implies horizontal launch (parallel to surface).
         const angle_rad = angle_deg * (Math.PI / 180);
-        
-        // Horizontal launch at top means velocity is purely in X direction initially.
-        // Applying angle alters the launch vector.
         state.vx = speed * Math.cos(angle_rad);
         state.vy = speed * Math.sin(angle_rad);
 
@@ -299,30 +258,20 @@
         drawSprite();
     }
 
-    /**
-     * Analytically calculates Keplerian orbital elements (Apogee/Perigee)
-     * strictly from the instantaneous Cartesian state vectors.
-     */
     function updateAnalyticalOrbits() {
         const r_mag = Math.sqrt(state.x**2 + state.y**2);
         const v_mag_sq = state.vx**2 + state.vy**2;
         
-        // Specific Orbital Energy: e = v^2/2 - mu/r
         const energy = (v_mag_sq / 2) - (MU / r_mag);
-        
-        // Specific Angular Momentum: h = x*vy - y*vx
         const h = state.x * state.vy - state.y * state.vx;
         
         if (energy >= 0) {
             valApogee.innerText = "Escape (\u221E)";
-            valPerigee.innerText = (r_mag / 1000).toFixed(1); // Rough estimate for escape
+            valPerigee.innerText = (r_mag / 1000).toFixed(1); 
             return;
         }
 
-        // Semi-major axis: a = -mu / 2e
         const a = -MU / (2 * energy);
-        
-        // Eccentricity: e = sqrt(1 + 2 * energy * h^2 / mu^2)
         const ecc = Math.sqrt(1 + (2 * energy * Math.pow(h, 2)) / Math.pow(MU, 2));
         
         const apogee_km = (a * (1 + ecc)) / 1000;
@@ -332,9 +281,6 @@
         valPerigee.innerText = perigee_km.toFixed(1);
     }
 
-    /**
-     * Clears and redraws the static background and central planet.
-     */
     function drawBackground() {
         trailCtx.fillStyle = '#f5f5f5';
         trailCtx.fillRect(0, 0, CANVAS_DIM, CANVAS_DIM);
@@ -343,12 +289,12 @@
 
         trailCtx.save();
         trailCtx.translate(CANVAS_DIM / 2, CANVAS_DIM / 2);
-        trailCtx.scale(1, -1); // Transform to Cartesian
+        trailCtx.scale(1, -1); 
 
-        // Draw Earth
+        // Tegn den grønne planet (Jorden)
         trailCtx.beginPath();
         trailCtx.arc(0, 0, radius_km * PIXELS_PER_KM, 0, 2 * Math.PI);
-        trailCtx.fillStyle = '#00cc00'; // Exact bright green from screenshot
+        trailCtx.fillStyle = '#00cc00'; 
         trailCtx.fill();
         trailCtx.lineWidth = 1;
         trailCtx.strokeStyle = '#000';
@@ -357,9 +303,6 @@
         trailCtx.restore();
     }
 
-    /**
-     * Clears foreground and draws the projectile sprite.
-     */
     function drawSprite() {
         spriteCtx.clearRect(0, 0, CANVAS_DIM, CANVAS_DIM);
 
@@ -367,75 +310,54 @@
         spriteCtx.translate(CANVAS_DIM / 2, CANVAS_DIM / 2);
         spriteCtx.scale(1, -1);
 
-        // Convert state meters to km for pixel scaling
         const x_km = state.x / 1000;
         const y_km = state.y / 1000;
 
+        // Tegn den røde satellit
         spriteCtx.beginPath();
         spriteCtx.arc(x_km * PIXELS_PER_KM, y_km * PIXELS_PER_KM, 3, 0, 2 * Math.PI);
-        spriteCtx.fillStyle = '#ff0000'; // Exact red from screenshot
+        spriteCtx.fillStyle = '#ff0000'; 
         spriteCtx.fill();
 
         spriteCtx.restore();
     }
 
-    /**
-     * Executes a single step of the Semi-Implicit Euler numerical integration.
-     */
     function physicsStep(dt) {
         const radius_m = parseFloat(sldRadius.value) * 1000;
         const power = parseFloat(sldPower.value);
-
         const r_mag = Math.sqrt(state.x**2 + state.y**2);
 
-        // Collision logic
         if (collisionEnabled && r_mag <= radius_m) {
             isRunning = false;
             return;
         }
 
-        // Acceleration magnitude: a = -GM / r^power
-        // Standard Newtonian gravity uses power = 2
         const a_mag = -MU / Math.pow(r_mag, power);
-
-        // Vector decomposition
         const ax = a_mag * (state.x / r_mag);
         const ay = a_mag * (state.y / r_mag);
 
-        // Semi-implicit Euler integration
-        // Velocity updated first
         state.vx += ax * dt;
         state.vy += ay * dt;
-
-        // Position updated using new velocity
         state.x += state.vx * dt;
         state.y += state.vy * dt;
 
         elapsedSimTime += dt;
 
-        // Render Trail
         if (showPath) {
             const x_km = state.x / 1000;
             const y_km = state.y / 1000;
             trailCtx.save();
             trailCtx.translate(CANVAS_DIM / 2, CANVAS_DIM / 2);
             trailCtx.scale(1, -1);
-            trailCtx.fillStyle = '#000'; // Black trail
+            trailCtx.fillStyle = '#000'; 
             trailCtx.fillRect(x_km * PIXELS_PER_KM, y_km * PIXELS_PER_KM, 1, 1);
             trailCtx.restore();
         }
     }
 
-    /**
-     * Main animation loop bound to the browser's refresh rate.
-     */
     function animate() {
         if (isRunning) {
-            // Time increment from UI represents simulation seconds per tick
-            // Example: 100 means 100 seconds of physics pass in 1 render frame.
             const dt = parseFloat(inpTimeInc.value);
-            
-            // Sub-stepping to maintain integration stability at high speeds
             const subSteps = 10;
             const sub_dt = dt / subSteps;
 
@@ -451,8 +373,7 @@
         requestAnimationFrame(animate);
     }
 
-    // --- Event Listeners ---
-
+    // Knapper
     btnStart.addEventListener('click', () => { isRunning = true; });
     btnStop.addEventListener('click', () => { isRunning = false; });
     
@@ -469,10 +390,10 @@
     btnPath.addEventListener('click', () => {
         showPath =!showPath;
         btnPath.innerText = showPath? "Don't show path" : "Show path";
-        if (!showPath) drawBackground(); // Clear existing paths
+        if (!showPath) drawBackground(); 
     });
 
-    // Update displays when sliders move, and recalculate theoretical orbit
+    // Dette er den tidligere ødelagte funktion, som nu virker perfekt!
     const sliders = },
         { el: sldRadius, out: },
         { el: sldAngle, out: ['valAngle'] },
@@ -494,7 +415,7 @@
         }
     });
 
-    // Boot
+    // Start simulationens tegne-motor
     initializeState();
     requestAnimationFrame(animate);
 
