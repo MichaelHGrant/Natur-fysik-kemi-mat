@@ -219,19 +219,18 @@
             const orbCtx = orbCanvas.getContext('2d');
             const tooltip = document.getElementById('spectra-tooltip');
             
-            // UI elementer til Orbital valg
             const nSelect = document.getElementById('n-select');
             const lSelect = document.getElementById('l-select');
             const mSelect = document.getElementById('m-select');
             const orbitalName = document.getElementById('orbital-name');
             
-            let elementsDatabase =;
-            let currentLines =;
+            // Brug af "new Array()" for at undgå at tomme klammer forsvinder i formateringen
+            let elementsDatabase = new Array();
+            let currentLines = new Array();
             let animationFrameId;
             let currentZeff = 1.0;
 
-            // Variabler til 3D Point Cloud og rotation
-            let orbitalPoints =;
+            let orbitalPoints = new Array();
             let maxProbCache = 0.0001; 
             let activeOrbitalColor = '#58a6ff';
             let drawnPointsCount = 0;
@@ -277,12 +276,12 @@
                 let n = nSelect.value;
                 let l = parseInt(lSelect.value);
                 let m = mSelect.value;
-                let letters = ['s', 'p', 'd', 'f', 'g', 'h'];
+                let letters = new Array('s', 'p', 'd', 'f', 'g', 'h');
                 orbitalName.innerHTML = n + letters[l] + ' <span style="font-size:0.85rem; color:#8b949e;">(m=' + m + ')</span>';
             }
 
             function resetOrbitalCloud() {
-                orbitalPoints =;
+                orbitalPoints = new Array();
                 drawnPointsCount = 0;
                 maxProbCache = 0.0001;
                 rotX = 0;
@@ -305,14 +304,18 @@
             }
 
             function renderPeriodicTable(elements) {
-                const fragment = document.createDocumentFragment();
+                // Sikker oprettelse af array undgår formateringsfejl
+                let docFrag = document.createDocumentFragment();
+                
                 elements.forEach(element => {
                     const cell = document.createElement('li');
                     cell.classList.add('element');
                     let catClass = element.category.replace(/\s+/g, '-').toLowerCase();
-                    if(catClass.indexOf('unknown')!== -1) {
+                    
+                    if (catClass.indexOf('unknown')!== -1) {
                         catClass = 'unknown';
                     }
+                    
                     cell.classList.add(catClass);
                     cell.style.setProperty('--xpos', element.xpos);
                     cell.style.setProperty('--ypos', element.ypos);
@@ -323,20 +326,22 @@
 
                     cell.setAttribute('tabindex', '0');
                     cell.addEventListener('click', () => populateAndOpenModal(element, catClass));
-                    cell.addEventListener('keydown', (e) => { if(e.key === 'Enter') populateAndOpenModal(element, catClass); });
+                    
+                    cell.addEventListener('keydown', (e) => { 
+                        if (e.key === 'Enter') { populateAndOpenModal(element, catClass); }
+                    });
 
-                    fragment.appendChild(cell);
+                    docFrag.appendChild(cell);
                 });
-                gridContainer.appendChild(fragment);
+                gridContainer.appendChild(docFrag);
             }
 
             // --- 3. FYSIKMOTOR: SLATERS REGLER FOR Z_eff ---
             function calculateZeff(Z, shells) {
                 if (Z === 1) return 1.0;
-                if (shells === undefined |
-
-| shells === null |
-| shells.length === 0) return 1.0;
+                if (typeof shells === 'undefined') return 1.0;
+                if (shells === null) return 1.0;
+                if (shells.length === 0) return 1.0;
                 
                 let valence = shells[shells.length - 1];
                 let n_minus_1 = 0;
@@ -347,22 +352,23 @@
                 
                 let S = (0.35 * (valence > 0? valence - 1 : 0)) + (0.85 * n_minus_1) + (1.00 * core);
                 let Zeff = Z - S;
-                return Zeff < 1.0? 1.0 : Zeff; 
+                if (Zeff < 1.0) { Zeff = 1.0; }
+                return Zeff; 
             }
 
             // Farvekonvertering (380nm - 780nm)
             function wavelengthToRGB(wl) {
                 let R = 0, G = 0, B = 0;
-                if (wl >= 380 && wl < 440) { R = -(wl - 440) / (440 - 380); B = 1; }
-                else if (wl >= 440 && wl < 490) { G = (wl - 440) / (490 - 440); B = 1; }
-                else if (wl >= 490 && wl < 510) { G = 1; B = -(wl - 510) / (510 - 490); }
-                else if (wl >= 510 && wl < 580) { R = (wl - 510) / (580 - 510); G = 1; }
-                else if (wl >= 580 && wl < 645) { R = 1; G = -(wl - 645) / (645 - 580); }
-                else if (wl >= 645 && wl <= 780) { R = 1; }
+                if (wl >= 380) { if (wl < 440) { R = -(wl - 440) / (440 - 380); B = 1; } }
+                if (wl >= 440) { if (wl < 490) { G = (wl - 440) / (490 - 440); B = 1; } }
+                if (wl >= 490) { if (wl < 510) { G = 1; B = -(wl - 510) / (510 - 490); } }
+                if (wl >= 510) { if (wl < 580) { R = (wl - 510) / (580 - 510); G = 1; } }
+                if (wl >= 580) { if (wl < 645) { R = 1; G = -(wl - 645) / (645 - 580); } }
+                if (wl >= 645) { if (wl <= 780) { R = 1; } }
 
                 let factor = 1;
-                if (wl >= 380 && wl < 420) factor = 0.3 + 0.7 * (wl - 380) / (420 - 380);
-                else if (wl > 700 && wl <= 780) factor = 0.3 + 0.7 * (780 - wl) / (780 - 700);
+                if (wl >= 380) { if (wl < 420) { factor = 0.3 + 0.7 * (wl - 380) / (420 - 380); } }
+                if (wl > 700) { if (wl <= 780) { factor = 0.3 + 0.7 * (780 - wl) / (780 - 700); } }
                 
                 let gamma = 0.8;
                 let r = Math.round(255 * Math.pow(R * factor, gamma));
@@ -373,7 +379,7 @@
 
             // --- 4. SPEKTRAL BEREGNING (Schrödinger/Rydberg & Einstein A) ---
             function generateQuantumLines(Zeff) {
-                let lines =;
+                let generatedLines = new Array();
                 const eV_to_nm = 1239.84193; 
                 let maxA21 = 0;
                 
@@ -397,10 +403,11 @@
                         while(displayLambda < 380) { displayLambda *= 1.5; } 
                         while(displayLambda > 780) { displayLambda *= 0.8; }
 
-                        lines.push({
+                        generatedLines.push({
                             realLambda: lambda,
                             lambda: displayLambda,
                             n1: n1, n2: n2,
+                            l2: n2 - 1,
                             E1: E1, E2: E2, deltaE: deltaE, Zeff: Zeff,
                             dipoleMatrix: D12_sq,
                             einsteinA: A21,
@@ -410,7 +417,7 @@
                         });
                         
                         let offsetLambda = displayLambda + (fineSplit > 0.5? fineSplit : 0.5);
-                        lines.push({
+                        generatedLines.push({
                             realLambda: lambda + fineSplit,
                             lambda: offsetLambda,
                             n1: n1, n2: n2, 
@@ -424,14 +431,14 @@
                     }
                 }
 
-                lines.forEach(line => {
+                generatedLines.forEach(line => {
                     line.intensity = 0.1 + 0.9 * Math.pow(line.einsteinA / maxA21, 0.3);
                 });
 
-                return lines;
+                return generatedLines;
             }
 
-            function renderCanvasSpectra(lines) {
+            function renderCanvasSpectra(linesToDraw) {
                 let dpr = 1;
                 if (window.devicePixelRatio) { dpr = window.devicePixelRatio; }
                 const rect = specCanvas.getBoundingClientRect();
@@ -443,7 +450,7 @@
                 specCtx.fillStyle = '#000';
                 specCtx.fillRect(0, 0, rect.width, rect.height);
 
-                lines.forEach(line => {
+                linesToDraw.forEach(line => {
                     let x = ((line.lambda - 380) / (780 - 380)) * rect.width;
                     line.canvasX = x; 
                     
@@ -515,7 +522,6 @@
                 let maxR = n * n * 4.5 / currentZeff; 
                 let scale = (Math.min(rect.width, rect.height) / 2.2) / maxR;
 
-                // Generer punkter indtil vi har 20000 gyldige punkter i arrayet
                 if (drawnPointsCount < 20000) {
                     for(let i = 0; i < 1500; i++) {
                         let r = Math.random() * maxR; 
@@ -533,7 +539,10 @@
                                 let pz = r * scale * Math.sin(theta) * Math.sin(phi);
                                 let py = r * scale * Math.cos(theta);
                                 
-                                let pointColor = relativeProb > 0.35? activeOrbitalColor : 'rgba(255,255,255,0.3)';
+                                let pointColor = 'rgba(255,255,255,0.3)';
+                                if (relativeProb > 0.35) {
+                                    pointColor = activeOrbitalColor;
+                                }
                                 orbitalPoints.push({x: px, y: py, z: pz, color: pointColor});
                                 drawnPointsCount++;
                             }
@@ -541,7 +550,6 @@
                     }
                 }
 
-                // Opdater Canvas Rendering og påfør eulerske 3D rotationer
                 let dpr = 1;
                 if (window.devicePixelRatio) { dpr = window.devicePixelRatio; }
                 orbCanvas.width = rect.width * dpr;
@@ -560,12 +568,10 @@
                 for (let i = 0; i < orbitalPoints.length; i++) {
                     let p = orbitalPoints[i];
 
-                    // Rotation omkring Y-aksen (Yaw)
                     let x1 = p.x * cosY + p.z * sinY;
                     let z1 = -p.x * sinY + p.z * cosY;
                     let y1 = p.y;
 
-                    // Rotation omkring X-aksen (Pitch)
                     let y2 = y1 * cosX - z1 * sinX;
                     let z2 = y1 * sinX + z1 * cosX;
                     let x2 = x1;
@@ -584,28 +590,31 @@
                 animationFrameId = requestAnimationFrame(drawOrbitalCloud);
             }
 
-            // Orbital lærred (mouse drag funktioner)
             function startOrbitalDrag(e) {
                 isDraggingOrbital = true;
                 let clientX = e.clientX;
                 let clientY = e.clientY;
-                if (e.touches && e.touches.length > 0) {
-                    clientX = e.touches.clientX;
-                    clientY = e.touches.clientY;
+                if (e.touches) {
+                    if (e.touches.length > 0) {
+                        clientX = e.touches.clientX;
+                        clientY = e.touches.clientY;
+                    }
                 }
                 lastMouseX = clientX;
                 lastMouseY = clientY;
             }
 
             function dragOrbital(e) {
-                if (!isDraggingOrbital) return;
+                if (isDraggingOrbital === false) return;
                 
                 let clientX = e.clientX;
                 let clientY = e.clientY;
-                if (e.touches && e.touches.length > 0) {
-                    e.preventDefault(); 
-                    clientX = e.touches.clientX;
-                    clientY = e.touches.clientY;
+                if (e.touches) {
+                    if (e.touches.length > 0) {
+                        e.preventDefault(); 
+                        clientX = e.touches.clientX;
+                        clientY = e.touches.clientY;
+                    }
                 }
 
                 let deltaX = clientX - lastMouseX;
@@ -731,10 +740,10 @@
             modal.addEventListener('click', (e) => {
                 const dim = modal.getBoundingClientRect();
                 let outside = false;
-                if (e.clientX < dim.left) outside = true;
-                if (e.clientX > dim.right) outside = true;
-                if (e.clientY < dim.top) outside = true;
-                if (e.clientY > dim.bottom) outside = true;
+                if (e.clientX < dim.left) { outside = true; }
+                if (e.clientX > dim.right) { outside = true; }
+                if (e.clientY < dim.top) { outside = true; }
+                if (e.clientY > dim.bottom) { outside = true; }
                 
                 if (outside) {
                     modal.close(); 
