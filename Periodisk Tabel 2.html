@@ -215,7 +215,6 @@
             const orbCtx = orbCanvas.getContext('2d');
             const tooltip = document.getElementById('spectra-tooltip');
             
-            // UI elementer til Orbital valg
             const nSelect = document.getElementById('n-select');
             const lSelect = document.getElementById('l-select');
             const mSelect = document.getElementById('m-select');
@@ -231,12 +230,10 @@
 
             const dataUrl = 'https://raw.githubusercontent.com/Bowserinator/Periodic-Table-JSON/master/PeriodicTableJSON.json';
 
-            // --- 1. OPSÆTNING AF KONTROLPANEL FOR ORBITALER ---
             for(let i=1; i<=6; i++) {
                 nSelect.add(new Option(i, i));
             }
             
-            // Når n ændres, skal l begrænses fra 0 til n-1
             nSelect.addEventListener('change', () => {
                 let n = parseInt(nSelect.value);
                 lSelect.innerHTML = '';
@@ -246,7 +243,6 @@
                 lSelect.dispatchEvent(new Event('change'));
             });
 
-            // Når l ændres, skal m begrænses fra -l til l
             lSelect.addEventListener('change', () => {
                 let l = parseInt(lSelect.value);
                 mSelect.innerHTML = '';
@@ -271,7 +267,8 @@
             }
 
             function resetOrbitalCloud() {
-                const dpr = window.devicePixelRatio? window.devicePixelRatio : 1;
+                let dpr = 1;
+                if (window.devicePixelRatio) { dpr = window.devicePixelRatio; }
                 orbCanvas.width = orbCanvas.clientWidth * dpr;
                 orbCanvas.height = orbCanvas.clientHeight * dpr;
                 orbCtx.setTransform(1, 0, 0, 1, 0, 0);
@@ -282,11 +279,12 @@
                 drawnPoints = 0;
             }
 
-            // --- 2. HENT DATA ---
             async function fetchPeriodicData() {
                 try {
                     const response = await fetch(dataUrl);
-                    if (!response.ok) throw new Error('Netværksfejl');
+                    if (response.ok === false) {
+                        throw new Error('Netværksfejl');
+                    }
                     const data = await response.json();
                     elementsDatabase = data.elements;
                     renderPeriodicTable(elementsDatabase);
@@ -321,12 +319,11 @@
                 gridContainer.appendChild(fragment);
             }
 
-            // --- 3. FYSIKMOTOR: SLATERS REGLER FOR Z_eff ---
             function calculateZeff(Z, shells) {
                 if (Z === 1) return 1.0;
-                if (!shells |
-
-| shells.length === 0) return 1.0;
+                if (shells === undefined) return 1.0;
+                if (shells === null) return 1.0;
+                if (shells.length === 0) return 1.0;
                 
                 let valence = shells[shells.length - 1];
                 let n_minus_1 = 0;
@@ -337,10 +334,10 @@
                 
                 let S = (0.35 * (valence > 0? valence - 1 : 0)) + (0.85 * n_minus_1) + (1.00 * core);
                 let Zeff = Z - S;
-                return Zeff < 1.0? 1.0 : Zeff; 
+                if (Zeff < 1.0) { Zeff = 1.0; }
+                return Zeff; 
             }
 
-            // Farvekonvertering (380nm - 780nm)
             function wavelengthToRGB(wl) {
                 let R = 0, G = 0, B = 0;
                 if (wl >= 380 && wl < 440) { R = -(wl - 440) / (440 - 380); B = 1; }
@@ -361,7 +358,6 @@
                 return 'rgb(' + r + ',' + g + ',' + b + ')';
             }
 
-            // --- 4. SPEKTRAL BEREGNING (Schrödinger/Rydberg & Einstein A) ---
             function generateQuantumLines(Zeff) {
                 let lines = new Array();
                 const eV_to_nm = 1239.84193; 
@@ -369,32 +365,29 @@
                 
                 for (let n1 = 1; n1 <= 5; n1++) {
                     for (let n2 = n1 + 1; n2 <= 6; n2++) {
-                        // Schrödinger Energier
                         let E1 = -13.6 * (Zeff * Zeff) / (n1 * n1);
                         let E2 = -13.6 * (Zeff * Zeff) / (n2 * n2);
                         let deltaE = E2 - E1;
                         let lambda = eV_to_nm / deltaE;
 
-                        // Udregning af Dipol Matrix Elementet (|D|^2)
                         let n1_sq = n1 * n1;
                         let n2_sq = n2 * n2;
                         let D12_sq = (1 / (Zeff * Zeff)) * (256 * Math.pow(n1, 7) * Math.pow(n2, 9)) / (Math.pow(n2_sq - n1_sq, 5) * Math.pow(n2_sq + n1_sq, 2));
                         
-                        // Einstein A-Koefficient
                         let A21 = D12_sq / Math.pow(lambda, 3);
-                        if (A21 > maxA21) maxA21 = A21;
+                        if (A21 > maxA21) { maxA21 = A21; }
 
-                        // Finstruktur opsplitning
                         let fineSplit = lambda * 0.00005 * Zeff; 
                         
                         let displayLambda = lambda;
-                        while(displayLambda < 380) displayLambda *= 1.5; 
-                        while(displayLambda > 780) displayLambda *= 0.8;
+                        while(displayLambda < 380) { displayLambda *= 1.5; } 
+                        while(displayLambda > 780) { displayLambda *= 0.8; }
 
                         lines.push({
                             realLambda: lambda,
                             lambda: displayLambda,
                             n1: n1, n2: n2,
+                            l2: n2 - 1,
                             E1: E1, E2: E2, deltaE: deltaE, Zeff: Zeff,
                             dipoleMatrix: D12_sq,
                             einsteinA: A21,
@@ -403,10 +396,11 @@
                             canvasX: 0
                         });
                         
+                        let offsetLambda = displayLambda + (fineSplit > 0.5? fineSplit : 0.5);
                         lines.push({
                             realLambda: lambda + fineSplit,
-                            lambda: displayLambda + (fineSplit > 0.5? fineSplit : 0.5),
-                            n1: n1, n2: n2,
+                            lambda: offsetLambda,
+                            n1: n1, n2: n2, l2: n2 - 1,
                             E1: E1, E2: E2, deltaE: deltaE, Zeff: Zeff,
                             dipoleMatrix: D12_sq * 0.5,
                             einsteinA: A21 * 0.5,
@@ -417,7 +411,6 @@
                     }
                 }
 
-                // Normaliser intensiteten visuelt
                 lines.forEach(line => {
                     line.intensity = 0.1 + 0.9 * Math.pow(line.einsteinA / maxA21, 0.3);
                 });
@@ -426,7 +419,8 @@
             }
 
             function renderCanvasSpectra(lines) {
-                let dpr = window.devicePixelRatio? window.devicePixelRatio : 1;
+                let dpr = 1;
+                if (window.devicePixelRatio) { dpr = window.devicePixelRatio; }
                 const rect = specCanvas.getBoundingClientRect();
                 specCanvas.width = rect.width * dpr;
                 specCanvas.height = rect.height * dpr;
@@ -450,8 +444,6 @@
                 });
             }
 
-            // --- 5. KVANTEMEKANISKE POLYNOMIER TIL ORBITALER ---
-            // Associerede Laguerre Polynomier (Radial del)
             function generalizedLaguerre(n, alpha, x) {
                 if (n === 0) return 1;
                 if (n === 1) return 1 + alpha - x;
@@ -466,7 +458,6 @@
                 return Lk;
             }
 
-            // Associerede Legendre Polynomier (Vinkel del)
             function associatedLegendre(l, m, x) {
                 m = Math.abs(m);
                 if (l < m) return 0;
@@ -491,7 +482,6 @@
                 return pll;
             }
 
-            // Sandsynlighedstæthed |Psi|^2
             function orbitalPDF(n, l, m, r_bohr, theta) {
                 let rho = (2.0 * currentZeff / n) * r_bohr;
                 let radial = Math.pow(rho, l) * Math.exp(-rho / 2.0) * generalizedLaguerre(n - l - 1, 2 * l + 1, rho);
@@ -499,9 +489,7 @@
                 return Math.pow(radial * angular, 2);
             }
 
-            // --- 6. TEGN 2D ATOMAR ORBITAL (Monte Carlo Sampling) ---
             function drawOrbitalCloud() {
-                // Stopper tegningen ved ~25000 punkter for at spare CPU
                 if (drawnPoints > 25000) {
                     animationFrameId = requestAnimationFrame(drawOrbitalCloud);
                     return;
@@ -515,7 +503,6 @@
                 let cx = rect.width / 2;
                 let cy = rect.height / 2;
                 
-                // Sikrer at orbitalen fylder lærredet dynamisk
                 let maxR = n * n * 4.5 / currentZeff; 
                 let scale = (Math.min(rect.width, rect.height) / 2.2) / maxR;
 
@@ -526,17 +513,15 @@
                     
                     let prob = orbitalPDF(n, l, m, r, theta);
 
-                    if (prob > maxProbCache) maxProbCache = prob;
+                    if (prob > maxProbCache) { maxProbCache = prob; }
 
                     let relativeProb = prob / maxProbCache;
 
-                    // Rejection sampling for at optegne 75% sandsynlighedsskyen
                     if (relativeProb > 0.05) {
                         if (Math.random() < relativeProb) {
                             let x = r * scale * Math.sin(theta) * Math.cos(phi);
                             let y = r * scale * Math.cos(theta); 
                             
-                            // Lysere farve i kerneområdet
                             if (relativeProb > 0.4) {
                                 orbCtx.fillStyle = activeOrbitalColor;
                             } else {
@@ -551,7 +536,6 @@
                 animationFrameId = requestAnimationFrame(drawOrbitalCloud);
             }
 
-            // --- 7. ÅBN MODAL & HÅNDTER INTERAKTION ---
             function populateAndOpenModal(element, catClass) {
                 document.getElementById('modal-name').textContent = element.name;
                 document.getElementById('modal-category').textContent = element.category.toUpperCase();
@@ -573,15 +557,16 @@
                 symbolBox.className = 'symbol-box'; 
                 symbolBox.style.borderColor = 'var(--' + catClass + ')';
 
-                // Find temafarven for den aktive orbital
                 let rootStyles = getComputedStyle(document.body);
-                activeOrbitalColor = rootStyles.getPropertyValue('--' + catClass).trim() |
-
-| '#58a6ff';
+                let tempColor = rootStyles.getPropertyValue('--' + catClass).trim();
+                if (tempColor === '') {
+                    activeOrbitalColor = '#58a6ff';
+                } else {
+                    activeOrbitalColor = tempColor;
+                }
 
                 modal.showModal();
 
-                // Nulstil Orbital Valg til n=1
                 nSelect.value = 1;
                 nSelect.dispatchEvent(new Event('change'));
 
@@ -597,9 +582,11 @@
                 let clientX = e.clientX;
                 let clientY = e.clientY;
                 
-                if (e.touches && e.touches.length > 0) {
-                    clientX = e.touches.clientX;
-                    clientY = e.touches.clientY;
+                if (e.touches) {
+                    if (e.touches.length > 0) {
+                        clientX = e.touches.clientX;
+                        clientY = e.touches.clientY;
+                    }
                 }
 
                 const rect = specCanvas.getBoundingClientRect();
