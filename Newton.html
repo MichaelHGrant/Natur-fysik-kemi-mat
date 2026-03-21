@@ -1,495 +1,257 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="da">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Newton's Cannon - Interactive Orbital Mechanics</title>
+    <title>Newtons Kanon Simulation</title>
     <style>
-        /* CSS Reset and Modern Layout */
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #e0e5ec;
-            color: #333;
-            margin: 0;
-            padding: 20px;
+            font-family: Arial, sans-serif;
+            background-color: #d3d3d3;
             display: flex;
             justify-content: center;
+            padding: 20px;
         }
-      .app-container {
+       .container {
             background-color: #f0f0f0;
-            border: 2px solid #a0a0a0;
-            border-radius: 4px;
-            padding: 10px;
-            width: 1000px;
-            display: grid;
-            grid-template-columns: 200px 500px 250px;
-            gap: 15px;
-            box-shadow: 4px 4px 15px rgba(0,0,0,0.2);
-        }
-        /* Toolbar Styling */
-      .toolbar {
-            grid-column: 1 / -1;
+            border: 2px solid #999;
+            padding: 20px;
             display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            background: #fff;
-            padding: 10px;
-            border: 1px solid #ccc;
-            align-items: center;
-        }
-        button {
-            padding: 5px 15px;
-            font-size: 14px;
-            cursor: pointer;
-            background-color: #e1e1e1;
-            border: 1px solid #999;
-            border-radius: 3px;
-        }
-        button:hover { background-color: #d1d1d1; }
-      .input-group {
-            display: flex;
-            flex-direction: column;
-            font-size: 12px;
-        }
-      .input-group input { width: 80px; }
-        
-        /* Stats Panel Styling */
-      .stats-panel {
-            grid-column: 1 / -1;
-            display: flex;
-            justify-content: space-between;
-            font-size: 12px;
-            padding: 5px 10px;
-            background: #fff;
-            border: 1px solid #ccc;
-        }
-      .stat-box { display: flex; flex-direction: column; align-items: flex-start; }
-      .stat-value { font-weight: bold; margin-top: 3px; }
-
-        /* Canvas Area Styling */
-      .canvas-container {
-            position: relative;
-            width: 500px;
-            height: 500px;
-            background-color: #f5f5f5;
-            border: 1px inset #888;
-            overflow: hidden;
+            gap: 20px;
+            box-shadow: 2px 2px 10px rgba(0,0,0,0.3);
         }
         canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-        }
-
-        /* Controls Panel Styling */
-      .controls-panel {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            padding: 10px;
-            background: #fff;
+            background-color: white;
             border: 1px solid #ccc;
         }
-      .slider-group {
+       .panel {
             display: flex;
             flex-direction: column;
-            font-size: 12px;
+            gap: 15px;
+            width: 250px;
         }
-      .slider-group-horizontal {
+       .button-group {
             display: flex;
-            align-items: center;
-            justify-content: space-between;
+            gap: 10px;
         }
-        input[type=range] { width: 100%; margin-top: 5px; }
-      .vertical-sliders {
-            display: flex;
-            justify-content: space-between;
-            height: 200px;
-            margin-top: 20px;
+        button {
+            padding: 10px;
+            font-size: 14px;
+            cursor: pointer;
+            flex: 1;
         }
-      .v-slider {
+       .slider-group {
             display: flex;
             flex-direction: column;
-            align-items: center;
-            font-size: 11px;
+            font-size: 14px;
         }
-        input[type=range][orient=vertical] {
-            writing-mode: bt-lr; 
-            -webkit-appearance: slider-vertical;
-            width: 20px;
-            height: 150px;
+       .slider-group span {
+            font-weight: bold;
+            color: #0055aa;
+        }
+        input[type=range] {
+            width: 100%;
+            margin-top: 5px;
         }
     </style>
 </head>
 <body>
 
-<div class="app-container">
-    
-    <div class="toolbar">
-        <button id="btnStart">Start</button>
-        <button id="btnStop">Stop</button>
-        <div class="input-group">
-            <label>Delay</label>
-            <input type="text" value="10000" disabled>
-        </div>
-        <div style="flex-grow: 1;"></div>
-        <div class="stat-box" style="margin-right: 20px;">
-            <span>Mass of Earth [10^24 kg]</span>
-            <span class="stat-value">5.97219</span>
-        </div>
-        <button id="btnReset">Reset</button>
-    </div>
+<div class="container">
+    <canvas id="simCanvas" width="500" height="500"></canvas>
 
-    <div class="stats-panel">
-        <div class="stat-box">
-            <span>Gravitational konstant [10^11]</span>
-            <span class="stat-value">6.6738</span>
-        </div>
-        <div class="stat-box">
-            <span>Time Increment [0.01 s]</span>
-            <input type="number" id="inpTimeInc" value="100" style="width: 50px;">
-        </div>
-        <div class="stat-box">
-            <span>Time [s]</span>
-            <span class="stat-value" id="valTime">0.00</span>
-        </div>
-        <div class="stat-box">
-            <span>Apogee [km]</span>
-            <span class="stat-value" id="valApogee">7371.0</span>
-        </div>
-        <div class="stat-box">
-            <span>Perigee [km]</span>
-            <span class="stat-value" id="valPerigee">7371.0</span>
-        </div>
-        <div class="stat-box">
-            <span>Height [km]</span>
-            <span class="stat-value" id="valHeightTop">1000</span>
-        </div>
-    </div>
-
-    <div></div>
-
-    <div class="canvas-container">
-        <canvas id="trailCanvas" width="500" height="500"></canvas>
-        <canvas id="spriteCanvas" width="500" height="500"></canvas>
-    </div>
-
-    <div class="controls-panel">
-        <div>
-            <button id="btnCollision" style="width: 100%; margin-bottom: 10px;">Collision with Earth: ON</button>
-            <button id="btnPath" style="width: 100%;">Don't show path</button>
+    <div class="panel">
+        <div class="button-group">
+            <button id="btnStart">Start</button>
+            <button id="btnStop">Stop</button>
+            <button id="btnReset">Reset</button>
         </div>
 
-        <div class="slider-group-horizontal">
-            <span>Power</span>
-            <span id="valPower">2.0</span>
-            <input type="range" id="sldPower" min="1.0" max="3.0" step="0.01" value="2.0" style="width: 100px;">
+        <div class="slider-group">
+            <label>Hastighed [m/s]: <span id="valSpeed">7200</span></label>
+            <input type="range" id="inpSpeed" min="0" max="12000" step="10" value="7200">
         </div>
 
-        <div class="vertical-sliders">
-            <div class="v-slider">
-                <span>Height [km]</span>
-                <span id="valHeightBtn" style="margin-bottom: 5px;">1000</span>
-                <input type="range" id="sldHeight" orient="vertical" min="0" max="30000" step="10" value="1000">
-            </div>
-            <div class="v-slider">
-                <span>Radius [km]</span>
-                <span id="valRadius" style="margin-bottom: 5px;">6371</span>
-                <input type="range" id="sldRadius" orient="vertical" min="1000" max="10000" step="1" value="6371">
-            </div>
-            <div class="v-slider">
-                <span>Angle [deg]</span>
-                <span id="valAngle" style="margin-bottom: 5px;">0</span>
-                <input type="range" id="sldAngle" orient="vertical" min="-90" max="90" step="1" value="0">
-            </div>
-            <div class="v-slider">
-                <span>Speed [m/s]</span>
-                <span id="valSpeed" style="margin-bottom: 5px;">7200</span>
-                <input type="range" id="sldSpeed" orient="vertical" min="0" max="12000" step="10" value="7200">
-            </div>
+        <div class="slider-group">
+            <label>Højde [km]: <span id="valHeight">1000</span></label>
+            <input type="range" id="inpHeight" min="0" max="30000" step="100" value="1000">
+        </div>
+
+        <div class="slider-group">
+            <label>Jordens Radius [km]: <span id="valRadius">6371</span></label>
+            <input type="range" id="inpRadius" min="1000" max="10000" step="1" value="6371">
+        </div>
+
+        <div class="slider-group">
+            <label>Vinkel [deg]: <span id="valAngle">0</span></label>
+            <input type="range" id="inpAngle" min="-90" max="90" step="1" value="0">
+        </div>
+
+        <div class="slider-group">
+            <label>Gravity Power: <span id="valPower">2.00</span></label>
+            <input type="range" id="inpPower" min="1.0" max="3.0" step="0.01" value="2.0">
         </div>
     </div>
 </div>
 
 <script>
-    /**
-     * NEWTONIAN PHYSICS ENGINE AND RENDERER
-     * Architecturally designed to mimic Michael Grant's 2014 VB Application.
-     */
+    // Fysiske konstanter fra billedet
+    const G = 6.6738e-11;
+    const M = 5.97219e24;
+    const GM = G * M;
 
-    // --- Fundamental Constants ---
-    const G_BASE = 6.6738e-11;          // Gravitational Constant [3]
-    const M_BASE = 5.97219e24;          // Mass of Earth [2]
-    const MU = G_BASE * M_BASE;         // Standard Gravitational Parameter
+    // Hent HTML-elementerne
+    const canvas = document.getElementById("simCanvas");
+    const ctx = canvas.getContext("2d");
 
-    // --- DOM Elements ---
-    const trailCanvas = document.getElementById('trailCanvas');
-    const trailCtx = trailCanvas.getContext('2d');
-    const spriteCanvas = document.getElementById('spriteCanvas');
-    const spriteCtx = spriteCanvas.getContext('2d');
+    const btnStart = document.getElementById("btnStart");
+    const btnStop = document.getElementById("btnStop");
+    const btnReset = document.getElementById("btnReset");
 
-    // Controls
-    const btnStart = document.getElementById('btnStart');
-    const btnStop = document.getElementById('btnStop');
-    const btnReset = document.getElementById('btnReset');
-    const btnCollision = document.getElementById('btnCollision');
-    const btnPath = document.getElementById('btnPath');
-    
-    // Sliders
-    const sldHeight = document.getElementById('sldHeight');
-    const sldRadius = document.getElementById('sldRadius');
-    const sldAngle = document.getElementById('sldAngle');
-    const sldSpeed = document.getElementById('sldSpeed');
-    const sldPower = document.getElementById('sldPower');
-    const inpTimeInc = document.getElementById('inpTimeInc');
+    const inpSpeed = document.getElementById("inpSpeed");
+    const inpHeight = document.getElementById("inpHeight");
+    const inpRadius = document.getElementById("inpRadius");
+    const inpAngle = document.getElementById("inpAngle");
+    const inpPower = document.getElementById("inpPower");
 
-    // Display Values
-    const valTime = document.getElementById('valTime');
-    const valApogee = document.getElementById('valApogee');
-    const valPerigee = document.getElementById('valPerigee');
+    const valSpeed = document.getElementById("valSpeed");
+    const valHeight = document.getElementById("valHeight");
+    const valRadius = document.getElementById("valRadius");
+    const valAngle = document.getElementById("valAngle");
+    const valPower = document.getElementById("valPower");
 
-    // --- State Variables ---
+    // Simuleringstilstand (State)
     let isRunning = false;
-    let collisionEnabled = true;
-    let showPath = true;
-    let elapsedSimTime = 0;
-    
-    // Dynamic Physics State
-    let state = {
-        x: 0,
-        y: 0,
-        vx: 0,
-        vy: 0
-    };
+    let x = 0;
+    let y = 0;
+    let vx = 0;
+    let vy = 0;
+    let trail =;
 
-    // Canvas scaling parameters
-    const CANVAS_DIM = 500;
-    const PIXELS_PER_KM = (CANVAS_DIM / 2) / 35000; // Fixed scale to view high orbits
+    // Skaleringsfaktor for grafikken (1 pixel svarer til ca. 80 km, så høje kredsløb kan ses)
+    const scale = 250 / 40000000; 
 
-    // --- Core Functions ---
+    // Funktion til at genstarte kredsløbet
+    function resetSimulation() {
+        isRunning = false;
+        trail =;
 
-    /**
-     * Initializes the simulation state vectors from the UI sliders.
-     */
-    function initializeState() {
-        const height_m = parseFloat(sldHeight.value) * 1000;
-        const radius_m = parseFloat(sldRadius.value) * 1000;
-        const speed = parseFloat(sldSpeed.value);
-        const angle_deg = parseFloat(sldAngle.value);
-        
-        // Initial position (Top of the planet + mountain height)
-        const initial_r = radius_m + height_m;
-        state.x = 0;
-        state.y = initial_r;
+        // Hent værdier fra sliderne og omregn til meter og radianer
+        let speed = parseFloat(inpSpeed.value);
+        let height = parseFloat(inpHeight.value) * 1000; 
+        let radius = parseFloat(inpRadius.value) * 1000; 
+        let angle_rad = parseFloat(inpAngle.value) * Math.PI / 180;
 
-        // Convert launch angle to radians. 
-        // 0 degrees implies horizontal launch (parallel to surface).
-        const angle_rad = angle_deg * (Math.PI / 180);
-        
-        // Horizontal launch at top means velocity is purely in X direction initially.
-        // Applying angle alters the launch vector.
-        state.vx = speed * Math.cos(angle_rad);
-        state.vy = speed * Math.sin(angle_rad);
+        // Kanonen placeres på toppen af Jorden + bjerg-højden
+        x = 0;
+        y = radius + height;
 
-        elapsedSimTime = 0;
-        valTime.innerText = "0.00";
-        
-        updateAnalyticalOrbits();
-        drawBackground();
-        drawSprite();
+        // Udregn starthastighed for x og y
+        vx = speed * Math.cos(angle_rad);
+        vy = speed * Math.sin(angle_rad);
+
+        drawGraphics();
     }
 
-    /**
-     * Analytically calculates Keplerian orbital elements (Apogee/Perigee)
-     * strictly from the instantaneous Cartesian state vectors.
-     */
-    function updateAnalyticalOrbits() {
-        const r_mag = Math.sqrt(state.x**2 + state.y**2);
-        const v_mag_sq = state.vx**2 + state.vy**2;
-        
-        // Specific Orbital Energy: e = v^2/2 - mu/r
-        const energy = (v_mag_sq / 2) - (MU / r_mag);
-        
-        // Specific Angular Momentum: h = x*vy - y*vx
-        const h = state.x * state.vy - state.y * state.vx;
-        
-        if (energy >= 0) {
-            valApogee.innerText = "Escape (\u221E)";
-            valPerigee.innerText = (r_mag / 1000).toFixed(1); // Rough estimate for escape
-            return;
+    // Funktion til at tegne Jorden og kanonkuglen
+    function drawGraphics() {
+        // Ryd lærredet hver frame
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Gem standardtilstanden og flyt centrum til midten af lærredet
+        ctx.save();
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.scale(1, -1); // Vend y-aksen, så opad er positivt (matematisk standard)
+
+        let radius_m = parseFloat(inpRadius.value) * 1000;
+
+        // 1. Tegn den grønne Jordklode
+        ctx.beginPath();
+        ctx.arc(0, 0, radius_m * scale, 0, 2 * Math.PI);
+        ctx.fillStyle = "#00cc00"; // Grøn
+        ctx.fill();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = "black";
+        ctx.stroke();
+
+        // 2. Tegn kanonkuglens spor (banen)
+        if (trail.length > 0) {
+            ctx.beginPath();
+            ctx.moveTo(trail.x * scale, trail.y * scale);
+            for (let i = 1; i < trail.length; i++) {
+                ctx.lineTo(trail[i].x * scale, trail[i].y * scale);
+            }
+            ctx.strokeStyle = "#333333";
+            ctx.stroke();
         }
 
-        // Semi-major axis: a = -mu / 2e
-        const a = -MU / (2 * energy);
+        // 3. Tegn selve kanonkuglen/satellitten
+        ctx.beginPath();
+        ctx.arc(x * scale, y * scale, 4, 0, 2 * Math.PI);
+        ctx.fillStyle = "red"; // Rød
+        ctx.fill();
+
+        ctx.restore();
+    }
+
+    // Matematikken (Newtons love)
+    function physicsLoop() {
+        if (!isRunning) return;
+
+        let radius_m = parseFloat(inpRadius.value) * 1000;
+        let power = parseFloat(inpPower.value);
         
-        // Eccentricity: e = sqrt(1 + 2 * energy * h^2 / mu^2)
-        const ecc = Math.sqrt(1 + (2 * energy * Math.pow(h, 2)) / Math.pow(MU, 2));
-        
-        const apogee_km = (a * (1 + ecc)) / 1000;
-        const perigee_km = (a * (1 - ecc)) / 1000;
+        let dt = 1;         // Tids-skridt per beregning
+        let subSteps = 100; // Antal gange fysikken beregnes per billede (for høj fart)
 
-        valApogee.innerText = apogee_km.toFixed(1);
-        valPerigee.innerText = perigee_km.toFixed(1);
-    }
+        for (let i = 0; i < subSteps; i++) {
+            let r = Math.sqrt(x*x + y*y);
 
-    /**
-     * Clears and redraws the static background and central planet.
-     */
-    function drawBackground() {
-        trailCtx.fillStyle = '#f5f5f5';
-        trailCtx.fillRect(0, 0, CANVAS_DIM, CANVAS_DIM);
-
-        const radius_km = parseFloat(sldRadius.value);
-
-        trailCtx.save();
-        trailCtx.translate(CANVAS_DIM / 2, CANVAS_DIM / 2);
-        trailCtx.scale(1, -1); // Transform to Cartesian
-
-        // Draw Earth
-        trailCtx.beginPath();
-        trailCtx.arc(0, 0, radius_km * PIXELS_PER_KM, 0, 2 * Math.PI);
-        trailCtx.fillStyle = '#00cc00'; // Exact bright green from screenshot
-        trailCtx.fill();
-        trailCtx.lineWidth = 1;
-        trailCtx.strokeStyle = '#000';
-        trailCtx.stroke();
-
-        trailCtx.restore();
-    }
-
-    /**
-     * Clears foreground and draws the projectile sprite.
-     */
-    function drawSprite() {
-        spriteCtx.clearRect(0, 0, CANVAS_DIM, CANVAS_DIM);
-
-        spriteCtx.save();
-        spriteCtx.translate(CANVAS_DIM / 2, CANVAS_DIM / 2);
-        spriteCtx.scale(1, -1);
-
-        // Convert state meters to km for pixel scaling
-        const x_km = state.x / 1000;
-        const y_km = state.y / 1000;
-
-        spriteCtx.beginPath();
-        spriteCtx.arc(x_km * PIXELS_PER_KM, y_km * PIXELS_PER_KM, 3, 0, 2 * Math.PI);
-        spriteCtx.fillStyle = '#ff0000'; // Exact red from screenshot
-        spriteCtx.fill();
-
-        spriteCtx.restore();
-    }
-
-    /**
-     * Executes a single step of the Semi-Implicit Euler numerical integration.
-     */
-    function physicsStep(dt) {
-        const radius_m = parseFloat(sldRadius.value) * 1000;
-        const power = parseFloat(sldPower.value);
-
-        const r_mag = Math.sqrt(state.x**2 + state.y**2);
-
-        // Collision logic
-        if (collisionEnabled && r_mag <= radius_m) {
-            isRunning = false;
-            return;
-        }
-
-        // Acceleration magnitude: a = -GM / r^power
-        // Standard Newtonian gravity uses power = 2
-        const a_mag = -MU / Math.pow(r_mag, power);
-
-        // Vector decomposition
-        const ax = a_mag * (state.x / r_mag);
-        const ay = a_mag * (state.y / r_mag);
-
-        // Semi-implicit Euler integration 
-        // Velocity updated first
-        state.vx += ax * dt;
-        state.vy += ay * dt;
-
-        // Position updated using new velocity
-        state.x += state.vx * dt;
-        state.y += state.vy * dt;
-
-        elapsedSimTime += dt;
-
-        // Render Trail
-        if (showPath) {
-            const x_km = state.x / 1000;
-            const y_km = state.y / 1000;
-            trailCtx.save();
-            trailCtx.translate(CANVAS_DIM / 2, CANVAS_DIM / 2);
-            trailCtx.scale(1, -1);
-            trailCtx.fillStyle = '#000'; // Black trail
-            trailCtx.fillRect(x_km * PIXELS_PER_KM, y_km * PIXELS_PER_KM, 1, 1);
-            trailCtx.restore();
-        }
-    }
-
-    /**
-     * Main animation loop bound to the browser's refresh rate.
-     */
-    function animate() {
-        if (isRunning) {
-            // Time increment from UI represents simulation seconds per tick
-            // Example: 100 means 100 seconds of physics pass in 1 render frame.
-            const dt = parseFloat(inpTimeInc.value);
-            
-            // Sub-stepping to maintain integration stability at high speeds
-            const subSteps = 10;
-            const sub_dt = dt / subSteps;
-
-            for (let i = 0; i < subSteps; i++) {
-                if(!isRunning) break;
-                physicsStep(sub_dt);
+            // Stop simulationen hvis satellitten rammer Jorden
+            if (r <= radius_m) {
+                isRunning = false;
+                break;
             }
 
-            valTime.innerText = elapsedSimTime.toFixed(1);
-            updateAnalyticalOrbits();
-            drawSprite();
+            // Beregn tyngdeaccelerationen: a = -GM / r^power
+            let a_mag = -GM / Math.pow(r, power);
+            let ax = a_mag * (x / r);
+            let ay = a_mag * (y / r);
+
+            // Opdater hastighed og position
+            vx += ax * dt;
+            vy += ay * dt;
+            x += vx * dt;
+            y += vy * dt;
         }
-        requestAnimationFrame(animate);
+
+        // Tilføj den nye position til sporet (hvis den kører)
+        if (isRunning) {
+            trail.push({x: x, y: y});
+        }
     }
 
-    // --- Event Listeners ---
+    // Selve animations-motoren i browseren
+    function animate() {
+        physicsLoop();
+        drawGraphics();
+        requestAnimationFrame(animate); // Bed browseren om at tegne næste billede
+    }
 
-    btnStart.addEventListener('click', () => { isRunning = true; });
-    btnStop.addEventListener('click', () => { isRunning = false; });
-    
-    btnReset.addEventListener('click', () => {
-        isRunning = false;
-        initializeState();
-    });
+    // Forbind knapperne
+    btnStart.onclick = function() { isRunning = true; };
+    btnStop.onclick = function() { isRunning = false; };
+    btnReset.onclick = resetSimulation;
 
-    btnCollision.addEventListener('click', () => {
-        collisionEnabled =!collisionEnabled;
-        btnCollision.innerText = collisionEnabled? "Collision with Earth: ON" : "Collision with Earth: OFF";
-    });
+    // Forbind sliderne så tallene opdateres live
+    inpSpeed.oninput = function() { valSpeed.innerText = this.value; resetSimulation(); };
+    inpHeight.oninput = function() { valHeight.innerText = this.value; resetSimulation(); };
+    inpRadius.oninput = function() { valRadius.innerText = this.value; resetSimulation(); };
+    inpAngle.oninput = function() { valAngle.innerText = this.value; resetSimulation(); };
+    inpPower.oninput = function() { valPower.innerText = parseFloat(this.value).toFixed(2); resetSimulation(); };
 
-    btnPath.addEventListener('click', () => {
-        showPath =!showPath;
-        btnPath.innerText = showPath? "Don't show path" : "Show path";
-        if (!showPath) drawBackground(); // Clear existing paths
-    });
-
-    // Update displays when sliders move, and recalculate theoretical orbit
-    const sliders = },
-        { el: sldRadius, out: },
-        { el: sldAngle, out: ['valAngle'] },
-        { el: sldSpeed, out: },
-        { el: sldPower, out: ['valPower'] }
-    ];
-
-    sliders.forEach(s => {
-        s.el.addEventListener('input', (e) => {
-            s.out.forEach(id => document.getElementById(id).innerText = e.target.value);
-            if (!isRunning) initializeState();
-        });
-    });
-
-    // Boot
-    initializeState();
-    requestAnimationFrame(animate);
+    // Klargør og start programmet
+    resetSimulation();
+    animate();
 
 </script>
 </body>
