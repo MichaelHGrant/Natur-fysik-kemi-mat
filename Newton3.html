@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Newtons Kanon - Interaktiv Orbitalmekanik</title>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: #050510; 
+            color: white; 
+        }
+        #ui-container { 
+            position: absolute; 
+            top: 20px; 
+            left: 20px; 
+            background: rgba(20, 20, 20, 0.85); 
+            padding: 20px; 
+            border-radius: 8px; 
+            border: 1px solid #444; 
+            box-shadow: 0px 4px 15px rgba(0,0,0,0.5); 
+            width: 320px; 
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        h2 { margin-top: 0; font-size: 20px; border-bottom: 1px solid #555; padding-bottom: 10px; }
+       .btn-group { display: flex; gap: 5px; margin-bottom: 15px; }
+        button { 
+            flex: 1; 
+            padding: 8px; 
+            cursor: pointer; 
+            background: #333; 
+            color: white; 
+            border: 1px solid #777; 
+            border-radius: 4px; 
+            font-weight: bold; 
+        }
+        button:hover { background: #555; }
+       .control-group { margin-top: 15px; display: flex; flex-direction: column; gap: 5px;}
+       .label-row { display: flex; justify-content: space-between; font-size: 13px; color: #ddd; }
+        input[type=range] { width: 100%; margin: 0; }
+       .stats-box { 
+            background: rgba(0, 0, 0, 0.5); 
+            border: 1px solid #555; 
+            padding: 10px; 
+            border-radius: 4px; 
+            margin-top: 15px; 
+            font-size: 12px; 
+        }
+       .stats-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+       .val { font-weight: bold; color: #4da6ff; }
+       .tip { font-size: 11px; color: #88ff88; margin-top: 15px; font-style: italic; }
+    </style>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.161.0/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.161.0/examples/jsm/"
+        }
+      }
+    </script>
+</head>
+<body>
+
+    <div id="ui-container">
+        <h2>3D Newtons Kanon</h2>
+        
+        <div class="btn-group">
+            <button id="btnStart">Start</button>
+            <button id="btnStop">Stop</button>
+            <button id="btnReset">Reset</button>
+        </div>
+
+        <div class="control-group">
+            <div class="label-row"><span>Breddegrad (Lat):</span> <span class="val"><span id="valLat">0</span>°</span></div>
+            <input type="range" id="sldLat" min="-90" max="90" step="1" value="0">
+        </div>
+
+        <div class="control-group">
+            <div class="label-row"><span>Længdegrad (Lon):</span> <span class="val"><span id="valLon">0</span>°</span></div>
+            <input type="range" id="sldLon" min="-180" max="180" step="1" value="0">
+        </div>
+
+        <div class="control-group">
+            <div class="label-row"><span>Hastighed:</span> <span class="val"><span id="valSpeed">7200</span> m/s</span></div>
+            <input type="range" id="sldSpeed" min="0" max="12000" step="50" value="7200">
+        </div>
+
+        <div class="control-group">
+            <div class="label-row"><span>Højde:</span> <span class="val"><span id="valHeight">1000</span> km</span></div>
+            <input type="range" id="sldHeight" min="0" max="20000" step="100" value="1000">
+        </div>
+
+        <div class="stats-box">
+            <div class="stats-row"><span>Tid:</span> <span class="val"><span id="txtTime">0</span> s</span></div>
+            <div class="stats-row"><span>Apogee (Max):</span> <span class="val"><span id="txtApogee">7371.0</span> km</span></div>
+            <div class="stats-row"><span>Perigee (Min):</span> <span class="val"><span id="txtPerigee">7371.0</span> km</span></div>
+        </div>
+
+        <div class="tip">
+            ▶ Klik og træk med musen for at rotere Jorden.<br>
+            ▶ Scroll for at zoome ind og ud.<br>
+            ▶ Den gule ring markerer Ækvator.<br>
+            ▶ Den grønne ring markerer Nulmeridianen.
+        </div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // Fysiske konstanter
+        const G = 6.6738e-11;
+        const M = 5.97219e24;
+        const MU = G * M;
+        const R_EARTH = 6371000; 
+
+        // Skaleringsfaktor for 3D rummet (gør store afstande håndterbare for grafikkortet)
+        const SCALE = 1 / 100000;
+
+        // --- 1. Opsætning af Scene ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 2000);
+        camera.position.set(R_EARTH * SCALE * 2.5, R_EARTH * SCALE * 1.5, R_EARTH * SCALE * 3.5);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        // --- 2. Byg Jorden og Hjælpelinjer ---
+        const earthGroup = new THREE.Group();
+        scene.add(earthGroup);
+
+        const earthGeo = new THREE.SphereGeometry(R_EARTH * SCALE, 32, 32);
+        
+        // Vi bruger en blå wireframe (trådnet), så vi nemt kan se, om satellitten passerer bagved jorden
+        const earthMat = new THREE.MeshPhongMaterial({ color: 0x1133aa, wireframe: true });
+        const earth = new THREE.Mesh(earthGeo, earthMat);
+        earthGroup.add(earth);
+
+        // Tegn Ækvator (Gul ring på Y=0 planet)
+        const equatorGeo = new THREE.RingGeometry(R_EARTH * SCALE + 0.1, R_EARTH * SCALE + 0.3, 64);
+        const equatorMat = new THREE.MeshBasicMaterial({ color: 0xffff00, side: THREE.DoubleSide });
+        const equator = new THREE.Mesh(equatorGeo, equatorMat);
+        equator.rotation.x = Math.PI / 2;
+        earthGroup.add(equator);
+
+        // Tegn Nulmeridianen (Grøn ring langs Z- og Y-aksen)
+        const meridianGeo = new THREE.RingGeometry(R_EARTH * SCALE + 0.1, R_EARTH * SCALE + 0.3, 64);
+        const meridianMat = new THREE.MeshBasicMaterial({ color: 0x00ff00, side: THREE.DoubleSide });
+        const meridian = new THREE.Mesh(meridianGeo, meridianMat);
+        meridian.rotation.y = Math.PI / 2;
+        earthGroup.add(meridian);
+
+        // --- 3. Byg Satellitten ---
+        const satGeo = new THREE.SphereGeometry(1.5, 16, 16);
+        const satMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        const satellite = new THREE.Mesh(satGeo, satMat);
+        scene.add(satellite);
+
+        // --- 4. Byg Sporet (Orbital Trail) ---
+        const maxTrailPoints = 3000;
+        const trailGeo = new THREE.BufferGeometry();
+        const trailPositions = new Float32Array(maxTrailPoints * 3);
+        trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPositions, 3));
+        const trailMat = new THREE.LineBasicMaterial({ color: 0xff3333, linewidth: 2 });
+        const trail = new THREE.Line(trailGeo, trailMat);
+        scene.add(trail);
+        let trailIndex = 0;
+
+        // --- 5. Lys ---
+        scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        dirLight.position.set(100, 50, 100);
+        scene.add(dirLight);
+
+        // --- 6. Fysikmotor State ---
+        let isRunning = false;
+        let timeElapsed = 0;
+        let state = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0 };
+
+        // Beregn de teoretiske Keplerian baner
+        function updateAnalyticalOrbits() {
+            const r_mag = Math.sqrt(state.x**2 + state.y**2 + state.z**2);
+            const v_mag_sq = state.vx**2 + state.vy**2 + state.vz**2;
+            
+            const energy = (v_mag_sq / 2) - (MU / r_mag);
+            
+            // Angular momentum vektor h = r x v
+            const hx = state.y * state.vz - state.z * state.vy;
+            const hy = state.z * state.vx - state.x * state.vz;
+            const hz = state.x * state.vy - state.y * state.vx;
+            const h_sq = hx**2 + hy**2 + hz**2;
+            
+            if (energy >= 0) {
+                document.getElementById('txtApogee').innerText = "Escape (∞)";
+                document.getElementById('txtPerigee').innerText = (r_mag / 1000).toFixed(1); 
+                return;
+            }
+
+            const a = -MU / (2 * energy);
+            const eccSq = 1 + (2 * energy * h_sq) / (MU * MU);
+            const ecc = Math.sqrt(Math.max(0, eccSq));
+            
+            const apogee_km = (a * (1 + ecc)) / 1000;
+            const perigee_km = (a * (1 - ecc)) / 1000;
+
+            document.getElementById('txtApogee').innerText = apogee_km.toFixed(1);
+            document.getElementById('txtPerigee').innerText = perigee_km.toFixed(1);
+        }
+
+        // Genstart og positioner satellitten ud fra Bredde- og Længdegrad
+        function resetSim() {
+            isRunning = false;
+            timeElapsed = 0;
+            document.getElementById('txtTime').innerText = "0";
+
+            const lat = parseFloat(document.getElementById('sldLat').value);
+            const lon = parseFloat(document.getElementById('sldLon').value);
+            const speed = parseFloat(document.getElementById('sldSpeed').value);
+            const heightKm = parseFloat(document.getElementById('sldHeight').value);
+
+            // Matematik for konvertering af sfæriske koordinater til Three.js kartesiske koordinater (Y-op)
+            const phi = (90 - lat) * Math.PI / 180;
+            const theta = lon * Math.PI / 180;
+            const r_start = R_EARTH + (heightKm * 1000);
+
+            state.x = r_start * Math.sin(phi) * Math.sin(theta);
+            state.y = r_start * Math.cos(phi);
+            state.z = r_start * Math.sin(phi) * Math.cos(theta);
+
+            // Affyr horisontalt mod ØST (tangent til breddegraden)
+            state.vx = speed * Math.cos(theta);
+            state.vy = 0;
+            state.vz = -speed * Math.sin(theta);
+
+            satellite.position.set(state.x * SCALE, state.y * SCALE, state.z * SCALE);
+
+            updateAnalyticalOrbits();
+
+            // Ryd Sporet
+            trailIndex = 0;
+            for(let i=0; i<maxTrailPoints*3; i++) trailPositions[i] = 0;
+            trailGeo.setDrawRange(0, 0);
+        }
+
+        // Semi-implicit Euler integration for kredsløbet
+        function physicsStep(dt) {
+            const r = Math.sqrt(state.x**2 + state.y**2 + state.z**2);
+
+            // Tjek om vi er krashet ned i Jorden
+            if (r <= R_EARTH) {
+                isRunning = false; 
+                return;
+            }
+
+            const a_mag = -MU / (r * r * r);
+            state.vx += a_mag * state.x * dt;
+            state.vy += a_mag * state.y * dt;
+            state.vz += a_mag * state.z * dt;
+
+            state.x += state.vx * dt;
+            state.y += state.vy * dt;
+            state.z += state.vz * dt;
+            
+            timeElapsed += dt;
+        }
+
+        // Hoved-loop (animationsmotoren)
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (isRunning) {
+                const subSteps = 30; 
+                const dt = 10; // Tids-skridt per frame
+
+                for (let i = 0; i < subSteps; i++) {
+                    if (!isRunning) break;
+                    physicsStep(dt);
+                }
+
+                document.getElementById('txtTime').innerText = Math.round(timeElapsed);
+                satellite.position.set(state.x * SCALE, state.y * SCALE, state.z * SCALE);
+
+                // Opdater Sporet
+                if (trailIndex < maxTrailPoints) {
+                    trailPositions[trailIndex * 3] = state.x * SCALE;
+                    trailPositions[trailIndex * 3 + 1] = state.y * SCALE;
+                    trailPositions[trailIndex * 3 + 2] = state.z * SCALE;
+                    trailGeo.attributes.position.needsUpdate = true;
+                    trailGeo.setDrawRange(0, trailIndex + 1);
+                    trailIndex++;
+                }
+            }
+
+            controls.update(); 
+            renderer.render(scene, camera);
+        }
+
+        // --- 7. Forbind UI med logik ---
+        document.getElementById('btnStart').onclick = () => { isRunning = true; };
+        document.getElementById('btnStop').onclick = () => { isRunning = false; };
+        document.getElementById('btnReset').onclick = resetSim;
+
+        const connectSlider = (sliderId, valId) => {
+            document.getElementById(sliderId).addEventListener('input', (e) => {
+                document.getElementById(valId).innerText = e.target.value;
+                if(!isRunning) resetSim();
+            });
+        };
+
+        connectSlider('sldLat', 'valLat');
+        connectSlider('sldLon', 'valLon');
+        connectSlider('sldSpeed', 'valSpeed');
+        connectSlider('sldHeight', 'valHeight');
+
+        // Håndter ændring af vinduets størrelse
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Start motoren
+        resetSim();
+        animate();
+
+    </script>
+</body>
+</html>
