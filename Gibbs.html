@@ -34,8 +34,7 @@
     <script type="module">
         import * as THREE from 'three';
         import GUI from 'lil-gui';
-        // Opdateret og stabil CDN-import for Rapier-fysikmotoren
-        import RAPIER from 'https://esm.sh/@dimforge/rapier3d-compat@0.12.0';
+        import RAPIER from 'https://cdn.skypack.dev/@dimforge/rapier3d-compat';
 
         await RAPIER.init();
 
@@ -58,12 +57,14 @@
             dirLight.position.set(5, 10, 5);
             scene.add(dirLight);
 
+            // Visuel ydre kasse
             const outlineMesh = new THREE.Mesh(
                 new THREE.BoxGeometry(10, 6, 6),
                 new THREE.MeshBasicMaterial({ color: 0x555555, wireframe: true })
             );
             scene.add(outlineMesh);
 
+            // Fysiske begrænsninger (vægge) i Rapier
             const wt = 0.5;
             world.createCollider(RAPIER.ColliderDesc.cuboid(5, wt/2, 3).setTranslation(0, 3+wt/2, 0));
             world.createCollider(RAPIER.ColliderDesc.cuboid(5, wt/2, 3).setTranslation(0, -3-wt/2, 0));
@@ -72,6 +73,7 @@
             world.createCollider(RAPIER.ColliderDesc.cuboid(5, 3, wt/2).setTranslation(0, 0, -3-wt/2));
             world.createCollider(RAPIER.ColliderDesc.cuboid(5, 3, wt/2).setTranslation(0, 0, 3+wt/2));
 
+            // Den lodrette bevægelige skillevæg i midten
             const partitionDesc = RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(0, 0, 0);
             const partitionBody = world.createRigidBody(partitionDesc);
             world.createCollider(RAPIER.ColliderDesc.cuboid(0.1, 3, 3), partitionBody);
@@ -82,6 +84,7 @@
             );
             scene.add(partitionMesh);
 
+            // Partikelopsætning
             const radius = 0.15;
             const geo = new THREE.SphereGeometry(radius, 16, 16);
             const matLeft = new THREE.MeshStandardMaterial({ color: colorLeft, roughness: 0.2 });
@@ -94,17 +97,17 @@
             if(populateLeft) scene.add(meshLeft);
             if(populateRight) scene.add(meshRight);
 
-            // Fejlen fra sidst er rettet her: arrays er nu defineret korrekt
+            // De tomme arrays, der før forårsagede syntaksfejlen, er nu defineret korrekt
             const bodiesLeft =;
             const bodiesRight =;
             const speed = 7.0;
 
             const spawnParticle = (x, y, z, array) => {
                 let bodyDesc = RAPIER.RigidBodyDesc.dynamic()
-                 .setTranslation(x, y, z)
-                 .setLinvel((Math.random()-0.5)*speed, (Math.random()-0.5)*speed, (Math.random()-0.5)*speed)
-                 .setLinearDamping(0).setAngularDamping(0)
-                 .setCcdEnabled(true);
+                .setTranslation(x, y, z)
+                .setLinvel((Math.random()-0.5)*speed, (Math.random()-0.5)*speed, (Math.random()-0.5)*speed)
+                .setLinearDamping(0).setAngularDamping(0)
+                .setCcdEnabled(true);
                    
                 let body = world.createRigidBody(bodyDesc);
                 world.createCollider(RAPIER.ColliderDesc.ball(radius).setRestitution(1.0).setFriction(0.0), body);
@@ -119,16 +122,16 @@
             return { scene, camera, world, partitionBody, partitionMesh, meshLeft, bodiesLeft, meshRight, bodiesRight };
         }
 
-        // 1: Heterogen (Rød / Grøn) - Som din venstre tegning
+        // 1. Kasse: Heterogen (Rød / Grøn)
         const box1 = createBoxSystem(0xff3333, 0x33ff33, true, true);
         
-        // 2: Homogen (Blå / Blå) - Som din højre tegning
+        // 2. Kasse: Homogen (Blå / Blå)
         const box2 = createBoxSystem(0x3388ff, 0x3388ff, true, true);
         
-        // 3: Tom i højre side (Rød udvider sig)
+        // 3. Kasse: Tom i højre side (Rød udvider sig)
         const box3 = createBoxSystem(0xff3333, 0x000000, true, false);
         
-        // 4: Tom i venstre side (Grøn udvider sig)
+        // 4. Kasse: Tom i venstre side (Grøn udvider sig)
         const box4 = createBoxSystem(0x000000, 0x33ff33, false, true);
 
         const allBoxes = [box1, box2, box3, box4];
@@ -146,7 +149,7 @@
         const dummy = new THREE.Object3D();
         
         function updateInstances(mesh, bodies) {
-            // Fejlen fra sidst er rettet her: korrekt 'if' statement struktur
+            // Logik-fejlen fra før er rettet, så programmet kan tegne
             if (!mesh |
 
 | bodies.length === 0) return;
