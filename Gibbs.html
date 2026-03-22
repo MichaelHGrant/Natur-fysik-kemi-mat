@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <title>Gibbs Paradoks Simulation</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #111; color: white; font-family: sans-serif; }
+        canvas { display: block; width: 100vw; height: 100vh; }
+        #ui-container { position: absolute; top: 10px; right: 10px; z-index: 100; }
+    </style>
+</head>
+<body>
+    <div id="ui-container"></div>
+
+    <script type="module">
+        import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+        import GUI from 'https://unpkg.com/lil-gui@0.19.1/dist/lil-gui.esm.min.js';
+        import RAPIER from 'https://cdn.skypack.dev/@dimforge/rapier3d-compat';
+
+        // 1. Initialiser fysikmotoren før alt andet
+        await RAPIER.init();
+        const world = new RAPIER.World({ x: 0.0, y: 0.0, z: 0.0 }); // Ingen tyngdekraft til ideelle gasser
+
+        // 2. Opsætning af rendering og viewports (Scissor Test)
+        const canvas = document.createElement('canvas');
+        document.body.appendChild(canvas);
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setScissorTest(true); // Gør side-by-side rendering muligt
+
+        // 3. Scener og kameraer til de to bokse
+        const sceneLeft = new THREE.Scene();  // Boks 1: Rød og grøn gas (Distinguishable)
+        const sceneRight = new THREE.Scene(); // Boks 2: Monokrom gas (Indistinguishable)
+        
+        const cameraLeft = new THREE.PerspectiveCamera(45, (window.innerWidth / 2) / window.innerHeight, 0.1, 100);
+        const cameraRight = new THREE.PerspectiveCamera(45, (window.innerWidth / 2) / window.innerHeight, 0.1, 100);
+        cameraLeft.position.set(0, 0, 15);
+        cameraRight.position.set(0, 0, 15);
+
+        // 4. Opret skillevægge som kinematiske rigid-bodies
+        const partitionDesc = RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(0, 0, 0);
+        const partitionLeftBody = world.createRigidBody(partitionDesc);
+        const partitionRightBody = world.createRigidBody(partitionDesc);
+        
+        // Fysisk kollisionsboks for skillevæggene
+        const partitionColliderDesc = RAPIER.ColliderDesc.cuboid(5.0, 0.1, 5.0);
+        world.createCollider(partitionColliderDesc, partitionLeftBody);
+        world.createCollider(partitionColliderDesc, partitionRightBody);
+
+        // Visuel repræsentation af skillevæggene i Three.js
+        const wallGeo = new THREE.BoxGeometry(10, 0.2, 10);
+        const wallMat = new THREE.MeshBasicMaterial({ color: 0x888888, transparent: true, opacity: 0.5 });
+        const partitionLeftMesh = new THREE.Mesh(wallGeo, wallMat);
+        const partitionRightMesh = new THREE.Mesh(wallGeo, wallMat);
+        sceneLeft.add(partitionLeftMesh);
+        sceneRight.add(partitionRightMesh);
+
+        // --- Her indsættes logik for at generere partikler (THREE.InstancedMesh og dynamic colliders) ---
+
+        // 5. Interaktiv Brugerflade (lil-gui) til at flytte væggene
+        const gui = new GUI({ container: document.getElementById('ui-container') });
+        const params = { partitionHeight: 0.0 };
+        
+        gui.add(params, 'partitionHeight', -4.0, 4.0).name('Flyt Skillevæg').onChange(value => {
+            // Opdater kinematiske translationer sikkert i fysikmotoren
+            const transLeft = partitionLeftBody.translation();
+            partitionLeftBody.setNextKinematicTranslation({ x: transLeft.x, y: value, z: transLeft.z });
+            
+            const transRight = partitionRightBody.translation();
+            partitionRightBody.setNextKinematicTranslation({ x: transRight.x, y: value, z: transRight.z });
+            
+            // Opdater den visuelle repræsentation i Three.js
+            partitionLeftMesh.position.y = value;
+            partitionRightMesh.position.y = value;
+        });
+
+        // 6. Rendering og Fysik-løkken
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Beregn næste skridt i fysikmotoren
+            world.step();
+
+            // --- Her indsættes synkronisering for position/rotation mellem Rapier-partikler og Three.js-instancer ---
+            
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            
+            // Venstre boks (Tegnes på venstre halvdel af skærmen)
+            renderer.setViewport(0, 0, width / 2, height);
+            renderer.setScissor(0, 0, width / 2, height);
+            renderer.render(sceneLeft, cameraLeft);
+            
+            // Højre boks (Tegnes på højre halvdel af skærmen)
+            renderer.setViewport(width / 2, 0, width / 2, height);
+            renderer.setScissor(width / 2, 0, width / 2, height);
+            renderer.render(sceneRight, cameraRight);
+        }
+        animate();
+
+        // 7. Håndtering af vinduesstørrelse
+        window.addEventListener('resize', () => {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            renderer.setSize(width, height);
+            
+            cameraLeft.aspect = (width / 2) / height;
+            cameraLeft.updateProjectionMatrix();
+            
+            cameraRight.aspect = (width / 2) / height;
+            cameraRight.updateProjectionMatrix();
+        });
+    </script>
+</body>
+</html>
