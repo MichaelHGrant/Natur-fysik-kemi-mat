@@ -2,198 +2,312 @@
 <html lang="da">
 <head>
     <meta charset="UTF-8">
-    <title>Newtons Kanon</title>
+    <title>Newton's Cannon Simulation</title>
     <style>
-        body { 
-            font-family: sans-serif; 
-            text-align: center; 
-            background: #e0e5ec; 
-            padding: 20px; 
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #d4d4d4;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
         }
-        canvas { 
-            background: #f0f8ff; 
-            border: 1px solid #333; 
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+       .window {
+            background-color: #f0f0f0;
+            border: 2px solid #888;
+            box-shadow: 3px 3px 10px rgba(0,0,0,0.3);
+            padding: 15px;
+            width: 850px;
+            display: flex;
+            gap: 20px;
         }
-       .controls { 
-            margin-top: 20px; 
-            padding: 15px; 
-            background: white; 
-            display: inline-block; 
-            border-radius: 8px; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+       .canvas-area {
+            background-color: #fff;
+            border: 1px solid #999;
+            width: 500px;
+            height: 500px;
+            position: relative;
         }
-        button { 
-            padding: 10px 20px; 
-            font-size: 16px; 
-            cursor: pointer; 
-            background: #3498db;
-            color: white;
-            border: none;
-            border-radius: 4px;
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
         }
-        button:hover {
-            background: #2980b9;
+       .controls {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
         }
-        input[type="range"] { 
-            vertical-align: middle; 
-            width: 200px;
+       .buttons {
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            padding: 10px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+       .info-panel {
+            font-size: 13px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            background: #e8e8e8;
+            padding: 10px;
+            border: 1px solid #ccc;
+        }
+       .sliders-container {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+       .slider-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 12px;
+            gap: 5px;
+        }
+        input[type=range][orient=vertical] {
+            writing-mode: bt-lr; 
+            -webkit-appearance: slider-vertical;
+            width: 20px;
+            height: 150px;
         }
     </style>
 </head>
 <body>
-    <h2>Newtons Kanon Simulation</h2>
-    <canvas id="simCanvas" width="600" height="600"></canvas>
-    <br>
-    <div class="controls">
-        <label for="speedSlider">Affyringshastighed: <strong id="speedValue">6000</strong> m/s</label>
-        <input type="range" id="speedSlider" min="1000" max="12000" value="6000" step="100">
-        <button id="fireButton">Skyd Kanonen!</button>
+
+<div class="window">
+    <div class="canvas-area">
+        <canvas id="simCanvas" width="500" height="500"></canvas>
     </div>
 
-    <script>
-        const canvas = document.getElementById("simCanvas");
-        const ctx = canvas.getContext("2d");
-        let animationFrameId;
+    <div class="controls">
+        <div class="buttons">
+            <button id="btnStart" style="width: 80px;">Start</button>
+            <button id="btnStop" style="width: 80px;">Stop</button>
+            <button id="btnReset" style="width: 80px;">Reset</button>
+        </div>
 
-        // Fysiske konstanter
-        const G = 6.674e-11; // Gravitationskonstant
-        const M = 5.972e24;  // Jordens masse (kg)
-        const R = 6371000;   // Jordens radius (meter)
+        <div class="info-panel">
+            <div>Mass of Earth: <br><b>5.97219</b> [10^24 kg]</div>
+            <div>Gravitational konstant:<br><b>6.6738</b> [10^-11]</div>
+            <div>Time [s]: <br><b id="txtTime">0</b></div>
+            <div>Speed [m/s]: <br><b id="txtSpeedDisp">7200</b></div>
+        </div>
+
+        <div class="buttons" style="flex-direction: column; gap: 5px;">
+            <button id="btnCollision">Collision with Earth: ON</button>
+            <button id="btnPath">Show Path: ON</button>
+        </div>
+
+        <div class="sliders-container">
+            <div class="slider-column">
+                <label>Power</label>
+                <span id="valPower">2.0</span>
+                <input type="range" id="sldPower" orient="vertical" min="1" max="3" step="0.1" value="2.0">
+            </div>
+            <div class="slider-column">
+                <label>Height [km]</label>
+                <span id="valHeight">1000</span>
+                <input type="range" id="sldHeight" orient="vertical" min="0" max="20000" step="100" value="1000">
+            </div>
+            <div class="slider-column">
+                <label>Radius [km]</label>
+                <span id="valRadius">6371</span>
+                <input type="range" id="sldRadius" orient="vertical" min="1000" max="10000" step="1" value="6371">
+            </div>
+            <div class="slider-column">
+                <label>Angle [deg]</label>
+                <span id="valAngle">0</span>
+                <input type="range" id="sldAngle" orient="vertical" min="-90" max="90" step="1" value="0">
+            </div>
+            <div class="slider-column">
+                <label>Speed [m/s]</label>
+                <span id="valSpeed">7200</span>
+                <input type="range" id="sldSpeed" orient="vertical" min="0" max="12000" step="50" value="7200">
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Fysiske konstanter
+    var G = 6.6738e-11;
+    var M = 5.97219e24;
+    var GM = G * M;
+
+    // Hent lærred og indstillinger
+    var canvas = document.getElementById("simCanvas");
+    var ctx = canvas.getContext("2d");
+
+    // Variabler til at styre simulationen
+    var isRunning = false;
+    var collisionEnabled = true;
+    var showPath = true;
+    
+    // Satellittens position og hastighed
+    var x = 0;
+    var y = 0;
+    var vx = 0;
+    var vy = 0;
+    var timeElapsed = 0;
+    var pathPoints =; // Gemmer sporet
+
+    // Funktion til at opdatere tallene på skærmen baseret på sliderne
+    function updateDisplays() {
+        document.getElementById("valPower").innerText = document.getElementById("sldPower").value;
+        document.getElementById("valHeight").innerText = document.getElementById("sldHeight").value;
+        document.getElementById("valRadius").innerText = document.getElementById("sldRadius").value;
+        document.getElementById("valAngle").innerText = document.getElementById("sldAngle").value;
+        document.getElementById("valSpeed").innerText = document.getElementById("sldSpeed").value;
+        document.getElementById("txtSpeedDisp").innerText = document.getElementById("sldSpeed").value;
+    }
+
+    // Nulstiller simulationen og sætter kanonkuglen klar på toppen
+    function resetSimulation() {
+        isRunning = false;
+        timeElapsed = 0;
+        pathPoints =;
+        document.getElementById("txtTime").innerText = "0";
+
+        var radius_m = parseFloat(document.getElementById("sldRadius").value) * 1000;
+        var height_m = parseFloat(document.getElementById("sldHeight").value) * 1000;
+        var speed = parseFloat(document.getElementById("sldSpeed").value);
+        var angle_deg = parseFloat(document.getElementById("sldAngle").value);
         
-        // Et fiktivt højt bjerg, så kanonen kan skyde frit (15% af Jordens radius)
-        const mountainH = R * 0.15; 
+        // Startposition (0 på x-aksen, Radius + Højde på y-aksen)
+        x = 0;
+        y = radius_m + height_m;
 
-        // Skaleringsfaktor for at få plads til planeter og kredsløb på lærredet
-        // Vi lader 100 pixels svare til Jordens radius
-        const scale = 100 / R;
+        // Udregn starthastighed ud fra vinkel
+        var angle_rad = angle_deg * (Math.PI / 180);
+        vx = speed * Math.cos(angle_rad);
+        vy = speed * Math.sin(angle_rad);
 
-        let ball = null;
+        drawFrame(); // Tegn det hele op med det samme
+    }
 
-        // Funktion til at tegne Jorden og bjerget
-        function drawBackground() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Fysikkens matematiske udregninger (bliver kaldt hele tiden når 'Start' er trykket)
+    function calculatePhysics() {
+        if (!isRunning) return;
 
-            // Sæt Origo (0,0) til midten af lærredet
-            ctx.save();
-            ctx.translate(canvas.width / 2, canvas.height / 2);
+        var radius_m = parseFloat(document.getElementById("sldRadius").value) * 1000;
+        var power = parseFloat(document.getElementById("sldPower").value);
+        var dt = 20; // Hvor mange sekunder der spoles frem pr. udregning
 
-            // Tegn Jorden
-            ctx.beginPath();
-            ctx.arc(0, 0, R * scale, 0, 2 * Math.PI);
-            ctx.fillStyle = "#2ecc71"; // Grøn planet
-            ctx.fill();
-            ctx.strokeStyle = "#27ae60";
-            ctx.stroke();
+        // For at gøre animationen glidende, deler vi udregningen op i små bidder
+        for (var i = 0; i < 5; i++) {
+            var r = Math.sqrt(x*x + y*y); // Afstand til midten
 
-            // Tegn Bjerget på toppen
-            ctx.beginPath();
-            ctx.moveTo(-5, -R * scale);
-            ctx.lineTo(5, -R * scale);
-            ctx.lineTo(0, -(R + mountainH) * scale);
-            ctx.fillStyle = "#7f8c8d"; // Gråt bjerg
-            ctx.fill();
-
-            ctx.restore();
-        }
-
-        // Start simulationen
-        function fire() {
-            if (animationFrameId) {
-                cancelAnimationFrame(animationFrameId);
+            // Rammer vi Jorden?
+            if (collisionEnabled && r <= radius_m) {
+                isRunning = false;
+                break;
             }
 
-            const speed = parseInt(document.getElementById("speedSlider").value);
+            // Tyngdekraft acceleration
+            var a = -GM / Math.pow(r, power);
+            var ax = a * (x / r);
+            var ay = a * (y / r);
 
-            // Opret boldens start-tilstand
-            ball = {
-                x: 0,
-                y: R + mountainH, // Starter på toppen af bjerget
-                vx: speed,        // Vandret startfart
-                vy: 0,            // Lodret startfart er 0
-                history:       // Til at tegne halesporet
-            };
-
-            drawBackground();
-            simulate();
+            // Opdater hastighed og position
+            vx = vx + ax * dt;
+            vy = vy + ay * dt;
+            x = x + vx * dt;
+            y = y + vy * dt;
+            
+            timeElapsed += dt;
         }
 
-        // Den matematiske fysik-motor
-        function simulate() {
-            const dt = 15;        // Hastighed af simulationen (tid i sekunder pr. udregning)
-            const subSteps = 10;  // Gør bevægelsen flydende
+        // Gem et punkt til at tegne den sorte streg
+        if (showPath && isRunning) {
+            pathPoints.push({px: x, py: y});
+        }
 
-            for (let i = 0; i < subSteps; i++) {
-                // Find afstanden fra bolden til Jordens centrum (Pythagoras)
-                const r = Math.sqrt(ball.x * ball.x + ball.y * ball.y);
+        document.getElementById("txtTime").innerText = Math.round(timeElapsed);
+    }
 
-                // Hvis bolden rører Jordens overflade, stopper vi
-                if (r <= R) {
-                    drawFrame();
-                    return; 
-                }
+    // Tegner billedet af Jorden og satellitten
+    function drawFrame() {
+        // Ryd hele skærmen
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-                // Udregn acceleration baseret på Newtons lov om universel tyngdekraft
-                const a = -(G * M) / (r * r);
-                const ax = a * (ball.x / r);
-                const ay = a * (ball.y / r);
+        var radius_km = parseFloat(document.getElementById("sldRadius").value);
+        
+        // Find den rigtige skala, så vi kan se ting langt væk. 
+        // Lærredet er 500x500 (midten er 250,250). Vi lader 250 pixels svare til 20.000 km.
+        var scale = 250 / 20000000; 
 
-                // Opdater hastighed
-                ball.vx += ax * dt;
-                ball.vy += ay * dt;
-                
-                // Opdater position
-                ball.x += ball.vx * dt;
-                ball.y += ball.vy * dt;
+        // Flyt nulpunktet til midten af skærmen
+        ctx.save();
+        ctx.translate(250, 250);
+        ctx.scale(1, -1); // Vend Y-aksen så opad er plus ligesom i matematik
 
-                // Gem positionen til sporet hver anden gang for at spare hukommelse
-                if (i % 2 === 0) {
-                    ball.history.push({ x: ball.x, y: ball.y });
-                }
+        // Tegn spor (path)
+        if (showPath && pathPoints.length > 0) {
+            ctx.fillStyle = "black";
+            for (var i = 0; i < pathPoints.length; i++) {
+                var drawX = pathPoints[i].px * scale;
+                var drawY = pathPoints[i].py * scale;
+                ctx.fillRect(drawX, drawY, 1.5, 1.5);
             }
+        }
 
+        // Tegn den grønne jordklode i midten
+        ctx.beginPath();
+        ctx.arc(0, 0, (radius_km * 1000) * scale, 0, 2 * Math.PI);
+        ctx.fillStyle = "#00cc00"; // Samme grønne farve som på dit billede
+        ctx.fill();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = "black";
+        ctx.stroke();
+
+        // Tegn den røde satellit
+        ctx.beginPath();
+        ctx.arc(x * scale, y * scale, 4, 0, 2 * Math.PI);
+        ctx.fillStyle = "red";
+        ctx.fill();
+
+        ctx.restore();
+    }
+
+    // En timer der kører 60 gange i sekundet for at holde skærmen opdateret
+    setInterval(function() {
+        if (isRunning) {
+            calculatePhysics();
             drawFrame();
-            animationFrameId = requestAnimationFrame(simulate);
         }
+    }, 16); // 16 millisekunder = ca. 60 FPS
 
-        // Optegn frame (baggrund, spor og bold)
-        function drawFrame() {
-            drawBackground();
+    // Lyt efter tryk på knapperne
+    document.getElementById("btnStart").onclick = function() { isRunning = true; };
+    document.getElementById("btnStop").onclick = function() { isRunning = false; };
+    document.getElementById("btnReset").onclick = function() { resetSimulation(); };
+    
+    document.getElementById("btnCollision").onclick = function() {
+        collisionEnabled =!collisionEnabled;
+        this.innerText = collisionEnabled? "Collision with Earth: ON" : "Collision with Earth: OFF";
+    };
 
-            ctx.save();
-            ctx.translate(canvas.width / 2, canvas.height / 2);
+    document.getElementById("btnPath").onclick = function() {
+        showPath =!showPath;
+        this.innerText = showPath? "Show Path: ON" : "Show Path: OFF";
+        drawFrame();
+    };
 
-            // Tegn kanonkuglens spor
-            if (ball.history.length > 0) {
-                ctx.beginPath();
-                ctx.moveTo(ball.history.x * scale, -ball.history.y * scale);
-                for (let i = 1; i < ball.history.length; i++) {
-                    ctx.lineTo(ball.history[i].x * scale, -ball.history[i].y * scale);
-                }
-                ctx.strokeStyle = "rgba(0, 0, 0, 0.4)";
-                ctx.lineWidth = 1.5;
-                ctx.stroke();
-            }
+    // Lyt efter hvornår du trækker i sliderne
+    document.getElementById("sldPower").oninput = function() { updateDisplays(); resetSimulation(); };
+    document.getElementById("sldHeight").oninput = function() { updateDisplays(); resetSimulation(); };
+    document.getElementById("sldRadius").oninput = function() { updateDisplays(); resetSimulation(); };
+    document.getElementById("sldAngle").oninput = function() { updateDisplays(); resetSimulation(); };
+    document.getElementById("sldSpeed").oninput = function() { updateDisplays(); resetSimulation(); };
 
-            // Tegn selve kanonkuglen (rød prik)
-            ctx.beginPath();
-            ctx.arc(ball.x * scale, -ball.y * scale, 4, 0, 2 * Math.PI);
-            ctx.fillStyle = "#e74c3c";
-            ctx.fill();
+    // Sæt programmet op første gang det åbnes
+    updateDisplays();
+    resetSimulation();
 
-            ctx.restore();
-        }
-
-        // Få teksten for hastighed til at opdatere, når man trækker i skyderen
-        document.getElementById("speedSlider").addEventListener("input", function(e) {
-            document.getElementById("speedValue").innerText = e.target.value;
-        });
-
-        // Kobl "Skyd!"-knappen til fire-funktionen
-        document.getElementById("fireButton").addEventListener("click", fire);
-
-        // Tegn den grønne planet, når siden indlæses første gang
-        drawBackground();
-    </script>
+</script>
 </body>
 </html>
