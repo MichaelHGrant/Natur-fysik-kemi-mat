@@ -11,7 +11,7 @@
             display: flex; 
             justify-content: center; 
         }
-       .window { 
+      .window { 
             background: #ece9d8; 
             border: 2px solid #fff; 
             box-shadow: 2px 2px 5px #888; 
@@ -20,7 +20,7 @@
             display: flex; 
             gap: 20px; 
         }
-       .canvas-box { 
+      .canvas-box { 
             width: 400px; 
             height: 400px; 
             background: #f5f5f5; 
@@ -33,13 +33,13 @@
             top: 0; 
             left: 0; 
         }
-       .controls { 
+      .controls { 
             flex: 1; 
             display: flex; 
             flex-direction: column; 
             gap: 15px; 
         }
-       .buttons { 
+      .buttons { 
             display: flex; 
             gap: 10px; 
         }
@@ -51,13 +51,13 @@
             border: 1px solid #999;
         }
         button:hover { background: #d1d1d1; }
-       .info { 
+      .info { 
             font-size: 13px; 
             background: #fff; 
             padding: 10px; 
             border: 1px inset #ccc; 
         }
-       .slider-box { 
+      .slider-box { 
             display: flex; 
             flex-direction: column; 
             font-size: 13px; 
@@ -111,18 +111,15 @@
     </div>
 
     <script>
-        // 1. Fysiske konstanter direkte fra dit originale billede
         var G = 6.6738e-11;
         var M = 5.97219e24;
         var MU = G * M;
 
-        // 2. Få fat i lærred (Canvas)
         var simCanvas = document.getElementById('simCanvas');
         var simCtx = simCanvas.getContext('2d');
         var trailCanvas = document.getElementById('trailCanvas');
         var trailCtx = trailCanvas.getContext('2d');
 
-        // 3. Få fat i knapper og slidere 
         var btnStart = document.getElementById('btnStart');
         var btnStop = document.getElementById('btnStop');
         var btnReset = document.getElementById('btnReset');
@@ -140,7 +137,6 @@
         var valPower = document.getElementById('valPower');
         var valTime = document.getElementById('valTime');
 
-        // 4. Variabler for bevægelse
         var isRunning = false;
         var posX = 0;
         var posY = 0;
@@ -148,21 +144,17 @@
         var velY = 0;
         var timeSec = 0;
 
-        // Skalering: 200 pixels svarer til 25.000 km, så kredsløbet kan være på skærmen
         var scale = 200 / 25000000; 
 
-        // 5. Gør simulationen klar til start
         function setupSim() {
             var radius_m = parseFloat(sldRadius.value) * 1000;
             var height_m = parseFloat(sldHeight.value) * 1000;
             var speed = parseFloat(sldSpeed.value);
-            var angle = parseFloat(sldAngle.value) * (Math.PI / 180); // Omregn til radianer
+            var angle = parseFloat(sldAngle.value) * (Math.PI / 180); 
 
-            // Kanonen placeres på toppen af Jorden + bjerg-højden
             posX = 0;
             posY = radius_m + height_m;
             
-            // Udregn starthastighed for x og y
             velX = speed * Math.cos(angle);
             velY = speed * Math.sin(angle);
             
@@ -173,18 +165,17 @@
             drawSat();
         }
 
-        // 6. Tegn den grønne jordklode
         function drawEarth() {
-            trailCtx.clearRect(0, 0, 400, 400); // Ryd baggrunden
+            trailCtx.clearRect(0, 0, 400, 400); 
             var radius_m = parseFloat(sldRadius.value) * 1000;
 
             trailCtx.save();
-            trailCtx.translate(200, 200); // Flyt Origo til midten
-            trailCtx.scale(1, -1); // Vend Y-aksen, så op er Plus (+)
+            trailCtx.translate(200, 200); 
+            trailCtx.scale(1, -1); 
 
             trailCtx.beginPath();
             trailCtx.arc(0, 0, radius_m * scale, 0, 2 * Math.PI);
-            trailCtx.fillStyle = '#00cc00'; // Grøn planet
+            trailCtx.fillStyle = '#00cc00'; 
             trailCtx.fill();
             trailCtx.lineWidth = 1;
             trailCtx.strokeStyle = '#000000';
@@ -193,44 +184,39 @@
             trailCtx.restore();
         }
 
-        // 7. Tegn den røde satellit (kanonkugle)
         function drawSat() {
-            simCtx.clearRect(0, 0, 400, 400); // Ryd kun forgrunden, så vi ikke sletter sporet
+            simCtx.clearRect(0, 0, 400, 400); 
             simCtx.save();
             simCtx.translate(200, 200);
             simCtx.scale(1, -1);
 
             simCtx.beginPath();
-            simCtx.arc(posX * scale, posY * scale, 4, 0, 2 * Math.PI);
-            simCtx.fillStyle = '#ff0000'; // Rød satellit
+            // Radiussen er her ændret fra 4 til 2 for at gøre satellitten mindre
+            simCtx.arc(posX * scale, posY * scale, 2, 0, 2 * Math.PI);
+            simCtx.fillStyle = '#ff0000'; 
             simCtx.fill();
 
             simCtx.restore();
         }
 
-        // 8. Selve Fysikken - Newtons love!
         function stepPhysics() {
             var radius_m = parseFloat(sldRadius.value) * 1000;
             var power = parseFloat(sldPower.value);
             
             var r = Math.sqrt(posX * posX + posY * posY);
 
-            // Tjek om vi er krashet ned i Jorden (radius af planeten)
             if (r <= radius_m) {
                 isRunning = false;
                 return;
             }
 
-            var dt = 20; // Hop 20 sekunder frem pr. udregning for at give en god hastighed
+            var dt = 20; 
 
-            // Udregn tyngdeaccelerationen: a = -GM / r^power
             var a_mag = -MU / Math.pow(r, power);
             
-            // Retningsbestem accelerationen
             var aX = a_mag * (posX / r);
             var aY = a_mag * (posY / r);
 
-            // Opdater hastighed og position
             velX += aX * dt;
             velY += aY * dt;
             posX += velX * dt;
@@ -238,19 +224,16 @@
 
             timeSec += dt;
 
-            // Tegn et sort spor der, hvor satellitten lige har været
             trailCtx.save();
             trailCtx.translate(200, 200);
             trailCtx.scale(1, -1);
             trailCtx.fillStyle = '#000000';
-            trailCtx.fillRect((posX * scale) - 1, (posY * scale) - 1, 2, 2);
+            trailCtx.fillRect((posX * scale) - 0.5, (posY * scale) - 0.5, 1, 1);
             trailCtx.restore();
         }
 
-        // 9. Animations-Loop der kører konstant
         function loop() {
             if (isRunning) {
-                // For at animationen er glidende, men hurtig, beregner vi fysikken 10 gange pr. billede
                 for (var i = 0; i < 10; i++) {
                     if (!isRunning) break;
                     stepPhysics();
@@ -258,10 +241,9 @@
                 valTime.innerText = timeSec.toFixed(0);
                 drawSat();
             }
-            requestAnimationFrame(loop); // Bed browseren om at køre loop() igen ved næste frame
+            requestAnimationFrame(loop); 
         }
 
-        // 10. Forbind alt manuelt (Ingen arrays, så koden ikke kan crashe)
         btnStart.onclick = function() { isRunning = true; };
         btnStop.onclick = function() { isRunning = false; };
         btnReset.onclick = function() { isRunning = false; setupSim(); };
@@ -272,7 +254,6 @@
         sldAngle.oninput = function() { valAngle.innerText = this.value; if (!isRunning) setupSim(); };
         sldPower.oninput = function() { valPower.innerText = this.value; if (!isRunning) setupSim(); };
 
-        // Start motoren første gang
         setupSim();
         requestAnimationFrame(loop);
     </script>
