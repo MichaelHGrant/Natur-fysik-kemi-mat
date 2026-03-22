@@ -34,166 +34,168 @@
     <script type="module">
         import * as THREE from 'three';
         import GUI from 'lil-gui';
-        import RAPIER from 'https://cdn.skypack.dev/@dimforge/rapier3d-compat';
+        import RAPIER from 'https://esm.sh/@dimforge/rapier3d-compat@0.12.0';
 
-        await RAPIER.init();
+        async function initSimulation() {
+            // Initialiser fysikmotoren
+            await RAPIER.init();
 
-        const canvas = document.createElement('canvas');
-        document.body.appendChild(canvas);
-        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setScissorTest(true);
+            const canvas = document.createElement('canvas');
+            document.body.appendChild(canvas);
+            const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setScissorTest(true);
 
-        function createBoxSystem(colorLeft, colorRight, populateLeft, populateRight) {
-            const scene = new THREE.Scene();
-            const world = new RAPIER.World({ x: 0.0, y: 0.0, z: 0.0 });
-            
-            const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-            camera.position.set(0, 3, 14);
-            camera.lookAt(0, 0, 0);
+            // Funktion der bygger en kasse med partikler
+            function createBoxSystem(colorLeft, colorRight, populateLeft, populateRight) {
+                const scene = new THREE.Scene();
+                const world = new RAPIER.World({ x: 0.0, y: 0.0, z: 0.0 }); // Ingen tyngdekraft
+                
+                const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+                camera.position.set(0, 3, 14);
+                camera.lookAt(0, 0, 0);
 
-            scene.add(new THREE.AmbientLight(0xffffff, 0.5));
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            dirLight.position.set(5, 10, 5);
-            scene.add(dirLight);
+                scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+                const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                dirLight.position.set(5, 10, 5);
+                scene.add(dirLight);
 
-            // Visuel ydre kasse
-            const outlineMesh = new THREE.Mesh(
-                new THREE.BoxGeometry(10, 6, 6),
-                new THREE.MeshBasicMaterial({ color: 0x555555, wireframe: true })
-            );
-            scene.add(outlineMesh);
+                // Visuel ydre kasse
+                const outlineMesh = new THREE.Mesh(
+                    new THREE.BoxGeometry(10, 6, 6),
+                    new THREE.MeshBasicMaterial({ color: 0x555555, wireframe: true })
+                );
+                scene.add(outlineMesh);
 
-            // Fysiske begrænsninger (vægge) i Rapier
-            const wt = 0.5;
-            world.createCollider(RAPIER.ColliderDesc.cuboid(5, wt/2, 3).setTranslation(0, 3+wt/2, 0));
-            world.createCollider(RAPIER.ColliderDesc.cuboid(5, wt/2, 3).setTranslation(0, -3-wt/2, 0));
-            world.createCollider(RAPIER.ColliderDesc.cuboid(wt/2, 3, 3).setTranslation(-5-wt/2, 0, 0));
-            world.createCollider(RAPIER.ColliderDesc.cuboid(wt/2, 3, 3).setTranslation(5+wt/2, 0, 0));
-            world.createCollider(RAPIER.ColliderDesc.cuboid(5, 3, wt/2).setTranslation(0, 0, -3-wt/2));
-            world.createCollider(RAPIER.ColliderDesc.cuboid(5, 3, wt/2).setTranslation(0, 0, 3+wt/2));
+                // Fysiske begrænsninger (vægge) i Rapier
+                const wt = 0.5;
+                world.createCollider(RAPIER.ColliderDesc.cuboid(5, wt/2, 3).setTranslation(0, 3+wt/2, 0));
+                world.createCollider(RAPIER.ColliderDesc.cuboid(5, wt/2, 3).setTranslation(0, -3-wt/2, 0));
+                world.createCollider(RAPIER.ColliderDesc.cuboid(wt/2, 3, 3).setTranslation(-5-wt/2, 0, 0));
+                world.createCollider(RAPIER.ColliderDesc.cuboid(wt/2, 3, 3).setTranslation(5+wt/2, 0, 0));
+                world.createCollider(RAPIER.ColliderDesc.cuboid(5, 3, wt/2).setTranslation(0, 0, -3-wt/2));
+                world.createCollider(RAPIER.ColliderDesc.cuboid(5, 3, wt/2).setTranslation(0, 0, 3+wt/2));
 
-            // Den lodrette bevægelige skillevæg i midten
-            const partitionDesc = RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(0, 0, 0);
-            const partitionBody = world.createRigidBody(partitionDesc);
-            world.createCollider(RAPIER.ColliderDesc.cuboid(0.1, 3, 3), partitionBody);
+                // Den lodrette bevægelige skillevæg i midten
+                const partitionDesc = RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(0, 0, 0);
+                const partitionBody = world.createRigidBody(partitionDesc);
+                world.createCollider(RAPIER.ColliderDesc.cuboid(0.1, 3, 3), partitionBody);
 
-            const partitionMesh = new THREE.Mesh(
-                new THREE.BoxGeometry(0.2, 6, 6),
-                new THREE.MeshBasicMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0.3, side: THREE.DoubleSide })
-            );
-            scene.add(partitionMesh);
+                const partitionMesh = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.2, 6, 6),
+                    new THREE.MeshBasicMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0.3, side: THREE.DoubleSide })
+                );
+                scene.add(partitionMesh);
 
-            // Partikelopsætning
-            const radius = 0.15;
-            const geo = new THREE.SphereGeometry(radius, 16, 16);
-            const matLeft = new THREE.MeshStandardMaterial({ color: colorLeft, roughness: 0.2 });
-            const matRight = new THREE.MeshStandardMaterial({ color: colorRight, roughness: 0.2 });
+                // Partikelopsætning
+                const radius = 0.15;
+                const geo = new THREE.SphereGeometry(radius, 16, 16);
+                const matLeft = new THREE.MeshStandardMaterial({ color: colorLeft, roughness: 0.2 });
+                const matRight = new THREE.MeshStandardMaterial({ color: colorRight, roughness: 0.2 });
 
-            const count = 150; 
-            
-            const meshLeft = new THREE.InstancedMesh(geo, matLeft, populateLeft? count : 0);
-            const meshRight = new THREE.InstancedMesh(geo, matRight, populateRight? count : 0);
-            if(populateLeft) scene.add(meshLeft);
-            if(populateRight) scene.add(meshRight);
+                const count = 150; 
+                
+                const meshLeft = new THREE.InstancedMesh(geo, matLeft, populateLeft? count : 0);
+                const meshRight = new THREE.InstancedMesh(geo, matRight, populateRight? count : 0);
+                if (populateLeft) scene.add(meshLeft);
+                if (populateRight) scene.add(meshRight);
 
-            // De tomme arrays, der før forårsagede syntaksfejlen, er nu defineret korrekt
-            const bodiesLeft =;
-            const bodiesRight =;
-            const speed = 7.0;
+                // KORREKT DEFINEREDE ARRAYS (Dette løser fejlen fra tidligere)
+                const bodiesLeft =;
+                const bodiesRight =;
+                const speed = 7.0;
 
-            const spawnParticle = (x, y, z, array) => {
-                let bodyDesc = RAPIER.RigidBodyDesc.dynamic()
-                .setTranslation(x, y, z)
-                .setLinvel((Math.random()-0.5)*speed, (Math.random()-0.5)*speed, (Math.random()-0.5)*speed)
-                .setLinearDamping(0).setAngularDamping(0)
-                .setCcdEnabled(true);
-                   
-                let body = world.createRigidBody(bodyDesc);
-                world.createCollider(RAPIER.ColliderDesc.ball(radius).setRestitution(1.0).setFriction(0.0), body);
-                array.push(body);
-            };
+                const spawnParticle = (x, y, z, array) => {
+                    let bodyDesc = RAPIER.RigidBodyDesc.dynamic()
+                   .setTranslation(x, y, z)
+                   .setLinvel((Math.random()-0.5)*speed, (Math.random()-0.5)*speed, (Math.random()-0.5)*speed)
+                   .setLinearDamping(0).setAngularDamping(0)
+                   .setCcdEnabled(true); // Sikrer at partikler ikke flyver gennem væggen ved høje hastigheder
+                       
+                    let body = world.createRigidBody(bodyDesc);
+                    world.createCollider(RAPIER.ColliderDesc.ball(radius).setRestitution(1.0).setFriction(0.0), body);
+                    array.push(body);
+                };
 
-            for(let i = 0; i < count; i++) {
-                if (populateLeft) spawnParticle(-4.5 + Math.random() * 4, -2.5 + Math.random() * 5, -2.5 + Math.random() * 5, bodiesLeft);
-                if (populateRight) spawnParticle(0.5 + Math.random() * 4, -2.5 + Math.random() * 5, -2.5 + Math.random() * 5, bodiesRight);
+                for(let i = 0; i < count; i++) {
+                    if (populateLeft) spawnParticle(-4.5 + Math.random() * 4, -2.5 + Math.random() * 5, -2.5 + Math.random() * 5, bodiesLeft);
+                    if (populateRight) spawnParticle(0.5 + Math.random() * 4, -2.5 + Math.random() * 5, -2.5 + Math.random() * 5, bodiesRight);
+                }
+
+                return { scene, camera, world, partitionBody, partitionMesh, meshLeft, bodiesLeft, meshRight, bodiesRight };
             }
 
-            return { scene, camera, world, partitionBody, partitionMesh, meshLeft, bodiesLeft, meshRight, bodiesRight };
-        }
+            // Opretter de 4 kasser
+            const box1 = createBoxSystem(0xff3333, 0x33ff33, true, true);   // Rød og Grøn partikler
+            const box2 = createBoxSystem(0x3388ff, 0x3388ff, true, true);   // Kun Blå partikler
+            const box3 = createBoxSystem(0xff3333, 0x000000, true, false);  // Kun Rød (Vakuum i højre side)
+            const box4 = createBoxSystem(0x000000, 0x33ff33, false, true);  // Kun Grøn (Vakuum i venstre side)
 
-        // 1. Kasse: Heterogen (Rød / Grøn)
-        const box1 = createBoxSystem(0xff3333, 0x33ff33, true, true);
-        
-        // 2. Kasse: Homogen (Blå / Blå)
-        const box2 = createBoxSystem(0x3388ff, 0x3388ff, true, true);
-        
-        // 3. Kasse: Tom i højre side (Rød udvider sig)
-        const box3 = createBoxSystem(0xff3333, 0x000000, true, false);
-        
-        // 4. Kasse: Tom i venstre side (Grøn udvider sig)
-        const box4 = createBoxSystem(0x000000, 0x33ff33, false, true);
+            const allBoxes = [box1, box2, box3, box4];
 
-        const allBoxes = [box1, box2, box3, box4];
-
-        const gui = new GUI({ container: document.getElementById('ui-container') });
-        const params = { partitionY: 0.0 };
-        
-        gui.add(params, 'partitionY', 0.0, 6.0).name('Træk Skillevæg Op').onChange(value => {
-            allBoxes.forEach(box => {
-                box.partitionBody.setNextKinematicTranslation({ x: 0, y: value, z: 0 });
-                box.partitionMesh.position.y = value;
+            const gui = new GUI({ container: document.getElementById('ui-container') });
+            const params = { partitionY: 0.0 };
+            
+            gui.add(params, 'partitionY', 0.0, 6.0).name('Træk Skillevæg Op').onChange(value => {
+                allBoxes.forEach(box => {
+                    box.partitionBody.setNextKinematicTranslation({ x: 0, y: value, z: 0 });
+                    box.partitionMesh.position.y = value;
+                });
             });
-        });
 
-        const dummy = new THREE.Object3D();
-        
-        function updateInstances(mesh, bodies) {
-            // Logik-fejlen fra før er rettet, så programmet kan tegne
-            if (!mesh |
+            const dummy = new THREE.Object3D();
+            
+            function updateInstances(mesh, bodies) {
+                // KORREKT LOGIK-TJEK (Dette løser den anden fejl fra tidligere)
+                if (!mesh |
 
 | bodies.length === 0) return;
-            for (let i = 0; i < bodies.length; i++) {
-                const pos = bodies[i].translation();
-                dummy.position.set(pos.x, pos.y, pos.z);
-                dummy.updateMatrix();
-                mesh.setMatrixAt(i, dummy.matrix);
+                
+                for (let i = 0; i < bodies.length; i++) {
+                    const pos = bodies[i].translation();
+                    dummy.position.set(pos.x, pos.y, pos.z);
+                    dummy.updateMatrix();
+                    mesh.setMatrixAt(i, dummy.matrix);
+                }
+                mesh.instanceMatrix.needsUpdate = true;
             }
-            mesh.instanceMatrix.needsUpdate = true;
-        }
 
-        function animate() {
-            requestAnimationFrame(animate);
+            function animate() {
+                requestAnimationFrame(animate);
+                
+                const w = window.innerWidth / 2;
+                const h = window.innerHeight / 2;
+
+                allBoxes.forEach((box, index) => {
+                    box.world.step();
+
+                    updateInstances(box.meshLeft, box.bodiesLeft);
+                    updateInstances(box.meshRight, box.bodiesRight);
+
+                    const col = index % 2; 
+                    const row = Math.floor(index / 2); 
+                    
+                    const left = col * w;
+                    const bottom = (1 - row) * h;
+
+                    renderer.setViewport(left, bottom, w, h);
+                    renderer.setScissor(left, bottom, w, h);
+                    
+                    box.camera.aspect = w / h;
+                    box.camera.updateProjectionMatrix();
+                    renderer.render(box.scene, box.camera);
+                });
+            }
             
-            const w = window.innerWidth / 2;
-            const h = window.innerHeight / 2;
+            animate();
 
-            allBoxes.forEach((box, index) => {
-                box.world.step();
-
-                updateInstances(box.meshLeft, box.bodiesLeft);
-                updateInstances(box.meshRight, box.bodiesRight);
-
-                const col = index % 2; 
-                const row = Math.floor(index / 2); 
-                
-                const left = col * w;
-                const bottom = (1 - row) * h;
-
-                renderer.setViewport(left, bottom, w, h);
-                renderer.setScissor(left, bottom, w, h);
-                
-                box.camera.aspect = w / h;
-                box.camera.updateProjectionMatrix();
-                renderer.render(box.scene, box.camera);
+            window.addEventListener('resize', () => {
+                renderer.setSize(window.innerWidth, window.innerHeight);
             });
         }
-        
-        animate();
 
-        window.addEventListener('resize', () => {
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
+        // Kør simulationen og fang eventuelle indlæsningsfejl
+        initSimulation().catch(console.error);
     </script>
 </body>
 </html>
