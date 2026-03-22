@@ -14,11 +14,11 @@
 </head>
 <body>
     <div id="info">
-        <h3>Gibbs Paradoks & Entropi v3</h3>
-        <p><b>Top Venstre:</b> Forskellige partikler (Kugler/Kasser)</p>
-        <p><b>Top Højre:</b> Ens partikler (Sackur-Tetrode løsningen)</p>
-        <p><b>Bund Venstre:</b> Fri udvidelse af Gas A</p>
-        <p><b>Bund Højre:</b> Fri udvidelse af Gas B</p>
+        <h3>Gibbs Paradoks & Entropi v4</h3>
+        <p><b>Top Venstre:</b> Forskellige partikler (Rød / Grøn)</p>
+        <p><b>Top Højre:</b> Ens partikler (Mørkeblå)</p>
+        <p><b>Bund Venstre:</b> Fri udvidelse (Rød)</p>
+        <p><b>Bund Højre:</b> Fri udvidelse (Grøn)</p>
     </div>
     <div id="ui-container"></div>
 
@@ -41,9 +41,8 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setScissorTest(true);
 
-        // En skræddersyet, intern fysikmotor til idealgasser (Erstatter den eksterne WASM-motor)
         class GasSimulation {
-            constructor(typeLeft, typeRight, populateLeft, populateRight) {
+            constructor(colorLeft, colorRight, populateLeft, populateRight) {
                 this.scene = new THREE.Scene();
                 this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
                 this.camera.position.set(0, 2, 14);
@@ -54,33 +53,30 @@
                 dirLight.position.set(5, 10, 5);
                 this.scene.add(dirLight);
 
-                // Ydre kasse
                 const outlineMesh = new THREE.Mesh(
                     new THREE.BoxGeometry(10, 6, 6),
                     new THREE.MeshBasicMaterial({ color: 0x555555, wireframe: true })
                 );
                 this.scene.add(outlineMesh);
 
-                // Bevægelig skillevæg
                 this.partitionMesh = new THREE.Mesh(
                     new THREE.BoxGeometry(0.2, 6, 6),
                     new THREE.MeshBasicMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0.3, side: THREE.DoubleSide })
                 );
                 this.scene.add(this.partitionMesh);
 
-                this.particles =;
+                this.particles = new Array();
                 this.radius = 0.2;
                 
-                // For at matche dine tegninger bruger vi sfærer (cirkler) og bokse (krydser)
+                // Nu er alt lavet om til små kugler
                 const geoSphere = new THREE.SphereGeometry(this.radius, 16, 16);
-                const geoBox = new THREE.BoxGeometry(this.radius*2, this.radius*2, this.radius*2);
                 
-                const matLeft = new THREE.MeshStandardMaterial({ color: typeLeft === 'sphere'? 0xff3333 : 0x3388ff });
-                const matRight = new THREE.MeshStandardMaterial({ color: typeRight === 'box'? 0x33ff33 : 0x3388ff });
+                const matLeft = new THREE.MeshStandardMaterial({ color: colorLeft, roughness: 0.2 });
+                const matRight = new THREE.MeshStandardMaterial({ color: colorRight, roughness: 0.2 });
 
-                const count = 120; // 120 partikler per kammer
-                this.meshLeft = new THREE.InstancedMesh(typeLeft === 'sphere'? geoSphere : geoBox, matLeft, count);
-                this.meshRight = new THREE.InstancedMesh(typeRight === 'box'? geoBox : geoSphere, matRight, count);
+                const count = 120; 
+                this.meshLeft = new THREE.InstancedMesh(geoSphere, matLeft, count);
+                this.meshRight = new THREE.InstancedMesh(geoSphere, matRight, count);
                 
                 this.meshLeft.count = populateLeft? count : 0;
                 this.meshRight.count = populateRight? count : 0;
@@ -108,15 +104,12 @@
             }
 
             step(dt, sliderValue) {
-                // Skillevæggens bund (når slideren går op, løftes væggen som en faldlem)
                 let wallBottom = -3.0 + sliderValue;
                 this.partitionMesh.position.y = sliderValue;
 
-                // Opdater positioner og håndter kollision med vægge
                 for (let p of this.particles) {
                     p.pos.addScaledVector(p.vel, dt);
 
-                    // Ydervægge kollision
                     if (p.pos.x < -5 + this.radius) { p.pos.x = -5 + this.radius; p.vel.x *= -1; }
                     if (p.pos.x >  5 - this.radius) { p.pos.x =  5 - this.radius; p.vel.x *= -1; }
                     if (p.pos.y < -3 + this.radius) { p.pos.y = -3 + this.radius; p.vel.y *= -1; }
@@ -124,7 +117,6 @@
                     if (p.pos.z < -3 + this.radius) { p.pos.z = -3 + this.radius; p.vel.z *= -1; }
                     if (p.pos.z >  3 - this.radius) { p.pos.z =  3 - this.radius; p.vel.z *= -1; }
 
-                    // Kollision med den indre skillevæg i midten
                     if (p.pos.y > wallBottom) {
                         if (p.pos.x < 0 && p.pos.x + this.radius > 0) {
                             p.pos.x = -this.radius; p.vel.x *= -1;
@@ -134,7 +126,6 @@
                     }
                 }
 
-                // Partikel til partikel elastisk kollision
                 for (let i = 0; i < this.particles.length; i++) {
                     for (let j = i + 1; j < this.particles.length; j++) {
                         let p1 = this.particles[i];
@@ -187,19 +178,21 @@
             }
         }
 
-        // Opretter de 4 kasser baseret på dine skitser
-        // 1: Cirkler (rød) vs Krydser/Kasser (grøn)
-        const box1 = new GasSimulation('sphere', 'box', true, true);
-        // 2: Cirkler (blå) vs Cirkler (blå)
-        const box2 = new GasSimulation('sphere', 'sphere', true, true);
-        // 3: Cirkler (rød) spreder sig i vakuum
-        const box3 = new GasSimulation('sphere', 'box', true, false);
-        // 4: Krydser/Kasser (grøn) spreder sig i vakuum
-        const box4 = new GasSimulation('sphere', 'box', false, true);
+        // Opretter de 4 kasser
+        // Kasse 1: Røde og grønne kugler
+        const box1 = new GasSimulation(0xff0000, 0x00ff00, true, true);
+        
+        // Kasse 2: Kun mørkeblå kugler i begge sider (fuldstændig identiske)
+        const box2 = new GasSimulation(0x00008b, 0x00008b, true, true);
+        
+        // Kasse 3: Røde kugler udvider sig mod vakuum
+        const box3 = new GasSimulation(0xff0000, 0x000000, true, false);
+        
+        // Kasse 4: Grønne kugler udvider sig mod vakuum
+        const box4 = new GasSimulation(0x000000, 0x00ff00, false, true);
 
         const allBoxes = [box1, box2, box3, box4];
 
-        // GUI Slider
         const gui = new GUI({ container: document.getElementById('ui-container') });
         const params = { partitionY: 0.0 };
         gui.add(params, 'partitionY', 0.0, 6.0).name('Løft Skillevæg');
