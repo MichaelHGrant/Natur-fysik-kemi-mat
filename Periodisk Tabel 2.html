@@ -2,257 +2,758 @@
 <html lang="da">
 <head>
     <meta charset="UTF-8">
-    <title>Newtons Kanon Simulation</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interaktiv Periodisk Tabel: Kvantemekanik & Spektroskopi</title>
     <style>
+        :root {
+            --bg-color: #0d1117; 
+            --text-color: #c9d1d9;
+            --cell-bg: #161b22;
+            --border-color: #30363d;
+            --highlight: #58a6ff;
+            
+            --diatomic-nonmetal: #a1ffc3;
+            --noble-gas: #c0ffff;
+            --alkali-metal: #ff6666;
+            --alkaline-earth-metal: #ffdead;
+            --metalloid: #cccc99;
+            --polyatomic-nonmetal: #e7ff8f;
+            --post-transition-metal: #cccccc;
+            --transition-metal: #f0a0a0;
+            --lanthanide: #ffbfff;
+            --actinide: #ff99cc;
+            --unknown: #e0e0e0;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            background-color: #d3d3d3;
-            display: flex;
-            justify-content: center;
-            padding: 20px;
-        }
-       .container {
-            background-color: #f0f0f0;
-            border: 2px solid #999;
-            padding: 20px;
-            display: flex;
-            gap: 20px;
-            box-shadow: 2px 2px 10px rgba(0,0,0,0.3);
-        }
-        canvas {
-            background-color: white;
-            border: 1px solid #ccc;
-        }
-       .panel {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 2rem;
             display: flex;
             flex-direction: column;
-            gap: 15px;
-            width: 250px;
+            align-items: center;
         }
-       .button-group {
-            display: flex;
-            gap: 10px;
-        }
-        button {
-            padding: 10px;
-            font-size: 14px;
-            cursor: pointer;
-            flex: 1;
-        }
-       .slider-group {
-            display: flex;
-            flex-direction: column;
-            font-size: 14px;
-        }
-       .slider-group span {
-            font-weight: bold;
-            color: #0055aa;
-        }
-        input[type=range] {
+
+        header { text-align: center; margin-bottom: 2rem; max-width: 800px; }
+        h1 { font-size: 2.5rem; margin-bottom: 0.5rem; color: #ffffff; }
+
+       .periodic-table {
+            all: unset;
+            display: grid;
+            grid-template-columns: repeat(18, minmax(45px, 1fr));
+            grid-template-rows: repeat(10, minmax(50px, auto));
+            gap: 5px;
+            max-width: 1400px;
             width: 100%;
-            margin-top: 5px;
+        }
+
+       .element {
+            background-color: var(--cell-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 6px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s, filter 0.2s;
+            grid-column: var(--xpos);
+            grid-row: var(--ypos);
+            filter: brightness(0.85);
+        }
+
+       .element:hover,.element:focus {
+            transform: scale(1.15) translateY(-5px);
+            z-index: 100;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
+            border-color: rgba(255, 255, 255, 0.9);
+            filter: brightness(1.1);
+        }
+
+       .el-number { font-size: 0.75rem; align-self: flex-start; font-weight: 600; }
+       .el-symbol { font-size: 1.6rem; font-weight: 800; align-self: center; margin: 2px 0; }
+       .el-name { font-size: 0.65rem; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+       .diatomic-nonmetal { border-top: 4px solid var(--diatomic-nonmetal); }
+       .noble-gas { border-top: 4px solid var(--noble-gas); }
+       .alkali-metal { border-top: 4px solid var(--alkali-metal); }
+       .alkaline-earth-metal { border-top: 4px solid var(--alkaline-earth-metal); }
+       .metalloid { border-top: 4px solid var(--metalloid); }
+       .polyatomic-nonmetal { border-top: 4px solid var(--polyatomic-nonmetal); }
+       .post-transition-metal { border-top: 4px solid var(--post-transition-metal); }
+       .transition-metal { border-top: 4px solid var(--transition-metal); }
+       .lanthanide { border-top: 4px solid var(--lanthanide); }
+       .actinide { border-top: 4px solid var(--actinide); }
+       .unknown { border-top: 4px solid var(--unknown); }
+
+        dialog {
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            background-color: var(--cell-bg);
+            color: var(--text-color);
+            max-width: 900px;
+            width: 95%;
+            padding: 0;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8);
+        }
+        
+        dialog::backdrop { background-color: rgba(1, 4, 9, 0.85); backdrop-filter: blur(5px); }
+       .modal-content { padding: 30px; position: relative; }
+        
+        #close-modal {
+            position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.1); border: none;
+            border-radius: 50%; color: #fff; width: 36px; height: 36px; cursor: pointer; font-weight: bold;
+            z-index: 1000;
+        }
+        #close-modal:hover { background: rgba(255,255,255,0.2); }
+
+       .modal-header { display: flex; align-items: center; gap: 25px; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px;}
+       .symbol-box { width: 80px; height: 80px; display: flex; justify-content: center; align-items: center; font-size: 2.5rem; font-weight: 800; border-radius: 10px; background-color: #21262d; border: 2px solid transparent; }
+       
+       .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+       .properties-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background-color: #0d1117; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); align-content: start; }
+       .prop-item { display: flex; flex-direction: column; }
+       .prop-item.label { font-size: 0.7rem; text-transform: uppercase; color: #8b949e; }
+       .prop-item.value { font-size: 1rem; font-weight: 600; color: #e6edf3; }
+
+       .spectra-section { grid-column: 1 / -1; margin-top: 15px; }
+        
+       .canvas-wrapper { position: relative; width: 100%; display: block; }
+        
+        #spectra-canvas { width: 100%; height: 120px; background-color: #000; border: 2px solid #30363d; border-radius: 6px; cursor: crosshair; display: block;}
+        
+        /* 3D Interaktivitet cursor */
+        #orbital-canvas { width: 100%; height: 260px; background-color: #000; border: 2px solid #30363d; border-radius: 6px; display: block; cursor: grab; touch-action: none; }
+        #orbital-canvas:active { cursor: grabbing; }
+
+       .orbital-ui {
+            display: flex; gap: 15px; margin-bottom: 10px; background: #21262d; padding: 10px; border-radius: 6px; align-items: center; flex-wrap: wrap;
+        }
+       .orbital-ui label { font-size: 0.85rem; font-weight: bold; color: #c9d1d9; }
+       .orbital-ui select {
+            background: #0d1117; color: #c9d1d9; border: 1px solid #30363d; padding: 4px 8px; border-radius: 4px; outline: none; margin-left: 5px; cursor: pointer;
+        }
+
+        #spectra-tooltip {
+            position: absolute; background: rgba(13,17,23,0.95); color: #fff; padding: 12px; border-radius: 6px;
+            border: 1px solid var(--highlight); pointer-events: none; font-size: 0.85rem; z-index: 2000; display: none;
+            transform: translate(-50%, -100%); margin-top: -15px; text-align: left; white-space: nowrap; line-height: 1.4;
+        }
+
+       .alert-box {
+            background-color: rgba(218, 54, 51, 0.1);
+            border-left: 4px solid #da3633;
+            padding: 15px;
+            border-radius: 0 4px 4px 0;
+            color: #ff7b72;
+        }
+
+        @media (max-width: 1024px) {
+           .periodic-table { display: block; overflow-x: auto; white-space: nowrap; }
+           .periodic-table >.element { display: inline-flex; width: 60px; height: 60px; margin: 2px; vertical-align: top; grid-column: auto!important; grid-row: auto!important; }
+           .dashboard { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
+    <header>
+        <h1>Kvantemekanisk Periodisk System</h1>
+        <p>Emissionsspektre & 3D Orbitaler via Schrödingers Ligning, Einstein A-Koefficienter og Dipol-Matrix-Elementer.</p>
+    </header>
 
-<div class="container">
-    <canvas id="simCanvas" width="500" height="500"></canvas>
+    <main>
+        <ol id="periodic-table-grid" class="periodic-table" aria-label="Periodisk System"></ol>
+    </main>
 
-    <div class="panel">
-        <div class="button-group">
-            <button id="btnStart">Start</button>
-            <button id="btnStop">Stop</button>
-            <button id="btnReset">Reset</button>
+    <dialog id="element-modal" aria-labelledby="modal-name">
+        <div class="modal-content">
+            <button id="close-modal" aria-label="Luk vindue">X</button>
+            <div class="modal-header">
+                <div id="modal-symbol-box" class="symbol-box" aria-hidden="true"></div>
+                <div class="modal-titles">
+                    <h2 id="modal-name" style="margin:0;">Indlæser...</h2>
+                    <p id="modal-category" style="margin:5px 0; color:#8b949e;">Indlæser Kategori...</p>
+                </div>
+            </div>
+            
+            <div class="dashboard">
+                <section class="properties-grid">
+                    <div class="prop-item"><span class="label">Atomnummer (Z):</span> <span id="modal-number" class="value"></span></div>
+                    <div class="prop-item"><span class="label">Valens Z_eff (Slater):</span> <span id="modal-zeff" class="value"></span></div>
+                    <div class="prop-item"><span class="label">Elektronkonfiguration:</span> <span id="modal-electron" class="value"></span></div>
+                    <div class="prop-item"><span class="label">Masse:</span> <span id="modal-mass" class="value"></span></div>
+                </section>
+
+                <section>
+                    <div style="font-size: 0.85rem; color: #8b949e; margin-bottom: 5px;">Roterbare 3D Orbitaler (Træk med musen)</div>
+                    <div class="orbital-ui">
+                        <label>n: <select id="n-select"></select></label>
+                        <label>l: <select id="l-select"></select></label>
+                        <label>m: <select id="m-select"></select></label>
+                        <span id="orbital-name" style="margin-left:auto; font-weight:bold; color:var(--highlight); font-size: 1.2rem;">1s</span>
+                    </div>
+                    <canvas id="orbital-canvas"></canvas>
+                </section>
+
+                <section class="spectra-section">
+                    <div style="font-size: 0.85rem; color: #8b949e; margin-bottom: 5px;">Beregnet Spektrum & Intensitet (Hold musen over linjer)</div>
+                    <div class="canvas-wrapper">
+                        <canvas id="spectra-canvas"></canvas>
+                        <div id="spectra-tooltip"></div>
+                    </div>
+                </section>
+            </div>
         </div>
+    </dialog>
 
-        <div class="slider-group">
-            <label>Hastighed [m/s]: <span id="valSpeed">7200</span></label>
-            <input type="range" id="inpSpeed" min="0" max="12000" step="10" value="7200">
-        </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const gridContainer = document.getElementById('periodic-table-grid');
+            const modal = document.getElementById('element-modal');
+            const closeModalBtn = document.getElementById('close-modal');
+            const specCanvas = document.getElementById('spectra-canvas');
+            const specCtx = specCanvas.getContext('2d');
+            const orbCanvas = document.getElementById('orbital-canvas');
+            const orbCtx = orbCanvas.getContext('2d');
+            const tooltip = document.getElementById('spectra-tooltip');
+            
+            const nSelect = document.getElementById('n-select');
+            const lSelect = document.getElementById('l-select');
+            const mSelect = document.getElementById('m-select');
+            const orbitalName = document.getElementById('orbital-name');
+            
+            // Brug af "new Array()" for at undgå at tomme klammer forsvinder i formateringen
+            let elementsDatabase = new Array();
+            let currentLines = new Array();
+            let animationFrameId;
+            let currentZeff = 1.0;
 
-        <div class="slider-group">
-            <label>Højde [km]: <span id="valHeight">1000</span></label>
-            <input type="range" id="inpHeight" min="0" max="30000" step="100" value="1000">
-        </div>
+            let orbitalPoints = new Array();
+            let maxProbCache = 0.0001; 
+            let activeOrbitalColor = '#58a6ff';
+            let drawnPointsCount = 0;
+            
+            let rotX = 0;
+            let rotY = 0;
+            let isDraggingOrbital = false;
+            let lastMouseX = 0;
+            let lastMouseY = 0;
 
-        <div class="slider-group">
-            <label>Jordens Radius [km]: <span id="valRadius">6371</span></label>
-            <input type="range" id="inpRadius" min="1000" max="10000" step="1" value="6371">
-        </div>
+            const dataUrl = 'https://raw.githubusercontent.com/Bowserinator/Periodic-Table-JSON/master/PeriodicTableJSON.json';
 
-        <div class="slider-group">
-            <label>Vinkel [deg]: <span id="valAngle">0</span></label>
-            <input type="range" id="inpAngle" min="-90" max="90" step="1" value="0">
-        </div>
-
-        <div class="slider-group">
-            <label>Gravity Power: <span id="valPower">2.00</span></label>
-            <input type="range" id="inpPower" min="1.0" max="3.0" step="0.01" value="2.0">
-        </div>
-    </div>
-</div>
-
-<script>
-    // Fysiske konstanter fra billedet
-    const G = 6.6738e-11;
-    const M = 5.97219e24;
-    const GM = G * M;
-
-    // Hent HTML-elementerne
-    const canvas = document.getElementById("simCanvas");
-    const ctx = canvas.getContext("2d");
-
-    const btnStart = document.getElementById("btnStart");
-    const btnStop = document.getElementById("btnStop");
-    const btnReset = document.getElementById("btnReset");
-
-    const inpSpeed = document.getElementById("inpSpeed");
-    const inpHeight = document.getElementById("inpHeight");
-    const inpRadius = document.getElementById("inpRadius");
-    const inpAngle = document.getElementById("inpAngle");
-    const inpPower = document.getElementById("inpPower");
-
-    const valSpeed = document.getElementById("valSpeed");
-    const valHeight = document.getElementById("valHeight");
-    const valRadius = document.getElementById("valRadius");
-    const valAngle = document.getElementById("valAngle");
-    const valPower = document.getElementById("valPower");
-
-    // Simuleringstilstand (State)
-    let isRunning = false;
-    let x = 0;
-    let y = 0;
-    let vx = 0;
-    let vy = 0;
-    let trail =;
-
-    // Skaleringsfaktor for grafikken (1 pixel svarer til ca. 80 km, så høje kredsløb kan ses)
-    const scale = 250 / 40000000; 
-
-    // Funktion til at genstarte kredsløbet
-    function resetSimulation() {
-        isRunning = false;
-        trail =;
-
-        // Hent værdier fra sliderne og omregn til meter og radianer
-        let speed = parseFloat(inpSpeed.value);
-        let height = parseFloat(inpHeight.value) * 1000; 
-        let radius = parseFloat(inpRadius.value) * 1000; 
-        let angle_rad = parseFloat(inpAngle.value) * Math.PI / 180;
-
-        // Kanonen placeres på toppen af Jorden + bjerg-højden
-        x = 0;
-        y = radius + height;
-
-        // Udregn starthastighed for x og y
-        vx = speed * Math.cos(angle_rad);
-        vy = speed * Math.sin(angle_rad);
-
-        drawGraphics();
-    }
-
-    // Funktion til at tegne Jorden og kanonkuglen
-    function drawGraphics() {
-        // Ryd lærredet hver frame
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // Gem standardtilstanden og flyt centrum til midten af lærredet
-        ctx.save();
-        ctx.translate(canvas.width / 2, canvas.height / 2);
-        ctx.scale(1, -1); // Vend y-aksen, så opad er positivt (matematisk standard)
-
-        let radius_m = parseFloat(inpRadius.value) * 1000;
-
-        // 1. Tegn den grønne Jordklode
-        ctx.beginPath();
-        ctx.arc(0, 0, radius_m * scale, 0, 2 * Math.PI);
-        ctx.fillStyle = "#00cc00"; // Grøn
-        ctx.fill();
-        ctx.lineWidth = 1;
-        ctx.strokeStyle = "black";
-        ctx.stroke();
-
-        // 2. Tegn kanonkuglens spor (banen)
-        if (trail.length > 0) {
-            ctx.beginPath();
-            ctx.moveTo(trail.x * scale, trail.y * scale);
-            for (let i = 1; i < trail.length; i++) {
-                ctx.lineTo(trail[i].x * scale, trail[i].y * scale);
+            // --- 1. OPSÆTNING AF KONTROLPANEL FOR ORBITALER ---
+            for(let i=1; i<=6; i++) {
+                nSelect.add(new Option(i, i));
             }
-            ctx.strokeStyle = "#333333";
-            ctx.stroke();
-        }
+            
+            nSelect.addEventListener('change', () => {
+                let n = parseInt(nSelect.value);
+                lSelect.innerHTML = '';
+                for(let i=0; i<n; i++) {
+                    lSelect.add(new Option(i, i));
+                }
+                lSelect.dispatchEvent(new Event('change'));
+            });
 
-        // 3. Tegn selve kanonkuglen/satellitten
-        ctx.beginPath();
-        ctx.arc(x * scale, y * scale, 4, 0, 2 * Math.PI);
-        ctx.fillStyle = "red"; // Rød
-        ctx.fill();
+            lSelect.addEventListener('change', () => {
+                let l = parseInt(lSelect.value);
+                mSelect.innerHTML = '';
+                for(let i=-l; i<=l; i++) {
+                    mSelect.add(new Option(i, i));
+                }
+                updateOrbitalName();
+                resetOrbitalCloud();
+            });
 
-        ctx.restore();
-    }
+            mSelect.addEventListener('change', () => {
+                updateOrbitalName();
+                resetOrbitalCloud();
+            });
 
-    // Matematikken (Newtons love)
-    function physicsLoop() {
-        if (!isRunning) return;
-
-        let radius_m = parseFloat(inpRadius.value) * 1000;
-        let power = parseFloat(inpPower.value);
-        
-        let dt = 1;         // Tids-skridt per beregning
-        let subSteps = 100; // Antal gange fysikken beregnes per billede (for høj fart)
-
-        for (let i = 0; i < subSteps; i++) {
-            let r = Math.sqrt(x*x + y*y);
-
-            // Stop simulationen hvis satellitten rammer Jorden
-            if (r <= radius_m) {
-                isRunning = false;
-                break;
+            function updateOrbitalName() {
+                let n = nSelect.value;
+                let l = parseInt(lSelect.value);
+                let m = mSelect.value;
+                let letters = new Array('s', 'p', 'd', 'f', 'g', 'h');
+                orbitalName.innerHTML = n + letters[l] + ' <span style="font-size:0.85rem; color:#8b949e;">(m=' + m + ')</span>';
             }
 
-            // Beregn tyngdeaccelerationen: a = -GM / r^power
-            let a_mag = -GM / Math.pow(r, power);
-            let ax = a_mag * (x / r);
-            let ay = a_mag * (y / r);
+            function resetOrbitalCloud() {
+                orbitalPoints = new Array();
+                drawnPointsCount = 0;
+                maxProbCache = 0.0001;
+                rotX = 0;
+                rotY = 0;
+            }
 
-            // Opdater hastighed og position
-            vx += ax * dt;
-            vy += ay * dt;
-            x += vx * dt;
-            y += vy * dt;
-        }
+            // --- 2. HENT DATA ---
+            async function fetchPeriodicData() {
+                try {
+                    const response = await fetch(dataUrl);
+                    if (response.ok === false) {
+                        throw new Error('Netværksfejl');
+                    }
+                    const data = await response.json();
+                    elementsDatabase = data.elements;
+                    renderPeriodicTable(elementsDatabase);
+                } catch (error) {
+                    gridContainer.innerHTML = '<li class="alert-box" style="grid-column: 1 / -1; list-style: none;">Fejl ved indlæsning af data. Sørg for internetforbindelse.</li>';
+                }
+            }
 
-        // Tilføj den nye position til sporet (hvis den kører)
-        if (isRunning) {
-            trail.push({x: x, y: y});
-        }
-    }
+            function renderPeriodicTable(elements) {
+                // Sikker oprettelse af array undgår formateringsfejl
+                let docFrag = document.createDocumentFragment();
+                
+                elements.forEach(element => {
+                    const cell = document.createElement('li');
+                    cell.classList.add('element');
+                    let catClass = element.category.replace(/\s+/g, '-').toLowerCase();
+                    
+                    if (catClass.indexOf('unknown')!== -1) {
+                        catClass = 'unknown';
+                    }
+                    
+                    cell.classList.add(catClass);
+                    cell.style.setProperty('--xpos', element.xpos);
+                    cell.style.setProperty('--ypos', element.ypos);
 
-    // Selve animations-motoren i browseren
-    function animate() {
-        physicsLoop();
-        drawGraphics();
-        requestAnimationFrame(animate); // Bed browseren om at tegne næste billede
-    }
+                    cell.innerHTML = '<span class="el-number">' + element.number + '</span>' +
+                                     '<abbr class="el-symbol" title="' + element.name + '">' + element.symbol + '</abbr>' +
+                                     '<span class="el-name">' + element.name + '</span>';
 
-    // Forbind knapperne
-    btnStart.onclick = function() { isRunning = true; };
-    btnStop.onclick = function() { isRunning = false; };
-    btnReset.onclick = resetSimulation;
+                    cell.setAttribute('tabindex', '0');
+                    cell.addEventListener('click', () => populateAndOpenModal(element, catClass));
+                    
+                    cell.addEventListener('keydown', (e) => { 
+                        if (e.key === 'Enter') { populateAndOpenModal(element, catClass); }
+                    });
 
-    // Forbind sliderne så tallene opdateres live
-    inpSpeed.oninput = function() { valSpeed.innerText = this.value; resetSimulation(); };
-    inpHeight.oninput = function() { valHeight.innerText = this.value; resetSimulation(); };
-    inpRadius.oninput = function() { valRadius.innerText = this.value; resetSimulation(); };
-    inpAngle.oninput = function() { valAngle.innerText = this.value; resetSimulation(); };
-    inpPower.oninput = function() { valPower.innerText = parseFloat(this.value).toFixed(2); resetSimulation(); };
+                    docFrag.appendChild(cell);
+                });
+                gridContainer.appendChild(docFrag);
+            }
 
-    // Klargør og start programmet
-    resetSimulation();
-    animate();
+            // --- 3. FYSIKMOTOR: SLATERS REGLER FOR Z_eff ---
+            function calculateZeff(Z, shells) {
+                if (Z === 1) return 1.0;
+                if (typeof shells === 'undefined') return 1.0;
+                if (shells === null) return 1.0;
+                if (shells.length === 0) return 1.0;
+                
+                let valence = shells[shells.length - 1];
+                let n_minus_1 = 0;
+                if (shells.length > 1) {
+                    n_minus_1 = shells[shells.length - 2];
+                }
+                let core = Z - valence - n_minus_1;
+                
+                let S = (0.35 * (valence > 0? valence - 1 : 0)) + (0.85 * n_minus_1) + (1.00 * core);
+                let Zeff = Z - S;
+                if (Zeff < 1.0) { Zeff = 1.0; }
+                return Zeff; 
+            }
 
-</script>
+            // Farvekonvertering (380nm - 780nm)
+            function wavelengthToRGB(wl) {
+                let R = 0, G = 0, B = 0;
+                if (wl >= 380) { if (wl < 440) { R = -(wl - 440) / (440 - 380); B = 1; } }
+                if (wl >= 440) { if (wl < 490) { G = (wl - 440) / (490 - 440); B = 1; } }
+                if (wl >= 490) { if (wl < 510) { G = 1; B = -(wl - 510) / (510 - 490); } }
+                if (wl >= 510) { if (wl < 580) { R = (wl - 510) / (580 - 510); G = 1; } }
+                if (wl >= 580) { if (wl < 645) { R = 1; G = -(wl - 645) / (645 - 580); } }
+                if (wl >= 645) { if (wl <= 780) { R = 1; } }
+
+                let factor = 1;
+                if (wl >= 380) { if (wl < 420) { factor = 0.3 + 0.7 * (wl - 380) / (420 - 380); } }
+                if (wl > 700) { if (wl <= 780) { factor = 0.3 + 0.7 * (780 - wl) / (780 - 700); } }
+                
+                let gamma = 0.8;
+                let r = Math.round(255 * Math.pow(R * factor, gamma));
+                let g = Math.round(255 * Math.pow(G * factor, gamma));
+                let b = Math.round(255 * Math.pow(B * factor, gamma));
+                return 'rgb(' + r + ',' + g + ',' + b + ')';
+            }
+
+            // --- 4. SPEKTRAL BEREGNING (Schrödinger/Rydberg & Einstein A) ---
+            function generateQuantumLines(Zeff) {
+                let generatedLines = new Array();
+                const eV_to_nm = 1239.84193; 
+                let maxA21 = 0;
+                
+                for (let n1 = 1; n1 <= 5; n1++) {
+                    for (let n2 = n1 + 1; n2 <= 6; n2++) {
+                        let E1 = -13.6 * (Zeff * Zeff) / (n1 * n1);
+                        let E2 = -13.6 * (Zeff * Zeff) / (n2 * n2);
+                        let deltaE = E2 - E1;
+                        let lambda = eV_to_nm / deltaE;
+
+                        let n1_sq = n1 * n1;
+                        let n2_sq = n2 * n2;
+                        let D12_sq = (1 / (Zeff * Zeff)) * (256 * Math.pow(n1, 7) * Math.pow(n2, 9)) / (Math.pow(n2_sq - n1_sq, 5) * Math.pow(n2_sq + n1_sq, 2));
+                        
+                        let A21 = D12_sq / Math.pow(lambda, 3);
+                        if (A21 > maxA21) { maxA21 = A21; }
+
+                        let fineSplit = lambda * 0.00005 * Zeff; 
+                        
+                        let displayLambda = lambda;
+                        while(displayLambda < 380) { displayLambda *= 1.5; } 
+                        while(displayLambda > 780) { displayLambda *= 0.8; }
+
+                        generatedLines.push({
+                            realLambda: lambda,
+                            lambda: displayLambda,
+                            n1: n1, n2: n2,
+                            l2: n2 - 1,
+                            E1: E1, E2: E2, deltaE: deltaE, Zeff: Zeff,
+                            dipoleMatrix: D12_sq,
+                            einsteinA: A21,
+                            intensity: 0, 
+                            color: wavelengthToRGB(displayLambda),
+                            canvasX: 0
+                        });
+                        
+                        let offsetLambda = displayLambda + (fineSplit > 0.5? fineSplit : 0.5);
+                        generatedLines.push({
+                            realLambda: lambda + fineSplit,
+                            lambda: offsetLambda,
+                            n1: n1, n2: n2, 
+                            E1: E1, E2: E2, deltaE: deltaE, Zeff: Zeff,
+                            dipoleMatrix: D12_sq * 0.5,
+                            einsteinA: A21 * 0.5,
+                            intensity: 0,
+                            color: wavelengthToRGB(displayLambda),
+                            canvasX: 0
+                        });
+                    }
+                }
+
+                generatedLines.forEach(line => {
+                    line.intensity = 0.1 + 0.9 * Math.pow(line.einsteinA / maxA21, 0.3);
+                });
+
+                return generatedLines;
+            }
+
+            function renderCanvasSpectra(linesToDraw) {
+                let dpr = 1;
+                if (window.devicePixelRatio) { dpr = window.devicePixelRatio; }
+                const rect = specCanvas.getBoundingClientRect();
+                specCanvas.width = rect.width * dpr;
+                specCanvas.height = rect.height * dpr;
+                specCtx.setTransform(1, 0, 0, 1, 0, 0); 
+                specCtx.scale(dpr, dpr);
+
+                specCtx.fillStyle = '#000';
+                specCtx.fillRect(0, 0, rect.width, rect.height);
+
+                linesToDraw.forEach(line => {
+                    let x = ((line.lambda - 380) / (780 - 380)) * rect.width;
+                    line.canvasX = x; 
+                    
+                    specCtx.beginPath();
+                    specCtx.moveTo(x, 0);
+                    specCtx.lineTo(x, rect.height);
+                    specCtx.strokeStyle = line.color;
+                    specCtx.lineWidth = 2;
+                    specCtx.globalAlpha = line.intensity;
+                    specCtx.stroke();
+                });
+            }
+
+            // --- 5. KVANTEMEKANISKE POLYNOMIER TIL ORBITALER ---
+            function generalizedLaguerre(n, alpha, x) {
+                if (n === 0) return 1;
+                if (n === 1) return 1 + alpha - x;
+                let Lk_2 = 1;
+                let Lk_1 = 1 + alpha - x;
+                let Lk = Lk_1;
+                for (let k = 2; k <= n; k++) {
+                    Lk = ((2 * k - 1 + alpha - x) * Lk_1 - (k - 1 + alpha) * Lk_2) / k;
+                    Lk_2 = Lk_1;
+                    Lk_1 = Lk;
+                }
+                return Lk;
+            }
+
+            function associatedLegendre(l, m, x) {
+                m = Math.abs(m);
+                if (l < m) return 0;
+                let pmm = 1;
+                if (m > 0) {
+                    let somx2 = Math.sqrt((1 - x) * (1 + x));
+                    let fact = 1;
+                    for (let i = 1; i <= m; i++) {
+                        pmm *= -fact * somx2;
+                        fact += 2;
+                    }
+                }
+                if (l === m) return pmm;
+                let pmmp1 = x * (2 * m + 1) * pmm;
+                if (l === m + 1) return pmmp1;
+                let pll = 0;
+                for (let ll = m + 2; ll <= l; ll++) {
+                    pll = ((2 * ll - 1) * x * pmmp1 - (ll + m - 1) * pmm) / (ll - m);
+                    pmm = pmmp1;
+                    pmmp1 = pll;
+                }
+                return pll;
+            }
+
+            function orbitalPDF(n, l, m, r_bohr, theta) {
+                let rho = (2.0 * currentZeff / n) * r_bohr;
+                let radial = Math.pow(rho, l) * Math.exp(-rho / 2.0) * generalizedLaguerre(n - l - 1, 2 * l + 1, rho);
+                let angular = associatedLegendre(l, m, Math.cos(theta));
+                return Math.pow(radial * angular, 2);
+            }
+
+            // --- 6. TEGN 3D ATOMAR ORBITAL (Monte Carlo Sampling med Rotation) ---
+            function drawOrbitalCloud() {
+                const rect = orbCanvas.getBoundingClientRect();
+                let n = parseInt(nSelect.value);
+                let l = parseInt(lSelect.value);
+                let m = parseInt(mSelect.value);
+                
+                let cx = rect.width / 2;
+                let cy = rect.height / 2;
+                let maxR = n * n * 4.5 / currentZeff; 
+                let scale = (Math.min(rect.width, rect.height) / 2.2) / maxR;
+
+                if (drawnPointsCount < 20000) {
+                    for(let i = 0; i < 1500; i++) {
+                        let r = Math.random() * maxR; 
+                        let theta = Math.random() * Math.PI;
+                        let phi = Math.random() * Math.PI * 2;
+                        
+                        let prob = orbitalPDF(n, l, m, r, theta);
+                        if (prob > maxProbCache) { maxProbCache = prob; }
+
+                        let relativeProb = prob / maxProbCache;
+
+                        if (relativeProb > 0.05) {
+                            if (Math.random() < relativeProb) {
+                                let px = r * scale * Math.sin(theta) * Math.cos(phi);
+                                let pz = r * scale * Math.sin(theta) * Math.sin(phi);
+                                let py = r * scale * Math.cos(theta);
+                                
+                                let pointColor = 'rgba(255,255,255,0.3)';
+                                if (relativeProb > 0.35) {
+                                    pointColor = activeOrbitalColor;
+                                }
+                                orbitalPoints.push({x: px, y: py, z: pz, color: pointColor});
+                                drawnPointsCount++;
+                            }
+                        }
+                    }
+                }
+
+                let dpr = 1;
+                if (window.devicePixelRatio) { dpr = window.devicePixelRatio; }
+                orbCanvas.width = rect.width * dpr;
+                orbCanvas.height = rect.height * dpr;
+                orbCtx.setTransform(1, 0, 0, 1, 0, 0);
+                orbCtx.scale(dpr, dpr);
+                
+                orbCtx.fillStyle = '#000';
+                orbCtx.fillRect(0, 0, orbCanvas.width, orbCanvas.height);
+
+                let cosX = Math.cos(rotX);
+                let sinX = Math.sin(rotX);
+                let cosY = Math.cos(rotY);
+                let sinY = Math.sin(rotY);
+
+                for (let i = 0; i < orbitalPoints.length; i++) {
+                    let p = orbitalPoints[i];
+
+                    let x1 = p.x * cosY + p.z * sinY;
+                    let z1 = -p.x * sinY + p.z * cosY;
+                    let y1 = p.y;
+
+                    let y2 = y1 * cosX - z1 * sinX;
+                    let z2 = y1 * sinX + z1 * cosX;
+                    let x2 = x1;
+
+                    orbCtx.fillStyle = p.color;
+                    orbCtx.fillRect(cx + x2, cy - y2, 1.5, 1.5);
+                }
+
+                if(orbitalPoints.length === 0) {
+                    orbCtx.fillStyle = '#8b949e';
+                    orbCtx.font = '12px Arial';
+                    orbCtx.textAlign = 'center';
+                    orbCtx.fillText('Genererer punkter til 3D-struktur...', cx, cy);
+                }
+
+                animationFrameId = requestAnimationFrame(drawOrbitalCloud);
+            }
+
+            function startOrbitalDrag(e) {
+                isDraggingOrbital = true;
+                let clientX = e.clientX;
+                let clientY = e.clientY;
+                if (e.touches) {
+                    if (e.touches.length > 0) {
+                        clientX = e.touches.clientX;
+                        clientY = e.touches.clientY;
+                    }
+                }
+                lastMouseX = clientX;
+                lastMouseY = clientY;
+            }
+
+            function dragOrbital(e) {
+                if (isDraggingOrbital === false) return;
+                
+                let clientX = e.clientX;
+                let clientY = e.clientY;
+                if (e.touches) {
+                    if (e.touches.length > 0) {
+                        e.preventDefault(); 
+                        clientX = e.touches.clientX;
+                        clientY = e.touches.clientY;
+                    }
+                }
+
+                let deltaX = clientX - lastMouseX;
+                let deltaY = clientY - lastMouseY;
+                
+                rotY += deltaX * 0.01;
+                rotX += deltaY * 0.01;
+                
+                lastMouseX = clientX;
+                lastMouseY = clientY;
+            }
+
+            function endOrbitalDrag() {
+                isDraggingOrbital = false;
+            }
+
+            orbCanvas.addEventListener('mousedown', startOrbitalDrag);
+            window.addEventListener('mousemove', dragOrbital, {passive: false});
+            window.addEventListener('mouseup', endOrbitalDrag);
+            
+            orbCanvas.addEventListener('touchstart', startOrbitalDrag, {passive: true});
+            window.addEventListener('touchmove', dragOrbital, {passive: false});
+            window.addEventListener('touchend', endOrbitalDrag);
+
+            // --- 7. ÅBN MODAL & HÅNDTER INTERAKTION ---
+            function populateAndOpenModal(element, catClass) {
+                document.getElementById('modal-name').textContent = element.name;
+                document.getElementById('modal-category').textContent = element.category.toUpperCase();
+                document.getElementById('modal-number').textContent = element.number;
+                
+                currentZeff = calculateZeff(element.number, element.shells);
+                document.getElementById('modal-zeff').textContent = currentZeff.toFixed(2);
+                
+                let elConfig = 'N/A';
+                if (element.electron_configuration) { elConfig = element.electron_configuration; }
+                document.getElementById('modal-electron').textContent = elConfig;
+                
+                let massStr = 'N/A';
+                if (element.atomic_mass) { massStr = element.atomic_mass + " u"; }
+                document.getElementById('modal-mass').textContent = massStr;
+
+                const symbolBox = document.getElementById('modal-symbol-box');
+                symbolBox.textContent = element.symbol;
+                symbolBox.className = 'symbol-box'; 
+                symbolBox.style.borderColor = 'var(--' + catClass + ')';
+
+                let rootStyles = getComputedStyle(document.body);
+                let tempColor = rootStyles.getPropertyValue('--' + catClass).trim();
+                if (tempColor === '') {
+                    activeOrbitalColor = '#58a6ff';
+                } else {
+                    activeOrbitalColor = tempColor;
+                }
+
+                modal.showModal();
+
+                nSelect.value = 1;
+                nSelect.dispatchEvent(new Event('change'));
+
+                currentLines = generateQuantumLines(currentZeff);
+                renderCanvasSpectra(currentLines);
+                
+                cancelAnimationFrame(animationFrameId);
+                resetOrbitalCloud();
+                animationFrameId = requestAnimationFrame(drawOrbitalCloud);
+            }
+
+            function handleSpectrumInteraction(e) {
+                let clientX = e.clientX;
+                let clientY = e.clientY;
+                
+                if (e.touches) {
+                    if (e.touches.length > 0) {
+                        clientX = e.touches.clientX;
+                        clientY = e.touches.clientY;
+                    }
+                }
+
+                const rect = specCanvas.getBoundingClientRect();
+                const x = clientX - rect.left;
+                const y = clientY - rect.top;
+
+                let closestLine = null;
+                let minDistance = 5; 
+
+                currentLines.forEach(line => {
+                    let dist = Math.abs(x - line.canvasX);
+                    if (dist < minDistance) { closestLine = line; minDistance = dist; }
+                });
+
+                if (closestLine) {
+                    tooltip.style.display = 'block';
+                    tooltip.style.left = x + 'px';
+                    tooltip.style.top = y + 'px';
+                    
+                    let html = '<strong style="color:' + closestLine.color + '">Visuel &lambda;: ' + closestLine.lambda.toFixed(1) + ' nm</strong><br>';
+                    html += 'Rigtig &lambda;: ' + closestLine.realLambda.toFixed(1) + ' nm<br>';
+                    html += 'Overgang: n=' + closestLine.n2 + ' &rarr; n=' + closestLine.n1 + '<br>';
+                    html += '<hr style="margin:6px 0; border-color:#30363d;">';
+                    html += '<span style="color:#8b949e; font-size:0.75rem;">SCHR&Ouml;DINGERS UDREGNING</span><br>';
+                    html += 'Z<sub>eff</sub> = ' + closestLine.Zeff.toFixed(2) + '<br>';
+                    html += 'E<sub>' + closestLine.n2 + '</sub> = -13.6 &middot; Z<sub>eff</sub>&sup2; / ' + closestLine.n2 + '&sup2; = ' + closestLine.E2.toFixed(2) + ' eV<br>';
+                    html += 'E<sub>' + closestLine.n1 + '</sub> = -13.6 &middot; Z<sub>eff</sub>&sup2; / ' + closestLine.n1 + '&sup2; = ' + closestLine.E1.toFixed(2) + ' eV<br>';
+                    html += '&Delta;E = E<sub>' + closestLine.n2 + '</sub> - E<sub>' + closestLine.n1 + '</sub> = ' + closestLine.deltaE.toFixed(2) + ' eV<br>';
+                    html += '|D|&sup2; = ' + closestLine.dipoleMatrix.toExponential(2) + '<br>';
+                    html += 'Einstein A<sub>21</sub> &propto; ' + closestLine.einsteinA.toExponential(2) + '<br>';
+
+                    tooltip.innerHTML = html;
+                } else {
+                    tooltip.style.display = 'none';
+                }
+            }
+
+            specCanvas.addEventListener('mousemove', handleSpectrumInteraction);
+            specCanvas.addEventListener('touchstart', handleSpectrumInteraction, {passive: true});
+            specCanvas.addEventListener('touchmove', handleSpectrumInteraction, {passive: true});
+
+            specCanvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+            specCanvas.addEventListener('touchend', () => { tooltip.style.display = 'none'; });
+            
+            closeModalBtn.addEventListener('click', () => { modal.close(); cancelAnimationFrame(animationFrameId); tooltip.style.display = 'none'; });
+            
+            modal.addEventListener('click', (e) => {
+                const dim = modal.getBoundingClientRect();
+                let outside = false;
+                if (e.clientX < dim.left) { outside = true; }
+                if (e.clientX > dim.right) { outside = true; }
+                if (e.clientY < dim.top) { outside = true; }
+                if (e.clientY > dim.bottom) { outside = true; }
+                
+                if (outside) {
+                    modal.close(); 
+                    cancelAnimationFrame(animationFrameId);
+                    tooltip.style.display = 'none'; 
+                }
+            });
+
+            fetchPeriodicData();
+        });
+    </script>
 </body>
 </html>
