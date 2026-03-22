@@ -3,25 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <title>Gibbs Paradoks Simulation</title>
-        <a href="index.html" class="back-link">← Tilbage til forsiden</a>  
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0f0f0; color: #000; font-family: sans-serif; }
-        canvas { display: block; width: 100vw; height: 100vh; }
+        canvas { display: block; width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
+        
         #ui-container { position: absolute; top: 10px; right: 10px; z-index: 100; }
-        #info { position: absolute; top: 10px; left: 10px; z-index: 100; pointer-events: none; background: rgba(255,255,255,0.85); padding: 15px; border-radius: 8px; border: 1px solid #ccc; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        h3 { margin: 0 0 10px 0; color: #b30000; }
-        p { margin: 5px 0; font-size: 14px; }
+        
+        /* Mindre tekstboks for ikke at blokere udsynet */
+        #info { 
+            position: absolute; top: 10px; left: 10px; z-index: 100; pointer-events: auto; 
+            background: rgba(255,255,255,0.9); padding: 10px 15px; 
+            border-radius: 8px; border: 1px solid #ccc; box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+            font-size: 11px; width: 250px; max-height: 90vh; overflow-y: auto;
+        }
+        h3 { margin: 0 0 8px 0; color: #b30000; font-size: 14px; }
+        p { margin: 4px 0; }
+        
+        /* Dropdown menu styling */
+        details { margin-top: 12px; background: #e8e8e8; padding: 6px; border-radius: 5px; cursor: pointer; border: 1px solid #ddd; }
+        summary { font-weight: bold; color: #0055a4; outline: none; }
+       .theory-text { margin-top: 8px; line-height: 1.4; color: #333; }
+
+        /* Usynlige lag til at fange musens bevægelser for de 4 forskellige skærme */
+       .viewport-overlay { position: absolute; z-index: 10; }
+        #overlay-tl { top: 0; left: 0; width: 50vw; height: 50vh; }
+        #overlay-tr { top: 0; left: 50vw; width: 50vw; height: 50vh; }
+        #overlay-bl { top: 50vh; left: 0; width: 50vw; height: 50vh; }
+        #overlay-br { top: 50vh; left: 50vw; width: 50vw; height: 50vh; }
     </style>
 </head>
 <body>
+    <div id="overlay-tl" class="viewport-overlay"></div>
+    <div id="overlay-tr" class="viewport-overlay"></div>
+    <div id="overlay-bl" class="viewport-overlay"></div>
+    <div id="overlay-br" class="viewport-overlay"></div>
+
     <div id="info">
         <h3>Gibbs Paradoks & Entropi</h3>
-        <p><b>Top Venstre:</b> Forskellige partikler (Rød / Grøn)</p>
+        <p><b>Top Venstre:</b> Forskellige partikler (Rød/Grøn)</p>
         <p><b>Top Højre:</b> Ens partikler (Lyseblå)</p>
-        <p><b>Bund Venstre:</b> Fri udvidelse (Rød)</p>
-        <p><b>Bund Højre:</b> Fri udvidelse (Grøn)</p>
-        <p style="margin-top: 15px; font-weight: bold; color: #0066cc;">🖱️ Klik og træk med musen for at rotere kasserne!</p>
+        <p><b>Bund V/H:</b> Fri udvidelse i vakuum</p>
+        
+        <details>
+            <summary>Forklaring (Informationsteori)</summary>
+            <div class="theory-text">
+                Ud fra et <b>informationsteoretisk perspektiv (Shannon-entropi)</b> fungerer entropi som et mål for en observatørs manglende viden om systemets præcise mikrotilstand.<br><br>
+                Når <b>to forskellige gasser</b> blandes (top venstre), mister vi viden om, hvilken type partikel der befinder sig hvor. Dette tab af information svarer til en stigning i entropien.<br><br>
+                Hvis gasserne derimod er <b>fuldstændig identiske</b> (top højre), ændrer en ombytning af to partikler ikke på systemets observerbare tilstand. Fordi observatøren ikke mister nogen skelnerbar information, er entropitilvæksten præcis nul.
+            </div>
+        </details>
     </div>
+    
     <div id="ui-container"></div>
 
     <script type="importmap">
@@ -44,36 +76,32 @@
         const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setScissorTest(true);
-        renderer.setClearColor(0xf0f0f0); // Lys baggrund som i din Visual Basic app
-
-        // Master-kamera der styrer alle 4 visninger samtidigt
-        const masterCamera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-        masterCamera.position.set(0, 5, 18);
-        
-        // Gør det muligt at rotere, panorere og zoome med musen
-        const controls = new OrbitControls(masterCamera, renderer.domElement);
-        controls.enableDamping = true;
+        renderer.setClearColor(0xf0f0f0);
 
         class GasSimulation {
-            constructor(colorLeft, colorRight, populateLeft, populateRight) {
+            constructor(colorLeft, colorRight, populateLeft, populateRight, overlayId) {
                 this.scene = new THREE.Scene();
                 this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+                this.camera.position.set(0, 4, 16);
                 
+                // Tilknytter kameraets styring udelukkende til det tilsvarende overlay
+                const overlayElement = document.getElementById(overlayId);
+                this.controls = new OrbitControls(this.camera, overlayElement);
+                this.controls.enableDamping = true;
+                this.controls.dampingFactor = 0.05;
+
                 this.scene.add(new THREE.AmbientLight(0xffffff, 0.8));
                 const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
                 dirLight.position.set(5, 10, 5);
                 this.scene.add(dirLight);
 
-                // Kassen tegnet med sorte streger (Wireframe look som på dit billede)
                 const boxEdges = new THREE.EdgesGeometry(new THREE.BoxGeometry(10, 6, 6));
                 const outlineMesh = new THREE.LineSegments(boxEdges, new THREE.LineBasicMaterial({ color: 0x000000 }));
                 this.scene.add(outlineMesh);
 
-                // Skillevæggen tegnet med rød streg (som på dit billede)
                 const partitionEdges = new THREE.EdgesGeometry(new THREE.BoxGeometry(0.01, 6, 6));
                 this.partitionMesh = new THREE.LineSegments(partitionEdges, new THREE.LineBasicMaterial({ color: 0xff0000 }));
                 
-                // Tilføjer en let gennemsigtig rød glas-effekt, så skillevæggen ses i 3D
                 const partitionGlass = new THREE.Mesh(
                     new THREE.BoxGeometry(0.01, 6, 6),
                     new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.15, side: THREE.DoubleSide })
@@ -82,182 +110,6 @@
                 this.scene.add(this.partitionMesh);
 
                 this.particles = new Array();
-                this.radius = 0.08; 
+                this.radius = 0.05; 
                 
-                const geoSphere = new THREE.SphereGeometry(this.radius, 12, 12);
-                
-                const matLeft = new THREE.MeshStandardMaterial({ color: colorLeft, roughness: 0.2 });
-                const matRight = new THREE.MeshStandardMaterial({ color: colorRight, roughness: 0.2 });
-
-                const count = 200; // 400 partikler pr. boks (afbalanceret så fysikberegningen forbliver lynhurtig)
-                
-                this.meshLeft = new THREE.InstancedMesh(geoSphere, matLeft, count);
-                this.meshRight = new THREE.InstancedMesh(geoSphere, matRight, count);
-                
-                this.meshLeft.count = populateLeft? count : 0;
-                this.meshRight.count = populateRight? count : 0;
-                
-                this.scene.add(this.meshLeft);
-                this.scene.add(this.meshRight);
-
-                const speed = 7.0;
-                for (let i = 0; i < count; i++) {
-                    if (populateLeft) {
-                        this.particles.push({
-                            pos: new THREE.Vector3(-4.5 + Math.random()*4, -2.5 + Math.random()*5, -2.5 + Math.random()*5),
-                            vel: new THREE.Vector3((Math.random()-0.5)*speed, (Math.random()-0.5)*speed, (Math.random()-0.5)*speed),
-                            isLeft: true
-                        });
-                    }
-                    if (populateRight) {
-                        this.particles.push({
-                            pos: new THREE.Vector3(0.5 + Math.random()*4, -2.5 + Math.random()*5, -2.5 + Math.random()*5),
-                            vel: new THREE.Vector3((Math.random()-0.5)*speed, (Math.random()-0.5)*speed, (Math.random()-0.5)*speed),
-                            isLeft: false
-                        });
-                    }
-                }
-            }
-
-            step(dt, sliderValue) {
-                let wallBottom = -3.0 + sliderValue;
-                this.partitionMesh.position.y = sliderValue;
-
-                for (let p of this.particles) {
-                    p.pos.addScaledVector(p.vel, dt);
-
-                    // Ydervægge kollision
-                    if (p.pos.x < -5 + this.radius) { p.pos.x = -5 + this.radius; p.vel.x *= -1; }
-                    if (p.pos.x >  5 - this.radius) { p.pos.x =  5 - this.radius; p.vel.x *= -1; }
-                    if (p.pos.y < -3 + this.radius) { p.pos.y = -3 + this.radius; p.vel.y *= -1; }
-                    if (p.pos.y >  3 - this.radius) { p.pos.y =  3 - this.radius; p.vel.y *= -1; }
-                    if (p.pos.z < -3 + this.radius) { p.pos.z = -3 + this.radius; p.vel.z *= -1; }
-                    if (p.pos.z >  3 - this.radius) { p.pos.z =  3 - this.radius; p.vel.z *= -1; }
-
-                    // Kollision med den bevægelige røde skillevæg
-                    if (p.pos.y > wallBottom) {
-                        if (p.pos.x < 0 && p.pos.x + this.radius > 0) {
-                            p.pos.x = -this.radius; p.vel.x *= -1;
-                        } else if (p.pos.x > 0 && p.pos.x - this.radius < 0) {
-                            p.pos.x = this.radius; p.vel.x *= -1;
-                        }
-                    }
-                }
-
-                // Elastisk partikel-til-partikel kollision
-                for (let i = 0; i < this.particles.length; i++) {
-                    for (let j = i + 1; j < this.particles.length; j++) {
-                        let p1 = this.particles[i];
-                        let p2 = this.particles[j];
-                        
-                        let dx = p1.pos.x - p2.pos.x;
-                        let dy = p1.pos.y - p2.pos.y;
-                        let dz = p1.pos.z - p2.pos.z;
-                        let distSq = dx*dx + dy*dy + dz*dz;
-                        let minDist = this.radius * 2.0;
-
-                        if (distSq < minDist*minDist) {
-                            let dist = Math.sqrt(distSq);
-                            if (dist === 0) dist = 0.001;
-                            
-                            let nx = dx / dist, ny = dy / dist, nz = dz / dist;
-                            let overlap = 0.5 * (minDist - dist);
-                            
-                            p1.pos.add(new THREE.Vector3(nx*overlap, ny*overlap, nz*overlap));
-                            p2.pos.sub(new THREE.Vector3(nx*overlap, ny*overlap, nz*overlap));
-
-                            let dvx = p1.vel.x - p2.vel.x;
-                            let dvy = p1.vel.y - p2.vel.y;
-                            let dvz = p1.vel.z - p2.vel.z;
-                            let velAlongNormal = dvx*nx + dvy*ny + dvz*nz;
-
-                            if (velAlongNormal < 0) {
-                                let impulse = -(2.0 * velAlongNormal) / 2.0;
-                                p1.vel.add(new THREE.Vector3(nx*impulse, ny*impulse, nz*impulse));
-                                p2.vel.sub(new THREE.Vector3(nx*impulse, ny*impulse, nz*impulse));
-                            }
-                        }
-                    }
-                }
-            }
-
-            updateInstances(dummy) {
-                let idxLeft = 0, idxRight = 0;
-                for (let p of this.particles) {
-                    dummy.position.copy(p.pos);
-                    dummy.updateMatrix();
-                    if (p.isLeft) {
-                        this.meshLeft.setMatrixAt(idxLeft++, dummy.matrix);
-                    } else {
-                        this.meshRight.setMatrixAt(idxRight++, dummy.matrix);
-                    }
-                }
-                if (this.meshLeft.count > 0) this.meshLeft.instanceMatrix.needsUpdate = true;
-                if (this.meshRight.count > 0) this.meshRight.instanceMatrix.needsUpdate = true;
-            }
-        }
-
-        // 1: Røde vs grønne kugler
-        const box1 = new GasSimulation(0xff0000, 0x00ff00, true, true);
-        
-        // 2: Kun lyseblå kugler i begge sider
-        const box2 = new GasSimulation(0x87ceeb, 0x87ceeb, true, true);
-        
-        // 3: Røde kugler udvider sig mod vakuum
-        const box3 = new GasSimulation(0xff0000, 0x000000, true, false);
-        
-        // 4: Grønne kugler udvider sig mod vakuum
-        const box4 = new GasSimulation(0x000000, 0x00ff00, false, true);
-
-        const allBoxes = [box1, box2, box3, box4];
-
-        const gui = new GUI({ container: document.getElementById('ui-container') });
-        const params = { partitionY: 0.0 };
-        gui.add(params, 'partitionY', 0.0, 6.0).name('Løft Skillevæg');
-
-        const dummy = new THREE.Object3D();
-        const dt = 1.0 / 60.0;
-
-        function animate() {
-            requestAnimationFrame(animate);
-            
-            // Opdater musens rotation (OrbitControls)
-            controls.update();
-            
-            const w = window.innerWidth / 2;
-            const h = window.innerHeight / 2;
-
-            allBoxes.forEach((box, index) => {
-                box.step(dt, params.partitionY);
-                box.updateInstances(dummy);
-
-                // Synkroniser kameraerne i de 4 kasser med master-kameraet
-                // Dette får det til at se ud som om, hele systemet roterer i synk, når du trækker med musen
-                box.camera.position.copy(masterCamera.position);
-                box.camera.quaternion.copy(masterCamera.quaternion);
-
-                const col = index % 2; 
-                const row = Math.floor(index / 2); 
-                
-                const left = col * w;
-                const bottom = (1 - row) * h;
-
-                renderer.setViewport(left, bottom, w, h);
-                renderer.setScissor(left, bottom, w, h);
-                
-                box.camera.aspect = w / h;
-                box.camera.updateProjectionMatrix();
-                renderer.render(box.scene, box.camera);
-            });
-        }
-        
-        animate();
-
-        window.addEventListener('resize', () => {
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            masterCamera.aspect = (window.innerWidth / 2) / (window.innerHeight / 2);
-            masterCamera.updateProjectionMatrix();
-        });
-    </script>
-</body>
-</html>
+                const
