@@ -2,18 +2,23 @@
 <html lang="da">
 <head>
     <meta charset="UTF-8">
-    <title>Gibbs Paradoks Simulation</title>
+    <title>Gibbs Paradoks - 4 Kasser Simulation</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #111; color: white; font-family: sans-serif; }
         canvas { display: block; width: 100vw; height: 100vh; }
         #ui-container { position: absolute; top: 10px; right: 10px; z-index: 100; }
-        #info { position: absolute; top: 10px; left: 10px; z-index: 100; pointer-events: none; }
+        #info { position: absolute; top: 10px; left: 10px; z-index: 100; pointer-events: none; background: rgba(0,0,0,0.6); padding: 15px; border-radius: 8px; }
+        h3 { margin: 0 0 10px 0; color: #ffcc00; }
+        p { margin: 5px 0; font-size: 14px; }
     </style>
 </head>
 <body>
     <div id="info">
-        <h3>Gibbs Paradoks</h3>
-        <p>Venstre: Forskellige partikler (Rød/Grøn)<br>Højre: Ens partikler (Blå)</p>
+        <h3>Gibbs Paradoks & Entropi</h3>
+        <p><b>Top Venstre:</b> Forskellige partikler (Irreversibel blanding)</p>
+        <p><b>Top Højre:</b> Ens partikler (Sackur-Tetrode løsningen)</p>
+        <p><b>Bund Venstre:</b> Fri udvidelse af Gas A</p>
+        <p><b>Bund Højre:</b> Fri udvidelse af Gas B</p>
     </div>
     <div id="ui-container"></div>
 
@@ -29,147 +34,137 @@
     <script type="module">
         import * as THREE from 'three';
         import GUI from 'lil-gui';
+        // Henter Rapier fysikmotoren (WASM) via CDN
         import RAPIER from 'https://cdn.skypack.dev/@dimforge/rapier3d-compat';
 
-        // Vent på at fysikmotoren er klar
         await RAPIER.init();
 
-        // Vi opretter TO separate fysikverdener, så kasserne er 100% isolerede fra hinanden
-        const worldLeft = new RAPIER.World({ x: 0.0, y: 0.0, z: 0.0 });
-        const worldRight = new RAPIER.World({ x: 0.0, y: 0.0, z: 0.0 });
-
-        // Opsætning af rendering med split-screen
+        // 1. Opsætning af rendering og split-screen
         const canvas = document.createElement('canvas');
         document.body.appendChild(canvas);
         const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setScissorTest(true);
 
-        const sceneLeft = new THREE.Scene();
-        const sceneRight = new THREE.Scene();
-        
-        // Kameraer placeret så man kan se kassen forfra og lidt oppefra
-        const cameraLeft = new THREE.PerspectiveCamera(45, (window.innerWidth / 2) / window.innerHeight, 0.1, 100);
-        cameraLeft.position.set(0, 3, 14);
-        cameraLeft.lookAt(0, 0, 0);
-        
-        const cameraRight = new THREE.PerspectiveCamera(45, (window.innerWidth / 2) / window.innerHeight, 0.1, 100);
-        cameraRight.position.set(0, 3, 14);
-        cameraRight.lookAt(0, 0, 0);
+        // 2. Funktion til at bygge ét komplet system (1 boks = 1 scene + 1 fysikverden)
+        function createBoxSystem(colorLeft, colorRight, populateLeft, populateRight) {
+            const scene = new THREE.Scene();
+            const world = new RAPIER.World({ x: 0.0, y: 0.0, z: 0.0 });
+            
+            // Kamera
+            const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 3, 14);
+            camera.lookAt(0, 0, 0);
 
-        // Lyskilder
-        const addLights = (scene) => {
-            scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+            // Lys
+            scene.add(new THREE.AmbientLight(0xffffff, 0.5));
             const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
             dirLight.position.set(5, 10, 5);
             scene.add(dirLight);
-        };
-        addLights(sceneLeft);
-        addLights(sceneRight);
 
-        // --- HJÆLPEFUNKTION TIL AT BYGGE EN KASSE MED PARTIKLER ---
-        function createBoxSystem(scene, world, colorLeft, colorRight) {
-            // 1. Visuel ydre kasse (Wireframe) - 10 bred, 6 høj, 6 dyb
+            // Visuel ydre kasse (Wireframe)
             const outlineMesh = new THREE.Mesh(
                 new THREE.BoxGeometry(10, 6, 6),
                 new THREE.MeshBasicMaterial({ color: 0x555555, wireframe: true })
             );
             scene.add(outlineMesh);
 
-            // 2. Usynlige fysiske vægge der holder partiklerne inde
-            const wt = 0.5; // Wall thickness
-            // Top og Bund
-            world.createCollider(RAPIER.ColliderDesc.cuboid(5, wt/2, 3).setTranslation(0, 3+wt/2, 0));
-            world.createCollider(RAPIER.ColliderDesc.cuboid(5, wt/2, 3).setTranslation(0, -3-wt/2, 0));
-            // Venstre og Højre
-            world.createCollider(RAPIER.ColliderDesc.cuboid(wt/2, 3, 3).setTranslation(-5-wt/2, 0, 0));
-            world.createCollider(RAPIER.ColliderDesc.cuboid(wt/2, 3, 3).setTranslation(5+wt/2, 0, 0));
-            // Foran og Bagved
-            world.createCollider(RAPIER.ColliderDesc.cuboid(5, 3, wt/2).setTranslation(0, 0, -3-wt/2));
-            world.createCollider(RAPIER.ColliderDesc.cuboid(5, 3, wt/2).setTranslation(0, 0, 3+wt/2));
+            // Fysiske begrænsninger (vægge) i Rapier
+            const wt = 0.5;
+            world.createCollider(RAPIER.ColliderDesc.cuboid(5, wt/2, 3).setTranslation(0, 3+wt/2, 0)); // Top
+            world.createCollider(RAPIER.ColliderDesc.cuboid(5, wt/2, 3).setTranslation(0, -3-wt/2, 0)); // Bund
+            world.createCollider(RAPIER.ColliderDesc.cuboid(wt/2, 3, 3).setTranslation(-5-wt/2, 0, 0)); // Venstre
+            world.createCollider(RAPIER.ColliderDesc.cuboid(wt/2, 3, 3).setTranslation(5+wt/2, 0, 0)); // Højre
+            world.createCollider(RAPIER.ColliderDesc.cuboid(5, 3, wt/2).setTranslation(0, 0, -3-wt/2)); // Bag
+            world.createCollider(RAPIER.ColliderDesc.cuboid(5, 3, wt/2).setTranslation(0, 0, 3+wt/2)); // Foran
 
-            // 3. Den lodrette skillevæg i midten (x = 0)
+            // Den lodrette bevægelige skillevæg i midten
             const partitionDesc = RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(0, 0, 0);
             const partitionBody = world.createRigidBody(partitionDesc);
-            const partitionCollider = RAPIER.ColliderDesc.cuboid(0.1, 3, 3);
-            world.createCollider(partitionCollider, partitionBody);
+            world.createCollider(RAPIER.ColliderDesc.cuboid(0.1, 3, 3), partitionBody);
 
             const partitionMesh = new THREE.Mesh(
                 new THREE.BoxGeometry(0.2, 6, 6),
-                new THREE.MeshBasicMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0.4, side: THREE.DoubleSide })
+                new THREE.MeshBasicMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0.3, side: THREE.DoubleSide })
             );
             scene.add(partitionMesh);
 
-            // 4. Partikler
+            // Partikelopsætning
             const radius = 0.15;
             const geo = new THREE.SphereGeometry(radius, 16, 16);
-            const mat1 = new THREE.MeshStandardMaterial({ color: colorLeft, roughness: 0.2 });
-            const mat2 = new THREE.MeshStandardMaterial({ color: colorRight, roughness: 0.2 });
+            const matLeft = new THREE.MeshStandardMaterial({ color: colorLeft, roughness: 0.2 });
+            const matRight = new THREE.MeshStandardMaterial({ color: colorRight, roughness: 0.2 });
 
-            const count = 150; // 150 partikler på hver side
-            const mesh1 = new THREE.InstancedMesh(geo, mat1, count);
-            const mesh2 = new THREE.InstancedMesh(geo, mat2, count);
-            scene.add(mesh1, mesh2);
+            const count = 150; 
+            
+            // InstancedMeshes til høj ydeevne
+            const meshLeft = new THREE.InstancedMesh(geo, matLeft, populateLeft? count : 0);
+            const meshRight = new THREE.InstancedMesh(geo, matRight, populateRight? count : 0);
+            if(populateLeft) scene.add(meshLeft);
+            if(populateRight) scene.add(meshRight);
 
-            const bodies1 =;
-            const bodies2 =;
-            const speed = 6.0;
+            const bodiesLeft =;
+            const bodiesRight =;
+            const speed = 7.0;
 
-            // Funktion til at spawne en partikel
             const spawnParticle = (x, y, z, array) => {
                 let bodyDesc = RAPIER.RigidBodyDesc.dynamic()
-                   .setTranslation(x, y, z)
-                   .setLinvel((Math.random()-0.5)*speed, (Math.random()-0.5)*speed, (Math.random()-0.5)*speed)
-                   .setLinearDamping(0).setAngularDamping(0) // Ingen luftmodstand
-                   .setCcdEnabled(true); // Forhindrer at de flyver igennem væggen ved høj fart
+                  .setTranslation(x, y, z)
+                  .setLinvel((Math.random()-0.5)*speed, (Math.random()-0.5)*speed, (Math.random()-0.5)*speed)
+                  .setLinearDamping(0).setAngularDamping(0)
+                  .setCcdEnabled(true); // CCD forhindrer partikler i at "tunnellere" gennem væggen ved høje hastigheder
+                   
                 let body = world.createRigidBody(bodyDesc);
-                // Restitution 1.0 = perfekt elastisk (mister ikke energi)
                 world.createCollider(RAPIER.ColliderDesc.ball(radius).setRestitution(1.0).setFriction(0.0), body);
                 array.push(body);
             };
 
             for(let i = 0; i < count; i++) {
-                // Venstre kammer (x fra -4.5 til -0.5)
-                spawnParticle(-4.5 + Math.random() * 4, -2.5 + Math.random() * 5, -2.5 + Math.random() * 5, bodies1);
-                // Højre kammer (x fra 0.5 til 4.5)
-                spawnParticle(0.5 + Math.random() * 4, -2.5 + Math.random() * 5, -2.5 + Math.random() * 5, bodies2);
+                if (populateLeft) spawnParticle(-4.5 + Math.random() * 4, -2.5 + Math.random() * 5, -2.5 + Math.random() * 5, bodiesLeft);
+                if (populateRight) spawnParticle(0.5 + Math.random() * 4, -2.5 + Math.random() * 5, -2.5 + Math.random() * 5, bodiesRight);
             }
 
-            return { partitionBody, partitionMesh, mesh1, bodies1, mesh2, bodies2 };
+            return { scene, camera, world, partitionBody, partitionMesh, meshLeft, bodiesLeft, meshRight, bodiesRight };
         }
 
-        // --- INITIALISER DE TO SYSTEMER ---
-        // Venstre system: Forskellige farver (Rød og Grøn)
-        const sysHetero = createBoxSystem(sceneLeft, worldLeft, 0xff3333, 0x33ff33);
+        // 3. Opret de fire kasser baseret på dine tegninger
+        // Kasse 1 (Top-Venstre): Rød / Grøn blanding
+        const box1 = createBoxSystem(0xff3333, 0x33ff33, true, true);
         
-        // Højre system: Samme farve overalt (Blå)
-        const sysHomo = createBoxSystem(sceneRight, worldRight, 0x3388ff, 0x3388ff);
+        // Kasse 2 (Top-Højre): Blå / Blå (Indistinguishable)
+        const box2 = createBoxSystem(0x3388ff, 0x3388ff, true, true);
+        
+        // Kasse 3 (Bund-Venstre): Rød udvider sig i vakuum
+        const box3 = createBoxSystem(0xff3333, 0x000000, true, false);
+        
+        // Kasse 4 (Bund-Højre): Vakuum / Grøn udvider sig
+        const box4 = createBoxSystem(0x000000, 0x33ff33, false, true);
 
-        // --- BRUGERFLADE TIL SKILLEVÆG (lil-gui) ---
+        const allBoxes = [box1, box2, box3, box4];
+
+        // 4. GUI til at trække skillevæggen op
         const gui = new GUI({ container: document.getElementById('ui-container') });
         const params = { partitionY: 0.0 };
         
-        // Når skyderen trækkes op, flyttes væggen op langs Y-aksen
         gui.add(params, 'partitionY', 0.0, 6.0).name('Træk Skillevæg Op').onChange(value => {
-            // Opdater fysikken deterministisk
-            sysHetero.partitionBody.setNextKinematicTranslation({ x: 0, y: value, z: 0 });
-            sysHomo.partitionBody.setNextKinematicTranslation({ x: 0, y: value, z: 0 });
-            
-            // Opdater det visuelle
-            sysHetero.partitionMesh.position.y = value;
-            sysHomo.partitionMesh.position.y = value;
+            allBoxes.forEach(box => {
+                // Fysisk opdatering (bruger kinematisk translation)
+                box.partitionBody.setNextKinematicTranslation({ x: 0, y: value, z: 0 });
+                // Visuel opdatering
+                box.partitionMesh.position.y = value;
+            });
         });
 
-        // --- RENDERING OG FYSIK-LØKKE ---
+        // 5. Opdateringsløkke til rendering og fysik
         const dummy = new THREE.Object3D();
         
-        // Hjælpefunktion til at synkronisere Rapier-fysik med Three.js grafik
         function updateInstances(mesh, bodies) {
+            if (!mesh |
+
+| bodies.length === 0) return;
             for (let i = 0; i < bodies.length; i++) {
                 const pos = bodies[i].translation();
-                const rot = bodies[i].rotation();
                 dummy.position.set(pos.x, pos.y, pos.z);
-                dummy.quaternion.set(rot.x, rot.y, rot.z, rot.w);
                 dummy.updateMatrix();
                 mesh.setMatrixAt(i, dummy.matrix);
             }
@@ -179,44 +174,40 @@
         function animate() {
             requestAnimationFrame(animate);
             
-            // 1. Kør fysiksimuleringen ét skridt fremad for begge verdener
-            worldLeft.step();
-            worldRight.step();
+            const w = window.innerWidth / 2;
+            const h = window.innerHeight / 2;
 
-            // 2. Opdater partiklernes positioner på skærmen
-            updateInstances(sysHetero.mesh1, sysHetero.bodies1);
-            updateInstances(sysHetero.mesh2, sysHetero.bodies2);
-            
-            updateInstances(sysHomo.mesh1, sysHomo.bodies1);
-            updateInstances(sysHomo.mesh2, sysHomo.bodies2);
-            
-            // 3. Split-screen opsætning
-            const width = window.innerWidth;
-            const height = window.innerHeight;
-            
-            // Tegn venstre side (Rød/Grøn)
-            renderer.setViewport(0, 0, width / 2, height);
-            renderer.setScissor(0, 0, width / 2, height);
-            renderer.render(sceneLeft, cameraLeft);
-            
-            // Tegn højre side (Monokrom blå)
-            renderer.setViewport(width / 2, 0, width / 2, height);
-            renderer.setScissor(width / 2, 0, width / 2, height);
-            renderer.render(sceneRight, cameraRight);
+            allBoxes.forEach((box, index) => {
+                // 1. Træd fysikken et frame frem
+                box.world.step();
+
+                // 2. Synkroniser visuel position med fysikken
+                updateInstances(box.meshLeft, box.bodiesLeft);
+                updateInstances(box.meshRight, box.bodiesRight);
+
+                // 3. Udregn placering i 2x2 gitteret
+                const col = index % 2; // 0 for venstre, 1 for højre
+                const row = Math.floor(index / 2); // 0 for top, 1 for bund (Bemærk at WebGL origo (0,0) er nede i bunden)
+                
+                const left = col * w;
+                const bottom = (1 - row) * h;
+
+                // 4. Anvend WebGL scissor og viewport til split-screen rendering
+                renderer.setViewport(left, bottom, w, h);
+                renderer.setScissor(left, bottom, w, h);
+                
+                // Opdater kameraets proportioner og render scenen
+                box.camera.aspect = w / h;
+                box.camera.updateProjectionMatrix();
+                renderer.render(box.scene, box.camera);
+            });
         }
+        
         animate();
 
-        // Håndtering af hvis vinduet ændrer størrelse
+        // 6. Håndter vinduesstørrelse (responsivitet)
         window.addEventListener('resize', () => {
-            const width = window.innerWidth;
-            const height = window.innerHeight;
-            renderer.setSize(width, height);
-            
-            cameraLeft.aspect = (width / 2) / height;
-            cameraLeft.updateProjectionMatrix();
-            
-            cameraRight.aspect = (width / 2) / height;
-            cameraRight.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
         });
     </script>
 </body>
