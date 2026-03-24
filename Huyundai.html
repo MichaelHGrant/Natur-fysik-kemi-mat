@@ -2,116 +2,228 @@
 <html lang="da">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hyundai i10 Brændstofeffektivitet (2007-2026)</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Dynamisk 3D Heliumkerne</title>
     <style>
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background-color: #f4f6f9; 
-            color: #333; 
-            padding: 40px 20px; 
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0a0a0d;
+            color: #ffffff;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
         }
-       .container { 
-            max-width: 900px; 
-            margin: 0 auto; 
-            background-color: white; 
-            padding: 30px; 
-            border-radius: 12px; 
-            box-shadow: 0 4px 20px rgba(0,0,0,0.05); 
+
+        /* --- 3D Container --- */
+        #simulation-container {
+            flex: 2;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle, #202028 0%, #0a0a0d 100%);
+            cursor: grab;
+            perspective: 1200px;
         }
-        h2 { 
-            color: #002c5f; 
-            text-align: center; 
-            margin-bottom: 5px; 
+
+        #simulation-container:active { cursor: grabbing; }
+
+        .nucleus-scene {
+            position: relative;
+            width: 0; 
+            height: 0; /* Centreret om et punkt */
+            transform-style: preserve-3d;
         }
-        p.subtitle { 
-            text-align: center; 
-            color: #666; 
-            margin-bottom: 25px; 
+
+        /* --- Nukleoner --- */
+        .nucleon {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            position: absolute;
+            top: -40px; /* Centreret om x/y kordinater */
+            left: -40px;
+            cursor: pointer;
+            box-shadow: inset -15px -15px 30px rgba(0,0,0,0.8), 0 0 15px rgba(255,255,255,0.05);
+            transition: box-shadow 0.2s, filter 0.2s;
+            /* Fjerner vi backface-visibility, da de nu altid peger fremad */
         }
-       .infobox { 
-            background-color: #e9f2fb; 
-            border-left: 4px solid #002c5f; 
+
+        .nucleon:hover {
+            box-shadow: inset -15px -15px 30px rgba(0,0,0,0.8), 0 0 40px rgba(255,255,255,0.8);
+            filter: brightness(1.2);
+        }
+
+        .proton { background: radial-gradient(circle at 25px 25px, #ff4d4d, #800000); }
+        .neutron { background: radial-gradient(circle at 25px 25px, #4d94ff, #002266); }
+
+        /* --- UI Panel --- */
+        #info-panel {
+            flex: 1;
+            background-color: #14141a;
+            padding: 40px;
+            box-shadow: -5px 0 25px rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+            border-left: 1px solid #222;
+        }
+
+        h1 { color: #f39c12; margin-top: 0; font-size: 1.8em; }
+        h3 { color: #888; font-weight: normal; margin-top: -10px; margin-bottom: 30px;}
+
+        .data-row {
+            margin: 10px 0;
+            padding: 15px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            border-left: 4px solid transparent;
+        }
+        .label { font-weight: bold; color: #888; font-size: 0.85em; text-transform: uppercase; letter-spacing: 1px;}
+        .value { font-size: 1.1em; margin-top: 5px; color: #eee; }
+        
+        .instructions { 
+            margin-top: auto; 
             padding: 15px; 
-            margin-top: 30px; 
-            font-size: 0.9em; 
-            line-height: 1.5; 
+            background-color: rgba(243, 156, 18, 0.05); 
+            border: 1px solid rgba(243, 156, 18, 0.2);
+            border-radius: 8px;
+            color: #d68910;
+            font-size: 0.9em;
+            line-height: 1.5em;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h2>Udvikling i Hyundai i10 km/l (2007-2026)</h2>
-        <p class="subtitle">Interaktiv sammenligning af motorer og gearkasser</p>
+
+    <div id="simulation-container">
+        <div class="nucleus-scene" id="nucleus">
+            <div id="p1" class="nucleon proton" onclick="showData('Proton', event)"></div>
+            <div id="n1" class="nucleon neutron" onclick="showData('Neutron', event)"></div>
+            <div id="p2" class="nucleon proton" onclick="showData('Proton', event)"></div>
+            <div id="n2" class="nucleon neutron" onclick="showData('Neutron', event)"></div>
+        </div>
+    </div>
+
+    <div id="info-panel">
+        <h1>Helium-4 Kerne</h1>
+        <h3>Dynamisk model</h3>
+        <p>Nukleonerne er ikke fastfrosne. De interagerer konstant via den <strong>stærke kernekraft</strong> i en dynamisk tilstand (ofte beskrevet vha. væskedråbemodellen).</p>
         
-        <canvas id="myChart" width="800" height="400"></canvas>
-        
-        <div class="infobox">
-            <strong>Teknisk Note:</strong> Faldet i km/l omkring 2018-2019 skyldes primært overgangen fra den laboratoriebaserede NEDC-test til den strengere WLTP-standard. Det reflekterer et mere realistisk forbrug, og ikke at motorerne er blevet dårligere.
+        <div id="dynamic-data" style="display: none; margin-top: 20px; margin-bottom: 20px;">
+            <h2 id="particle-name" style="margin-bottom: 5px; padding-bottom: 10px; border-bottom: 1px solid #333;">-</h2>
+            <div class="data-row" id="row-charge">
+                <div class="label">Elektrisk Ladning</div>
+                <div class="value"></div>
+            </div>
+            <div class="data-row" id="row-quarks">
+                <div class="label">Konstituent-kvarker</div>
+                <div class="value"></div>
+            </div>
+        </div>
+
+        <div class="instructions">
+            <strong>Interaktion:</strong><br>
+            • 🖱️ <strong>Roter i 3D:</strong> Klik og træk i det tomme rum.<br>
+            • 👈 <strong>Info:</strong> Klik på en bevægelig partikel.
         </div>
     </div>
 
     <script>
-        const ctx = document.getElementById('myChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: ['2007', '2008', '2010', '2011', '2013', '2015', '2018', '2019', '2021', '2024', '2026'],
-                datasets:,
-                        borderColor: '#002c5f',
-                        backgroundColor: '#002c5f',
-                        borderWidth: 3,
-                        pointRadius: 5,
-                        tension: 0.3
-                    },
-                    {
-                        label: 'Gammelt 4-trins Automatgear',
-                        data: [17.2, 17.2, 17.2, 17.2, 16.1, 16.1, 16.1, null, null, null, null],
-                        borderColor: '#e74c3c',
-                        backgroundColor: '#e74c3c',
-                        borderWidth: 3,
-                        borderDash: [5, 5],
-                        pointRadius: 5,
-                        tension: 0.3
-                    },
-                    {
-                        label: 'Ny 5-trins AMT (Automatisk)',
-                        data: [null, null, null, null, null, null, null, 20.4, 19.3, 19.3, 19.3],
-                        borderColor: '#f4a261',
-                        backgroundColor: '#f4a261',
-                        borderWidth: 3,
-                        pointStyle: 'triangle',
-                        pointRadius: 6,
-                        tension: 0.3
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: { position: 'top' },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return context.dataset.label + ': ' + context.parsed.y + ' km/l';
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        title: { display: true, text: 'Brændstofeffektivitet (km/liter)', font: { weight: 'bold' } },
-                        min: 14,
-                        max: 26,
-                        ticks: { stepSize: 2 }
-                    },
-                    x: {
-                        title: { display: true, text: 'Årgang', font: { weight: 'bold' } }
-                    }
-                }
-            }
+        // --- DATA ---
+        const particleInfo = {
+            'Proton': { charge: '+1 e (Positiv)', quarks: '2 Up, 1 Down (uud)', color: '#ff4d4d' },
+            'Neutron': { charge: '0 e (Neutral)', quarks: '1 Up, 2 Down (udd)', color: '#4d94ff' }
+        };
+
+        function showData(type, event) {
+            event.stopPropagation();
+            const data = particleInfo[type];
+            document.getElementById('dynamic-data').style.display = 'block';
+            
+            const nameEl = document.getElementById('particle-name');
+            nameEl.innerText = type;
+            nameEl.style.color = data.color;
+
+            document.getElementById('row-charge').querySelector('.value').innerText = data.charge;
+            document.getElementById('row-charge').style.borderLeftColor = data.color;
+
+            document.getElementById('row-quarks').querySelector('.value').innerText = data.quarks;
+            document.getElementById('row-quarks').style.borderLeftColor = data.color;
+        }
+
+        // --- 3D FYSIK & ROTATION LOGIK ---
+        let currentRotationX = -15;
+        let currentRotationY = 45;
+        let isDragging = false;
+        let previousMouseX = 0;
+        let previousMouseY = 0;
+
+        // Definition af partiklernes gennemsnitlige hvilepositioner i 3D-rummet (et tetraeder)
+        const radius = 35;
+        const nucleons = [
+            { el: document.getElementById('p1'), baseX: -radius, baseY: -radius, baseZ: radius },
+            { el: document.getElementById('n1'), baseX: radius, baseY: -radius, baseZ: -radius },
+            { el: document.getElementById('p2'), baseX: -radius, baseY: radius, baseZ: -radius },
+            { el: document.getElementById('n2'), baseX: radius, baseY: radius, baseZ: radius }
+        ];
+
+        // Drag events
+        const container = document.getElementById('simulation-container');
+        container.addEventListener('mousedown', e => { isDragging = true; previousMouseX = e.pageX; previousMouseY = e.pageY; });
+        window.addEventListener('mouseup', () => isDragging = false);
+        container.addEventListener('mousemove', e => {
+            if (!isDragging) return;
+            currentRotationY += (e.pageX - previousMouseX) * 0.5;
+            currentRotationX -= (e.pageY - previousMouseY) * 0.5;
+            previousMouseX = e.pageX;
+            previousMouseY = e.pageY;
         });
+
+        // Touch support
+        container.addEventListener('touchstart', e => { isDragging = true; previousMouseX = e.touches[0].pageX; previousMouseY = e.touches[0].pageY; }, {passive: false});
+        window.addEventListener('touchend', () => isDragging = false);
+        container.addEventListener('touchmove', e => {
+            if (!isDragging) return;
+            e.preventDefault();
+            currentRotationY += (e.touches[0].pageX - previousMouseX) * 0.5;
+            currentRotationX -= (e.touches[0].pageY - previousMouseY) * 0.5;
+            previousMouseX = e.touches[0].pageX;
+            previousMouseY = e.touches[0].pageY;
+        }, {passive: false});
+
+        // --- ANIMATIONS-LØKKE (The Magic) ---
+        function animate() {
+            // Roter selve kernen (beholderen)
+            document.getElementById('nucleus').style.transform = `rotateX(${currentRotationX}deg) rotateY(${currentRotationY}deg)`;
+
+            // Tid til at styre vibrationerne
+            const time = performance.now() / 300; // Juster tallet for at ændre "koge"-hastigheden
+
+            nucleons.forEach((p, index) => {
+                // Skab lidt matematisk kaos, så de vibrerer uafhængigt af hinanden
+                const jitterX = Math.sin(time + index * 2.1) * 8;
+                const jitterY = Math.cos(time * 1.3 + index * 3.5) * 8;
+                const jitterZ = Math.sin(time * 0.8 + index * 1.1) * 8;
+
+                // 1. Placer i 3D (base position + kvante-vibration)
+                // 2. Mod-roter (billboarding) med modsatte værdier af parent-rotationen, så de altid kigger på os!
+                p.el.style.transform = `
+                    translate3d(${p.baseX + jitterX}px, ${p.baseY + jitterY}px, ${p.baseZ + jitterZ}px) 
+                    rotateY(${-currentRotationY}deg) 
+                    rotateX(${-currentRotationX}deg)
+                `;
+            });
+
+            // Få browseren til at kalde denne funktion konstant (ca. 60 gange i sekundet)
+            requestAnimationFrame(animate);
+        }
+
+        // Start motoren
+        animate();
+
     </script>
 </body>
 </html>
