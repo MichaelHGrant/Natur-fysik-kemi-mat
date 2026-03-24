@@ -3,146 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Interaktiv 3D Heliumkerne</title>
+    <title>Dynamisk 3D Heliumkerne (Canvas)</title>
     <style>
-        body {
-            margin: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #101015;
-            color: #ffffff;
-            display: flex;
-            height: 100vh;
-            overflow: hidden;
-            user-select: none; /* Forhindrer tekstmarkering når man "dragger" */
-        }
-
-        /* --- Venstre side: 3D Simulation --- */
-        #simulation-container {
-            flex: 2;
-            position: relative;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: radial-gradient(circle, #2a2a35 0%, #101015 100%);
-            cursor: grab; /* Viser at man kan tage fat */
-            /* Perspektiv er afgørende for 3D effekten */
-            perspective: 1000px;
-        }
-
-        #simulation-container:active {
-            cursor: grabbing; /* Viser når man holder musen nede */
-        }
-
-        /* Selve 3D scenen der roterer */
-        .nucleus-scene {
-            position: relative;
-            width: 200px;
-            height: 200px;
-            transform-style: preserve-3d; /* Tillader børn at eksistere i 3D rum */
-            transition: transform 0.1s linear; /* Gør manuel rotation blød */
-        }
-
-        /* Basis-styling for alle nukleoner */
-        .nucleon {
-            width: 90px;
-            height: 90px;
-            border-radius: 50%;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            margin-top: -45px; /* Centrerer i .nucleus-scene */
-            margin-left: -45px;
-            cursor: pointer;
-            
-            /* Avanceret gradient for at ligne en kugle i 3D lys */
-            box-shadow: inset -10px -10px 30px rgba(0,0,0,0.7), 0 0 15px rgba(255,255,255,0.1);
-            
-            transition: box-shadow 0.2s, transform 0.2s;
-            
-            /* Sikrer at "lysindfaldet" på kuglen altid peger samme vej, selvom kernen roterer */
-            backface-visibility: visible;
-        }
-
-        .nucleon:hover {
-            box-shadow: inset -10px -10px 30px rgba(0,0,0,0.7), 0 0 30px rgba(255,255,255,0.7);
-            z-index: 100 !important; /* Bring til front ved hover */
-        }
-
-        .proton {
-            background: radial-gradient(circle at 30px 30px, #ff8080, #a00000);
-        }
-
-        .neutron {
-            background: radial-gradient(circle at 30px 30px, #66b2ff, #003366);
-        }
-
-        /* --- Højre side: Info Panel --- */
-        #info-panel {
-            flex: 1;
-            background-color: #1a1a20;
-            padding: 40px;
-            box-shadow: -5px 0 25px rgba(0,0,0,0.8);
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
-            z-index: 100;
-            overflow-y: auto;
-            border-left: 1px solid #333;
-        }
-
-        h1 { color: #f39c12; margin-top: 0; font-size: 1.8em; }
-        h3 { color: #aaa; font-weight: normal; margin-top: -10px; margin-bottom: 30px;}
-
-        .data-row {
-            margin: 10px 0;
-            padding: 15px;
-            background: rgba(255,255,255,0.03);
-            border-radius: 8px;
-            border-left: 4px solid transparent;
-        }
-        .label { font-weight: bold; color: #aaa; font-size: 0.85em; text-transform: uppercase; letter-spacing: 1px;}
-        .value { font-size: 1.1em; margin-top: 5px; color: #eee; }
+        body { margin: 0; font-family: sans-serif; background-color: #0a0a0d; color: #eee; display: flex; height: 100vh; overflow: hidden; user-select: none; }
         
-        .instructions { 
-            margin-top: auto; 
-            padding: 15px; 
-            background-color: rgba(243, 156, 18, 0.1); 
-            border: 1px solid rgba(243, 156, 18, 0.3);
-            border-radius: 8px;
-            color: #f39c12;
-            font-size: 0.9em;
-            line-height: 1.4em;
-        }
+        /* --- 3D Visualization Area --- */
+        #simulation-container { flex: 2; position: relative; background: radial-gradient(circle, #202028 0%, #0a0a0d 100%); cursor: grab; }
+        #simulation-container:active { cursor: grabbing; }
+        
+        /* Selve lærredet, som fylder hele containeren */
+        #canvas3d { width: 100%; height: 100%; display: block; }
+        
+        /* --- Info Panel --- */
+        #info-panel { flex: 1; background-color: #14141a; padding: 40px; box-shadow: -5px 0 25px rgba(0,0,0,0.8); display: flex; flex-direction: column; z-index: 100; border-left: 1px solid #222; }
+        h1 { color: #f39c12; margin-top: 0; font-size: 1.8em; }
+        h3 { color: #888; font-weight: normal; margin-top: -10px; margin-bottom: 30px; }
+        .data-row { margin: 10px 0; padding: 15px; background: rgba(255,255,255,0.03); border-radius: 8px; border-left: 4px solid transparent; }
+        .label { font-weight: bold; color: #888; font-size: 0.85em; text-transform: uppercase; letter-spacing: 1px; }
+        .value { font-size: 1.1em; margin-top: 5px; color: #eee; }
+        .instructions { margin-top: auto; padding: 15px; background-color: rgba(243, 156, 18, 0.05); border: 1px solid rgba(243, 156, 18, 0.2); border-radius: 8px; color: #d68910; font-size: 0.9em; line-height: 1.5em; }
     </style>
 </head>
 <body>
 
     <div id="simulation-container">
-        <div class="nucleus-scene" id="nucleus">
-            <div class="nucleon proton" style="transform: translate3d(-35px, -35px, 35px);" onclick="showData('Proton 1', event)"></div>
-            
-            <div class="nucleon neutron" style="transform: translate3d(35px, -35px, -35px);" onclick="showData('Neutron 1', event)"></div>
-            
-            <div class="nucleon proton" style="transform: translate3d(-35px, 35px, -35px);" onclick="showData('Proton 2', event)"></div>
-            
-            <div class="nucleon neutron" style="transform: translate3d(35px, 35px, 35px);" onclick="showData('Neutron 2', event)"></div>
-        </div>
+        <canvas id="canvas3d"></canvas>
     </div>
 
     <div id="info-panel">
-        <h1>Helium-4 (Alpha Partikel)</h1>
-        <h3>Interaktiv 3D model</h3>
+        <h1>Helium-4 Kerne</h1>
+        <h3>Dynamisk Canvas-model</h3>
+        <p>Nukleonerne er ikke fastfrosne. De interagerer konstant via den <strong>stærke kernekraft</strong> i en dynamisk, kaotisk tilstand.</p>
         
-        <p>Kernen består af 2 protoner og 2 neutroner.</p>
-        
-        <div id="dynamic-data" style="display: none; margin-top: 10px; margin-bottom: 20px;">
+        <div id="dynamic-data" style="display: none; margin-top: 20px; margin-bottom: 20px;">
             <h2 id="particle-name" style="margin-bottom: 5px; padding-bottom: 10px; border-bottom: 1px solid #333;">-</h2>
-            
             <div class="data-row" id="row-charge">
                 <div class="label">Elektrisk Ladning</div>
                 <div class="value"></div>
             </div>
-            
             <div class="data-row" id="row-quarks">
                 <div class="label">Konstituent-kvarker</div>
                 <div class="value"></div>
@@ -151,127 +49,189 @@
 
         <div class="instructions">
             <strong>Interaktion:</strong><br>
-            • 🖱️ <strong>Roter:</strong> Klik og træk i baggrunden for at dreje kernen.<br>
-            • 👈 <strong>Undersøg:</strong> Klik på en partikel for at se data.
+            • 🖱️ <strong>Roter i 3D:</strong> Klik og træk i det tomme rum.<br>
+            • 👈 <strong>Info:</strong> Klik på en bevægelig partikel.
         </div>
     </div>
 
     <script>
-        // --- DATA ---
+        // --- OPSÆTNING AF CANVAS ---
+        const canvas = document.getElementById('canvas3d');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('simulation-container');
+
+        let width, height, centerX, centerY;
+
+        function resizeCanvas() {
+            width = canvas.width = container.offsetWidth;
+            height = canvas.height = container.offsetHeight;
+            centerX = width / 2;
+            centerY = height / 2;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // --- PARTIKEL & FYSIK DATA ---
         const particleInfo = {
-            'Proton': {
-                charge: '+1 e (Positiv)',
-                quarks: '2 Up, 1 Down (uud)',
-                color: '#ff8080'
-            },
-            'Neutron': {
-                charge: '0 e (Neutral)',
-                quarks: '1 Up, 2 Down (udd)',
-                color: '#66b2ff'
-            }
+            'Proton': { charge: '+1 e', quarks: '2 Up, 1 Down', colorLight: '#ff4d4d', colorDark: '#800000' },
+            'Neutron': { charge: '0 e', quarks: '1 Up, 2 Down', colorLight: '#4d94ff', colorDark: '#002266' }
         };
 
-        // --- INFO PANEL LOGIK ---
-        const dataPanel = document.getElementById('dynamic-data');
-        const nameEl = document.getElementById('particle-name');
-        const chargeRow = document.getElementById('row-charge');
-        const quarksRow = document.getElementById('row-quarks');
+        const radius = 40; // Base afstand fra centrum
+        const particleSize = 35; // Størrelsen på de tegnede kugler
 
-        function showData(fullName, event) {
-            // Stop rotationen i at tælle som et klik på en partikel
-            event.stopPropagation();
+        // Definition af partiklernes base positioner (et tetraeder)
+        let particles = [
+            { id: 'p1', type: 'Proton', baseX: -radius, baseY: -radius, baseZ: radius },
+            { id: 'n1', type: 'Neutron', baseX: radius, baseY: -radius, baseZ: -radius },
+            { id: 'p2', type: 'Proton', baseX: -radius, baseY: radius, baseZ: -radius },
+            { id: 'n2', type: 'Neutron', baseX: radius, baseY: radius, baseZ: radius }
+        ];
 
-            const type = fullName.split(' ')[0]; // Hent 'Proton' eller 'Neutron'
-            const data = particleInfo[type];
+        // Kamera vinkler
+        let phi = Math.PI / 4; // Vandret rotation
+        let theta = -Math.PI / 8; // Lodret rotation
 
-            dataPanel.style.display = 'block';
-            
-            nameEl.innerText = fullName;
-            nameEl.style.color = data.color;
-
-            chargeRow.querySelector('.value').innerText = data.charge;
-            chargeRow.style.borderLeftColor = data.color;
-
-            quarksRow.querySelector('.value').innerText = data.quarks;
-            quarksRow.style.borderLeftColor = data.color;
-        }
-
-
-        // --- 3D ROTATION LOGIK (MOUSE DRAG) ---
-        const container = document.getElementById('simulation-container');
-        const nucleus = document.getElementById('nucleus');
-
+        // --- INTERAKTION (ROTATION & KLIK) ---
         let isDragging = false;
-        let previousMouseX = 0;
-        let previousMouseY = 0;
+        let previousMouseX, previousMouseY;
 
-        // Nuværende rotation i grader
-        let currentRotationX = -15; // Lidt tiltet start-view
-        let currentRotationY = 45;
-
-        // Følsomhed for rotationen (hvor hurtigt den drejer)
-        const sensitivity = 0.5;
-
-        // Start "drag"
-        function startDrag(e) {
-            isDragging = true;
-            // Håndter både mus og touch
-            previousMouseX = e.pageX || e.touches[0].pageX;
-            previousMouseY = e.pageY || e.touches[0].pageY;
-        }
-
-        // Stop "drag"
-        function stopDrag() {
-            isDragging = false;
-        }
-
-        // Under "drag" (beregn ny rotation)
-        function drag(e) {
+        // Rotation events
+        container.addEventListener('mousedown', e => { isDragging = true; previousMouseX = e.pageX; previousMouseY = e.pageY; });
+        window.addEventListener('mouseup', () => isDragging = false);
+        container.addEventListener('mousemove', e => {
             if (!isDragging) return;
+            phi += (e.pageX - previousMouseX) * 0.01;
+            theta -= (e.pageY - previousMouseY) * 0.01;
+            previousMouseX = e.pageX;
+            previousMouseY = e.pageY;
+        });
+
+        // Touch support
+        container.addEventListener('touchstart', e => { isDragging = true; previousMouseX = e.touches[0].pageX; previousMouseY = e.touches[0].pageY; }, {passive: false});
+        window.addEventListener('touchend', () => isDragging = false);
+        container.addEventListener('touchmove', e => {
+            if (!isDragging) return;
+            e.preventDefault();
+            phi += (e.touches[0].pageX - previousMouseX) * 0.01;
+            theta -= (e.touches[0].pageY - previousMouseY) * 0.01;
+            previousMouseX = e.touches[0].pageX;
+            previousMouseY = e.touches[0].pageY;
+        }, {passive: false});
+
+        // Klik på partikel
+        canvas.addEventListener('click', e => {
+            const rect = canvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+
+            // Find den forreste partikel vi klikkede på
+            let closestParticle = null;
+            let minDistance = Infinity;
+
+            particles.forEach(p => {
+                if (p.projectedZ < 0) return; // Kun partikler foran kameraet
+
+                const dx = clickX - p.projectedX;
+                const dy = clickY - p.projectedY;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+
+                // Tjek om klikket er indenfor partiklens størrelse
+                if (dist < p.renderSize && dist < minDistance) {
+                    minDistance = dist;
+                    closestParticle = p;
+                }
+            });
+
+            if (closestParticle) {
+                showData(closestParticle.type);
+            }
+        });
+
+        // --- INFO PANEL LOGIK ---
+        function showData(type) {
+            const data = particleInfo[type];
+            document.getElementById('dynamic-data').style.display = 'block';
             
-            // Forhindr standard scrolling på mobil
-            if(e.type === 'touchmove') e.preventDefault();
+            const nameEl = document.getElementById('particle-name');
+            nameEl.innerText = type;
+            nameEl.style.color = data.colorLight;
 
-            const currentX = e.pageX || e.touches[0].pageX;
-            const currentY = e.pageY || e.touches[0].pageY;
+            document.getElementById('row-charge').querySelector('.value').innerText = data.charge;
+            document.getElementById('row-charge').style.borderLeftColor = data.colorLight;
 
-            // Beregn hvor meget musen har flyttet sig
-            const deltaX = currentX - previousMouseX;
-            const deltaY = currentY - previousMouseY;
-
-            // Opdater rotations-værdier
-            // Mouse X flytning roterer rundt om Y-aksen (højre/venstre)
-            currentRotationY += deltaX * sensitivity;
-            // Mouse Y flytning roterer rundt om X-aksen (op/ned)
-            currentRotationX -= deltaY * sensitivity;
-
-            // Anvend rotationen på CSS
-            updateRotationCSS();
-
-            // Gem nuværende position til næste frame
-            previousMouseX = currentX;
-            previousMouseY = currentY;
+            document.getElementById('row-quarks').querySelector('.value').innerText = data.quarks;
+            document.getElementById('row-quarks').style.borderLeftColor = data.colorLight;
         }
 
-        function updateRotationCSS() {
-            // Kombiner X og Y rotation
-            nucleus.style.transform = `rotateX(${currentRotationX}deg) rotateY(${currentRotationY}deg)`;
+        // --- ANIMATIONS-LØKKE (The Magic) ---
+        function animate() {
+            // Ryd lærredet hver frame
+            ctx.clearRect(0, 0, width, height);
+
+            // Tid til at styre vibrationerne
+            const time = performance.now() / 200; // Hastighed på "kogningen"
+
+            // Opdater og projicer hver partikel
+            particles.forEach((p, index) => {
+                // 1. Skab kaotisk kvante-jitter baseret på tid og index
+                const jitterX = p.baseX + Math.sin(time + index * 2.1) * 6;
+                const jitterY = p.baseY + Math.cos(time * 1.3 + index * 3.5) * 6;
+                const jitterZ = p.baseZ + Math.sin(time * 0.8 + index * 1.1) * 6;
+
+                // 2. Anvend 3D rotation (phi og theta) på jitter positionerne
+                let y1 = jitterY * Math.cos(theta) - jitterZ * Math.sin(theta);
+                let z1 = jitterY * Math.sin(theta) + jitterZ * Math.cos(theta);
+                
+                let x2 = jitterX * Math.cos(phi) - z1 * Math.sin(phi);
+                let z2 = jitterX * Math.sin(phi) + z1 * Math.cos(phi);
+
+                // 3. Simpel perspektiv projektion (få dem til at blive mindre med dybden)
+                const fov = 400; // Felt-of-view/perspektiv styrke
+                const perspective = fov / (fov + z2);
+                
+                // Gem de projicerede koordinater til klik-detection
+                p.projectedX = centerX + x2 * perspective;
+                p.projectedY = centerY + y1 * perspective;
+                p.projectedZ = z2; // Bruges til dybdesortering
+                p.renderSize = particleSize * perspective; // Størrelse baseret på perspektiv
+            });
+
+            // 4. Sorter partikler efter dybde (z2), så dem bagved tegnes først!
+            particles.sort((a, b) => b.projectedZ - a.projectedZ);
+
+            // 5. Tegn hver partikel som en perfekt 2D cirkel med gradient
+            particles.forEach(p => {
+                const info = particleInfo[p.type];
+                
+                ctx.beginPath();
+                // Tegn cirklen
+                ctx.arc(p.projectedX, p.projectedY, Math.max(0, p.renderSize), 0, Math.PI * 2);
+                
+                // Skab en radial gradient for at simulere en 3D kugle med lys
+                const gradient = ctx.createRadialGradient(
+                    p.projectedX - p.renderSize * 0.3, // Lys highlight offset
+                    p.projectedY - p.renderSize * 0.3,
+                    p.renderSize * 0.1,
+                    p.projectedX,
+                    p.projectedY,
+                    p.renderSize
+                );
+                
+                gradient.addColorStop(0, info.colorLight);
+                gradient.addColorStop(1, info.colorDark);
+                
+                ctx.fillStyle = gradient;
+                ctx.fill();
+                ctx.closePath();
+            });
+
+            // Fortsæt løkken
+            requestAnimationFrame(animate);
         }
 
-        // --- EVENT LISTENERS ---
-        
-        // Mus events
-        container.addEventListener('mousedown', startDrag);
-        window.addEventListener('mouseup', stopDrag); // Lyt på window, hvis man slipper musen udenfor containeren
-        container.addEventListener('mousemove', drag);
-
-        // Touch events (for mobiler/tablets)
-        container.addEventListener('touchstart', startDrag, {passive: false});
-        window.addEventListener('touchend', stopDrag);
-        container.addEventListener('touchmove', drag, {passive: false});
-
-        // Sæt start-rotationen
-        updateRotationCSS();
+        // Start motoren
+        animate();
 
     </script>
 </body>
