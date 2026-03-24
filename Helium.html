@@ -2,171 +2,277 @@
 <html lang="da">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interaktiv Heliumkerne</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Interaktiv 3D Heliumkerne</title>
     <style>
         body {
             margin: 0;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #121212;
+            background-color: #101015;
             color: #ffffff;
             display: flex;
             height: 100vh;
             overflow: hidden;
+            user-select: none; /* Forhindrer tekstmarkering når man "dragger" */
         }
-        #simulation {
+
+        /* --- Venstre side: 3D Simulation --- */
+        #simulation-container {
             flex: 2;
             position: relative;
             display: flex;
             justify-content: center;
             align-items: center;
-            background: radial-gradient(circle, #2a2a35 0%, #121212 100%);
+            background: radial-gradient(circle, #2a2a35 0%, #101015 100%);
+            cursor: grab; /* Viser at man kan tage fat */
+            /* Perspektiv er afgørende for 3D effekten */
+            perspective: 1000px;
         }
+
+        #simulation-container:active {
+            cursor: grabbing; /* Viser når man holder musen nede */
+        }
+
+        /* Selve 3D scenen der roterer */
+        .nucleus-scene {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            transform-style: preserve-3d; /* Tillader børn at eksistere i 3D rum */
+            transition: transform 0.1s linear; /* Gør manuel rotation blød */
+        }
+
+        /* Basis-styling for alle nukleoner */
+        .nucleon {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            margin-top: -45px; /* Centrerer i .nucleus-scene */
+            margin-left: -45px;
+            cursor: pointer;
+            
+            /* Avanceret gradient for at ligne en kugle i 3D lys */
+            box-shadow: inset -10px -10px 30px rgba(0,0,0,0.7), 0 0 15px rgba(255,255,255,0.1);
+            
+            transition: box-shadow 0.2s, transform 0.2s;
+            
+            /* Sikrer at "lysindfaldet" på kuglen altid peger samme vej, selvom kernen roterer */
+            backface-visibility: visible;
+        }
+
+        .nucleon:hover {
+            box-shadow: inset -10px -10px 30px rgba(0,0,0,0.7), 0 0 30px rgba(255,255,255,0.7);
+            z-index: 100 !important; /* Bring til front ved hover */
+        }
+
+        .proton {
+            background: radial-gradient(circle at 30px 30px, #ff8080, #a00000);
+        }
+
+        .neutron {
+            background: radial-gradient(circle at 30px 30px, #66b2ff, #003366);
+        }
+
+        /* --- Højre side: Info Panel --- */
         #info-panel {
             flex: 1;
-            background-color: #1e1e1e;
+            background-color: #1a1a20;
             padding: 40px;
             box-shadow: -5px 0 25px rgba(0,0,0,0.8);
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-start;
             z-index: 100;
-        }
-        /* Selve kernen */
-        .nucleus {
-            position: relative;
-            width: 160px;
-            height: 160px;
-            animation: float 5s ease-in-out infinite;
-        }
-        /* Fælles for protoner og neutroner */
-        .nucleon {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            position: absolute;
-            cursor: pointer;
-            box-shadow: inset -10px -10px 20px rgba(0,0,0,0.6), 0 0 15px rgba(255,255,255,0.1);
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .nucleon:hover {
-            transform: scale(1.15);
-            box-shadow: inset -10px -10px 20px rgba(0,0,0,0.6), 0 0 30px rgba(255,255,255,0.6);
-            z-index: 10;
-        }
-        .proton {
-            background: radial-gradient(circle at 25px 25px, #ff6b6b, #b30000);
-        }
-        .neutron {
-            background: radial-gradient(circle at 25px 25px, #4dacff, #004080);
-        }
-        
-        /* Placering i en tæt klynge */
-        #p1 { top: 10px; left: 40px; z-index: 3;}
-        #p2 { bottom: 10px; right: 40px; z-index: 2; }
-        #n1 { top: 40px; right: 10px; z-index: 1;}
-        #n2 { bottom: 40px; left: 10px; z-index: 4;}
-
-        /* Svæve-animation for at gøre det levende */
-        @keyframes float {
-            0% { transform: translateY(0px) rotate(0deg); }
-            50% { transform: translateY(-20px) rotate(5deg); }
-            100% { transform: translateY(0px) rotate(0deg); }
+            overflow-y: auto;
+            border-left: 1px solid #333;
         }
 
-        /* Tekst og UI */
-        h1 { color: #f39c12; margin-top: 0; }
+        h1 { color: #f39c12; margin-top: 0; font-size: 1.8em; }
+        h3 { color: #aaa; font-weight: normal; margin-top: -10px; margin-bottom: 30px;}
+
         .data-row {
-            margin: 15px 0;
+            margin: 10px 0;
             padding: 15px;
-            background: rgba(255,255,255,0.05);
+            background: rgba(255,255,255,0.03);
             border-radius: 8px;
             border-left: 4px solid transparent;
-            transition: border-color 0.3s;
         }
-        .label { font-weight: bold; color: #aaa; font-size: 0.9em; text-transform: uppercase; letter-spacing: 1px;}
-        .value { font-size: 1.2em; margin-top: 5px; }
-        .instructions { color: #888; font-style: italic; margin-top: 30px; }
+        .label { font-weight: bold; color: #aaa; font-size: 0.85em; text-transform: uppercase; letter-spacing: 1px;}
+        .value { font-size: 1.1em; margin-top: 5px; color: #eee; }
+        
+        .instructions { 
+            margin-top: auto; 
+            padding: 15px; 
+            background-color: rgba(243, 156, 18, 0.1); 
+            border: 1px solid rgba(243, 156, 18, 0.3);
+            border-radius: 8px;
+            color: #f39c12;
+            font-size: 0.9em;
+            line-height: 1.4em;
+        }
     </style>
 </head>
 <body>
 
-    <div id="simulation">
-        <div class="nucleus">
-            <div id="p1" class="nucleon proton" onclick="showData('Proton')"></div>
-            <div id="n1" class="nucleon neutron" onclick="showData('Neutron')"></div>
-            <div id="p2" class="nucleon proton" onclick="showData('Proton')"></div>
-            <div id="n2" class="nucleon neutron" onclick="showData('Neutron')"></div>
+    <div id="simulation-container">
+        <div class="nucleus-scene" id="nucleus">
+            <div class="nucleon proton" style="transform: translate3d(-35px, -35px, 35px);" onclick="showData('Proton 1', event)"></div>
+            
+            <div class="nucleon neutron" style="transform: translate3d(35px, -35px, -35px);" onclick="showData('Neutron 1', event)"></div>
+            
+            <div class="nucleon proton" style="transform: translate3d(-35px, 35px, -35px);" onclick="showData('Proton 2', event)"></div>
+            
+            <div class="nucleon neutron" style="transform: translate3d(35px, 35px, 35px);" onclick="showData('Neutron 2', event)"></div>
         </div>
     </div>
 
     <div id="info-panel">
-        <h1 id="title">Helium-4 Kerne</h1>
-        <p>Kernen består af to protoner og to neutroner, som holdes utroligt tæt sammen af <strong>den stærke kernekraft</strong>. Tilsammen udgør de en alfapartikel.</p>
+        <h1>Helium-4 (Alpha Partikel)</h1>
+        <h3>Interaktiv 3D model</h3>
         
-        <div id="dynamic-data" style="display: none; margin-top: 20px;">
-            <h2 id="particle-name" style="margin-bottom: 10px; border-bottom: 1px solid #444; padding-bottom: 10px;">-</h2>
+        <p>Kernen består af 2 protoner og 2 neutroner.</p>
+        
+        <div id="dynamic-data" style="display: none; margin-top: 10px; margin-bottom: 20px;">
+            <h2 id="particle-name" style="margin-bottom: 5px; padding-bottom: 10px; border-bottom: 1px solid #333;">-</h2>
             
             <div class="data-row" id="row-charge">
                 <div class="label">Elektrisk Ladning</div>
-                <div class="value" id="particle-charge">-</div>
-            </div>
-            
-            <div class="data-row" id="row-mass">
-                <div class="label">Masse</div>
-                <div class="value" id="particle-mass">-</div>
+                <div class="value"></div>
             </div>
             
             <div class="data-row" id="row-quarks">
-                <div class="label">Kvark-sammensætning</div>
-                <div class="value" id="particle-quarks">-</div>
+                <div class="label">Konstituent-kvarker</div>
+                <div class="value"></div>
             </div>
         </div>
 
-        <p class="instructions" id="instruction-text">👈 Klik på en af kuglerne til venstre for at undersøge partiklen nærmere.</p>
+        <div class="instructions">
+            <strong>Interaktion:</strong><br>
+            • 🖱️ <strong>Roter:</strong> Klik og træk i baggrunden for at dreje kernen.<br>
+            • 👈 <strong>Undersøg:</strong> Klik på en partikel for at se data.
+        </div>
     </div>
 
     <script>
-        // Data for partiklerne
-        const data = {
+        // --- DATA ---
+        const particleInfo = {
             'Proton': {
-                charge: '+1 e',
-                mass: '1.007276 u',
+                charge: '+1 e (Positiv)',
                 quarks: '2 Up, 1 Down (uud)',
-                color: '#ff6b6b'
+                color: '#ff8080'
             },
             'Neutron': {
                 charge: '0 e (Neutral)',
-                mass: '1.008665 u',
                 quarks: '1 Up, 2 Down (udd)',
-                color: '#4dacff'
+                color: '#66b2ff'
             }
         };
 
-        // Funktion der kører, når man klikker
-        function showData(particleType) {
-            // Skjul instruktionsteksten og vis datakassen
-            document.getElementById('instruction-text').style.display = 'none';
-            document.getElementById('dynamic-data').style.display = 'block';
-            
-            // Hent data baseret på typen
-            const pData = data[particleType];
-            
-            // Opdater titlen og dens farve
-            const nameEl = document.getElementById('particle-name');
-            nameEl.innerText = particleType;
-            nameEl.style.color = pData.color;
-            
-            // Opdater værdierne i panelet
-            document.getElementById('particle-charge').innerText = pData.charge;
-            document.getElementById('particle-mass').innerText = pData.mass;
-            document.getElementById('particle-quarks').innerText = pData.quarks;
+        // --- INFO PANEL LOGIK ---
+        const dataPanel = document.getElementById('dynamic-data');
+        const nameEl = document.getElementById('particle-name');
+        const chargeRow = document.getElementById('row-charge');
+        const quarksRow = document.getElementById('row-quarks');
 
-            // Opdater kantfarven på datarækkerne, så det matcher partiklen
-            document.querySelectorAll('.data-row').forEach(row => {
-                row.style.borderLeftColor = pData.color;
-            });
+        function showData(fullName, event) {
+            // Stop rotationen i at tælle som et klik på en partikel
+            event.stopPropagation();
+
+            const type = fullName.split(' ')[0]; // Hent 'Proton' eller 'Neutron'
+            const data = particleInfo[type];
+
+            dataPanel.style.display = 'block';
+            
+            nameEl.innerText = fullName;
+            nameEl.style.color = data.color;
+
+            chargeRow.querySelector('.value').innerText = data.charge;
+            chargeRow.style.borderLeftColor = data.color;
+
+            quarksRow.querySelector('.value').innerText = data.quarks;
+            quarksRow.style.borderLeftColor = data.color;
         }
+
+
+        // --- 3D ROTATION LOGIK (MOUSE DRAG) ---
+        const container = document.getElementById('simulation-container');
+        const nucleus = document.getElementById('nucleus');
+
+        let isDragging = false;
+        let previousMouseX = 0;
+        let previousMouseY = 0;
+
+        // Nuværende rotation i grader
+        let currentRotationX = -15; // Lidt tiltet start-view
+        let currentRotationY = 45;
+
+        // Følsomhed for rotationen (hvor hurtigt den drejer)
+        const sensitivity = 0.5;
+
+        // Start "drag"
+        function startDrag(e) {
+            isDragging = true;
+            // Håndter både mus og touch
+            previousMouseX = e.pageX || e.touches[0].pageX;
+            previousMouseY = e.pageY || e.touches[0].pageY;
+        }
+
+        // Stop "drag"
+        function stopDrag() {
+            isDragging = false;
+        }
+
+        // Under "drag" (beregn ny rotation)
+        function drag(e) {
+            if (!isDragging) return;
+            
+            // Forhindr standard scrolling på mobil
+            if(e.type === 'touchmove') e.preventDefault();
+
+            const currentX = e.pageX || e.touches[0].pageX;
+            const currentY = e.pageY || e.touches[0].pageY;
+
+            // Beregn hvor meget musen har flyttet sig
+            const deltaX = currentX - previousMouseX;
+            const deltaY = currentY - previousMouseY;
+
+            // Opdater rotations-værdier
+            // Mouse X flytning roterer rundt om Y-aksen (højre/venstre)
+            currentRotationY += deltaX * sensitivity;
+            // Mouse Y flytning roterer rundt om X-aksen (op/ned)
+            currentRotationX -= deltaY * sensitivity;
+
+            // Anvend rotationen på CSS
+            updateRotationCSS();
+
+            // Gem nuværende position til næste frame
+            previousMouseX = currentX;
+            previousMouseY = currentY;
+        }
+
+        function updateRotationCSS() {
+            // Kombiner X og Y rotation
+            nucleus.style.transform = `rotateX(${currentRotationX}deg) rotateY(${currentRotationY}deg)`;
+        }
+
+        // --- EVENT LISTENERS ---
+        
+        // Mus events
+        container.addEventListener('mousedown', startDrag);
+        window.addEventListener('mouseup', stopDrag); // Lyt på window, hvis man slipper musen udenfor containeren
+        container.addEventListener('mousemove', drag);
+
+        // Touch events (for mobiler/tablets)
+        container.addEventListener('touchstart', startDrag, {passive: false});
+        window.addEventListener('touchend', stopDrag);
+        container.addEventListener('touchmove', drag, {passive: false});
+
+        // Sæt start-rotationen
+        updateRotationCSS();
+
     </script>
 </body>
 </html>
