@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interaktiv Heliumkerne</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #simulation {
+            flex: 2;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle, #2a2a35 0%, #121212 100%);
+        }
+        #info-panel {
+            flex: 1;
+            background-color: #1e1e1e;
+            padding: 40px;
+            box-shadow: -5px 0 25px rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            z-index: 100;
+        }
+        /* Selve kernen */
+        .nucleus {
+            position: relative;
+            width: 160px;
+            height: 160px;
+            animation: float 5s ease-in-out infinite;
+        }
+        /* Fælles for protoner og neutroner */
+        .nucleon {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            position: absolute;
+            cursor: pointer;
+            box-shadow: inset -10px -10px 20px rgba(0,0,0,0.6), 0 0 15px rgba(255,255,255,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .nucleon:hover {
+            transform: scale(1.15);
+            box-shadow: inset -10px -10px 20px rgba(0,0,0,0.6), 0 0 30px rgba(255,255,255,0.6);
+            z-index: 10;
+        }
+        .proton {
+            background: radial-gradient(circle at 25px 25px, #ff6b6b, #b30000);
+        }
+        .neutron {
+            background: radial-gradient(circle at 25px 25px, #4dacff, #004080);
+        }
+        
+        /* Placering i en tæt klynge */
+        #p1 { top: 10px; left: 40px; z-index: 3;}
+        #p2 { bottom: 10px; right: 40px; z-index: 2; }
+        #n1 { top: 40px; right: 10px; z-index: 1;}
+        #n2 { bottom: 40px; left: 10px; z-index: 4;}
+
+        /* Svæve-animation for at gøre det levende */
+        @keyframes float {
+            0% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(5deg); }
+            100% { transform: translateY(0px) rotate(0deg); }
+        }
+
+        /* Tekst og UI */
+        h1 { color: #f39c12; margin-top: 0; }
+        .data-row {
+            margin: 15px 0;
+            padding: 15px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            border-left: 4px solid transparent;
+            transition: border-color 0.3s;
+        }
+        .label { font-weight: bold; color: #aaa; font-size: 0.9em; text-transform: uppercase; letter-spacing: 1px;}
+        .value { font-size: 1.2em; margin-top: 5px; }
+        .instructions { color: #888; font-style: italic; margin-top: 30px; }
+    </style>
+</head>
+<body>
+
+    <div id="simulation">
+        <div class="nucleus">
+            <div id="p1" class="nucleon proton" onclick="showData('Proton')"></div>
+            <div id="n1" class="nucleon neutron" onclick="showData('Neutron')"></div>
+            <div id="p2" class="nucleon proton" onclick="showData('Proton')"></div>
+            <div id="n2" class="nucleon neutron" onclick="showData('Neutron')"></div>
+        </div>
+    </div>
+
+    <div id="info-panel">
+        <h1 id="title">Helium-4 Kerne</h1>
+        <p>Kernen består af to protoner og to neutroner, som holdes utroligt tæt sammen af <strong>den stærke kernekraft</strong>. Tilsammen udgør de en alfapartikel.</p>
+        
+        <div id="dynamic-data" style="display: none; margin-top: 20px;">
+            <h2 id="particle-name" style="margin-bottom: 10px; border-bottom: 1px solid #444; padding-bottom: 10px;">-</h2>
+            
+            <div class="data-row" id="row-charge">
+                <div class="label">Elektrisk Ladning</div>
+                <div class="value" id="particle-charge">-</div>
+            </div>
+            
+            <div class="data-row" id="row-mass">
+                <div class="label">Masse</div>
+                <div class="value" id="particle-mass">-</div>
+            </div>
+            
+            <div class="data-row" id="row-quarks">
+                <div class="label">Kvark-sammensætning</div>
+                <div class="value" id="particle-quarks">-</div>
+            </div>
+        </div>
+
+        <p class="instructions" id="instruction-text">👈 Klik på en af kuglerne til venstre for at undersøge partiklen nærmere.</p>
+    </div>
+
+    <script>
+        // Data for partiklerne
+        const data = {
+            'Proton': {
+                charge: '+1 e',
+                mass: '1.007276 u',
+                quarks: '2 Up, 1 Down (uud)',
+                color: '#ff6b6b'
+            },
+            'Neutron': {
+                charge: '0 e (Neutral)',
+                mass: '1.008665 u',
+                quarks: '1 Up, 2 Down (udd)',
+                color: '#4dacff'
+            }
+        };
+
+        // Funktion der kører, når man klikker
+        function showData(particleType) {
+            // Skjul instruktionsteksten og vis datakassen
+            document.getElementById('instruction-text').style.display = 'none';
+            document.getElementById('dynamic-data').style.display = 'block';
+            
+            // Hent data baseret på typen
+            const pData = data[particleType];
+            
+            // Opdater titlen og dens farve
+            const nameEl = document.getElementById('particle-name');
+            nameEl.innerText = particleType;
+            nameEl.style.color = pData.color;
+            
+            // Opdater værdierne i panelet
+            document.getElementById('particle-charge').innerText = pData.charge;
+            document.getElementById('particle-mass').innerText = pData.mass;
+            document.getElementById('particle-quarks').innerText = pData.quarks;
+
+            // Opdater kantfarven på datarækkerne, så det matcher partiklen
+            document.querySelectorAll('.data-row').forEach(row => {
+                row.style.borderLeftColor = pData.color;
+            });
+        }
+    </script>
+</body>
+</html>
