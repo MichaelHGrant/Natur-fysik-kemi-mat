@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Avanceret Islyd-Simulator med Analyse</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+    
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['\\(', '\\)']],
+                displayMath: [['\\[', '\\]']]
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        input[type=range] { accent-color: #0ea5e9; }
+        canvas { image-rendering: pixelated; }
+        .chart-container { position: relative; height: 320px; width: 100%; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto space-y-6">
+        <header class="text-center space-y-4 mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-sky-400 tracking-tight">Akustik på Frossen Sø</h1>
+            <p class="text-slate-400 text-lg">Simulation af stenkast med realtidsanalyse af dispersion og frekvenser.</p>
+            <button id="infoBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2 px-6 rounded-full transition-colors shadow-lg shadow-indigo-500/30">
+                📚 Læs om Fysikken & Matematikken bag
+            </button>
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <div class="glass-panel p-6 rounded-2xl shadow-2xl space-y-6 flex flex-col">
+                <h2 class="text-2xl font-semibold text-sky-300 border-b border-slate-700 pb-2">Parametre</h2>
+                
+                <div class="space-y-2">
+                    <div class="flex justify-between"><label class="text-slate-300">Isens Tykkelse</label><span id="valThick" class="text-sky-400 font-mono font-bold">10 cm</span></div>
+                    <input type="range" id="thickSlider" min="1" max="50" step="1" value="10" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                </div>
+
+                <div class="space-y-2">
+                    <div class="flex justify-between"><label class="text-slate-300">Stenens Starthastighed</label><span id="valSpeed" class="text-sky-400 font-mono font-bold">25 m/s</span></div>
+                    <input type="range" id="speedSlider" min="5" max="50" step="1" value="25" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                </div>
+
+                <div class="space-y-2">
+                    <div class="flex justify-between"><label class="text-slate-300">Stenens Masse</label><span id="valMass" class="text-sky-400 font-mono font-bold">200 g</span></div>
+                    <input type="range" id="massSlider" min="50" max="500" step="10" value="200" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                </div>
+
+                <div class="space-y-2">
+                    <div class="flex justify-between"><label class="text-slate-300">Lufttemperatur</label><span id="valTemp" class="text-sky-400 font-mono font-bold">-5 °C</span></div>
+                    <input type="range" id="tempSlider" min="-15" max="5" step="1" value="-5" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                </div>
+
+                <div class="mt-auto space-y-3 pt-4">
+                    <button id="playBtn" class="w-full bg-sky-600 hover:bg-sky-500 text-white text-lg font-bold py-3 rounded-xl shadow-[0_0_15px_rgba(14,165,233,0.4)] transition-all transform active:scale-95">
+                        Kast stenen!
+                    </button>
+                    <button id="downloadWavBtn" disabled class="w-full bg-slate-700 hover:bg-slate-600 text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed font-semibold py-2 rounded-xl transition-all">
+                        💾 Gem Lyd (.wav)
+                    </button>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2 space-y-6">
+                <div class="glass-panel p-6 rounded-2xl shadow-2xl h-[24rem] flex flex-col">
+                    <div class="flex justify-between items-center border-b border-slate-700 pb-2 mb-2">
+                        <h2 class="text-xl font-semibold text-sky-300">Live Lydspektrum</h2>
+                        <div class="space-x-2">
+                            <button id="downloadMaxSpecBtn" disabled class="bg-slate-700 hover:bg-slate-600 text-sm text-slate-300 px-3 py-1 rounded-lg transition-all disabled:opacity-50">📊 Gem Max (.csv)</button>
+                            <button id="snapshotSpecBtn" class="bg-slate-700 hover:bg-slate-600 text-sm text-slate-300 px-3 py-1 rounded-lg transition-all">📸 Gem Billede</button>
+                        </div>
+                    </div>
+                    <div class="flex-grow relative bg-slate-900 rounded-xl overflow-hidden border border-slate-700 flex">
+                        <div class="w-8 flex flex-col justify-between items-center py-2 bg-slate-800 border-r border-slate-700 z-10">
+                            <span class="text-xs text-slate-400 font-bold">Max</span>
+                            <span class="text-[11px] text-slate-300 font-bold tracking-widest uppercase whitespace-nowrap" style="writing-mode: vertical-rl; transform: rotate(180deg);">Relativt Lydniveau</span>
+                            <span class="text-xs text-slate-400 font-bold">Min</span>
+                        </div>
+                        <div class="flex-grow relative">
+                            <canvas id="spectrumCanvas" class="absolute inset-0 w-full h-full"></canvas>
+                            <div class="absolute bottom-0 w-full flex justify-between px-2 py-1 bg-slate-800/80 border-t border-slate-700 text-xs text-slate-300 font-bold">
+                                <span>0 Hz</span><span>Frekvens</span><span>10 kHz</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="status" class="mt-3 text-center text-sm font-medium text-emerald-400">Klar til afspilning</div>
+                </div>
+
+                <div class="glass-panel p-6 rounded-2xl shadow-2xl space-y-6">
+                    <div class="flex justify-between items-center border-b border-slate-700 pb-2">
+                        <h2 class="text-xl font-semibold text-sky-300">Fysisk Bølgeanalyse</h2>
+                        <button id="downloadGraphsBtn" class="bg-slate-700 hover:bg-slate-600 text-sm text-slate-300 px-3 py-1 rounded-lg transition-all">📸 Gem Grafer</button>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <div class="chart-container"><canvas id="dispersionChart"></canvas></div>
+                        </div>
+                        <div>
+                            <div class="chart-container"><canvas id="velocityChart"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="mathModal" class="hidden fixed inset-0 bg-slate-950/90 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-slate-800 p-8 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-slate-600 shadow-2xl relative">
+            <button id="closeModalBtn" class="absolute top-4 right-4 text-slate-400 hover:text-white text-4xl leading-none">&times;</button>
+            <h2 class="text-3xl font-bold text-sky-400 mb-6 border-b border-slate-700 pb-2">Matematikken bag Isens Sang</h2>
+            
+            <div class="space-y-8 text-slate-300 leading-relaxed">
+                
+                <section>
+                    <h3 class="text-2xl font-semibold text-emerald-400 mb-3">1. Impulsen og Isens Stivhed</h3>
+                    <p>Når en sten rammer isen, sker der en mekanisk impuls. En matematisk ideel impuls (beskrevet ved en Dirac delta-funktion) indeholder energi spredt ligeligt ud over <strong>alle frekvenser</strong>. Spørgsmålet er: Hvordan bærer isen disse frekvenser væk?</p>
+                    <p>Vi modellerer isen ved hjælp af <em>Euler-Bernoulli pladeteori</em>. Isens bøjningsstivhed, \(D\), er givet ved dens tykkelse (\(h\)), Youngs modul (\(E\)) og Poissons forhold (\(\nu\)):</p>
+                    <p class="text-center my-4 text-lg">\[D = \frac{E \cdot h^3}{12 \cdot (1 - \nu^2)}\]</p>
+                </section>
+
+                <section>
+                    <h3 class="text-2xl font-semibold text-emerald-400 mb-3">2. Fluid Loading (Væskebelastning)</h3>
+                    <p>Isen svæver ikke frit i luften; den ligger ovenpå uendeligt dybt vand. Når bølgerne bøjer isen op og ned, tvinges isen til at skubbe det underliggende vand med sig. Fordi vand er inkompressibelt og tungt (\(\rho_w\)), fungerer det som en enorm <strong>"added mass" (tilføjet masse)</strong> for systemet.</p>
+                    <p>Hydrodynamisk analyse viser, at denne tilføjede masse pr. arealenhed er omvendt proportional med bølgetallet \(k\), nemlig \(\frac{\rho_w}{k}\). Når vi lægger dette til isens egen masse (\(\rho_i h\)), får vi den fulde dispersionsrelation:</p>
+                    <p class="text-center my-4 text-lg">\[\omega = \sqrt{\frac{D \cdot k^5}{\rho_i \cdot h \cdot k + \rho_w}}\]</p>
+                    <p><em>Hvad betyder det fysisk?</em> For dybe frekvenser (hvor bølgelængden er lang, og \(k\) er lille) bliver leddet \(\frac{\rho_w}{k}\) meget stort. Vandet bremser simpelthen de lange bølger enormt meget. Derfor ankommer de høje, kortbølgede frekvenser lynhurtigt til lytteren, mens de dybe trækker ud. Det er dette, der skaber det "sci-fi" agtige nedadgående frekvens-sweep (et "pew").</p>
+                </section>
+
+                <section>
+                    <h3 class="text-2xl font-semibold text-emerald-400 mb-3">3. Udstråling af Lyd & Evanescente Bølger</h3>
+                    <p>Selvom stenen slår alle frekvenser ind i isen, er det ikke alle frekvenser, der forlader isen som lyd. For at isens svingninger kan afgive en lydbølge til luften, kræver bølgelederen at bølgetallet bevares over grænsefladen: \(k_x^2 + k_z^2 = k_0^2\), hvor \(k_0 = \omega/c_{air}\).</p>
+                    <p>Bølgetallet lodret op i luften, \(k_z\), er derved:</p>
+                    <p class="text-center my-4 text-lg">\[k_z = \sqrt{k_0^2 - k^2}\]</p>
+                    <ul class="list-disc pl-6 space-y-3 mt-4">
+                        <li><strong>Over den kritiske frekvens (\(v_p > c_{air}\)):</strong> Her er isens bølgetal \(k\) mindre end luftens \(k_0\). Kvadratroden er positiv, \(k_z\) er et reelt tal, og bølgefunktionen \(e^{i k_z z}\) forplanter sig som normal lyd op til dit øre.</li>
+                        <li><strong>Under den kritiske frekvens (\(v_p < c_{air}\)):</strong> Her er isens bøjningsbølge langsommere end lyden i luft (\(k > k_0\)). Kvadratroden bliver til et imaginært tal (\(i\alpha\)). Bølgefunktionen i luften ændrer form til \(e^{-\alpha z}\). Dette kaldes en <strong>evanescent bølge</strong>. Lydtrykket falder eksponentielt mod nul få centimeter over isen, og energien forbliver "bundet" til isen uden at udstråle!</li>
+                    </ul>
+                    <p class="mt-4 text-emerald-300 italic">Hvordan hører vi så de dybe lyde? De dybe lyde ankommer via luften direkte fra selve slaget mod stenen (en bredspektret chokbølge, der rejser med \(c_{air}\)), eller fordi de evanescente bølger rammer revner i isen, som fungerer som spredere (scatterers) og tvinger energien ud i luften.</p>
+                </section>
+
+                <section>
+                    <h3 class="text-2xl font-semibold text-emerald-400 mb-3">4. Doppler-effekten & Deceleration</h3>
+                    <p>Når stenen skøjter henover isen med en hastighed \(v\), forskyder den frekvenserne på den lyd, der kastes op mod dig, pga. Doppler-effekten. Den observerede frekvens \(f_{obs}\) afhænger af stenens radiale hastighed mod dig, \(v_{rel}\):</p>
+                    <p class="text-center my-4 text-lg">\[f_{obs} = f_{src} \left( \frac{c_{air}}{c_{air} - v_{rel}} \right)\]</p>
+                    <p>For hvert hop stenen foretager, mister den kinetisk energi og <strong>decelererer</strong>. Dette betyder, at \(v_{rel}\) falder for hvert smut. Du vil derfor opleve, at afstanden mellem lydene ("pews") bliver kortere og kortere, og at tonehøjden (pga. Doppler) falder gradvist mod normal, indtil stenen ligger helt stille.</p>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. Opsætning og UI Elementer ---
+        const sliders = { 
+            thick: document.getElementById('thickSlider'), 
+            speed: document.getElementById('speedSlider'), 
+            mass: document.getElementById('massSlider'), 
+            temp: document.getElementById('tempSlider') 
+        };
+        const labels = { 
+            thick: document.getElementById('valThick'), 
+            speed: document.getElementById('valSpeed'), 
+            mass: document.getElementById('valMass'), 
+            temp: document.getElementById('valTemp') 
+        };
+        
+        const playBtn = document.getElementById('playBtn');
+        const downloadWavBtn = document.getElementById('downloadWavBtn');
+        const downloadGraphsBtn = document.getElementById('downloadGraphsBtn');
+        const downloadMaxSpecBtn = document.getElementById('downloadMaxSpecBtn');
+        const snapshotSpecBtn = document.getElementById('snapshotSpecBtn');
+        const statusTxt = document.getElementById('status');
+        
+        const spectrumCanvas = document.getElementById('spectrumCanvas');
+        const spectrumCtx = spectrumCanvas.getContext('2d');
+        
+        const infoBtn = document.getElementById('infoBtn');
+        const mathModal = document.getElementById('mathModal');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+
+        let audioCtx, analyser, animationId;
+        let lastGeneratedPcmData = null;
+        let lastSampleRate = 44100;
+        let dispersionChartInst, velocityChartInst;
+        let maxSpectrumData = null; 
+
+        // Konstanter for frossen ferskvandssø
+        const E = 9.5e9;    // Youngs modul i Pascal
+        const nu = 0.33;    // Poissons forhold
+        const rho_i = 917;  // Densitet is (kg/m^3)
+        const rho_w = 1000; // Densitet vand (kg/m^3)
+
+        // Modal håndtering
+        infoBtn.addEventListener('click', () => mathModal.classList.remove('hidden'));
+        closeModalBtn.addEventListener('click', () => mathModal.classList.add('hidden'));
+
+        // --- 2. Live Spektrum Analyse ---
+        function resizeCanvas() { 
+            spectrumCanvas.width = spectrumCanvas.clientWidth; 
+            spectrumCanvas.height = spectrumCanvas.clientHeight; 
+        }
+        window.addEventListener('resize', resizeCanvas); 
+        resizeCanvas();
+
+        function drawEmptySpectrum() { 
+            spectrumCtx.fillStyle = '#0f172a'; 
+            spectrumCtx.fillRect(0, 0, spectrumCanvas.width, spectrumCanvas.height); 
+        }
+        drawEmptySpectrum();
+
+        function drawSpectrum() {
+            animationId = requestAnimationFrame(drawSpectrum);
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            analyser.getByteFrequencyData(dataArray);
+
+            // Opdaterer den gemte max-værdi, hvis knappen for .csv export bruges
+            if (!maxSpectrumData || maxSpectrumData.length !== bufferLength) {
+                maxSpectrumData = new Uint8Array(bufferLength);
+            }
+            for(let i = 0; i < bufferLength; i++) {
+                if(dataArray[i] > maxSpectrumData[i]) {
+                    maxSpectrumData[i] = dataArray[i];
+                }
+            }
+
+            // Halvgennemsigtig baggrund for at give "hale"-effekt (fade out)
+            spectrumCtx.fillStyle = 'rgba(15, 23, 42, 0.25)';
+            spectrumCtx.fillRect(0, 0, spectrumCanvas.width, spectrumCanvas.height);
+
+            const barWidth = (spectrumCanvas.width / bufferLength) * 2.5;
+            let barHeight, x = 0;
+
+            for(let i = 0; i < bufferLength; i++) {
+                barHeight = dataArray[i] / 255 * spectrumCanvas.height;
+                // Skaber en flydende farveovergang (blå -> grøn -> cyan)
+                const r = barHeight + (25 * (i/bufferLength));
+                const g = 150 + (105 * (i/bufferLength));
+                const b = 250;
+                
+                spectrumCtx.fillStyle = `rgb(${r},${g},${b})`;
+                spectrumCtx.fillRect(x, spectrumCanvas.height - barHeight, barWidth, barHeight);
+                x += barWidth + 1;
+            }
+        }
+
+        // --- 3. Graf og Matematik Logik ---
+        function calculateGraphData(h_cm, temp) {
+            const h_m = h_cm / 100;
+            const c_air = 331.3 + (0.606 * temp);
+            const D = (E * Math.pow(h_m, 3)) / (12 * (1 - Math.pow(nu, 2)));
+            
+            const wavenumbers = [];
+            const wavelengths = [];
+            const frequencies = [];
+            const velocities = [];
+
+            // Kører igennem bølgetal (k)
+            for (let k = 0.5; k < 150; k += 0.5) {
+                const numerator = D * Math.pow(k, 5);
+                const denominator = (rho_i * h_m * k) + rho_w; // Inkluderer fluid loading
+                
+                if (denominator > 0) {
+                    const omega = Math.sqrt(numerator / denominator);
+                    const frequency = omega / (2 * Math.PI);
+                    const phase_vel = omega / k;
+                    const lambda = (2 * Math.PI) / k; 
+
+                    if (frequency < 5000) { 
+                        wavenumbers.push(k); 
+                        wavelengths.push(lambda); 
+                        frequencies.push(frequency); 
+                        velocities.push(phase_vel); 
+                    }
+                }
+            }
+            return { wavenumbers, wavelengths, frequencies, velocities, c_air };
+        }
+
+        const chartOptions = { 
+            responsive: true, 
+            maintainAspectRatio: false, 
+            color: '#f8fafc', 
+            scales: { 
+                x: { grid: { color: '#334155' }, ticks: { color: '#e2e8f0', font: { size: 14, weight: 'bold' } } }, 
+                y: { grid: { color: '#334155' }, ticks: { color: '#e2e8f0', font: { size: 14, weight: 'bold' } } } 
+            }, 
+            plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } } 
+        };
+
+        function updateCharts() {
+            const h = parseFloat(sliders.thick.value);
+            const temp = parseFloat(sliders.temp.value);
+            const data = calculateGraphData(h, temp);
+            
+            let criticalIndex = data.velocities.findIndex(v => v >= data.c_air);
+            let annotationVelocity = {};
+            
+            if(criticalIndex !== -1) {
+                annotationVelocity = { 
+                    airSpeedLine: { 
+                        type: 'line', yMin: data.c_air, yMax: data.c_air, borderColor: 'rgba(239, 68, 68, 0.9)', borderWidth: 3, borderDash: [6, 6], 
+                        label: { content: `c_luft (${data.c_air.toFixed(1)} m/s)`, enabled: true, position: 'end', backgroundColor: 'rgba(15, 23, 42, 0.9)', color: '#f8fafc', font: {size: 14, weight: 'bold'} } 
+                    }, 
+                    criticalPoint: { type: 'point', xValue: data.wavelengths[criticalIndex], yValue: data.velocities[criticalIndex], backgroundColor: '#ef4444', radius: 6 } 
+                };
+            }
+
+            // Disp Graf: Frekvens som funktion af Bølgetal
+            if (!dispersionChartInst) { 
+                dispersionChartInst = new Chart(document.getElementById('dispersionChart').getContext('2d'), { 
+                    type: 'line', 
+                    data: { labels: data.wavenumbers.map(k => k.toFixed(1)), datasets: [{ data: data.frequencies, borderColor: '#0ea5e9', borderWidth: 3, pointRadius: 0, tension: 0.2 }] }, 
+                    options: { ...chartOptions, scales: { ...chartOptions.scales, x: { ...chartOptions.scales.x, title: { display: true, text: 'Bølgetal k (rad/m)', color: '#94a3b8', font: {size: 16} } }, y: { ...chartOptions.scales.y, title: { display: true, text: 'Frekvens (Hz)', color: '#94a3b8', font: {size: 16} } } } } 
+                }); 
+            } else { 
+                dispersionChartInst.data.labels = data.wavenumbers.map(k => k.toFixed(1)); 
+                dispersionChartInst.data.datasets[0].data = data.frequencies; 
+                dispersionChartInst.update(); 
+            }
+
+            // Vel Graf: Fasehastighed som funktion af Bølgelængde
+            if (!velocityChartInst) { 
+                velocityChartInst = new Chart(document.getElementById('velocityChart').getContext('2d'), { 
+                    type: 'line', 
+                    data: { labels: data.wavelengths.map(l => l.toFixed(2)), datasets: [{ data: data.velocities, borderColor: '#10b981', borderWidth: 3, pointRadius: 0, tension: 0.2 }] }, 
+                    options: { ...chartOptions, plugins: { ...chartOptions.plugins, annotation: { annotations: annotationVelocity } }, scales: { ...chartOptions.scales, x: { ...chartOptions.scales.x, title: { display: true, text: 'Bølgelængde (m)', color: '#94a3b8', font: {size: 16} } }, y: { ...chartOptions.scales.y, title: { display: true, text: 'Fasehastighed (m/s)', color: '#94a3b8', font: {size: 16} } } } } 
+                }); 
+            } else { 
+                velocityChartInst.data.labels = data.wavelengths.map(l => l.toFixed(2)); 
+                velocityChartInst.data.datasets[0].data = data.velocities; 
+                velocityChartInst.options.plugins.annotation.annotations = annotationVelocity; 
+                velocityChartInst.update(); 
+            }
+        }
+
+        // --- 4. Akustisk Simulation ---
+        async function playIceSound() {
+            // Lås knapper mens vi regner
+            playBtn.disabled = true; 
+            downloadWavBtn.disabled = true; 
+            downloadMaxSpecBtn.disabled = true; 
+            maxSpectrumData = null; 
+            statusTxt.innerText = "Beregner avanceret fysik inkl. luft-impuls..."; 
+            statusTxt.className = "mt-3 text-center text-sm font-medium text-amber-400";
+
+            // Init Web Audio API
+            if (!audioCtx) { 
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)(); 
+                analyser = audioCtx.createAnalyser(); 
+                analyser.fftSize = 2048; 
+            }
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            lastSampleRate = audioCtx.sampleRate;
+
+            // Fysiske variabler fra UI
+            const h = parseFloat(sliders.thick.value);
+            const v_start = parseFloat(sliders.speed.value);
+            const m = parseFloat(sliders.mass.value) / 1000.0;
+            const T = parseFloat(sliders.temp.value);
+
+            // Akustiske parametre
+            const c_air = 331.3 + (0.606 * T); 
+            const c_ice = 400.0 + (h * 15.0) - (T * 2.0); 
+            const tau = Math.max(0.01, 0.1 - (h * 0.0015)); 
+            const f_floor = Math.max(30, 200 - (h * 3) - (m * 200)); 
+            const massAmplitude = Math.sqrt(m) * 2.0;
+
+            // Setup Buffer
+            const duration = 6.0; 
+            const frameCount = lastSampleRate * duration; 
+            const buffer = audioCtx.createBuffer(1, frameCount, lastSampleRate); 
+            const data = buffer.getChannelData(0);
+
+            const listener_x = 0.0; 
+            const listener_y = 10.0; 
+            
+            let current_v = v_start; 
+            let current_x = -30.0; 
+            let current_t = 0.0; 
+            let skip_count = 0;
+
+            // Simuler stensmut (op til 15 hop, hvis energien rækker)
+            while (current_v > 2.0 && skip_count < 15) {
+                let distance = Math.hypot(listener_x - current_x, listener_y - 0);
+                let dir_x = (listener_x - current_x) / distance;
+                let v_rel = current_v * dir_x; 
+                
+                // Doppler Effekt i Luften
+                let doppler_factor = c_air / (c_air - v_rel);
+                
+                // ---- A) BØJNINGSBØLGER I ISEN ("Pew") ----
+                let time_delay_ice = distance / c_ice;
+                let t_arrival_ice = current_t + time_delay_ice;
+                
+                // Tungere sten giver marginalt længere klang i isen
+                let chirp_duration = 1.2 + (m * 0.5); 
+                let chirp_frames = Math.floor(chirp_duration * lastSampleRate); 
+                let start_idx = Math.floor(t_arrival_ice * lastSampleRate);
+                
+                let f_start = 3500.0 * doppler_factor; 
+                let phase = 0;
+
+                for (let i = 0; i < chirp_frames; i++) {
+                    let t_chirp = i / lastSampleRate;
+                    // Ligningsbaseret hyperbel der simulerer dispersionen
+                    let f_base = f_start / (1.0 + Math.pow(t_chirp / tau, 2)) + f_floor;
+                    phase += 2 * Math.PI * f_base / lastSampleRate;
+                    
+                    // Kompleks lyd med overtoner for "sprødhed"
+                    let sample = Math.sin(phase) + 0.4 * Math.sin(phase * 2.14) + 0.2 * Math.sin(phase * 3.47);
+                    
+                    let decay = 3.5 / massAmplitude;
+                    let envelope = Math.exp(-decay * t_chirp);
+                    
+                    // Afstandsdæmpning (Inverse Kvadratlovs-ish)
+                    let volume = (1.0 / (1.0 + Math.pow(distance * 0.15, 1.5))) * massAmplitude;
+                    let energy_factor = current_v / v_start; 
+                    
+                    let idx = start_idx + i;
+                    if (idx < frameCount) { 
+                        data[idx] += sample * envelope * volume * energy_factor; 
+                    }
+                }
+
+                // ---- B) DIREKTE IMPULS GENNEM LUFTEN ("Thump") ----
+                // Ankommer en smule langsommere end "Pew", da isbølger > luftbølger
+                let time_delay_air = distance / c_air;
+                let t_arrival_air = current_t + time_delay_air;
+                
+                let thump_duration = 0.1; // Meget kort impuls
+                let thump_frames = Math.floor(thump_duration * lastSampleRate); 
+                let thump_start_idx = Math.floor(t_arrival_air * lastSampleRate);
+                
+                let volume_air = (1.0 / (1.0 + Math.pow(distance * 0.1, 1.2))) * massAmplitude * 0.8;
+                
+                for (let i = 0; i < thump_frames; i++) {
+                    let t_thump = i / lastSampleRate;
+                    // Simulerer en støjende, lavfrekvent slaglyd, der stråles uafhængigt ud i luften
+                    let thump_sample = (Math.random() * 2 - 1) * Math.sin(2 * Math.PI * 150 * t_thump) + Math.sin(2 * Math.PI * 80 * t_thump);
+                    let thump_env = Math.exp(-t_thump * 40.0);
+                    let idx = thump_start_idx + i;
+                    
+                    if (idx < frameCount) { 
+                        data[idx] += thump_sample * thump_env * volume_air * (current_v / v_start); 
+                    }
+                }
+
+                // ---- C) OPDATER FYSIK TIL NÆSTE HOP ----
+                // Deceleration (mister f.eks. 15% fart pga. friktion og energiafsættelse)
+                current_v *= 0.85; 
+                let skip_distance = current_v * 0.35; 
+                current_x += skip_distance; 
+                current_t += (skip_distance / current_v); 
+                skip_count++;
+            }
+
+            // Normalisering (Hard Limiter så lyden ikke skratte overhøjtalerne)
+            let max_val = 0; 
+            for (let i = 0; i < frameCount; i++) {
+                if (Math.abs(data[i]) > max_val) max_val = Math.abs(data[i]);
+            }
+            if (max_val > 0.9) { 
+                for (let i = 0; i < frameCount; i++) {
+                    data[i] = (data[i] / max_val) * 0.85;
+                }
+            }
+
+            // Gem PCM dataen i tilfælde af brugeren trykker 'Gem som WAV'
+            lastGeneratedPcmData = new Float32Array(data);
+
+            // Playback
+            const source = audioCtx.createBufferSource(); 
+            source.buffer = buffer; 
+            source.connect(analyser); 
+            analyser.connect(audioCtx.destination);
+            
+            source.onended = () => { 
+                cancelAnimationFrame(animationId); 
+                setTimeout(drawEmptySpectrum, 100); 
+                playBtn.disabled = false; 
+                downloadWavBtn.disabled = false; 
+                downloadMaxSpecBtn.disabled = false; 
+                statusTxt.innerText = "Klar til et nyt kast!"; 
+                statusTxt.className = "mt-3 text-center text-sm font-medium text-emerald-400"; 
+            };
+            
+            source.start(); 
+            drawSpectrum(); 
+            statusTxt.innerText = "Afspiller..."; 
+            statusTxt.className = "mt-3 text-center text-sm font-medium text-sky-400";
+        }
+
+        // --- 5. Export Funktioner (CSV, PNG, WAV) ---
+        downloadMaxSpecBtn.addEventListener('click', () => { 
+            if(!maxSpectrumData) return; 
+            let csvContent = "data:text/csv;charset=utf-8,Frekvens (Hz),Intensitet (0-255)\n"; 
+            let nyquist = lastSampleRate / 2; 
+            for(let i=0; i < maxSpectrumData.length; i++) { 
+                let freq = (i * nyquist) / maxSpectrumData.length; 
+                csvContent += `${freq.toFixed(2)},${maxSpectrumData[i]}\n`; 
+            } 
+            const a = document.createElement("a"); 
+            a.setAttribute("href", encodeURI(csvContent)); 
+            a.setAttribute("download", `spektrum_max_${sliders.thick.value}cm.csv`); 
+            document.body.appendChild(a); 
+            a.click(); 
+            document.body.removeChild(a); 
+        });
+
+        snapshotSpecBtn.addEventListener('click', () => { 
+            const a = document.createElement('a'); 
+            a.href = spectrumCanvas.toDataURL('image/png'); 
+            a.download = `spektrum_${sliders.thick.value}cm.png`; 
+            a.click(); 
+        });
+
+        function createWavBlob(pcmData, sampleRate) { 
+            const buffer = new ArrayBuffer(44 + pcmData.length * 2); 
+            const view = new DataView(buffer); 
+            const writeString = (view, offset, string) => { 
+                for (let i = 0; i < string.length; i++) view.setUint8(offset + i, string.charCodeAt(i)); 
+            }; 
+            writeString(view, 0, 'RIFF'); 
+            view.setUint32(4, 36 + pcmData.length * 2, true); 
+            writeString(view, 8, 'WAVE'); 
+            writeString(view, 12, 'fmt '); 
+            view.setUint32(16, 16, true); 
+            view.setUint16(20, 1, true); 
+            view.setUint16(22, 1, true); 
+            view.setUint32(24, sampleRate, true); 
+            view.setUint32(28, sampleRate * 2, true); 
+            view.setUint16(32, 2, true); 
+            view.setUint16(34, 16, true); 
+            writeString(view, 36, 'data'); 
+            view.setUint32(40, pcmData.length * 2, true); 
+            
+            let offset = 44; 
+            for (let i = 0; i < pcmData.length; i++, offset += 2) { 
+                const s = Math.max(-1, Math.min(1, pcmData[i])); 
+                view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true); 
+            } 
+            return new Blob([view], { type: 'audio/wav' }); 
+        }
+
+        downloadWavBtn.addEventListener('click', () => { 
+            if(!lastGeneratedPcmData) return; 
+            const url = URL.createObjectURL(createWavBlob(lastGeneratedPcmData, lastSampleRate));
+            const a = document.createElement('a'); 
+            a.href = url; 
+            a.download = `islyd_${sliders.thick.value}cm_${sliders.temp.value}deg.wav`; 
+            a.click(); 
+            URL.revokeObjectURL(url); 
+        });
+
+        downloadGraphsBtn.addEventListener('click', () => { 
+            const a1 = document.createElement('a'); 
+            a1.href = document.getElementById('dispersionChart').toDataURL('image/png'); 
+            a1.download = 'dispersion.png'; 
+            a1.click(); 
+            
+            setTimeout(() => { 
+                const a2 = document.createElement('a'); 
+                a2.href = document.getElementById('velocityChart').toDataURL('image/png'); 
+                a2.download = 'hastighed.png'; 
+                a2.click(); 
+            }, 300); 
+        });
+
+        // --- 6. Event Listeners for UI Skydere ---
+        Object.values(sliders).forEach(slider => { 
+            slider.addEventListener('input', () => { 
+                labels.thick.innerText = sliders.thick.value + " cm"; 
+                labels.speed.innerText = sliders.speed.value + " m/s"; 
+                labels.mass.innerText = sliders.mass.value + " g"; 
+                labels.temp.innerText = sliders.temp.value + " °C"; 
+                updateCharts(); 
+            }); 
+        });
+        
+        playBtn.addEventListener('click', playIceSound); 
+        
+        // --- 7. Start Applikationen ---
+        updateCharts();
+    </script>
+</body>
+</html>
