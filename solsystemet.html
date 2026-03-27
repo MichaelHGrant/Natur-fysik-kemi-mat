@@ -125,7 +125,7 @@
         }
 
         // 7. INSTANSIERING AF PLANETERNE
-        const planets =; // Dette array indsamler alle planeter til opdaterings-loopet
+        const planets =; // RETTET HER! Nu crasher scriptet ikke.
 
         planets.push(new Planet('Mercury', 0.38, 8, 0.004, 0.015, {
             albedo: 'https://www.solarsystemscope.com/textures/download/2k_mercury.jpg'
@@ -157,3 +157,78 @@
         // Saturns Ringsystem
         const ringGeo = new THREE.RingGeometry(2.5 * SCALE, 4.5 * SCALE, 64);
         const pos = ringGeo.attributes.position;
+        const v3 = new THREE.Vector3();
+        const innerBound = 2.5 * SCALE;
+        const thickness = (4.5 - 2.5) * SCALE;
+        
+        for (let i = 0; i < pos.count; i++) {
+            v3.fromBufferAttribute(pos, i);
+            let mapping = (v3.length() - innerBound) / thickness;
+            ringGeo.attributes.uv.setXY(i, mapping, 0.5);
+        }
+
+        const ringMat = new THREE.MeshStandardMaterial({
+            map: textureLoader.load('https://www.solarsystemscope.com/textures/download/2k_saturn_ring_alpha.png'),
+            color: 0xffffff,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.8
+        });
+
+        const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+        ringMesh.rotation.x = -Math.PI / 2;
+        saturn.mesh.add(ringMesh);
+
+        planets.push(new Planet('Uranus', 1.5, 85, -0.01, 0.001, {
+            albedo: 'https://www.solarsystemscope.com/textures/download/2k_uranus.jpg'
+        }));
+
+        planets.push(new Planet('Neptune', 1.4, 105, 0.012, 0.0008, {
+            albedo: 'https://www.solarsystemscope.com/textures/download/2k_neptune.jpg'
+        }));
+
+        // 8. PROCEDUREL STJERNEBAGGRUND
+        const starGeometry = new THREE.BufferGeometry();
+        const starCount = 6000;
+        const starPosArray = new Float32Array(starCount * 3); 
+
+        for(let i = 0; i < starCount * 3; i++) {
+            starPosArray[i] = (Math.random() - 0.5) * 50000;
+        }
+
+        starGeometry.setAttribute('position', new THREE.BufferAttribute(starPosArray, 3));
+        
+        const starMaterial = new THREE.PointsMaterial({
+            color: 0xffffff,
+            size: 10,
+            transparent: true,
+            opacity: 0.8
+        });
+
+        const starMesh = new THREE.Points(starGeometry, starMaterial);
+        scene.add(starMesh);
+
+        // 9. RESPONSIVITET (RESIZE)
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // 10. ANIMATIONSLØKKE OG RENDERING
+        function animate() {
+            requestAnimationFrame(animate);
+
+            sunMesh.rotation.y += 0.002;
+            planets.forEach(planet => planet.update());
+            starMesh.rotation.y -= 0.0002;
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+    </script>
+</body>
+</html>
