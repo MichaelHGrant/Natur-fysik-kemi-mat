@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interaktiv 3D Solsystem Model</title>
+    <style>
+        body { 
+            margin: 0; 
+            padding: 0;
+            overflow: hidden; 
+            background-color: #000000; 
+            font-family: sans-serif;
+            color: white;
+        }
+        canvas { 
+            display: block; 
+            width: 100vw;
+            height: 100vh;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 100;
+            pointer-events: none;
+            background: rgba(0,0,0,0.6);
+            padding: 15px;
+            border-radius: 8px;
+        }
+    </style>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+    
+    <div id="info">
+        <h3 style="margin-top: 0;">Solsystemet i 3D</h3>
+        <p style="margin-bottom: 0;">Venstreklik: Rotér kamera<br>Scroll: Zoom ind/ud<br>Højreklik: Flyt kamera (Panorér)</p>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // 1. SCENE OG KAMERA OPSÆTNING
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 50000);
+        camera.position.set(0, 1500, 3000);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        document.body.appendChild(renderer.domElement);
+
+        // 2. KONTROLLER OG BRUGERINTERAKTION
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true; 
+        controls.dampingFactor = 0.05;
+        controls.minDistance = 200;
+        controls.maxDistance = 20000;
+
+        // 3. TEKSTUR HÅNDTERING (CORS anonymitet)
+        const textureLoader = new THREE.TextureLoader();
+        textureLoader.crossOrigin = 'anonymous';
+
+        // 4. BELYSNING
+        const ambientLight = new THREE.AmbientLight(0x333333); // Svagt grundlys
+        scene.add(ambientLight);
+
+        const sunLight = new THREE.PointLight(0xffffff, 4, 15000); // Kraftigt lys fra centrum
+        scene.add(sunLight);
+
+        // 5. SOLEN
+        const SCALE = 20; 
+        const sunGeometry = new THREE.SphereGeometry(SCALE * 5, 64, 64);
+        const sunMaterial = new THREE.MeshBasicMaterial({
+            map: textureLoader.load('https://www.solarsystemscope.com/textures/download/2k_sun.jpg'),
+            color: 0xffffee // Fallback farve
+        });
+        const sunMesh = new THREE.Mesh(sunGeometry, sunMaterial);
+        scene.add(sunMesh);
+
+        // 6. PLANETARKITEKTUR (KLASSE)
+        class Planet {
+            constructor(name, radius, distance, rotationSpeed, orbitSpeed, textureUrls) {
+                this.name = name;
+                this.rotationSpeed = rotationSpeed;
+                this.orbitSpeed = orbitSpeed;
+
+                this.pivot = new THREE.Object3D();
+                scene.add(this.pivot);
+
+                const geometry = new THREE.SphereGeometry(radius * SCALE, 32, 32);
+                const material = new THREE.MeshStandardMaterial({
+                    map: textureLoader.load(textureUrls.albedo),
+                    roughness: textureUrls.specular? 0.3 : 0.8,
+                    color: 0xffffff // Fallback farve
+                });
+
+                if (textureUrls.normal) {
+                    material.normalMap = textureLoader.load(textureUrls.normal);
+                    material.normalScale = new THREE.Vector2(0.8, 0.8);
+                }
+
+                this.mesh = new THREE.Mesh(geometry, material);
+                this.mesh.position.set(distance * SCALE, 0, 0);
+                
+                this.pivot.add(this.mesh);
+                this.pivot.rotation.y = Math.random() * Math.PI * 2; 
+            }
+
+            update() {
+                this.mesh.rotation.y += this.rotationSpeed;
+                this.pivot.rotation.y += this.orbitSpeed;
+            }
+        }
+
+        // 7. INSTANSIERING AF PLANETERNE
+        const planets =; // Dette array indsamler alle planeter til opdaterings-loopet
+
+        planets.push(new Planet('Mercury', 0.38, 8, 0.004, 0.015, {
+            albedo: 'https://www.solarsystemscope.com/textures/download/2k_mercury.jpg'
+        }));
+
+        planets.push(new Planet('Venus', 0.95, 14, -0.002, 0.012, {
+            albedo: 'https://www.solarsystemscope.com/textures/download/2k_venus_surface.jpg'
+        }));
+
+        planets.push(new Planet('Earth', 1.0, 22, 0.01, 0.008, {
+            albedo: 'https://www.solarsystemscope.com/textures/download/2k_earth_daymap.jpg',
+            normal: 'https://www.solarsystemscope.com/textures/download/2k_earth_normal_map.tif',
+            specular: 'true'
+        }));
+
+        planets.push(new Planet('Mars', 0.53, 30, 0.009, 0.006, {
+            albedo: 'https://www.solarsystemscope.com/textures/download/2k_mars.jpg'
+        }));
+
+        planets.push(new Planet('Jupiter', 2.5, 45, 0.02, 0.002, {
+            albedo: 'https://www.solarsystemscope.com/textures/download/2k_jupiter.jpg'
+        }));
+
+        const saturn = new Planet('Saturn', 2.0, 65, 0.018, 0.0015, {
+            albedo: 'https://www.solarsystemscope.com/textures/download/2k_saturn.jpg'
+        });
+        planets.push(saturn);
+        
+        // Saturns Ringsystem
+        const ringGeo = new THREE.RingGeometry(2.5 * SCALE, 4.5 * SCALE, 64);
+        const pos = ringGeo.attributes.position;
