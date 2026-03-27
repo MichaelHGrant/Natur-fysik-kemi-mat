@@ -29,9 +29,6 @@
             border-radius: 8px;
         }
     </style>
-
-    <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
-
     <script type="importmap">
         {
             "imports": {
@@ -75,7 +72,7 @@
         textureLoader.crossOrigin = 'anonymous';
 
         // 4. BELYSNING
-        const ambientLight = new THREE.AmbientLight(0x333333);
+        const ambientLight = new THREE.AmbientLight(0x444444);
         scene.add(ambientLight);
 
         const sunLight = new THREE.PointLight(0xffffff, 4, 15000);
@@ -86,14 +83,14 @@
         const sunGeometry = new THREE.SphereGeometry(SCALE * 5, 64, 64);
         const sunMaterial = new THREE.MeshBasicMaterial({
             map: textureLoader.load('https://www.solarsystemscope.com/textures/download/2k_sun.jpg'),
-            color: 0xffffee 
+            color: 0xffcc00 // Guld farve som fallback
         });
         const sunMesh = new THREE.Mesh(sunGeometry, sunMaterial);
         scene.add(sunMesh);
 
         // 6. PLANETARKITEKTUR (KLASSE)
         class Planet {
-            constructor(name, radius, distance, rotationSpeed, orbitSpeed, textureUrls) {
+            constructor(name, radius, distance, rotationSpeed, orbitSpeed, textureUrl, fallbackColor) {
                 this.name = name;
                 this.rotationSpeed = rotationSpeed;
                 this.orbitSpeed = orbitSpeed;
@@ -103,9 +100,9 @@
 
                 const geometry = new THREE.SphereGeometry(radius * SCALE, 32, 32);
                 const material = new THREE.MeshStandardMaterial({
-                    map: textureLoader.load(textureUrls.albedo),
+                    map: textureLoader.load(textureUrl),
                     roughness: 0.8,
-                    color: 0xffffff // Falder tilbage på en hvid/grå kugle, hvis billedet afvises
+                    color: fallbackColor // Farve vises hvis billedet fejler
                 });
 
                 this.mesh = new THREE.Mesh(geometry, material);
@@ -122,31 +119,15 @@
         }
 
         // 7. INSTANSIERING AF PLANETERNE
-        const planets =; // Vores korrekte, tomme liste
+        const planets = [ ]; // <--- HER ER DE MANGLENDE PARENTESER ENDELIG MED!
 
-        planets.push(new Planet('Mercury', 0.38, 8, 0.004, 0.015, {
-            albedo: 'https://www.solarsystemscope.com/textures/download/2k_mercury.jpg'
-        }));
-
-        planets.push(new Planet('Venus', 0.95, 14, -0.002, 0.012, {
-            albedo: 'https://www.solarsystemscope.com/textures/download/2k_venus_surface.jpg'
-        }));
-
-        planets.push(new Planet('Earth', 1.0, 22, 0.01, 0.008, {
-            albedo: 'https://www.solarsystemscope.com/textures/download/2k_earth_daymap.jpg'
-        }));
-
-        planets.push(new Planet('Mars', 0.53, 30, 0.009, 0.006, {
-            albedo: 'https://www.solarsystemscope.com/textures/download/2k_mars.jpg'
-        }));
-
-        planets.push(new Planet('Jupiter', 2.5, 45, 0.02, 0.002, {
-            albedo: 'https://www.solarsystemscope.com/textures/download/2k_jupiter.jpg'
-        }));
-
-        const saturn = new Planet('Saturn', 2.0, 65, 0.018, 0.0015, {
-            albedo: 'https://www.solarsystemscope.com/textures/download/2k_saturn.jpg'
-        });
+        planets.push(new Planet('Mercury', 0.38, 8, 0.004, 0.015, 'https://www.solarsystemscope.com/textures/download/2k_mercury.jpg', 0x888888));
+        planets.push(new Planet('Venus', 0.95, 14, -0.002, 0.012, 'https://www.solarsystemscope.com/textures/download/2k_venus_surface.jpg', 0xe3bb76));
+        planets.push(new Planet('Earth', 1.0, 22, 0.01, 0.008, 'https://www.solarsystemscope.com/textures/download/2k_earth_daymap.jpg', 0x2233ff));
+        planets.push(new Planet('Mars', 0.53, 30, 0.009, 0.006, 'https://www.solarsystemscope.com/textures/download/2k_mars.jpg', 0xaf3f00));
+        planets.push(new Planet('Jupiter', 2.5, 45, 0.02, 0.002, 'https://www.solarsystemscope.com/textures/download/2k_jupiter.jpg', 0xd39c7e));
+        
+        const saturn = new Planet('Saturn', 2.0, 65, 0.018, 0.0015, 'https://www.solarsystemscope.com/textures/download/2k_saturn.jpg', 0xead6b8);
         planets.push(saturn);
         
         // Saturns Ringsystem
@@ -164,7 +145,7 @@
 
         const ringMat = new THREE.MeshStandardMaterial({
             map: textureLoader.load('https://www.solarsystemscope.com/textures/download/2k_saturn_ring_alpha.png'),
-            color: 0xffffff,
+            color: 0xead6b8,
             side: THREE.DoubleSide,
             transparent: true,
             opacity: 0.8
@@ -174,13 +155,8 @@
         ringMesh.rotation.x = -Math.PI / 2;
         saturn.mesh.add(ringMesh);
 
-        planets.push(new Planet('Uranus', 1.5, 85, -0.01, 0.001, {
-            albedo: 'https://www.solarsystemscope.com/textures/download/2k_uranus.jpg'
-        }));
-
-        planets.push(new Planet('Neptune', 1.4, 105, 0.012, 0.0008, {
-            albedo: 'https://www.solarsystemscope.com/textures/download/2k_neptune.jpg'
-        }));
+        planets.push(new Planet('Uranus', 1.5, 85, -0.01, 0.001, 'https://www.solarsystemscope.com/textures/download/2k_uranus.jpg', 0x4b70dd));
+        planets.push(new Planet('Neptune', 1.4, 105, 0.012, 0.0008, 'https://www.solarsystemscope.com/textures/download/2k_neptune.jpg', 0x415491));
 
         // 8. PROCEDUREL STJERNEBAGGRUND
         const starGeometry = new THREE.BufferGeometry();
