@@ -38,7 +38,7 @@
         </div>
         <div class="input-group">
             <label>Antal frekvenstrin (Max intervals):</label>
-            <input type="number" id="inpSteps" value="80">
+            <input type="number" id="inpSteps" value="100">
         </div>
         <button id="runBtn">Tegn Graf & Kør Beregning</button>
     </div>
@@ -70,6 +70,7 @@ class Complex {
     mult(c) { return new Complex(this.r * c.r - this.i * c.i, this.r * c.i + this.i * c.r); }
     div(c) {
         let den = c.r * c.r + c.i * c.i;
+        if (den === 0) return new Complex(0,0); // Sikkerhed mod division med 0
         return new Complex((this.r * c.r + this.i * c.i) / den, (this.i * c.r - this.r * c.i) / den);
     }
     scale(s) { return new Complex(this.r * s, this.i * s); }
@@ -79,6 +80,10 @@ class Complex {
         return new Complex(Math.sqrt(mag) * Math.cos(angle / 2), Math.sqrt(mag) * Math.sin(angle / 2));
     }
     tan() {
+        // NUMERISK SIKKERHEDSVENTIL FOR AT UNDGÅ "Infinity / Infinity = NaN"
+        if (this.i > 20) return new Complex(0, 1);
+        if (this.i < -20) return new Complex(0, -1);
+        
         let den = Math.cos(2 * this.r) + Math.cosh(2 * this.i);
         if (den === 0) return new Complex(0, 0);
         return new Complex(Math.sin(2 * this.r) / den, Math.sinh(2 * this.i) / den);
@@ -102,124 +107,3 @@ document.getElementById("runBtn").addEventListener("click", function() {
     let Kf = 2 * Math.PI * freqRes / C;
     
     let Zr = [], Zi = [], Gamr = [], Gami = [];
-    let freqs = [], attenuations = [];
-
-    print("Trin 1: Beregner materialets egenskaber (Mechel / Delany & Bazley)...");
-    for (let J = 1; J <= steps; J++) {
-        let currentA = Af / J;
-        let K = J * Kf;
-
-        if (currentA < 60) {
-            let logA = Math.log(currentA);
-            Zr[J] = 1 + 0.04885 * Math.exp(0.754 * logA);
-            Zi[J] = -0.087 * Math.exp(0.7307 * logA);
-            Gamr[J] = K * 0.189 * Math.exp(0.6185 * logA);
-            Gami[J] = K * (1 + 0.0978 * Math.exp(-0.6929 * logA));
-        } else {
-            let term = new Complex(-1.4664, 0.2115 * currentA);
-            let sqrtTerm = term.sqrt();
-            Gamr[J] = K * sqrtTerm.r;
-            Gami[J] = K * sqrtTerm.i;
-            let numerator = new Complex(currentA / (2 * Math.PI), 1.4035);
-            let Z_val = numerator.div(sqrtTerm);
-            Zr[J] = Z_val.r;
-            Zi[J] = Z_val.i;
-        }
-    }
-
-    print("Trin 2: Newton-Raphson iteration for at finde Udbredelseskonstanten (Gamma)...");
-    let b = thick / width; 
-    let L1 = width;
-    let currentW = new Complex(0.1, 0.1); // Startgæt
-
-    for (let J = 1; J <= steps; J++) {
-        let K = Kf * J;
-        let Z_c = new Complex(Zr[J], Zi[J]);
-        let Gam_c = new Complex(Gamr[J], Gami[J]);
-        
-        let M = (new Complex(0, -RHO * C * K)).div(Z_c.mult(Gam_c));
-        let kl_complex = new Complex(K * L1, 0);
-        let p2 = (Gam_c.scale(L1)).mult(Gam_c.scale(L1)).sub(kl_complex.mult(kl_complex));
-
-        let iterations = 0;
-        let converged = false;
-
-        while (iterations < 100 && !converged) {
-            iterations++;
-            let w2 = currentW.mult(currentW);
-            let sqrt_w2_p2 = (w2.add(p2)).sqrt();
-            let fw = currentW.mult(currentW.tan()).add(M.mult(sqrt_w2_p2).mult((sqrt_w2_p2.scale(b)).tan()));
-
-            let delta = new Complex(1e-6, 1e-6);
-            let w_d = currentW.add(delta);
-            let sqrt_w2_p2_d = (w_d.mult(w_d).add(p2)).sqrt();
-            let fw_d = w_d.mult(w_d.tan()).add(M.mult(sqrt_w2_p2_d).mult((sqrt_w2_p2_d.scale(b)).tan()));
-
-            let f_prime = fw_d.sub(fw).div(delta);
-            let w_step = fw.div(f_prime);
-            currentW = currentW.sub(w_step);
-
-            if (Math.abs(w_step.r) <= 1e-8 && Math.abs(w_step.i) <= 1e-8) converged = true;
-        }
-
-        // KORREKT FYSIK-OMREGNING HER:
-        // w^2 = (Gamma*l)^2 + (k*l)^2  =>  Gamma = sqrt(w^2 - (k*l)^2) / l
-        let w_sq = currentW.mult(currentW);
-        let kl_sq = kl_complex.mult(kl_complex);
-        let gam_l_sq = w_sq.sub(kl_sq);
-        let gam_l = gam_l_sq.sqrt();
-        
-        let Gamma = new Complex(gam_l.r / L1, gam_l.i / L1);
-        
-        // Fysisk sikring: Dæmpningen (Re(Gamma)) skal være positiv i vores retning
-        if (Gamma.r < 0) {
-            Gamma = new Complex(-Gamma.r, -Gamma.i);
-        }
-
-        let atten_dB = 8.686 * Gamma.r; // Konverter Neper til dB/m
-
-        let freqHz = Math.round(K * C / (2 * Math.PI));
-        freqs.push(freqHz);
-        attenuations.push(atten_dB);
-        
-        print(`Frekvens: ${freqHz} Hz | Dæmpning: ${atten_dB.toFixed(2)} dB/m | Iterationer: ${iterations}`);
-    }
-
-    print("Beregning færdig. Tegner graf...");
-    drawChart(freqs, attenuations);
-});
-
-function drawChart(labels, data) {
-    let ctx = document.getElementById('resultChart').getContext('2d');
-    
-    if (chartInstance) { chartInstance.destroy(); }
-
-    chartInstance = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Dæmpning i røret (dB/m)',
-                data: data,
-                borderColor: '#2ecc71',
-                backgroundColor: 'rgba(46, 204, 113, 0.2)',
-                borderWidth: 2,
-                pointRadius: 2,
-                fill: true,
-                tension: 0.3
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                x: { title: { display: true, text: 'Frekvens (Hz)', font: {weight: 'bold'} } },
-                y: { title: { display: true, text: 'Dæmpning (dB / meter)', font: {weight: 'bold'} }, beginAtZero: true }
-            }
-        }
-    });
-}
-</script>
-
-</body>
-</html>
