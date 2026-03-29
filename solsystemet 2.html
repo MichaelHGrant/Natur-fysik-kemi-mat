@@ -5,44 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interaktiv 3D Solsystem Model</title>
     <style>
-        body { 
-            margin: 0; 
-            padding: 0;
-            overflow: hidden; 
-            background-color: #000000; 
-            font-family: sans-serif;
-            color: white;
-        }
-        canvas { 
-            display: block; 
-            width: 100vw;
-            height: 100vh;
-        }
-        #info {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            z-index: 100;
-            pointer-events: none;
-            background: rgba(0,0,0,0.6);
-            padding: 15px;
-            border-radius: 8px;
-        }
+        body { margin: 0; padding: 0; overflow: hidden; background-color: #000000; font-family: sans-serif; color: white; }
+        canvas { display: block; width: 100vw; height: 100vh; }
+        #info { position: absolute; top: 10px; left: 10px; z-index: 100; pointer-events: none; background: rgba(0,0,0,0.6); padding: 15px; border-radius: 8px; }
     </style>
 
     <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
 
     <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-            }
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
         }
+    }
     </script>
 </head>
 <body>
-    
     <div id="info">
         <h3 style="margin-top: 0;">Solsystemet i 3D</h3>
         <p style="margin-bottom: 0;">Venstreklik: Rotér kamera<br>Scroll: Zoom ind/ud<br>Højreklik: Flyt (Panorér)</p>
@@ -52,7 +31,6 @@
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-        // 1. SCENE OG KAMERA OPSÆTNING
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 50000);
         camera.position.set(0, 1500, 3000);
@@ -63,26 +41,23 @@
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
         document.body.appendChild(renderer.domElement);
 
-        // 2. KONTROLLER OG BRUGERINTERAKTION
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true; 
         controls.dampingFactor = 0.05;
         controls.minDistance = 200;
         controls.maxDistance = 20000;
 
-        // 3. TEKSTUR HÅNDTERING
         const textureLoader = new THREE.TextureLoader();
         textureLoader.crossOrigin = 'anonymous';
 
-        // 4. BELYSNING
         const ambientLight = new THREE.AmbientLight(0x444444);
         scene.add(ambientLight);
 
         const sunLight = new THREE.PointLight(0xffffff, 4, 15000);
         scene.add(sunLight);
 
-        // 5. SOLEN
         const SCALE = 20; 
+
         const sunGeometry = new THREE.SphereGeometry(SCALE * 5, 64, 64);
         const sunMaterial = new THREE.MeshBasicMaterial({ color: 0xffcc00 });
         
@@ -95,10 +70,8 @@
         const sunMesh = new THREE.Mesh(sunGeometry, sunMaterial);
         scene.add(sunMesh);
 
-        // 6. PLANETARKITEKTUR (KLASSE)
         class Planet {
             constructor(name, radius, distance, rotationSpeed, orbitSpeed, textureUrl, fallbackColor) {
-                this.name = name;
                 this.rotationSpeed = rotationSpeed;
                 this.orbitSpeed = orbitSpeed;
 
@@ -106,7 +79,6 @@
                 scene.add(this.pivot);
 
                 const geometry = new THREE.SphereGeometry(radius * SCALE, 32, 32);
-                
                 const material = new THREE.MeshStandardMaterial({
                     roughness: 0.8,
                     color: fallbackColor
@@ -124,10 +96,6 @@
                         material.map = texture;
                         material.color.setHex(0xffffff); 
                         material.needsUpdate = true;
-                    }, 
-                    undefined, 
-                    function(err) {
-                        console.warn('Kunne ikke hente billede for ' + name);
                     }
                 );
             }
@@ -138,8 +106,7 @@
             }
         }
 
-        // 7. INSTANSIERING AF PLANETERNE
-        // Fejlen er rettet her med 'new Array()' for at undgå at chatten sletter noget!
+        // Ren liste uden skjulte karakterer
         const planets = new Array();
 
         planets.push(new Planet('Mercury', 0.38, 8, 0.004, 0.015, 'https://www.solarsystemscope.com/textures/download/2k_mercury.jpg', 0x888888));
@@ -151,7 +118,6 @@
         const saturn = new Planet('Saturn', 2.0, 65, 0.018, 0.0015, 'https://www.solarsystemscope.com/textures/download/2k_saturn.jpg', 0xead6b8);
         planets.push(saturn);
         
-        // Saturns Ringsystem
         const ringGeo = new THREE.RingGeometry(2.5 * SCALE, 4.5 * SCALE, 64);
         const pos = ringGeo.attributes.position;
         const v3 = new THREE.Vector3();
@@ -184,48 +150,34 @@
         planets.push(new Planet('Uranus', 1.5, 85, -0.01, 0.001, 'https://www.solarsystemscope.com/textures/download/2k_uranus.jpg', 0x4b70dd));
         planets.push(new Planet('Neptune', 1.4, 105, 0.012, 0.0008, 'https://www.solarsystemscope.com/textures/download/2k_neptune.jpg', 0x415491));
 
-        // 8. PROCEDUREL STJERNEBAGGRUND
         const starGeometry = new THREE.BufferGeometry();
-        const starCount = 6000;
-        const starPosArray = new Float32Array(starCount * 3); 
+        const starPosArray = new Float32Array(6000 * 3); 
 
-        for(let i = 0; i < starCount * 3; i++) {
+        for(let i = 0; i < 6000 * 3; i++) {
             starPosArray[i] = (Math.random() - 0.5) * 50000;
         }
 
         starGeometry.setAttribute('position', new THREE.BufferAttribute(starPosArray, 3));
-        
-        const starMaterial = new THREE.PointsMaterial({
-            color: 0xffffff,
-            size: 10,
-            transparent: true,
-            opacity: 0.8
-        });
-
+        const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 10, transparent: true, opacity: 0.8 });
         const starMesh = new THREE.Points(starGeometry, starMaterial);
         scene.add(starMesh);
 
-        // 9. RESPONSIVITET
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        // 10. ANIMATIONSLØKKE
         function animate() {
             requestAnimationFrame(animate);
-
             sunMesh.rotation.y += 0.002;
             planets.forEach(planet => planet.update());
             starMesh.rotation.y -= 0.0002;
-
             controls.update();
             renderer.render(scene, camera);
         }
 
         animate();
-
     </script>
 </body>
 </html>
