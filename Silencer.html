@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <title>Duct Sound Propagation Calculator</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f4f4f9; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        h1 { color: #333; }
+        button { background: #0078D7; color: white; border: none; padding: 10px 20px; cursor: pointer; font-size: 16px; border-radius: 4px; }
+        button:hover { background: #005a9e; }
+        pre { background: #222; color: #0f0; padding: 15px; border-radius: 4px; overflow-x: auto; height: 400px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Lydudbredelse i Absorptionsbeklædt Rør</h1>
+    <p>Oversat fra HP BASIC til JavaScript. Tryk på knappen for at køre "Material" og "Extended" algoritmerne.</p>
+    
+    <button id="runBtn">Kør Beregning</button>
+
+    <h2>Output:</h2>
+    <pre id="output">System klar til start...</pre>
+</div>
+
+<script>
+// --- GLOBAL FEJL-FANGER ---
+// Skriver evt. fejl direkte på skærmen, så de ikke gemmer sig i F12-konsollen
+window.onerror = function(message, source, lineno, colno, error) {
+    document.getElementById("output").innerText += "\n[SYSTEM FEJL]: " + message + " (Linje: " + lineno + ")";
+    return true;
+};
+
+// Global log funktion til at skrive til den sorte boks
+function print(text) {
+    document.getElementById("output").innerText += text + "\n";
+}
+
+// --- KOMPLEKS MATEMATIK HJÆLPEKLASSE ---
+class Complex {
+    constructor(r, i) {
+        this.r = r;
+        this.i = i;
+    }
+    add(c) { return new Complex(this.r + c.r, this.i + c.i); }
+    sub(c) { return new Complex(this.r - c.r, this.i - c.i); }
+    mult(c) { return new Complex(this.r * c.r - this.i * c.i, this.r * c.i + this.i * c.r); }
+    div(c) {
+        let den = c.r * c.r + c.i * c.i;
+        if (den === 0) throw new Error("Division med nul i kompleks regning!");
+        return new Complex((this.r * c.r + this.i * c.i) / den, (this.i * c.r - this.r * c.i) / den);
+    }
+    scale(s) { return new Complex(this.r * s, this.i * s); }
+    
+    sqrt() {
+        let mag = Math.sqrt(this.r * this.r + this.i * this.i);
+        let angle = Math.atan2(this.i, this.r);
+        return new Complex(Math.sqrt(mag) * Math.cos(angle / 2), Math.sqrt(mag) * Math.sin(angle / 2));
+    }
+    
+    tan() {
+        let den = Math.cos(2 * this.r) + Math.cosh(2 * this.i);
+        if (den === 0) return new Complex(0, 0); // Sikkerhed for Infinity
+        return new Complex(Math.sin(2 * this.r) / den, Math.sinh(2 * this.i) / den);
+    }
+}
+
+// --- GLOBALE VARIABLER ---
+const C = 344.246; // Lydens hastighed (m/s)
+const RHO = 1.205; // Luftens densitet
+let Af, Kf, Max;
+let Zr = [], Zi = [], Gamr = [], Gami = [], Wre = [], Wim = [];
+
+// --- SUBROUTINE: Material ---
+function calculateMaterial(flowResistivity, freqResolution, numIntervals) {
+    print("Beregner udbredelseskonstant for det absorberende materiale...");
+    Af = flowResistivity / RHO / freqResolution;
+    Kf = 2 * Math.PI * freqResolution / C;
+    Max = numIntervals;
+
+    for (let J = 1; J <= Max; J++) {
+        let currentA = Af / J;
+        let K = J * Kf;
+
+        if (currentA < 60) {
+            let logA = Math.log(currentA);
+            Zr[J] = 1 + 0.04885 * Math.exp(0.754 * logA);
+            Zi[J] = -0.087 * Math.exp(0.7307 * logA);
+            Gamr[J] = K * 0.189 * Math.exp(0.6185 * logA);
+            Gami[J] = K * (1 + 0.0978 * Math.exp(-0.6929 * logA));
+        } else {
+            let K1 = -1.4664, K2 = 0.2115, K4 = 1.4035;
+            let term = new Complex(K1, K2 * currentA);
+            let sqrtTerm = term.sqrt();
+            
+            Gamr[J] = K * sqrtTerm.r;
+            Gami[J] = K * sqrtTerm.i;
+
+            let numerator = new Complex(currentA / (2 * Math.PI), K4);
+            let Z_val = numerator.div(sqrtTerm);
+            
+            Zr[J] = Z_val.r;
+            Zi[J] = Z_val.i;
+        }
+    }
+    print(" > 'Material' beregning fuldført.\n");
+}
+
+// --- SUBROUTINE: Extended ---
+function calculateExtended(liningThickness, ductWidthHalf) {
+    print("Beregner udbredelseskonstant for beklædt rør (Extended Reaction)...");
+    let b = liningThickness / ductWidthHalf; 
+    let L1 = ductWidthHalf;
+    let Ep = 1.0e-10; 
+
+    let currentW = new Complex(0.1, 0.1); // Startværdi
+
+    for (let J = 1; J <= Math.min(Max, 50); J++) { 
+        let K = Kf * J;
+        let Z_c = new Complex(Zr[J], Zi[J]);
+        let Gam_c = new Complex(Gamr[J], Gami[J]);
+        
+        let M_numerator = new Complex(0, -RHO * C * K);
+        let M_denominator = Z_c.mult(Gam_c);
+        let M = M_numerator.div(M_denominator);
+
+        let hl = Gam_c.scale(L1);
+        let kl = K * L1;
+        let p2 = hl.mult(hl).sub(new Complex(kl * kl, 0));
+
+        let iterations = 0;
+        let converged = false;
+
+        while (iterations < 100 && !converged) {
+            iterations++;
+            
+            let w2 = currentW.mult(currentW);
+            let sqrt_w2_p2 = (w2.add(p2)).sqrt();
+            
+            let w_tan_w = currentW.mult(currentW.tan());
+            let term2 = M.mult(sqrt_w2_p2).mult((sqrt_w2_p2.scale(b)).tan());
+            let fw = w_tan_w.add(term2);
+
+            let delta = new Complex(1e-6, 1e-6);
+            let w_plus_delta = currentW.add(delta);
+            
+            let w2_d = w_plus_delta.mult(w_plus_delta);
+            let sqrt_w2_p2_d = (w2_d.add(p2)).sqrt();
+            let term2_d = M.mult(sqrt_w2_p2_d).mult((sqrt_w2_p2_d.scale(b)).tan());
+            let fw_d = w_plus_delta.mult(w_plus_delta.tan()).add(term2_d);
+
+            let f_prime = fw_d.sub(fw).div(delta);
+            let w_step = fw.div(f_prime);
+            
+            currentW = currentW.sub(w_step);
+
+            if (Math.abs(w_step.r) <= Ep && Math.abs(w_step.i) <= Ep) {
+                converged = true;
+            }
+        }
+
+        Wre[J] = currentW.r;
+        Wim[J] = currentW.i;
+        
+        let freqHz = Math.round(K * C / (2 * Math.PI));
+        print(`Frekvens: ${freqHz} Hz | w = ${currentW.r.toFixed(4)} + j${currentW.i.toFixed(4)} | Iterationer: ${iterations}`);
+    }
+    print(" > 'Extended' beregning fuldført.");
+}
+
+// --- HOVEDFUNKTION DER KØRES VED KLIK ---
+function runSimulation() {
+    document.getElementById("output").innerText = ""; 
+    
+    let flowResistivity = 32000; 
+    let freqResolution = 32;     
+    let numIntervals = 20;       // Begrænset til 20 skridt for overskuelighed
+    let liningThickness = 0.15;  
+    let ductWidthHalf = 0.15;    
+
+    print(`--- STARTER BEREGNING ---`);
+    print(`Strømningsmodstand (Flow resistivity): ${flowResistivity} N·s/m4`);
+    print(`Beklædningstykkelse: ${liningThickness} m\n`);
+
+    calculateMaterial(flowResistivity, freqResolution, numIntervals);
+    calculateExtended(liningThickness, ductWidthHalf);
+}
+
+// Sæt knappen op via JavaScript for at undgå HTML "not defined" fejl
+document.getElementById("runBtn").addEventListener("click", function() {
+    try {
+        runSimulation();
+    } catch (e) {
+        print("\n[UDFØRELSESFEJL]: " + e.message);
+    }
+});
+</script>
+
+</body>
+</html>
