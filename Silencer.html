@@ -107,3 +107,133 @@ document.getElementById("runBtn").addEventListener("click", function() {
     let Kf = 2 * Math.PI * freqRes / C;
     
     let Zr = [], Zi = [], Gamr = [], Gami = [];
+    let freqs = [], attenuations = [];
+
+    print("Trin 1: Beregner materialets egenskaber...");
+    for (let J = 1; J <= steps; J++) {
+        let currentA = Af / J;
+        let K = J * Kf;
+
+        if (currentA < 60) {
+            let logA = Math.log(currentA);
+            Zr[J] = 1 + 0.04885 * Math.exp(0.754 * logA);
+            Zi[J] = -0.087 * Math.exp(0.7307 * logA);
+            Gamr[J] = K * 0.189 * Math.exp(0.6185 * logA);
+            Gami[J] = K * (1 + 0.0978 * Math.exp(-0.6929 * logA));
+        } else {
+            let term = new Complex(-1.4664, 0.2115 * currentA);
+            let sqrtTerm = term.sqrt();
+            Gamr[J] = K * sqrtTerm.r;
+            Gami[J] = K * sqrtTerm.i;
+            let numerator = new Complex(currentA / (2 * Math.PI), 1.4035);
+            let Z_val = numerator.div(sqrtTerm);
+            Zr[J] = Z_val.r;
+            Zi[J] = Z_val.i;
+        }
+    }
+
+    print("Trin 2: Newton-Raphson iteration...");
+    let b = thick / width; 
+    let L1 = width;
+    let currentW = new Complex(0.1, 0.1); 
+
+    for (let J = 1; J <= steps; J++) {
+        let K = Kf * J;
+        let Z_c = new Complex(Zr[J], Zi[J]);
+        let Gam_c = new Complex(Gamr[J], Gami[J]);
+        
+        let M = (new Complex(0, -RHO * C * K)).div(Z_c.mult(Gam_c));
+        let kl_complex = new Complex(K * L1, 0);
+        let p2 = (Gam_c.scale(L1)).mult(Gam_c.scale(L1)).sub(kl_complex.mult(kl_complex));
+
+        let iterations = 0;
+        let converged = false;
+
+        // Newton-Raphson loop
+        while (iterations < 100 && !converged) {
+            iterations++;
+            let w2 = currentW.mult(currentW);
+            let sqrt_w2_p2 = (w2.add(p2)).sqrt();
+            let fw = currentW.mult(currentW.tan()).add(M.mult(sqrt_w2_p2).mult((sqrt_w2_p2.scale(b)).tan()));
+
+            let delta = new Complex(1e-6, 1e-6);
+            let w_d = currentW.add(delta);
+            let sqrt_w2_p2_d = (w_d.mult(w_d).add(p2)).sqrt();
+            let fw_d = w_d.mult(w_d.tan()).add(M.mult(sqrt_w2_p2_d).mult((sqrt_w2_p2_d.scale(b)).tan()));
+
+            let f_prime = fw_d.sub(fw).div(delta);
+            let w_step = fw.div(f_prime);
+            
+            // Hvis det stikker helt af (NaN sikkerhed)
+            if (isNaN(w_step.r) || isNaN(w_step.i)) {
+                break; 
+            }
+
+            currentW = currentW.sub(w_step);
+
+            if (Math.abs(w_step.r) <= 1e-6 && Math.abs(w_step.i) <= 1e-6) converged = true;
+        }
+
+        let w_sq = currentW.mult(currentW);
+        let kl_sq = kl_complex.mult(kl_complex);
+        let gam_l_sq = w_sq.sub(kl_sq);
+        let gam_l = gam_l_sq.sqrt();
+        
+        let Gamma = new Complex(gam_l.r / L1, gam_l.i / L1);
+        
+        if (Gamma.r < 0) {
+            Gamma = new Complex(-Gamma.r, -Gamma.i);
+        }
+
+        let atten_dB = 8.686 * Gamma.r; 
+
+        let freqHz = Math.round(K * C / (2 * Math.PI));
+        
+        // Vi tilføjer kun punktet, hvis det er et rigtigt tal
+        if (!isNaN(atten_dB)) {
+            freqs.push(freqHz);
+            attenuations.push(atten_dB);
+            print(`Frekvens: ${freqHz} Hz | Dæmpning: ${atten_dB.toFixed(2)} dB/m | Iterationer: ${iterations}`);
+        } else {
+            print(`Frekvens: ${freqHz} Hz | [DIVERGEREDE]`);
+            // Nulstiller gættet en smule, hvis den rammer en ustabil mode
+            currentW = new Complex(0.1, 0.1);
+        }
+    }
+
+    print("Beregning færdig. Tegner graf...");
+    drawChart(freqs, attenuations);
+});
+
+function drawChart(labels, data) {
+    let ctx = document.getElementById('resultChart').getContext('2d');
+    if (chartInstance) { chartInstance.destroy(); }
+    chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Dæmpning i røret (dB/m)',
+                data: data,
+                borderColor: '#2ecc71',
+                backgroundColor: 'rgba(46, 204, 113, 0.2)',
+                borderWidth: 2,
+                pointRadius: 2,
+                fill: true,
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { title: { display: true, text: 'Frekvens (Hz)', font: {weight: 'bold'} } },
+                y: { title: { display: true, text: 'Dæmpning (dB / meter)', font: {weight: 'bold'} }, beginAtZero: true }
+            }
+        }
+    });
+}
+</script>
+
+</body>
+</html>
