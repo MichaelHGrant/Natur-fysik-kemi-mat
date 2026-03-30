@@ -2,8 +2,12 @@
 <html lang="da">
 <head>
     <meta charset="UTF-8">
-    <title>DTU Lyddæmper Simulator - Fig 3.10</title>
+    <title>DTU Lyddæmper Simulator - Fig 3.10 med Mode Labels</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.1.0/dist/chartjs-plugin-annotation.min.js"></script>
+    
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background: #e9ecef; color: #333; }
         .container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
@@ -44,7 +48,7 @@
     </div>
 
     <h3>Status Log:</h3>
-    <pre id="output">Klar til at regne med den rettede M-parameter...</pre>
+    <pre id="output">Klar til at regne og markere modes...</pre>
 </div>
 
 <script>
@@ -85,7 +89,7 @@ let chartInstance = null;
 
 function startSimulation() {
     let out = document.getElementById("output");
-    out.innerText = "Beregner (0,0) moden (Rettet dimensionsfejl)...";
+    out.innerText = "Beregner (0,0) moden og forbereder labels...";
     setTimeout(runMath, 50);
 }
 
@@ -98,12 +102,16 @@ function runMath() {
         let b = thick / L1; 
 
         let dataExtended = [];
+        
         let lastW_ext = new Complex(0.1, 0.1); 
+        let lastLastW_ext = new Complex(0.1, 0.1); 
 
-        // Frekvensområde fra Fig 3.10
         let f_start = 62.5;
         let f_end = 4000;
-        let f_step = 5; 
+        let f_step = 2.5; 
+
+        let labelFreq = 1000; // Frekvensen hvor vi vil sætte (0,0) mærkatet
+        let labelY = 0;       // Gemmer Y-værdien her
 
         for (let f = f_start; f <= f_end; f += f_step) {
             let Af = flowRes / RHO / f;
@@ -130,22 +138,28 @@ function runMath() {
 
             let Z_c = new Complex(Zr, Zi);
             let Gam_c = new Complex(Gamr, Gami);
-            
-            // DEN RETTEDE M-PARAMETER (Ingen RHO*C)
-            // M = -j * k / (Z_norm * Gam_a)
             let M = (new Complex(0, -K)).div(Z_c.mult(Gam_c));
             
-            let h_c = new Complex(Gami, -Gamr); // h = -j * Gam_a
+            let h_c = new Complex(Gami, -Gamr); 
             let hl_complex = h_c.scale(L1); 
             let kl_complex = new Complex(K * L1, 0);
-            
-            // p^2 = (hl)^2 - (kl)^2
             let p2 = hl_complex.mult(hl_complex).sub(kl_complex.mult(kl_complex));
 
-            // --- EXTENDED REACTION (Newton-Raphson) ---
-            let currentW_ext = new Complex(lastW_ext.r, lastW_ext.i);
+            // Lineær Predictor for (0,0) moden
+            let guessW;
+            if (f === f_start) {
+                guessW = new Complex(0.1, 0.1);
+            } else if (f === f_start + f_step) {
+                guessW = new Complex(lastW_ext.r, lastW_ext.i);
+            } else {
+                let diff = lastW_ext.sub(lastLastW_ext);
+                guessW = lastW_ext.add(diff);
+            }
+
+            let currentW_ext = new Complex(guessW.r, guessW.i);
             let iter_ext = 0, conv_ext = false;
-            while (iter_ext < 50 && !conv_ext) {
+
+            while (iter_ext < 100 && !conv_ext) {
                 iter_ext++;
                 let w2 = currentW_ext.mult(currentW_ext);
                 let sqrt_w2_p2 = (w2.add(p2)).sqrt();
@@ -161,9 +175,17 @@ function runMath() {
                 
                 if (isNaN(w_step.r) || isNaN(w_step.i)) break;
                 currentW_ext = currentW_ext.sub(w_step);
-                if (Math.abs(w_step.r) <= 1e-6 && Math.abs(w_step.i) <= 1e-6) conv_ext = true;
+                
+                if (Math.abs(w_step.r) <= 1e-8 && Math.abs(w_step.i) <= 1e-8) conv_ext = true;
             }
-            if (conv_ext) lastW_ext = currentW_ext; else lastW_ext = new Complex(0.1, 0.1);
+            
+            if (conv_ext) {
+                lastLastW_ext = lastW_ext;
+                lastW_ext = currentW_ext;
+            } else {
+                lastLastW_ext = lastW_ext;
+                currentW_ext = lastW_ext; 
+            }
 
             let calcAttenuation = function(w_complex) {
                 let w_sq = w_complex.mult(w_complex);
@@ -174,18 +196,26 @@ function runMath() {
                 return (8.686 * Gamma.r) * fullDuctWidth;
             };
 
-            if (conv_ext) dataExtended.push({x: f, y: calcAttenuation(currentW_ext)});
+            if (conv_ext) {
+                let attenuation = calcAttenuation(currentW_ext);
+                dataExtended.push({x: f, y: attenuation});
+                
+                // Gem Y-værdien når vi krydser 1000 Hz for at placere (0,0) label
+                if (Math.abs(f - labelFreq) < f_step) {
+                    labelY = attenuation;
+                }
+            }
         }
 
-        print("Tegner Fig. 3.10...");
-        drawChart(dataExtended);
+        print("Tegner Fig. 3.10 med markering af (0,0) moden...");
+        drawChart(dataExtended, labelFreq, labelY);
 
     } catch (e) {
         print(`[MATEMATISK FEJL]: ${e.message}`);
     }
 }
 
-function drawChart(dataExt) {
+function drawChart(dataExt, labelX, labelY) {
     let ctx = document.getElementById('resultChart').getContext('2d');
     if (chartInstance) { chartInstance.destroy(); }
     
@@ -194,7 +224,7 @@ function drawChart(dataExt) {
         data: {
             datasets: [
                 {
-                    label: 'Extended Reaction (0,0) Mode',
+                    label: 'Extended Reaction',
                     data: dataExt,
                     borderColor: '#2c3e50',
                     borderWidth: 2,
@@ -218,6 +248,23 @@ function drawChart(dataExt) {
                     title: { display: true, text: 'Attenuation per duct width [dB]', font: {weight: 'bold'} }, 
                     min: 0,
                     max: 10
+                }
+            },
+            plugins: {
+                zoom: { pan: { enabled: true, mode: 'xy' }, zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' } },
+                // Vores nye plugin-del der tilføjer mode-markeringen!
+                annotation: {
+                    annotations: {
+                        mode00: {
+                            type: 'label',
+                            xValue: labelX, // 1000 Hz
+                            yValue: labelY + 0.6, // Placerer teksten lidt over kurven
+                            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                            content: '(0,0)',
+                            font: { size: 14, weight: 'bold', family: 'sans-serif' },
+                            color: '#e74c3c' // Gør skriften rød, så den træder tydeligt frem
+                        }
+                    }
                 }
             }
         }
