@@ -15,7 +15,7 @@
         button { grid-column: span 2; background: #e74c3c; color: white; border: none; padding: 12px; font-size: 16px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: background 0.3s; }
         button:hover { background: #c0392b; }
         .chart-container { position: relative; height: 500px; width: 100%; margin-top: 20px; }
-        pre { background: #1e1e1e; color: #4af626; padding: 15px; border-radius: 5px; overflow-y: auto; height: 150px; font-family: 'Courier New', Courier, monospace; font-size: 12px; }
+        pre { background: #1e1e1e; color: #4af626; padding: 15px; border-radius: 5px; overflow-y: auto; height: 120px; font-family: 'Courier New', Courier, monospace; font-size: 12px; }
     </style>
 </head>
 <body>
@@ -36,10 +36,6 @@
             <label>Rørets halve bredde, l [m]:</label>
             <input type="number" step="0.01" id="inpDuct" value="0.15">
         </div>
-        <div class="input-group">
-            <label>Antal beregningspunkter (Logaritmisk):</label>
-            <input type="number" id="inpSteps" value="100">
-        </div>
         <button onclick="startSimulation()">Beregn og Tegn Fig. 5.1</button>
     </div>
 
@@ -48,7 +44,7 @@
     </div>
 
     <h3>Status Log:</h3>
-    <pre id="output">Klar til at regne...</pre>
+    <pre id="output">Klar til at regne lineært sweep (10 Hz -> 10.000 Hz)...</pre>
 </div>
 
 <script>
@@ -57,12 +53,6 @@ function print(text) {
     out.innerText += "\n" + text;
     out.scrollTop = out.scrollHeight; 
 }
-
-// Global fejlfanger
-window.onerror = function(msg, url, line) {
-    print(`[CRASH]: ${msg} på linje ${line}`);
-    return true;
-};
 
 class Complex {
     constructor(r, i) { this.r = r; this.i = i; }
@@ -81,8 +71,8 @@ class Complex {
         return new Complex(Math.sqrt(mag) * Math.cos(angle / 2), Math.sqrt(mag) * Math.sin(angle / 2));
     }
     tan() {
-        if (this.i > 20) return new Complex(0, 1);
-        if (this.i < -20) return new Complex(0, -1);
+        if (this.i > 25) return new Complex(0, 1);
+        if (this.i < -25) return new Complex(0, -1);
         let den = Math.cos(2 * this.r) + Math.cosh(2 * this.i);
         if (den === 0) return new Complex(0, 0);
         return new Complex(Math.sin(2 * this.r) / den, Math.sinh(2 * this.i) / den);
@@ -93,56 +83,46 @@ const C = 344.246;
 const RHO = 1.205; 
 let chartInstance = null; 
 
-// Denne funktion kaldes når der trykkes på knappen
 function startSimulation() {
     let out = document.getElementById("output");
-    out.innerText = "Starter logaritmisk simulation...\n(Beregner punkter - vent et øjeblik...)";
-    
-    // Tjek om Chart.js er indlæst
-    if (typeof Chart === 'undefined') {
-        print("FEJL: Kunne ikke finde Chart.js! Sikr dig, at du er forbundet til internettet.");
-        return;
-    }
-
-    // Vi giver browseren 100 ms til at tegne teksten ovenfor, inden vi starter den tunge matematik
-    setTimeout(runMath, 100);
+    out.innerText = "Starter fintmasket lineær simulation for at fange 0,0-moden perfekt...";
+    setTimeout(runMath, 50);
 }
 
 function runMath() {
     try {
         let flowRes = parseFloat(document.getElementById("inpFlow").value);
         let thick = parseFloat(document.getElementById("inpLining").value);
-        let width = parseFloat(document.getElementById("inpDuct").value); 
-        let steps = parseInt(document.getElementById("inpSteps").value);
-        
-        let b = thick / width; 
-        let L1 = width; 
+        let L1 = parseFloat(document.getElementById("inpDuct").value); 
         let fullDuctWidth = 2 * L1; 
+        let b = thick / L1; 
 
         let dataExtended = [];
         let dataLocal = [];
 
+        // Startgæt
         let lastW_ext = new Complex(0.1, 0.1); 
         let lastW_loc = new Complex(0.1, 0.1); 
 
-        let minFreq = 10;
-        let maxFreq = 10000;
-        
-        let extSuccessCount = 0;
-        let locSuccessCount = 0;
+        // Tvinger lineære trin på 5 Hz for at sikre at Newton-Raphson ikke "hopper" til forkerte modes
+        let f_start = 10;
+        let f_end = 10000;
+        let f_step = 5; 
 
-        for (let J = 0; J < steps; J++) {
-            let f = minFreq * Math.pow(maxFreq / minFreq, J / (steps - 1));
+        for (let f = f_start; f <= f_end; f += f_step) {
             let Af = flowRes / RHO / f;
             let K = 2 * Math.PI * f / C;
             
             let Zr, Zi, Gamr, Gami;
+            
+            // Mechel / Delany-Bazley overgang
             if (Af < 60) {
                 let logA = Math.log(Af);
                 Zr = 1 + 0.04885 * Math.exp(0.754 * logA);
                 Zi = -0.087 * Math.exp(0.7307 * logA);
                 Gamr = K * 0.189 * Math.exp(0.6185 * logA);
-                Gami = K * (1 + 0.0978 * Math.exp(-0.6929 * logA));
+                // VIGTIGT FIX: Eksponenten er POSITIV (0.6929), ikke negativ!
+                Gami = K * (1 + 0.0978 * Math.exp(0.6929 * logA)); 
             } else {
                 let term = new Complex(-1.4664, 0.2115 * Af);
                 let sqrtTerm = term.sqrt();
@@ -156,7 +136,10 @@ function runMath() {
 
             let Z_c = new Complex(Zr, Zi);
             let Gam_c = new Complex(Gamr, Gami);
+            
+            // Matcher præcis din HP kode: M = Cdiv(Cmplx(0, -Rho*C*K), Cmult(Za, Gam_a))
             let M = (new Complex(0, -RHO * C * K)).div(Z_c.mult(Gam_c));
+            
             let kl_complex = new Complex(K * L1, 0);
             let p2 = (Gam_c.scale(L1)).mult(Gam_c.scale(L1)).sub(kl_complex.mult(kl_complex));
             let hl = Gam_c.scale(L1);
@@ -182,12 +165,7 @@ function runMath() {
                 currentW_ext = currentW_ext.sub(w_step);
                 if (Math.abs(w_step.r) <= 1e-6 && Math.abs(w_step.i) <= 1e-6) conv_ext = true;
             }
-            
-            if (conv_ext) {
-                lastW_ext = currentW_ext;
-            } else {
-                lastW_ext = new Complex(0.1, 0.1); // Nulstil, hvis den mistede sporet
-            }
+            if (conv_ext) lastW_ext = currentW_ext;
 
             // --- LOCAL REACTION ---
             let currentW_loc = new Complex(lastW_loc.r, lastW_loc.i);
@@ -208,12 +186,7 @@ function runMath() {
                 currentW_loc = currentW_loc.sub(w_step);
                 if (Math.abs(w_step.r) <= 1e-6 && Math.abs(w_step.i) <= 1e-6) conv_loc = true;
             }
-            
-            if (conv_loc) {
-                lastW_loc = currentW_loc;
-            } else {
-                lastW_loc = new Complex(0.1, 0.1); // Nulstil
-            }
+            if (conv_loc) lastW_loc = currentW_loc;
 
             // --- OMREGN TIL DÆMPNING ---
             let calcAttenuation = function(w_complex) {
@@ -225,17 +198,12 @@ function runMath() {
                 return (8.686 * Gamma.r) * fullDuctWidth;
             };
 
-            if (conv_ext) {
-                dataExtended.push({x: f, y: calcAttenuation(currentW_ext)});
-                extSuccessCount++;
-            }
-            if (conv_loc) {
-                dataLocal.push({x: f, y: calcAttenuation(currentW_loc)});
-                locSuccessCount++;
-            }
+            // Gemmer data til plot
+            if (conv_ext) dataExtended.push({x: f, y: calcAttenuation(currentW_ext)});
+            if (conv_loc) dataLocal.push({x: f, y: calcAttenuation(currentW_loc)});
         }
 
-        print(`Matematik færdig! Fandt ${extSuccessCount} gyldige punkter for Extended og ${locSuccessCount} for Local.`);
+        print("Matematik færdig! Tegner den korrigerede graf...");
         drawChart(dataExtended, dataLocal);
 
     } catch (e) {
@@ -248,7 +216,7 @@ function drawChart(dataExt, dataLoc) {
     if (chartInstance) { chartInstance.destroy(); }
     
     chartInstance = new Chart(ctx, {
-        type: 'scatter',
+        type: 'line', 
         data: {
             datasets: [
                 {
@@ -256,7 +224,6 @@ function drawChart(dataExt, dataLoc) {
                     data: dataExt,
                     borderColor: '#2c3e50',
                     borderWidth: 2,
-                    showLine: true,
                     pointRadius: 0, 
                     fill: false,
                     tension: 0.1
@@ -267,7 +234,6 @@ function drawChart(dataExt, dataLoc) {
                     borderColor: '#e74c3c',
                     borderWidth: 2,
                     borderDash: [8, 8], 
-                    showLine: true,
                     pointRadius: 0,
                     fill: false,
                     tension: 0.1
