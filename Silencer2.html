@@ -2,7 +2,7 @@
 <html lang="da">
 <head>
     <meta charset="UTF-8">
-    <title>DTU Lyddæmper Simulator - Fig 3.10 (Endelig version)</title>
+    <title>DTU Lyddæmper Simulator - Fig 3.10b (1:1 Kopi)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
@@ -37,10 +37,10 @@
             <input type="number" step="0.01" id="inpLining" value="0.05">
         </div>
         <div class="input-group">
-            <label>Rørets halve bredde, l [m]: (Hele bredden er 0.5)</label>
+            <label>Rørets halve bredde, l [m]:</label>
             <input type="number" step="0.01" id="inpDuct" value="0.25">
         </div>
-        <button onclick="startSimulation()">Beregn Modes</button>
+        <button onclick="startSimulation()">Beregn Forlæns & Baglæns Modes</button>
     </div>
 
     <div class="chart-container">
@@ -48,7 +48,7 @@
     </div>
 
     <h3>Status Log:</h3>
-    <pre id="output">Klar til endelig udregning...</pre>
+    <pre id="output">Klar til at regne med baglæns sweep for (0,2)...</pre>
 </div>
 
 <script>
@@ -88,7 +88,7 @@ function solveNR(guess, p2, M, b) {
     let currentW = new Complex(guess.r, guess.i);
     let iter = 0, conv = false;
 
-    while (iter < 100 && !conv) {
+    while (iter < 150 && !conv) {
         iter++;
         let w2 = currentW.mult(currentW);
         let sqrt_w2_p2 = (w2.add(p2)).sqrt();
@@ -106,6 +106,7 @@ function solveNR(guess, p2, M, b) {
         
         currentW = currentW.sub(w_step);
         
+        // Stram tolerance
         if (Math.abs(w_step.r) <= 1e-8 && Math.abs(w_step.i) <= 1e-8) conv = true;
     }
     return { w: currentW, converged: conv };
@@ -117,7 +118,7 @@ let chartInstance = null;
 
 function startSimulation() {
     let out = document.getElementById("output");
-    out.innerText = "Udregner modes med korrigerede eksponenter...";
+    out.innerText = "Kører avanceret simulation...";
     setTimeout(runMath, 50);
 }
 
@@ -130,35 +131,33 @@ function runMath() {
         let fullDuctWidth = 2 * L1; 
         let b = thick / L1; 
 
-        let data00 = [];
-        let data02 = [];
-
-        // Trackers
-        let lastW_00 = new Complex(0.1, 0.1); 
-        let lastLastW_00 = new Complex(0.1, 0.1); 
-
-        let lastW_02 = new Complex(Math.PI, 0.1); 
-        let lastLastW_02 = new Complex(Math.PI, 0.1); 
-
+        // Generer frekvensliste
         let freqs = [];
         for (let f = 62.5; f <= 4000; f += 2.5) {
             freqs.push(f);
         }
 
-        for (let i = 0; i < freqs.length; i++) {
-            let f = freqs[i];
+        let calcAttenuation = function(w_complex, f) {
+            let K = 2 * Math.PI * f / C;
+            let w_sq = w_complex.mult(w_complex);
+            let kl_sq = new Complex(K * L1, 0).mult(new Complex(K * L1, 0));
+            let gam_l = w_sq.sub(kl_sq).sqrt();
+            let Gamma = new Complex(gam_l.r / L1, gam_l.i / L1);
+            if (Gamma.r < 0) Gamma = new Complex(-Gamma.r, -Gamma.i);
+            return (8.686 * Gamma.r) * fullDuctWidth;
+        };
+
+        let getParams = function(f) {
             let Af = flowRes / RHO / f;
             let K = 2 * Math.PI * f / C;
-            
             let Zr, Zi, Gamr, Gami;
             
-            // DEN KORREKTE FYSIK: Alle eksponenter er POSITIVE for at matche f/sigma forholdet!
             if (Af < 60) {
                 let logA = Math.log(Af);
                 Zr = 1 + 0.04885 * Math.exp(0.754 * logA);
                 Zi = -0.087 * Math.exp(0.7307 * logA);
                 Gamr = K * 0.189 * Math.exp(0.6185 * logA);
-                Gami = K * (1 + 0.0978 * Math.exp(0.6929 * logA)); // <--- DETTE VAR SYNDEREN! Nu er den +
+                Gami = K * (1 + 0.0978 * Math.exp(0.6929 * logA)); 
             } else {
                 let term = new Complex(-1.4664, 0.2115 * Af);
                 let sqrtTerm = term.sqrt();
@@ -172,66 +171,88 @@ function runMath() {
 
             let Z_c = new Complex(Zr, Zi);
             let Gam_c = new Complex(Gamr, Gami);
-            
-            // Korrekt dimensions-analyseret M
             let M = (new Complex(0, -K)).div(Z_c.mult(Gam_c));
-            
             let h_c = new Complex(Gami, -Gamr); 
             let hl_complex = h_c.scale(L1); 
             let kl_complex = new Complex(K * L1, 0);
             let p2 = hl_complex.mult(hl_complex).sub(kl_complex.mult(kl_complex));
+            
+            return { p2: p2, M: M };
+        };
 
-            let calcAttenuation = function(w_complex) {
-                let w_sq = w_complex.mult(w_complex);
-                let kl_sq = kl_complex.mult(kl_complex);
-                let gam_l = w_sq.sub(kl_sq).sqrt();
-                let Gamma = new Complex(gam_l.r / L1, gam_l.i / L1);
-                if (Gamma.r < 0) Gamma = new Complex(-Gamma.r, -Gamma.i);
-                return (8.686 * Gamma.r) * fullDuctWidth;
-            };
+        // ==========================================
+        // 1. FORLÆNS SWEEP: MODE (0,0)
+        // ==========================================
+        print("Regner (0,0)-moden forlæns (fra 62.5 Hz)...");
+        let data00 = [];
+        let lastW_00 = new Complex(0.1, 0.1); 
+        let lastLastW_00 = new Complex(0.1, 0.1); 
 
-            // --- BEREGN (0,0) ---
+        for (let i = 0; i < freqs.length; i++) {
+            let f = freqs[i];
+            let params = getParams(f);
+
             let guess00;
             if (i === 0) guess00 = new Complex(0.1, 0.1);
             else if (i === 1) guess00 = new Complex(lastW_00.r, lastW_00.i);
-            else guess00 = lastW_00.add(lastW_00.sub(lastLastW_00));
+            else guess00 = lastW_00.add(lastW_00.sub(lastLastW_00)); 
 
-            let res00 = solveNR(guess00, p2, M, b);
+            let res00 = solveNR(guess00, params.p2, params.M, b);
+            
             if (res00.converged) {
                 lastLastW_00 = lastW_00;
                 lastW_00 = res00.w;
-                data00.push({x: f, y: calcAttenuation(res00.w)});
-            }
-
-            // --- BEREGN (0,2) ---
-            let guess02;
-            if (i === 0) guess02 = new Complex(Math.PI, 0.5); // (0,2) starter altid nær Pi
-            else if (i === 1) guess02 = new Complex(lastW_02.r, lastW_02.i);
-            else guess02 = lastW_02.add(lastW_02.sub(lastLastW_02));
-
-            let res02 = solveNR(guess02, p2, M, b);
-            if (res02.converged) {
-                lastLastW_02 = lastW_02;
-                lastW_02 = res02.w;
-                let atten02 = calcAttenuation(res02.w);
-                
-                // Kun plot hvis den er under loftet (undgår grafisk 'spaghetti' i bunden)
-                if (atten02 < 15) {
-                    data02.push({x: f, y: atten02});
-                }
+                data00.push({x: f, y: calcAttenuation(res00.w, f)});
             } else {
-                // Reset tracker hvis den mister sporet
-                lastW_02 = new Complex(Math.PI, 0.5);
+                lastLastW_00 = lastW_00;
             }
         }
 
-        print("Færdig! Tegner graf...");
+        // ==========================================
+        // 2. BAGLÆNS SWEEP: MODE (0,2)
+        // ==========================================
+        print("Regner (0,2)-moden baglæns (fra 4000 Hz) for at fange den evanescente hale...");
+        let temp02 = [];
+        // (0,2) moden konvergerer altid mod Pi ved høje frekvenser
+        let lastW_02 = new Complex(Math.PI, 0.1); 
+        let lastLastW_02 = new Complex(Math.PI, 0.1); 
 
-        // Auto-placerer labels
-        let labelY00 = data00.find(p => p.x >= 1000)?.y || 0;
-        let labelY02 = data02.find(p => p.x >= 1500)?.y || 0;
+        for (let i = freqs.length - 1; i >= 0; i--) {
+            let f = freqs[i];
+            let params = getParams(f);
 
-        drawChart(data00, data02, 1000, labelY00, 1500, labelY02);
+            let guess02;
+            if (i === freqs.length - 1) guess02 = new Complex(Math.PI, 0.1);
+            else if (i === freqs.length - 2) guess02 = new Complex(lastW_02.r, lastW_02.i);
+            else guess02 = lastW_02.add(lastW_02.sub(lastLastW_02)); 
+
+            let res02 = solveNR(guess02, params.p2, params.M, b);
+            
+            if (res02.converged) {
+                lastLastW_02 = lastW_02;
+                lastW_02 = res02.w;
+                let atten02 = calcAttenuation(res02.w, f);
+                
+                // Vi skærer toppen af ved 12 dB for at den ikke smadrer grafens skala fuldstændig, 
+                // men stadig tydeligt kommer faldende fra toppen
+                if (atten02 < 12) {
+                    temp02.push({x: f, y: atten02});
+                }
+            } else {
+                lastLastW_02 = lastW_02;
+            }
+        }
+        
+        // Vend (0,2) data om, så de passer til grafens X-akse
+        let data02 = temp02.reverse();
+
+        print("Tegner Fig. 3.10b!");
+        
+        // Find de bedste steder at sætte labels (0,0) og (0,2)
+        let labelY00 = data00.find(p => p.x >= 250)?.y || 0;
+        let labelY02 = data02.find(p => p.x >= 1200)?.y || 0;
+
+        drawChart(data00, data02, 250, labelY00, 1200, labelY02);
 
     } catch (e) {
         print(`[MATEMATISK FEJL]: ${e.message}`);
