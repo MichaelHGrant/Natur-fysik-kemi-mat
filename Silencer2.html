@@ -2,10 +2,8 @@
 <html lang="da">
 <head>
     <meta charset="UTF-8">
-    <title>DTU Lyddæmper Simulator - 'Extended'</title>
+    <title>DTU Lyddæmper Simulator - Fig 3.10</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background: #e9ecef; color: #333; }
         .container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
@@ -23,8 +21,7 @@
 <body>
 
 <div class="container">
-    <h1>Lyddæmper Simulator (Extended Reaction)</h1>
-    <p>Indtast parametrene for Fig. 5.1 herunder:</p>
+    <h1>Reproduktion af Fig. 3.10 (Extended)</h1>
     
     <div class="control-panel">
         <div class="input-group">
@@ -39,7 +36,7 @@
             <label>Rørets halve bredde, l [m]:</label>
             <input type="number" step="0.01" id="inpDuct" value="0.25">
         </div>
-        <button onclick="startSimulation()">Beregn Extended Dæmpning</button>
+        <button onclick="startSimulation()">Beregn og Tegn Fig. 3.10</button>
     </div>
 
     <div class="chart-container">
@@ -47,7 +44,7 @@
     </div>
 
     <h3>Status Log:</h3>
-    <pre id="output">Klar til at regne...</pre>
+    <pre id="output">Klar til at regne med den rettede M-parameter...</pre>
 </div>
 
 <script>
@@ -88,7 +85,7 @@ let chartInstance = null;
 
 function startSimulation() {
     let out = document.getElementById("output");
-    out.innerText = "Beregner Extended Reaction for (0,0) moden...";
+    out.innerText = "Beregner (0,0) moden (Rettet dimensionsfejl)...";
     setTimeout(runMath, 50);
 }
 
@@ -103,9 +100,9 @@ function runMath() {
         let dataExtended = [];
         let lastW_ext = new Complex(0.1, 0.1); 
 
-        // Regner fra 10 Hz til 10.000 Hz for at fange hele spektret
-        let f_start = 10;
-        let f_end = 10000;
+        // Frekvensområde fra Fig 3.10
+        let f_start = 62.5;
+        let f_end = 4000;
         let f_step = 5; 
 
         for (let f = f_start; f <= f_end; f += f_step) {
@@ -134,15 +131,18 @@ function runMath() {
             let Z_c = new Complex(Zr, Zi);
             let Gam_c = new Complex(Gamr, Gami);
             
-            let M = (new Complex(0, -RHO * C * K)).div(Z_c.mult(Gam_c));
+            // DEN RETTEDE M-PARAMETER (Ingen RHO*C)
+            // M = -j * k / (Z_norm * Gam_a)
+            let M = (new Complex(0, -K)).div(Z_c.mult(Gam_c));
             
-            let h_c = new Complex(Gami, -Gamr); 
+            let h_c = new Complex(Gami, -Gamr); // h = -j * Gam_a
             let hl_complex = h_c.scale(L1); 
             let kl_complex = new Complex(K * L1, 0);
             
+            // p^2 = (hl)^2 - (kl)^2
             let p2 = hl_complex.mult(hl_complex).sub(kl_complex.mult(kl_complex));
 
-            // --- EXTENDED REACTION ---
+            // --- EXTENDED REACTION (Newton-Raphson) ---
             let currentW_ext = new Complex(lastW_ext.r, lastW_ext.i);
             let iter_ext = 0, conv_ext = false;
             while (iter_ext < 50 && !conv_ext) {
@@ -177,7 +177,7 @@ function runMath() {
             if (conv_ext) dataExtended.push({x: f, y: calcAttenuation(currentW_ext)});
         }
 
-        print("Tegner grafen...");
+        print("Tegner Fig. 3.10...");
         drawChart(dataExtended);
 
     } catch (e) {
@@ -194,10 +194,10 @@ function drawChart(dataExt) {
         data: {
             datasets: [
                 {
-                    label: 'Extended Reaction (Dit program)',
+                    label: 'Extended Reaction (0,0) Mode',
                     data: dataExt,
-                    borderColor: '#2980b9',
-                    borderWidth: 3,
+                    borderColor: '#2c3e50',
+                    borderWidth: 2,
                     pointRadius: 0, 
                     fill: false,
                     tension: 0.1
@@ -211,16 +211,14 @@ function drawChart(dataExt) {
                 x: { 
                     type: 'logarithmic', 
                     title: { display: true, text: 'Frequency [Hz]', font: {weight: 'bold'} },
-                    min: 10,
-                    max: 10000
+                    min: 62.5,
+                    max: 4000
                 },
                 y: { 
                     title: { display: true, text: 'Attenuation per duct width [dB]', font: {weight: 'bold'} }, 
-                    min: 0
+                    min: 0,
+                    max: 10
                 }
-            },
-            plugins: {
-                zoom: { pan: { enabled: true, mode: 'xy' }, zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' } }
             }
         }
     });
