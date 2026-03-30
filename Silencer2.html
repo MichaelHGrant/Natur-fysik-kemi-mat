@@ -2,7 +2,7 @@
 <html lang="da">
 <head>
     <meta charset="UTF-8">
-    <title>DTU Lyddæmper Simulator - Fig 3.10 med Mode Labels</title>
+    <title>DTU Lyddæmper Simulator - Fig 3.10 Komplet</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
@@ -19,13 +19,13 @@
         button { grid-column: span 2; background: #27ae60; color: white; border: none; padding: 12px; font-size: 16px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: background 0.3s; }
         button:hover { background: #2ecc71; }
         .chart-container { position: relative; height: 500px; width: 100%; margin-top: 20px; }
-        pre { background: #1e1e1e; color: #4af626; padding: 15px; border-radius: 5px; overflow-y: auto; height: 120px; font-family: 'Courier New', Courier, monospace; font-size: 12px; }
+        pre { background: #1e1e1e; color: #4af626; padding: 15px; border-radius: 5px; overflow-y: auto; height: 150px; font-family: 'Courier New', Courier, monospace; font-size: 12px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Reproduktion af Fig. 3.10 (Extended)</h1>
+    <h1>Reproduktion af Fig. 3.10 (0,0 og 0,2 Modes)</h1>
     
     <div class="control-panel">
         <div class="input-group">
@@ -40,7 +40,7 @@
             <label>Rørets halve bredde, l [m]:</label>
             <input type="number" step="0.01" id="inpDuct" value="0.25">
         </div>
-        <button onclick="startSimulation()">Beregn og Tegn Fig. 3.10</button>
+        <button onclick="startSimulation()">Beregn Alle Modes for Fig. 3.10</button>
     </div>
 
     <div class="chart-container">
@@ -48,7 +48,7 @@
     </div>
 
     <h3>Status Log:</h3>
-    <pre id="output">Klar til at regne og markere modes...</pre>
+    <pre id="output">Klar til at regne multi-mode simulation...</pre>
 </div>
 
 <script>
@@ -83,13 +83,41 @@ class Complex {
     }
 }
 
+// Hjælpefunktion til at køre Newton-Raphson for et givet startgæt
+function solveNR(guess, p2, M, b) {
+    let currentW = new Complex(guess.r, guess.i);
+    let iter = 0, conv = false;
+
+    while (iter < 100 && !conv) {
+        iter++;
+        let w2 = currentW.mult(currentW);
+        let sqrt_w2_p2 = (w2.add(p2)).sqrt();
+        let fw = currentW.mult(currentW.tan()).add(M.mult(sqrt_w2_p2).mult((sqrt_w2_p2.scale(b)).tan()));
+
+        let delta = new Complex(1e-6, 1e-6);
+        let w_d = currentW.add(delta);
+        let sqrt_w2_p2_d = (w_d.mult(w_d).add(p2)).sqrt();
+        let fw_d = w_d.mult(w_d.tan()).add(M.mult(sqrt_w2_p2_d).mult((sqrt_w2_p2_d.scale(b)).tan()));
+
+        let f_prime = fw_d.sub(fw).div(delta);
+        let w_step = fw.div(f_prime);
+        
+        if (isNaN(w_step.r) || isNaN(w_step.i)) break;
+        
+        currentW = currentW.sub(w_step);
+        
+        if (Math.abs(w_step.r) <= 1e-8 && Math.abs(w_step.i) <= 1e-8) conv = true;
+    }
+    return { w: currentW, converged: conv };
+}
+
 const C = 344.246; 
 const RHO = 1.205; 
 let chartInstance = null; 
 
 function startSimulation() {
     let out = document.getElementById("output");
-    out.innerText = "Beregner (0,0) moden og forbereder labels...";
+    out.innerText = "Beregner (0,0) og (0,2) modes parallelt...";
     setTimeout(runMath, 50);
 }
 
@@ -101,17 +129,26 @@ function runMath() {
         let fullDuctWidth = 2 * L1; 
         let b = thick / L1; 
 
-        let dataExtended = [];
+        let data00 = [];
+        let data02 = [];
         
-        let lastW_ext = new Complex(0.1, 0.1); 
-        let lastLastW_ext = new Complex(0.1, 0.1); 
+        // Historik til Predictoren for (0,0) moden
+        let lastW_00 = new Complex(0.1, 0.1); 
+        let lastLastW_00 = new Complex(0.1, 0.1); 
+
+        // Historik til Predictoren for (0,2) moden (Starter nær Pi)
+        let lastW_02 = new Complex(Math.PI, 1.0); 
+        let lastLastW_02 = new Complex(Math.PI, 1.0); 
 
         let f_start = 62.5;
         let f_end = 4000;
         let f_step = 2.5; 
 
-        let labelFreq = 1000; // Frekvensen hvor vi vil sætte (0,0) mærkatet
-        let labelY = 0;       // Gemmer Y-værdien her
+        // Til at gemme positioner til Labels
+        let labelFreq00 = 800;
+        let labelY00 = 0;
+        let labelFreq02 = 1200;
+        let labelY02 = 0;
 
         for (let f = f_start; f <= f_end; f += f_step) {
             let Af = flowRes / RHO / f;
@@ -145,48 +182,7 @@ function runMath() {
             let kl_complex = new Complex(K * L1, 0);
             let p2 = hl_complex.mult(hl_complex).sub(kl_complex.mult(kl_complex));
 
-            // Lineær Predictor for (0,0) moden
-            let guessW;
-            if (f === f_start) {
-                guessW = new Complex(0.1, 0.1);
-            } else if (f === f_start + f_step) {
-                guessW = new Complex(lastW_ext.r, lastW_ext.i);
-            } else {
-                let diff = lastW_ext.sub(lastLastW_ext);
-                guessW = lastW_ext.add(diff);
-            }
-
-            let currentW_ext = new Complex(guessW.r, guessW.i);
-            let iter_ext = 0, conv_ext = false;
-
-            while (iter_ext < 100 && !conv_ext) {
-                iter_ext++;
-                let w2 = currentW_ext.mult(currentW_ext);
-                let sqrt_w2_p2 = (w2.add(p2)).sqrt();
-                let fw = currentW_ext.mult(currentW_ext.tan()).add(M.mult(sqrt_w2_p2).mult((sqrt_w2_p2.scale(b)).tan()));
-
-                let delta = new Complex(1e-6, 1e-6);
-                let w_d = currentW_ext.add(delta);
-                let sqrt_w2_p2_d = (w_d.mult(w_d).add(p2)).sqrt();
-                let fw_d = w_d.mult(w_d.tan()).add(M.mult(sqrt_w2_p2_d).mult((sqrt_w2_p2_d.scale(b)).tan()));
-
-                let f_prime = fw_d.sub(fw).div(delta);
-                let w_step = fw.div(f_prime);
-                
-                if (isNaN(w_step.r) || isNaN(w_step.i)) break;
-                currentW_ext = currentW_ext.sub(w_step);
-                
-                if (Math.abs(w_step.r) <= 1e-8 && Math.abs(w_step.i) <= 1e-8) conv_ext = true;
-            }
-            
-            if (conv_ext) {
-                lastLastW_ext = lastW_ext;
-                lastW_ext = currentW_ext;
-            } else {
-                lastLastW_ext = lastW_ext;
-                currentW_ext = lastW_ext; 
-            }
-
+            // Fælles funktion til at omregne 'w' til Dæmpning
             let calcAttenuation = function(w_complex) {
                 let w_sq = w_complex.mult(w_complex);
                 let kl_sq = kl_complex.mult(kl_complex);
@@ -196,26 +192,60 @@ function runMath() {
                 return (8.686 * Gamma.r) * fullDuctWidth;
             };
 
-            if (conv_ext) {
-                let attenuation = calcAttenuation(currentW_ext);
-                dataExtended.push({x: f, y: attenuation});
+            // ==========================================
+            // BEREGN MODE (0,0)
+            // ==========================================
+            let guess00;
+            if (f === f_start) guess00 = new Complex(0.1, 0.1);
+            else if (f === f_start + f_step) guess00 = new Complex(lastW_00.r, lastW_00.i);
+            else guess00 = lastW_00.add(lastW_00.sub(lastLastW_00)); // Lineær Predictor
+
+            let res00 = solveNR(guess00, p2, M, b);
+            
+            if (res00.converged) {
+                lastLastW_00 = lastW_00;
+                lastW_00 = res00.w;
+                let atten00 = calcAttenuation(res00.w);
+                data00.push({x: f, y: atten00});
                 
-                // Gem Y-værdien når vi krydser 1000 Hz for at placere (0,0) label
-                if (Math.abs(f - labelFreq) < f_step) {
-                    labelY = attenuation;
+                if (Math.abs(f - labelFreq00) < f_step) labelY00 = atten00;
+            }
+
+            // ==========================================
+            // BEREGN MODE (0,2)
+            // ==========================================
+            let guess02;
+            if (f === f_start) guess02 = new Complex(Math.PI, 1.0); // Startgæt nær Pi
+            else if (f === f_start + f_step) guess02 = new Complex(lastW_02.r, lastW_02.i);
+            else guess02 = lastW_02.add(lastW_02.sub(lastLastW_02)); // Lineær Predictor
+
+            let res02 = solveNR(guess02, p2, M, b);
+            
+            if (res02.converged) {
+                lastLastW_02 = lastW_02;
+                lastW_02 = res02.w;
+                let atten02 = calcAttenuation(res02.w);
+                
+                // Vi tilføjer den kun, hvis den er inden for fornuftige værdier, så grafen ikke sprænges
+                if (atten02 < 100) {
+                    data02.push({x: f, y: atten02});
                 }
+                if (Math.abs(f - labelFreq02) < f_step) labelY02 = atten02;
+            } else {
+                // Hvis (0,2) divergerer (f.eks. ved de allermindste frekvenser), resetter vi
+                lastW_02 = new Complex(Math.PI, 1.0);
             }
         }
 
-        print("Tegner Fig. 3.10 med markering af (0,0) moden...");
-        drawChart(dataExtended, labelFreq, labelY);
+        print("Tegner Fig. 3.10 komplet med begge modes...");
+        drawChart(data00, data02, labelFreq00, labelY00, labelFreq02, labelY02);
 
     } catch (e) {
         print(`[MATEMATISK FEJL]: ${e.message}`);
     }
 }
 
-function drawChart(dataExt, labelX, labelY) {
+function drawChart(data00, data02, lblX00, lblY00, lblX02, lblY02) {
     let ctx = document.getElementById('resultChart').getContext('2d');
     if (chartInstance) { chartInstance.destroy(); }
     
@@ -224,9 +254,18 @@ function drawChart(dataExt, labelX, labelY) {
         data: {
             datasets: [
                 {
-                    label: 'Extended Reaction',
-                    data: dataExt,
-                    borderColor: '#2c3e50',
+                    label: '(0,0) Mode',
+                    data: data00,
+                    borderColor: '#2980b9', // Blå linje
+                    borderWidth: 2,
+                    pointRadius: 0, 
+                    fill: false,
+                    tension: 0.1
+                },
+                {
+                    label: '(0,2) Mode',
+                    data: data02,
+                    borderColor: '#e74c3c', // Rød linje
                     borderWidth: 2,
                     pointRadius: 0, 
                     fill: false,
@@ -247,22 +286,30 @@ function drawChart(dataExt, labelX, labelY) {
                 y: { 
                     title: { display: true, text: 'Attenuation per duct width [dB]', font: {weight: 'bold'} }, 
                     min: 0,
-                    max: 10
+                    max: 10 // Låst til 10 for at matche PDF'en præcist!
                 }
             },
             plugins: {
                 zoom: { pan: { enabled: true, mode: 'xy' }, zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' } },
-                // Vores nye plugin-del der tilføjer mode-markeringen!
                 annotation: {
                     annotations: {
-                        mode00: {
+                        label00: {
                             type: 'label',
-                            xValue: labelX, // 1000 Hz
-                            yValue: labelY + 0.6, // Placerer teksten lidt over kurven
+                            xValue: lblX00,
+                            yValue: lblY00 + 0.6,
                             backgroundColor: 'rgba(255, 255, 255, 0.8)',
                             content: '(0,0)',
                             font: { size: 14, weight: 'bold', family: 'sans-serif' },
-                            color: '#e74c3c' // Gør skriften rød, så den træder tydeligt frem
+                            color: '#2980b9'
+                        },
+                        label02: {
+                            type: 'label',
+                            xValue: lblX02,
+                            yValue: (lblY02 > 10 ? 9.5 : lblY02 + 0.6), // Sikrer at labelen ikke forsvinder ud af grafen
+                            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                            content: '(0,2)',
+                            font: { size: 14, weight: 'bold', family: 'sans-serif' },
+                            color: '#e74c3c'
                         }
                     }
                 }
