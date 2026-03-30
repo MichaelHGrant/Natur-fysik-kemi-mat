@@ -2,7 +2,7 @@
 <html lang="da">
 <head>
     <meta charset="UTF-8">
-    <title>DTU Lyddæmper Simulator (1989/2026)</title>
+    <title>DTU Lyddæmper Simulator - Fig 5.1 Reproduktion</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background: #e9ecef; color: #333; }
@@ -12,43 +12,43 @@
         .input-group { display: flex; flex-direction: column; }
         label { font-weight: bold; margin-bottom: 5px; font-size: 14px; }
         input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
-        button { grid-column: span 2; background: #3498db; color: white; border: none; padding: 12px; font-size: 16px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: background 0.3s; }
-        button:hover { background: #2980b9; }
-        .chart-container { position: relative; height: 400px; width: 100%; margin-top: 20px; }
-        pre { background: #1e1e1e; color: #4af626; padding: 15px; border-radius: 5px; overflow-y: auto; height: 150px; font-family: 'Courier New', Courier, monospace; font-size: 12px; }
+        button { grid-column: span 2; background: #e74c3c; color: white; border: none; padding: 12px; font-size: 16px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: background 0.3s; }
+        button:hover { background: #c0392b; }
+        .chart-container { position: relative; height: 500px; width: 100%; margin-top: 20px; }
+        pre { background: #1e1e1e; color: #4af626; padding: 15px; border-radius: 5px; overflow-y: auto; height: 120px; font-family: 'Courier New', Courier, monospace; font-size: 12px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Lydudbredelse i Absorptionsbeklædt Rør</h1>
+    <h1>Reproduktion af Fig. 5.1 (Local vs. Extended)</h1>
     
     <div class="control-panel">
         <div class="input-group">
             <label>Strømningsmodstand (Flow resistivity) [N·s/m4]:</label>
-            <input type="number" id="inpFlow" value="32000">
+            <input type="number" id="inpFlow" value="20000">
         </div>
         <div class="input-group">
-            <label>Beklædningstykkelse (Lining thickness) [m]:</label>
-            <input type="number" step="0.01" id="inpLining" value="0.10">
+            <label>Beklædningstykkelse, d [m]:</label>
+            <input type="number" step="0.01" id="inpLining" value="0.15">
         </div>
         <div class="input-group">
-            <label>Rørets halve bredde (Duct half-width) [m]:</label>
-            <input type="number" step="0.01" id="inpDuct" value="0.10">
+            <label>Rørets halve bredde, l [m]:</label>
+            <input type="number" step="0.01" id="inpDuct" value="0.15">
         </div>
         <div class="input-group">
-            <label>Antal frekvenstrin (Max intervals):</label>
-            <input type="number" id="inpSteps" value="100">
+            <label>Antal beregningspunkter (Logaritmisk skala):</label>
+            <input type="number" id="inpSteps" value="150">
         </div>
-        <button id="runBtn">Tegn Graf & Kør Beregning</button>
+        <button id="runBtn">Beregn og Tegn Fig. 5.1</button>
     </div>
 
     <div class="chart-container">
         <canvas id="resultChart"></canvas>
     </div>
 
-    <h3>Beregning-log:</h3>
-    <pre id="output">Venter på input...</pre>
+    <h3>Status:</h3>
+    <pre id="output">Klar til at regne logaritmisk sweep...</pre>
 </div>
 
 <script>
@@ -82,7 +82,6 @@ class Complex {
     tan() {
         if (this.i > 20) return new Complex(0, 1);
         if (this.i < -20) return new Complex(0, -1);
-        
         let den = Math.cos(2 * this.r) + Math.cosh(2 * this.i);
         if (den === 0) return new Complex(0, 0);
         return new Complex(Math.sin(2 * this.r) / den, Math.sinh(2 * this.i) / den);
@@ -94,139 +93,39 @@ const RHO = 1.205;
 let chartInstance = null; 
 
 document.getElementById("runBtn").addEventListener("click", function() {
-    document.getElementById("output").innerText = "Starter simulation...\n";
+    document.getElementById("output").innerText = "Starter logaritmisk simulation...\n";
     
     let flowRes = parseFloat(document.getElementById("inpFlow").value);
     let thick = parseFloat(document.getElementById("inpLining").value);
-    let width = parseFloat(document.getElementById("inpDuct").value); // Dette er 'l' (halv bredde)
+    let width = parseFloat(document.getElementById("inpDuct").value); 
     let steps = parseInt(document.getElementById("inpSteps").value);
-    let freqRes = 25; 
-
-    let Af = flowRes / RHO / freqRes;
-    let Kf = 2 * Math.PI * freqRes / C;
     
-    let Zr = [], Zi = [], Gamr = [], Gami = [];
-    let freqs = [], attenuations = [];
-
-    print("Beregner materialets egenskaber...");
-    for (let J = 1; J <= steps; J++) {
-        let currentA = Af / J;
-        let K = J * Kf;
-
-        if (currentA < 60) {
-            let logA = Math.log(currentA);
-            Zr[J] = 1 + 0.04885 * Math.exp(0.754 * logA);
-            Zi[J] = -0.087 * Math.exp(0.7307 * logA);
-            Gamr[J] = K * 0.189 * Math.exp(0.6185 * logA);
-            Gami[J] = K * (1 + 0.0978 * Math.exp(-0.6929 * logA));
-        } else {
-            let term = new Complex(-1.4664, 0.2115 * currentA);
-            let sqrtTerm = term.sqrt();
-            Gamr[J] = K * sqrtTerm.r;
-            Gami[J] = K * sqrtTerm.i;
-            let numerator = new Complex(currentA / (2 * Math.PI), 1.4035);
-            let Z_val = numerator.div(sqrtTerm);
-            Zr[J] = Z_val.r;
-            Zi[J] = Z_val.i;
-        }
-    }
-
-    print("Kører Newton-Raphson for at finde dæmpningen...");
     let b = thick / width; 
-    let L1 = width; // l
-    let fullDuctWidth = 2 * L1; // 2l
-    let currentW = new Complex(0.1, 0.1); 
+    let L1 = width; 
+    let fullDuctWidth = 2 * L1; 
 
-    for (let J = 1; J <= steps; J++) {
-        let K = Kf * J;
-        let Z_c = new Complex(Zr[J], Zi[J]);
-        let Gam_c = new Complex(Gamr[J], Gami[J]);
+    let dataExtended = [];
+    let dataLocal = [];
+
+    // Vi gemmer forrige w som startgæt for at hjælpe Newton-Raphson på vej over frekvenserne
+    let lastW_ext = new Complex(0.1, 0.1); 
+    let lastW_loc = new Complex(0.1, 0.1); 
+
+    let minFreq = 10;
+    let maxFreq = 10000;
+
+    for (let J = 0; J < steps; J++) {
+        // Logaritmisk frekvensfordeling
+        let f = minFreq * Math.pow(maxFreq / minFreq, J / (steps - 1));
         
-        let M = (new Complex(0, -RHO * C * K)).div(Z_c.mult(Gam_c));
-        let kl_complex = new Complex(K * L1, 0);
-        let p2 = (Gam_c.scale(L1)).mult(Gam_c.scale(L1)).sub(kl_complex.mult(kl_complex));
-
-        let iterations = 0;
-        let converged = false;
-
-        while (iterations < 100 && !converged) {
-            iterations++;
-            let w2 = currentW.mult(currentW);
-            let sqrt_w2_p2 = (w2.add(p2)).sqrt();
-            let fw = currentW.mult(currentW.tan()).add(M.mult(sqrt_w2_p2).mult((sqrt_w2_p2.scale(b)).tan()));
-
-            let delta = new Complex(1e-6, 1e-6);
-            let w_d = currentW.add(delta);
-            let sqrt_w2_p2_d = (w_d.mult(w_d).add(p2)).sqrt();
-            let fw_d = w_d.mult(w_d.tan()).add(M.mult(sqrt_w2_p2_d).mult((sqrt_w2_p2_d.scale(b)).tan()));
-
-            let f_prime = fw_d.sub(fw).div(delta);
-            let w_step = fw.div(f_prime);
-            
-            if (isNaN(w_step.r) || isNaN(w_step.i)) break; 
-
-            currentW = currentW.sub(w_step);
-            if (Math.abs(w_step.r) <= 1e-6 && Math.abs(w_step.i) <= 1e-6) converged = true;
-        }
-
-        let w_sq = currentW.mult(currentW);
-        let kl_sq = kl_complex.mult(kl_complex);
-        let gam_l = w_sq.sub(kl_sq).sqrt();
+        let Af = flowRes / RHO / f;
+        let K = 2 * Math.PI * f / C;
         
-        let Gamma = new Complex(gam_l.r / L1, gam_l.i / L1);
-        if (Gamma.r < 0) Gamma = new Complex(-Gamma.r, -Gamma.i);
-
-        // Omregning til dB pr. meter
-        let atten_dB_per_m = 8.686 * Gamma.r; 
-        
-        // NORMALISERING TIL RØRBREDDE (2 * L1): dB per duct width
-        let atten_per_duct_width = atten_dB_per_m * fullDuctWidth;
-
-        let freqHz = Math.round(K * C / (2 * Math.PI));
-        
-        if (!isNaN(atten_per_duct_width)) {
-            freqs.push(freqHz);
-            attenuations.push(atten_per_duct_width);
-            print(`Frekvens: ${freqHz} Hz | Dæmpning: ${atten_per_duct_width.toFixed(2)} dB/bredde`);
-        } else {
-            print(`Frekvens: ${freqHz} Hz | [DIVERGEREDE]`);
-            currentW = new Complex(0.1, 0.1);
-        }
-    }
-
-    print("Tegner graf...");
-    drawChart(freqs, attenuations);
-});
-
-function drawChart(labels, data) {
-    let ctx = document.getElementById('resultChart').getContext('2d');
-    if (chartInstance) { chartInstance.destroy(); }
-    chartInstance = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Dæmpning (dB / rør-bredde)',
-                data: data,
-                borderColor: '#8e44ad',
-                backgroundColor: 'rgba(142, 68, 173, 0.2)',
-                borderWidth: 2,
-                pointRadius: 2,
-                fill: true,
-                tension: 0.3
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                x: { title: { display: true, text: 'Frekvens (Hz)', font: {weight: 'bold'} } },
-                y: { title: { display: true, text: 'Attenuation per duct width (dB)', font: {weight: 'bold'} }, beginAtZero: true }
-            }
-        }
-    });
-}
-</script>
-
-</body>
-</html>
+        // --- 1. Materiale Egenskaber ---
+        let Zr, Zi, Gamr, Gami;
+        if (Af < 60) {
+            let logA = Math.log(Af);
+            Zr = 1 + 0.04885 * Math.exp(0.754 * logA);
+            Zi = -0.087 * Math.exp(0.7307 * logA);
+            Gamr = K * 0.189 * Math.exp(0.6185 * logA);
+            Gami = K * (1 + 0.0978 * Math.exp(-
