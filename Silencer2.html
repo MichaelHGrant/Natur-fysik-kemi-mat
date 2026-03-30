@@ -2,8 +2,10 @@
 <html lang="da">
 <head>
     <meta charset="UTF-8">
-    <title>DTU Lyddæmper Simulator - Fig 5.1</title>
+    <title>DTU Lyddæmper Simulator - Fig 5.1 (Zoom & Auto-skalering)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background: #e9ecef; color: #333; }
         .container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
@@ -16,12 +18,14 @@
         button:hover { background: #c0392b; }
         .chart-container { position: relative; height: 500px; width: 100%; margin-top: 20px; }
         pre { background: #1e1e1e; color: #4af626; padding: 15px; border-radius: 5px; overflow-y: auto; height: 120px; font-family: 'Courier New', Courier, monospace; font-size: 12px; }
+        .help-text { font-size: 12px; color: #7f8c8d; margin-top: -10px; margin-bottom: 10px; font-style: italic; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h1>Reproduktion af Fig. 5.1 (Local vs. Extended)</h1>
+    <p class="help-text">💡 Tip: Brug musehjulet over grafen for at zoome. Klik og træk for at panorere.</p>
     
     <div class="control-panel">
         <div class="input-group">
@@ -85,7 +89,7 @@ let chartInstance = null;
 
 function startSimulation() {
     let out = document.getElementById("output");
-    out.innerText = "Starter fintmasket lineær simulation for at fange 0,0-moden perfekt...";
+    out.innerText = "Starter fintmasket lineær simulation for at fange moden perfekt...";
     setTimeout(runMath, 50);
 }
 
@@ -100,11 +104,9 @@ function runMath() {
         let dataExtended = [];
         let dataLocal = [];
 
-        // Startgæt
         let lastW_ext = new Complex(0.1, 0.1); 
         let lastW_loc = new Complex(0.1, 0.1); 
 
-        // Tvinger lineære trin på 5 Hz for at sikre at Newton-Raphson ikke "hopper" til forkerte modes
         let f_start = 10;
         let f_end = 10000;
         let f_step = 5; 
@@ -115,13 +117,11 @@ function runMath() {
             
             let Zr, Zi, Gamr, Gami;
             
-            // Mechel / Delany-Bazley overgang
             if (Af < 60) {
                 let logA = Math.log(Af);
                 Zr = 1 + 0.04885 * Math.exp(0.754 * logA);
                 Zi = -0.087 * Math.exp(0.7307 * logA);
                 Gamr = K * 0.189 * Math.exp(0.6185 * logA);
-                // VIGTIGT FIX: Eksponenten er POSITIV (0.6929), ikke negativ!
                 Gami = K * (1 + 0.0978 * Math.exp(0.6929 * logA)); 
             } else {
                 let term = new Complex(-1.4664, 0.2115 * Af);
@@ -137,14 +137,12 @@ function runMath() {
             let Z_c = new Complex(Zr, Zi);
             let Gam_c = new Complex(Gamr, Gami);
             
-            // Matcher præcis din HP kode: M = Cdiv(Cmplx(0, -Rho*C*K), Cmult(Za, Gam_a))
             let M = (new Complex(0, -RHO * C * K)).div(Z_c.mult(Gam_c));
-            
             let kl_complex = new Complex(K * L1, 0);
             let p2 = (Gam_c.scale(L1)).mult(Gam_c.scale(L1)).sub(kl_complex.mult(kl_complex));
             let hl = Gam_c.scale(L1);
 
-            // --- EXTENDED REACTION ---
+            // EXTENDED
             let currentW_ext = new Complex(lastW_ext.r, lastW_ext.i);
             let iter_ext = 0, conv_ext = false;
             while (iter_ext < 50 && !conv_ext) {
@@ -167,7 +165,7 @@ function runMath() {
             }
             if (conv_ext) lastW_ext = currentW_ext;
 
-            // --- LOCAL REACTION ---
+            // LOCAL
             let currentW_loc = new Complex(lastW_loc.r, lastW_loc.i);
             let iter_loc = 0, conv_loc = false;
             let term2_loc = M.mult(hl).mult((hl.scale(b)).tan());
@@ -188,7 +186,6 @@ function runMath() {
             }
             if (conv_loc) lastW_loc = currentW_loc;
 
-            // --- OMREGN TIL DÆMPNING ---
             let calcAttenuation = function(w_complex) {
                 let w_sq = w_complex.mult(w_complex);
                 let kl_sq = kl_complex.mult(kl_complex);
@@ -198,12 +195,11 @@ function runMath() {
                 return (8.686 * Gamma.r) * fullDuctWidth;
             };
 
-            // Gemmer data til plot
             if (conv_ext) dataExtended.push({x: f, y: calcAttenuation(currentW_ext)});
             if (conv_loc) dataLocal.push({x: f, y: calcAttenuation(currentW_loc)});
         }
 
-        print("Matematik færdig! Tegner den korrigerede graf...");
+        print("Matematik færdig! Tegner graf med autoskalering og zoom...");
         drawChart(dataExtended, dataLocal);
 
     } catch (e) {
@@ -252,8 +248,24 @@ function drawChart(dataExt, dataLoc) {
                 },
                 y: { 
                     title: { display: true, text: 'Attenuation per duct width [dB]', font: {weight: 'bold'} }, 
-                    min: 0,
-                    max: 10
+                    min: 0 // Intet 'max' defineret: Aksens højde tilpasser sig automatisk dataene!
+                }
+            },
+            plugins: {
+                zoom: {
+                    pan: {
+                        enabled: true,
+                        mode: 'xy' // Tillader træk i både X og Y retning
+                    },
+                    zoom: {
+                        wheel: {
+                            enabled: true // Tillader zoom med musehjulet
+                        },
+                        pinch: {
+                            enabled: true // Tillader "pinch-to-zoom" på touchskærme
+                        },
+                        mode: 'xy'
+                    }
                 }
             }
         }
