@@ -2,7 +2,7 @@
 <html lang="da">
 <head>
     <meta charset="UTF-8">
-    <title>DTU Lyddæmper Simulator - Fig 5.1 Reproduktion</title>
+    <title>DTU Lyddæmper Simulator - Fig 5.1</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background: #e9ecef; color: #333; }
@@ -40,7 +40,7 @@
             <label>Antal beregningspunkter (Logaritmisk):</label>
             <input type="number" id="inpSteps" value="100">
         </div>
-        <button id="runBtn">Beregn og Tegn Fig. 5.1</button>
+        <button onclick="startSimulation()">Beregn og Tegn Fig. 5.1</button>
     </div>
 
     <div class="chart-container">
@@ -54,13 +54,13 @@
 <script>
 function print(text) {
     let out = document.getElementById("output");
-    out.innerText += text + "\n";
+    out.innerText += "\n" + text;
     out.scrollTop = out.scrollHeight; 
 }
 
-// Fanger alle globale fejl
+// Global fejlfanger
 window.onerror = function(msg, url, line) {
-    print(`[SYSTEM FEJL]: ${msg} på linje ${line}`);
+    print(`[CRASH]: ${msg} på linje ${line}`);
     return true;
 };
 
@@ -93,10 +93,23 @@ const C = 344.246;
 const RHO = 1.205; 
 let chartInstance = null; 
 
-document.getElementById("runBtn").addEventListener("click", function() {
+// Denne funktion kaldes når der trykkes på knappen
+function startSimulation() {
+    let out = document.getElementById("output");
+    out.innerText = "Starter logaritmisk simulation...\n(Beregner punkter - vent et øjeblik...)";
+    
+    // Tjek om Chart.js er indlæst
+    if (typeof Chart === 'undefined') {
+        print("FEJL: Kunne ikke finde Chart.js! Sikr dig, at du er forbundet til internettet.");
+        return;
+    }
+
+    // Vi giver browseren 100 ms til at tegne teksten ovenfor, inden vi starter den tunge matematik
+    setTimeout(runMath, 100);
+}
+
+function runMath() {
     try {
-        document.getElementById("output").innerText = "Starter logaritmisk simulation...\n";
-        
         let flowRes = parseFloat(document.getElementById("inpFlow").value);
         let thick = parseFloat(document.getElementById("inpLining").value);
         let width = parseFloat(document.getElementById("inpDuct").value); 
@@ -114,8 +127,173 @@ document.getElementById("runBtn").addEventListener("click", function() {
 
         let minFreq = 10;
         let maxFreq = 10000;
+        
+        let extSuccessCount = 0;
+        let locSuccessCount = 0;
 
         for (let J = 0; J < steps; J++) {
             let f = minFreq * Math.pow(maxFreq / minFreq, J / (steps - 1));
             let Af = flowRes / RHO / f;
-            let K = 2 * Math.PI * f /
+            let K = 2 * Math.PI * f / C;
+            
+            let Zr, Zi, Gamr, Gami;
+            if (Af < 60) {
+                let logA = Math.log(Af);
+                Zr = 1 + 0.04885 * Math.exp(0.754 * logA);
+                Zi = -0.087 * Math.exp(0.7307 * logA);
+                Gamr = K * 0.189 * Math.exp(0.6185 * logA);
+                Gami = K * (1 + 0.0978 * Math.exp(-0.6929 * logA));
+            } else {
+                let term = new Complex(-1.4664, 0.2115 * Af);
+                let sqrtTerm = term.sqrt();
+                Gamr = K * sqrtTerm.r;
+                Gami = K * sqrtTerm.i;
+                let numerator = new Complex(Af / (2 * Math.PI), 1.4035);
+                let Z_val = numerator.div(sqrtTerm);
+                Zr = Z_val.r;
+                Zi = Z_val.i;
+            }
+
+            let Z_c = new Complex(Zr, Zi);
+            let Gam_c = new Complex(Gamr, Gami);
+            let M = (new Complex(0, -RHO * C * K)).div(Z_c.mult(Gam_c));
+            let kl_complex = new Complex(K * L1, 0);
+            let p2 = (Gam_c.scale(L1)).mult(Gam_c.scale(L1)).sub(kl_complex.mult(kl_complex));
+            let hl = Gam_c.scale(L1);
+
+            // --- EXTENDED REACTION ---
+            let currentW_ext = new Complex(lastW_ext.r, lastW_ext.i);
+            let iter_ext = 0, conv_ext = false;
+            while (iter_ext < 50 && !conv_ext) {
+                iter_ext++;
+                let w2 = currentW_ext.mult(currentW_ext);
+                let sqrt_w2_p2 = (w2.add(p2)).sqrt();
+                let fw = currentW_ext.mult(currentW_ext.tan()).add(M.mult(sqrt_w2_p2).mult((sqrt_w2_p2.scale(b)).tan()));
+
+                let delta = new Complex(1e-6, 1e-6);
+                let w_d = currentW_ext.add(delta);
+                let sqrt_w2_p2_d = (w_d.mult(w_d).add(p2)).sqrt();
+                let fw_d = w_d.mult(w_d.tan()).add(M.mult(sqrt_w2_p2_d).mult((sqrt_w2_p2_d.scale(b)).tan()));
+
+                let f_prime = fw_d.sub(fw).div(delta);
+                let w_step = fw.div(f_prime);
+                
+                if (isNaN(w_step.r) || isNaN(w_step.i)) break;
+                currentW_ext = currentW_ext.sub(w_step);
+                if (Math.abs(w_step.r) <= 1e-6 && Math.abs(w_step.i) <= 1e-6) conv_ext = true;
+            }
+            
+            if (conv_ext) {
+                lastW_ext = currentW_ext;
+            } else {
+                lastW_ext = new Complex(0.1, 0.1); // Nulstil, hvis den mistede sporet
+            }
+
+            // --- LOCAL REACTION ---
+            let currentW_loc = new Complex(lastW_loc.r, lastW_loc.i);
+            let iter_loc = 0, conv_loc = false;
+            let term2_loc = M.mult(hl).mult((hl.scale(b)).tan());
+            
+            while (iter_loc < 50 && !conv_loc) {
+                iter_loc++;
+                let fw = currentW_loc.mult(currentW_loc.tan()).add(term2_loc);
+                let delta = new Complex(1e-6, 1e-6);
+                let w_d = currentW_loc.add(delta);
+                let fw_d = w_d.mult(w_d.tan()).add(term2_loc);
+
+                let f_prime = fw_d.sub(fw).div(delta);
+                let w_step = fw.div(f_prime);
+                
+                if (isNaN(w_step.r) || isNaN(w_step.i)) break;
+                currentW_loc = currentW_loc.sub(w_step);
+                if (Math.abs(w_step.r) <= 1e-6 && Math.abs(w_step.i) <= 1e-6) conv_loc = true;
+            }
+            
+            if (conv_loc) {
+                lastW_loc = currentW_loc;
+            } else {
+                lastW_loc = new Complex(0.1, 0.1); // Nulstil
+            }
+
+            // --- OMREGN TIL DÆMPNING ---
+            let calcAttenuation = function(w_complex) {
+                let w_sq = w_complex.mult(w_complex);
+                let kl_sq = kl_complex.mult(kl_complex);
+                let gam_l = w_sq.sub(kl_sq).sqrt();
+                let Gamma = new Complex(gam_l.r / L1, gam_l.i / L1);
+                if (Gamma.r < 0) Gamma = new Complex(-Gamma.r, -Gamma.i);
+                return (8.686 * Gamma.r) * fullDuctWidth;
+            };
+
+            if (conv_ext) {
+                dataExtended.push({x: f, y: calcAttenuation(currentW_ext)});
+                extSuccessCount++;
+            }
+            if (conv_loc) {
+                dataLocal.push({x: f, y: calcAttenuation(currentW_loc)});
+                locSuccessCount++;
+            }
+        }
+
+        print(`Matematik færdig! Fandt ${extSuccessCount} gyldige punkter for Extended og ${locSuccessCount} for Local.`);
+        drawChart(dataExtended, dataLocal);
+
+    } catch (e) {
+        print(`[MATEMATISK FEJL]: ${e.message}`);
+    }
+}
+
+function drawChart(dataExt, dataLoc) {
+    let ctx = document.getElementById('resultChart').getContext('2d');
+    if (chartInstance) { chartInstance.destroy(); }
+    
+    chartInstance = new Chart(ctx, {
+        type: 'scatter',
+        data: {
+            datasets: [
+                {
+                    label: 'Extended Reaction (—)',
+                    data: dataExt,
+                    borderColor: '#2c3e50',
+                    borderWidth: 2,
+                    showLine: true,
+                    pointRadius: 0, 
+                    fill: false,
+                    tension: 0.1
+                },
+                {
+                    label: 'Local Reaction (---)',
+                    data: dataLoc,
+                    borderColor: '#e74c3c',
+                    borderWidth: 2,
+                    borderDash: [8, 8], 
+                    showLine: true,
+                    pointRadius: 0,
+                    fill: false,
+                    tension: 0.1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { 
+                    type: 'logarithmic', 
+                    title: { display: true, text: 'Frequency [Hz]', font: {weight: 'bold'} },
+                    min: 10,
+                    max: 10000
+                },
+                y: { 
+                    title: { display: true, text: 'Attenuation per duct width [dB]', font: {weight: 'bold'} }, 
+                    min: 0,
+                    max: 10
+                }
+            }
+        }
+    });
+}
+</script>
+
+</body>
+</html>
