@@ -152,10 +152,18 @@
             transform: translate(-50%, -100%); margin-top: -15px; text-align: left; white-space: nowrap; line-height: 1.4;
         }
 
+      .alert-box {
+            background-color: rgba(218, 54, 51, 0.1);
+            border-left: 4px solid #da3633;
+            padding: 15px;
+            border-radius: 0 4px 4px 0;
+            color: #ff7b72;
+        }
+
         @media (max-width: 1024px) {
-         .dashboard { grid-template-columns: 1fr; }
-         .modal-header { flex-direction: column; text-align: center; }
-         .symbol-box { width: 60px; height: 60px; font-size: 1.8rem; }
+          .dashboard { grid-template-columns: 1fr; }
+          .modal-header { flex-direction: column; text-align: center; }
+          .symbol-box { width: 60px; height: 60px; font-size: 1.8rem; }
         }
     </style>
 </head>
@@ -185,753 +193,7 @@
                     <div class="prop-item"><span class="label">Atomnummer (Z):</span> <span id="modal-number" class="value"></span></div>
                     <div class="prop-item"><span class="label">Valens Z_eff (Slater):</span> <span id="modal-zeff" class="value"></span></div>
                     <div class="prop-item"><span class="label">Kvantemekanisk Model:</span> <span class="value">3D Monte Carlo</span></div>
-                    <div class="prop-item"><span class="label">Intensitet:</span> <span class="value">Dipol Matrix (A_21)</span></div>
-                </section>
-
-                <section>
-                    <div style="font-size: 0.85rem; color: #8b949e; margin-bottom: 5px;">Roterbare 3D Orbitaler (Træk med musen / Swipe)</div>
-                    <div class="orbital-ui">
-                        <label>n: <select id="n-select"></select></label>
-                        <label>l: <select id="l-select"></select></label>
-                        <label>m: <select id="m-select"></select></label>
-                        <span id="orbital-name" style="margin-left:auto; font-weight:bold; color:var(--highlight); font-size: 1.2rem;">1s</span>
-                    </div>
-                    <canvas id="orbital-canvas"></canvas>
-                </section>
-
-                <section class="spectra-section">
-                    <div style="font-size: 0.85rem; color: #8b949e; margin-bottom: 5px;">Beregnet Spektrum & Intensitet (Hold over linjer)</div>
-                    <div class="canvas-wrapper">
-                        <canvas id="spectra-canvas"></canvas>
-                        <div id="spectra-tooltip"></div>
-                    </div>
-                </section>
-            </div>
-        </div>
-    </dialog>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const gridContainer = document.getElementById('periodic-table-grid');
-            const modal = document.getElementById('element-modal');
-            const closeModalBtn = document.getElementById('close-modal');
-            const specCanvas = document.getElementById('spectra-canvas');
-            const specCtx = specCanvas.getContext('2d');
-            const orbCanvas = document.getElementById('orbital-canvas');
-            const orbCtx = orbCanvas.getContext('2d');
-            const tooltip = document.getElementById('spectra-tooltip');
-            
-            const nSelect = document.getElementById('n-select');
-            const lSelect = document.getElementById('l-select');
-            const mSelect = document.getElementById('m-select');
-            const orbitalName = document.getElementById('orbital-name');
-            
-            let currentLines = new Array();
-            let animationFrameId;
-            let currentZeff = 1.0;
-
-            let orbitalPoints = new Array();
-            let maxProbCache = 0.0001; 
-            let activeOrbitalColor = '#58a6ff';
-            let drawnPointsCount = 0;
-            
-            let rotX = 0;
-            let rotY = 0;
-            let isDraggingOrbital = false;
-            let lastMouseX = 0;
-            let lastMouseY = 0;
-
-            // --- 1. LOKAL GENERERING AF GRUNDSTOFFER (Løser fil-sikkerhedsfejl) ---
-            const symbolsString = "H,He,Li,Be,B,C,N,O,F,Ne,Na,Mg,Al,Si,P,S,Cl,Ar,K,Ca,Sc,Ti,V,Cr,Mn,Fe,Co,Ni,Cu,Zn,Ga,Ge,As,Se,Br,Kr,Rb,Sr,Y,Zr,Nb,Mo,Tc,Ru,Rh,Pd,Ag,Cd,In,Sn,Sb,Te,I,Xe,Cs,Ba,La,Ce,Pr,Nd,Pm,Sm,Eu,Gd,Tb,Dy,Ho,Er,Tm,Yb,Lu,Hf,Ta,W,Re,Os,Ir,Pt,Au,Hg,Tl,Pb,Bi,Po,At,Rn,Fr,Ra,Ac,Th,Pa,U,Np,Pu,Am,Cm,Bk,Cf,Es,Fm,Md,No,Lr,Rf,Db,Sg,Bh,Hs,Mt,Ds,Rg,Cn,Nh,Fl,Mc,Lv,Ts,Og";
-            const namesString = "Hydrogen,Helium,Lithium,Beryllium,Boron,Carbon,Nitrogen,Oxygen,Fluorine,Neon,Sodium,Magnesium,Aluminium,Silicon,Phosphorus,Sulfur,Chlorine,Argon,Potassium,Calcium,Scandium,Titanium,Vanadium,Chromium,Manganese,Iron,Cobalt,Nickel,Copper,Zinc,Gallium,Germanium,Arsenic,Selenium,Bromine,Krypton,Rubidium,Strontium,Yttrium,Zirconium,Niobium,Molybdenum,Technetium,Ruthenium,Rhodium,Palladium,Silver,Cadmium,Indium,Tin,Antimony,Tellurium,Iodine,Xenon,Cesium,Barium,Lanthanum,Cerium,Praseodymium,Neodymium,Promethium,Samarium,Europium,Gadolinium,Terbium,Dysprosium,Holmium,Erbium,Thulium,Ytterbium,Lutetium,Hafnium,Tantalum,Tungsten,Rhenium,Osmium,Iridium,Platinum,Gold,Mercury,Thallium,Lead,Bismuth,Polonium,Astatine,Radon,Francium,Radium,Actinium,Thorium,Protactinium,Uranium,Neptunium,Plutonium,Americium,Curium,Berkelium,Californium,Einsteinium,Fermium,Mendelevium,Nobelium,Lawrencium,Rutherfordium,Dubnium,Seaborgium,Bohrium,Hassium,Meitnerium,Darmstadtium,Roentgenium,Copernicium,Nihonium,Flerovium,Moscovium,Livermorium,Tennessine,Oganesson";
-            
-            const symbolsList = symbolsString.split(",");
-            const namesList = namesString.split(",");
-
-            function getElementData(Z) {
-                let x, y, cat;
-                if (Z >= 57 && Z <= 71) { x = Z - 57 + 4; y = 9; cat = 'lanthanide'; }
-                else if (Z >= 89 && Z <= 103) { x = Z - 89 + 4; y = 10; cat = 'actinide'; }
-                else {
-                    if (Z <= 2) { y = 1; }
-                    else if (Z <= 10) { y = 2; }
-                    else if (Z <= 18) { y = 3; }
-                    else if (Z <= 36) { y = 4; }
-                    else if (Z <= 54) { y = 5; }
-                    else if (Z <= 86) { y = 6; }
-                    else { y = 7; }
-
-                    if (Z===1||Z===3||Z===11||Z===19||Z===37||Z===55||Z===87) { x = 1; }
-                    else if (Z===4||Z===12||Z===20||Z===38||Z===56||Z===88) { x = 2; }
-                    else if (y===1 && Z===2) { x = 18; }
-                    else {
-                        let pStart = y === 2? 3 : (y === 3? 11 : (y === 4? 19 : (y === 5? 37 : (y === 6? 55 : 87))));
-                        let offset = Z - pStart;
-                        if (y === 2 |
-
-| y === 3) { x = offset <= 1? offset + 1 : offset + 11; }
-                        else if (y === 4 |
-
-| y === 5) { x = offset + 1; }
-                        else { x = offset <= 1? offset + 1 : offset - 13; }
-                    }
-
-                    if (x === 1 && Z!== 1) { cat = 'alkali-metal'; }
-                    else if (x === 2) { cat = 'alkaline-earth-metal'; }
-                    else if (x >= 3 && x <= 12) { cat = 'transition-metal'; }
-                    else if (x === 18) { cat = 'noble-gas'; }
-                    else if (x === 17) { cat = 'diatomic-nonmetal'; }
-                    else if (Z===5||Z===14||Z===32||Z===33||Z===51||Z===52||Z===84) { cat = 'metalloid'; }
-                    else if (Z===6||Z===15||Z===34||Z===16) { cat = 'polyatomic-nonmetal'; }
-                    else { cat = 'post-transition-metal'; }
-                }
-                if (Z === 1) { cat = 'diatomic-nonmetal'; }
-                if (Z >= 104) { cat = 'unknown'; }
-                return { x: x, y: y, cat: cat, group: x };
-            }
-
-            let elementsDatabase = new Array();
-            for (let i = 0; i < 118; i++) {
-                let z = i + 1;
-                let d = getElementData(z);
-                let elementObject = new Object();
-                elementObject.number = z;
-                elementObject.symbol = symbolsList.slice(i, i+1).shift();
-                elementObject.name = namesList.slice(i, i+1).shift();
-                elementObject.category = d.cat;
-                elementObject.xpos = d.x;
-                elementObject.ypos = d.y;
-                elementObject.group = d.group;
-                elementsDatabase.push(elementObject);
-            }
-
-            // --- 2. KONTROLPANEL FOR ORBITALER ---
-            for(let i=1; i<=6; i++) {
-                nSelect.add(new Option(i, i));
-            }
-            
-            nSelect.addEventListener('change', () => {
-                let n = parseInt(nSelect.value);
-                lSelect.innerHTML = '';
-                for(let i=0; i<n; i++) { lSelect.add(new Option(i, i)); }
-                lSelect.dispatchEvent(new Event('change'));
-            });
-
-            lSelect.addEventListener('change', () => {
-                let l = parseInt(lSelect.value);
-                mSelect.innerHTML = '';
-                for(let i=-l; i<=l; i++) { mSelect.add(new Option(i, i)); }
-                updateOrbitalName();
-                resetOrbitalCloud();
-            });
-
-            mSelect.addEventListener('change', () => {
-                updateOrbitalName();
-                resetOrbitalCloud();
-            });
-
-            function updateOrbitalName() {
-                let n = nSelect.value;
-                let l = parseInt(lSelect.value);
-                let m = mSelect.value;
-                let letters = "spdfgh";
-                let orbitalLetter = letters.charAt(l);
-                orbitalName.innerHTML = n + orbitalLetter + ' <span style="font-size:0.85rem; color:#8b949e;">(m=' + m + ')</span>';
-            }
-
-            function resetOrbitalCloud() {
-                orbitalPoints = new Array();
-                drawnPointsCount = 0;
-                maxProbCache = 0.0001;
-                rotX = 0;
-                rotY = 0;
-            }
-
-            // --- 3. BYG DET PERIODISKE SYSTEM ---
-            function renderPeriodicTable(elements) {
-                let docFrag = document.createDocumentFragment();
-                elements.forEach(element => {
-                    const cell = document.createElement('li');
-                    cell.classList.add('element');
-                    cell.classList.add(element.category);
-                    cell.style.setProperty('--xpos', element.xpos);
-                    cell.style.setProperty('--ypos', element.ypos);
-
-                    cell.innerHTML = '<span class="el-number">' + element.number + '</span>' +
-                                     '<abbr class="el-symbol" title="' + element.name + '">' + element.symbol + '</abbr>' +
-                                     '<span class="el-name">' + element.name + '</span>';
-
-                    cell.setAttribute('tabindex', '0');
-                    cell.addEventListener('click', () => populateAndOpenModal(element));
-                    cell.addEventListener('keydown', (e) => { if (e.key === 'Enter') populateAndOpenModal(element); });
-
-                    docFrag.appendChild(cell);
-                });
-                gridContainer.appendChild(docFrag);
-            }
-            renderPeriodicTable(elementsDatabase);
-
-            // --- 4. FYSIKMOTOR: SLATERS REGLER FOR Z_eff ---
-            function calculateZeff(Z, group) {
-                if (Z === 1) return 1.0;
-                let valence = (group >= 13)? group - 10 : group;
-                if (group >= 3 && group <= 12) valence = 2; // Approksimation for d-blokken
-                let n_minus_1 = (Z > 20)? 18 : ((Z > 2)? 8 : 2);
-                let core = Z - valence - n_minus_1;
-                if (core < 0) core = 0;
-                
-                let S = (0.35 * (valence > 0? valence - 1 : 0)) + (0.85 * n_minus_1) + (1.00 * core);
-                let Zeff = Z - S;
-                return Zeff < 1.0? 1.0 : Zeff; 
-            }
-
-            function wavelengthToRGB(wl) {
-                let R = 0, G = 0, B = 0;
-                if (wl >= 380 && wl < 440) { R = -(wl - 440) / (440 - 380); B = 1; }
-                else if (wl >= 440 && wl < 490) { G = (wl - 440) / (490 - 440); B = 1; }
-                else if (wl >= 490 && wl < 510) { G = 1; B = -(wl - 510) / (510 - 490); }
-                else if (wl >= 510 && wl < 580) { R = (wl - 510) / (580 - 510); G = 1; }
-                else if (wl >= 580 && wl < 645) { R = 1; G = -(wl - 645) / (645 - 580); }
-                else if (wl >= 645 && wl <= 780) { R = 1; }
-
-                let factor = 1;
-                if (wl >= 380 && wl < 420) factor = 0.3 + 0.7 * (wl - 380) / (420 - 380);
-                else if (wl > 700 && wl <= 780) factor = 0.3 + 0.7 * (780 - wl) / (780 - 700);
-                
-                let gamma = 0.8;
-                let r = Math.round(255 * Math.pow(R * factor, gamma));
-                let g = Math.round(255 * Math.pow(G * factor, gamma));
-                let b = Math.round(255 * Math.pow(B * factor, gamma));
-                return 'rgb(' + r + ',' + g + ',' + b + ')';
-            }
-
-            // --- 5. SPEKTRAL BEREGNING ---
-            function generateQuantumLines(Zeff) {
-                let lines = new Array();
-                const eV_to_nm = 1239.84193; 
-                let maxA21 = 0;
-                
-                for (let n1 = 1; n1 <= 5; n1++) {
-                    for (let n2 = n1 + 1; n2 <= 6; n2++) {
-                        let E1 = -13.6 * (Zeff * Zeff) / (n1 * n1);
-                        let E2 = -13.6 * (Zeff * Zeff) / (n2 * n2);
-                        let deltaE = E2 - E1;
-                        let lambda = eV_to_nm / deltaE;
-
-                        let n1_sq = n1 * n1;
-                        let n2_sq = n2 * n2;
-                        let D12_sq = (1 / (Zeff * Zeff)) * (256 * Math.pow(n1, 7) * Math.pow(n2, 9)) / (Math.pow(n2_sq - n1_sq, 5) * Math.pow(n2_sq + n1_sq, 2));
-                        let A21 = D12_sq / Math.pow(lambda, 3);
-                        if (A21 > maxA21) maxA21 = A21;
-
-                        let fineSplit = lambda * 0.00005 * Zeff; 
-                        let displayLambda = lambda;
-                        while(displayLambda < 380) displayLambda *= 1.5; 
-                        while(displayLambda > 780) displayLambda *= 0.8;
-
-                        let obj1 = new Object();
-                        obj1.realLambda = lambda; 
-                        obj1.lambda = displayLambda;
-                        obj1.n1 = n1; 
-                        obj1.n2 = n2; 
-                        obj1.E1 = E1; 
-                        obj1.E2 = E2; 
-                        obj1.deltaE = deltaE; 
-                        obj1.Zeff = Zeff;
-                        obj1.dipoleMatrix = D12_sq; 
-                        obj1.einsteinA = A21; 
-                        obj1.intensity = 0; 
-                        obj1.color = wavelengthToRGB(displayLambda); 
-                        obj1.canvasX = 0;
-                        lines.push(obj1);
-                        
-                        let obj2 = new Object();
-                        obj2.realLambda = lambda + fineSplit; 
-                        obj2.lambda = displayLambda + (fineSplit > 0.5? fineSplit : 0.5);
-                        obj2.n1 = n1; 
-                        obj2.n2 = n2; 
-                        obj2.E1 = E1; 
-                        obj2.E2 = E2; 
-                        obj2.deltaE = deltaE; 
-                        obj2.Zeff = Zeff;
-                        obj2.dipoleMatrix = D12_sq * 0.5; 
-                        obj2.einsteinA = A21 * 0.5; 
-                        obj2.intensity = 0;
-                        obj2.color = wavelengthToRGB(displayLambda); 
-                        obj2.canvasX = 0;
-                        lines.push(obj2);
-                    }
-                }
-                lines.forEach(line => {
-                    line.intensity = 0.1 + 0.9 * Math.pow(line.einsteinA / maxA21, 0.3);
-                });
-                return lines;
-            }
-
-            function renderCanvasSpectra(linesToDraw) {
-                let dpr = window.devicePixelRatio? window.devicePixelRatio : 1;
-                const rect = specCanvas.getBoundingClientRect();
-                specCanvas.width = rect.width * dpr;
-                specCanvas.height = rect.height * dpr;
-                specCtx.setTransform(1, 0, 0, 1, 0, 0); 
-                specCtx.scale(dpr, dpr);
-
-                specCtx.fillStyle = '#000';
-                specCtx.fillRect(0, 0, rect.width, rect.height);
-
-                linesToDraw.forEach(line => {
-                    let x = ((line.lambda - 380) / (780 - 380)) * rect.width;
-                    line.canvasX = x; 
-                    specCtx.beginPath();
-                    specCtx.moveTo(x, 0);
-                    specCtx.lineTo(x, rect.height);
-                    specCtx.strokeStyle = line.color;
-                    specCtx.lineWidth = 2;
-                    specCtx.globalAlpha = line.intensity;
-                    specCtx.stroke();
-                });
-            }
-
-            // --- 6. KVANTEMEKANISKE POLYNOMIER TIL 3D ORBITALER ---
-            function generalizedLaguerre(n, alpha, x) {
-                if (n === 0) return 1;
-                if (n === 1) return 1 + alpha - x;
-                let Lk_2 = 1;
-                let Lk_1 = 1 + alpha - x;
-                let Lk = Lk_1;
-                for (let k = 2; k <= n; k++) {
-                    Lk = ((2 * k - 1 + alpha - x) * Lk_1 - (k - 1 + alpha) * Lk_2) / k;
-                    Lk_2 = Lk_1;
-                    Lk_1 = Lk;
-                }
-                return Lk;
-            }
-
-            function associatedLegendre(l, m, x) {
-                m = Math.abs(m);
-                if (l < m) return 0;
-                let pmm = 1;
-                if (m > 0) {
-                    let somx2 = Math.sqrt((1 - x) * (1 + x));
-                    let fact = 1;
-                    for (let i = 1; i <= m; i++) { pmm *= -fact * somx2; fact += 2; }
-                }
-                if (l === m) return pmm;
-                let pmmp1 = x * (2 * m + 1) * pmm;
-                if (l === m + 1) return pmmp1;
-                let pll = 0;
-                for (let ll = m + 2; ll <= l; ll++) {
-                    pll = ((2 * ll - 1) * x * pmmp1 - (ll + m - 1) * pmm) / (ll - m);
-                    pmm = pmmp1; pmmp1 = pll;
-                }
-                return pll;
-            }
-
-            function orbitalPDF(n, l, m, r_bohr, theta) {
-                let rho = (2.0 * currentZeff / n) * r_bohr;
-                let radial = Math.pow(rho, l) * Math.exp(-rho / 2.0) * generalizedLaguerre(n - l - 1, 2 * l + 1, rho);
-                let angular = associatedLegendre(l, m, Math.cos(theta));
-                return Math.pow(radial * angular, 2);
-            }
-
-            function drawOrbitalCloud() {
-                const rect = orbCanvas.getBoundingClientRect();
-                let n = parseInt(nSelect.value);
-                let l = parseInt(lSelect.value);
-                let m = parseInt(mSelect.value);
-                
-                let cx = rect.width / 2;
-                let cy = rect.height / 2;
-                let maxR = n * n * 4.5 / currentZeff; 
-                let scale = (Math.min(rect.width, rect.height) / 2.2) / maxR;
-
-                if (drawnPointsCount < 15000) {
-                    for(let i = 0; i < 1500; i++) {
-                        let r = Math.random() * maxR; 
-                        let theta = Math.random() * Math.PI;
-                        let phi = Math.random() * Math.PI * 2;
-                        
-                        let prob = orbitalPDF(n, l, m, r, theta);
-                        if (prob > maxProbCache) maxProbCache = prob;
-
-                        let relativeProb = prob / maxProbCache;
-
-                        if (relativeProb > 0.05) {
-                            if (Math.random() < relativeProb) {
-                                let px = r * scale * Math.sin(theta) * Math.cos(phi);
-                                let pz = r * scale * Math.sin(theta) * Math.sin(phi);
-                                let py = r * scale * Math.cos(theta);
-                                
-                                let pointColor = relativeProb > 0.35? activeOrbitalColor : 'rgba(255,255,255,0.3)';
-                                let pt = new Object();
-                                pt.x = px;
-                                pt.y = py;
-                                pt.z = pz;
-                                pt.color = pointColor;
-                                orbitalPoints.push(pt);
-                                drawnPointsCount++;
-                            }
-                        }
-                    }
-                }
-
-                let dpr = window.devicePixelRatio? window.devicePixelRatio : 1;
-                orbCanvas.width = rect.width * dpr;
-                orbCanvas.height = rect.height * dpr;
-                orbCtx.setTransform(1, 0, 0, 1, 0, 0);
-                orbCtx.scale(dpr, dpr);
-                
-                orbCtx.fillStyle = '#000';
-                orbCtx.fillRect(0, 0, orbCanvas.width, orbCanvas.height);
-
-                let cosX = Math.cos(rotX);
-                let sinX = Math.sin(rotX);
-                let cosY = Math.cos(rotY);
-                let sinY = Math.sin(rotY);
-
-                for (let i = 0; i < orbitalPoints.length; i++) {
-                    let p = orbitalPoints[i];
-                    let x1 = p.x * cosY + p.z * sinY;
-                    let z1 = -p.x * sinY + p.z * cosY;
-                    let y1 = p.y;
-                    let y2 = y1 * cosX - z1 * sinX;
-                    let z2 = y1 * sinX + z1 * cosX;
-                    let x2 = x1;
-
-                    orbCtx.fillStyle = p.color;
-                    orbCtx.fillRect(cx + x2, cy - y2, 1.5, 1.5);
-                }
-
-                if(orbitalPoints.length === 0) {
-                    orbCtx.fillStyle = '#8b949e';
-                    orbCtx.font = '12px Arial';
-                    orbCtx.textAlign = 'center';
-                    orbCtx.fillText('Genererer 3D struktur...', cx, cy);
-                }
-
-                animationFrameId = requestAnimationFrame(drawOrbitalCloud);
-            }
-
-            // Orbital lærred (mouse drag funktioner - sikker mod touch-fejl)
-            function startOrbitalDrag(e) {
-                isDraggingOrbital = true;
-                let cX = e.clientX;
-                let cY = e.clientY;
-                if (e.touches && e.touches.length > 0) {
-                    let t = e.touches.item(0);
-                    cX = t.clientX;
-                    cY = t.clientY;
-                }
-                lastMouseX = cX;
-                lastMouseY = cY;
-            }
-
-            function dragOrbital(e) {
-                if (isDraggingOrbital === false) return;
-                
-                let cX = e.clientX;
-                let cY = e.clientY;
-                if (e.touches && e.touches.length > 0) {
-                    e.preventDefault(); 
-                    let t = e.touches.item(0);
-                    cX = t.clientX;
-                    cY = t.clientY;
-                }
-
-                let deltaX = cX - lastMouseX;
-                let deltaY = cY - lastMouseY;
-                
-                rotY += deltaX * 0.01;
-                rotX += deltaY * 0.01;
-                
-                lastMouseX = cX;
-                lastMouseY = cY;
-            }
-
-            function endOrbitalDrag() { isDraggingOrbital = false; }
-
-            orbCanvas.addEventListener('mousedown', startOrbitalDrag);
-            window.addEventListener('mousemove', dragOrbital, {passive: false});
-            window.addEventListener('mouseup', endOrbitalDrag);
-            orbCanvas.addEventListener('touchstart', startOrbitalDrag, {passive: true});
-            window.addEventListener('touchmove', dragOrbital, {passive: false});
-            window.addEventListener('touchend', endOrbitalDrag);
-
-            // --- 7. ÅBN MODAL & HÅNDTER INTERAKTION ---
-            function populateAndOpenModal(element) {
-                document.getElementById('modal-name').textContent = element.name;
-                document.getElementById('modal-category').textContent = element.category.toUpperCase();
-                document.getElementById('modal-number').textContent = element.number;
-                
-                currentZeff = calculateZeff(element.number, element.group);
-                document.getElementById('modal-zeff').textContent = currentZeff.toFixed(2);
-
-                const symbolBox = document.getElementById('modal-symbol-box');
-                symbolBox.textContent = element.symbol;
-                symbolBox.className = 'symbol-box'; 
-                symbolBox.style.borderColor = 'var(--' + element.category + ')';
-
-                let rootStyles = getComputedStyle(document.body);
-                let tempColor = rootStyles.getPropertyValue('--' + element.category).trim();
-                activeOrbitalColor = tempColor!== ''? tempColor : '#58a6ff';
-
-                modal.showModal();
-
-                nSelect.value = 1;
-                nSelect.dispatchEvent(new Event('change'));
-
-                currentLines = generateQuantumLines(currentZeff);
-                renderCanvasSpectra(currentLines);
-                
-                cancelAnimationFrame(animationFrameId);
-                resetOrbitalCloud();
-                animationFrameId = requestAnimationFrame(drawOrbitalCloud);
-            }
-
-            function handleSpectrumInteraction(e) {
-                let cX = e.clientX;
-                let cY = e.clientY;
-                if (e.touches && e.touches.length > 0) {
-                    let t = e.touches.item(0);
-                    cX = t.clientX;
-                    cY = t.clientY;
-                }
-
-                const rect = specCanvas.getBoundingClientRect();
-                const x = cX - rect.left;
-                const y = cY - rect.top;
-
-                let closestLine = null;
-                let minDistance = 5; 
-
-                currentLines.forEach(line => {
-                    let dist = Math.abs(x - line.canvasX);
-                    if (dist < minDistance) { closestLine = line; minDistance = dist; }
-                });
-
-                if (closestLine) {
-                    tooltip.style.display = 'block';
-                    tooltip.style.left = x + 'px';
-                    tooltip.style.top = y + 'px';
-                    
-                    let html = '<strong style="color:' + closestLine.color + '">Visuel &lambda;: ' + closestLine.lambda.toFixed(1) + ' nm</strong><br>';
-                    html += 'Rigtig &lambda;: ' + closestLine.realLambda.toFixed(1) + ' nm<br>';
-                    html += 'Overgang: n=' + closestLine.n2 + ' &rarr; n=' + closestLine.n1 + '<br>';
-                    html += '<hr style="margin:6px 0; border-color:#30363d;">';
-                    html += '<span style="color:#8b949e; font-size:0.75rem;">SCHR&Ouml;DINGERS UDREGNING</span><br>';
-                    html += 'Z<sub>eff</sub> = ' + closestLine.Zeff.toFixed(2) + '<br>';
-                    html += 'E<sub>' + closestLine.n2 + '</sub> = -13.6 &middot; Z<sub>eff</sub>&sup2; / ' + closestLine.n2 + '&sup2; = ' + closestLine.E2.toFixed(2) + ' eV<br>';
-                    html += 'E<sub>' + closestLine.n1 + '</sub> = -13.6 &middot; Z<sub>eff</sub>&sup2; / ' + closestLine.n1 + '&sup2; = ' + closestLine.E1.toFixed(2) + ' eV<br>';
-                    html += '&Delta;E = E<sub>' + closestLine.n2 + '</sub> - E<sub>' + closestLine.n1 + '</sub> = ' + closestLine.deltaE.toFixed(2) + ' eV<br>';
-                    html += '|D|&sup2; = ' + closestLine.dipoleMatrix.toExponential(2) + '<br>';
-                    html += 'Einstein A<sub>21</sub> &propto; ' + closestLine.einsteinA.toExponential(2) + '<br>';
-
-                    tooltip.innerHTML = html;
-                } else {
-                    tooltip.style.display = 'none';
-                }
-            }
-
-            specCanvas.addEventListener('mousemove', handleSpectrumInteraction);
-            specCanvas.addEventListener('touchstart', handleSpectrumInteraction, {passive: true});
-            specCanvas.addEventListener('touchmove', handleSpectrumInteraction, {passive: true});
-            specCanvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
-            specCanvas.addEventListener('touchend', () => { tooltip.style.display = 'none'; });
-            
-            closeModalBtn.addEventListener('click', () => { modal.close(); cancelAnimationFrame(animationFrameId); tooltip.style.display = 'none'; });
-            
-            modal.addEventListener('click', (e) => {
-                const dim = modal.getBoundingClientRect();
-                let outside = false;
-                if (e.clientX < dim.left) outside = true;
-                if (e.clientX > dim.right) o<!DOCTYPE html>
-<html lang="da">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Interaktiv Periodisk Tabel: Kvantemekanik & Spektroskopi</title>
-    <style>
-        :root {
-            --bg-color: #0d1117; 
-            --text-color: #c9d1d9;
-            --cell-bg: #161b22;
-            --border-color: #30363d;
-            --highlight: #58a6ff;
-            
-            --diatomic-nonmetal: #a1ffc3;
-            --noble-gas: #c0ffff;
-            --alkali-metal: #ff6666;
-            --alkaline-earth-metal: #ffdead;
-            --metalloid: #cccc99;
-            --polyatomic-nonmetal: #e7ff8f;
-            --post-transition-metal: #cccccc;
-            --transition-metal: #f0a0a0;
-            --lanthanide: #ffbfff;
-            --actinide: #ff99cc;
-            --unknown: #e0e0e0;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 2rem 1rem;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        header { text-align: center; margin-bottom: 2rem; max-width: 800px; width: 100%; }
-        h1 { font-size: 2.2rem; margin-bottom: 0.5rem; color: #ffffff; }
-
-        /* Mobil-venlig horisontal scroll-container */
-       .table-wrapper {
-            width: 100%;
-            max-width: 1400px;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            padding-bottom: 20px;
-        }
-
-       .periodic-table {
-            all: unset;
-            display: grid;
-            grid-template-columns: repeat(18, minmax(50px, 1fr));
-            grid-template-rows: repeat(10, minmax(55px, auto));
-            gap: 5px;
-            min-width: 1000px; /* Tvinger systemet til at bevare formen på små skærme */
-            width: 100%;
-        }
-
-       .element {
-            background-color: var(--cell-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            padding: 4px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s, filter 0.2s;
-            grid-column: var(--xpos);
-            grid-row: var(--ypos);
-            filter: brightness(0.85);
-            user-select: none;
-        }
-
-       .element:hover,.element:focus {
-            transform: scale(1.15) translateY(-5px);
-            z-index: 100;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
-            border-color: rgba(255, 255, 255, 0.9);
-            filter: brightness(1.1);
-        }
-
-       .el-number { font-size: 0.7rem; align-self: flex-start; font-weight: 600; }
-       .el-symbol { font-size: 1.4rem; font-weight: 800; align-self: center; margin: 0; }
-       .el-name { font-size: 0.6rem; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-       .diatomic-nonmetal { border-top: 4px solid var(--diatomic-nonmetal); }
-       .noble-gas { border-top: 4px solid var(--noble-gas); }
-       .alkali-metal { border-top: 4px solid var(--alkali-metal); }
-       .alkaline-earth-metal { border-top: 4px solid var(--alkaline-earth-metal); }
-       .metalloid { border-top: 4px solid var(--metalloid); }
-       .polyatomic-nonmetal { border-top: 4px solid var(--polyatomic-nonmetal); }
-       .post-transition-metal { border-top: 4px solid var(--post-transition-metal); }
-       .transition-metal { border-top: 4px solid var(--transition-metal); }
-       .lanthanide { border-top: 4px solid var(--lanthanide); }
-       .actinide { border-top: 4px solid var(--actinide); }
-       .unknown { border-top: 4px solid var(--unknown); }
-
-        dialog {
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            background-color: var(--cell-bg);
-            color: var(--text-color);
-            max-width: 900px;
-            width: 95%;
-            padding: 0;
-            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8);
-        }
-        
-        dialog::backdrop { background-color: rgba(1, 4, 9, 0.85); backdrop-filter: blur(5px); }
-       .modal-content { padding: 25px; position: relative; max-height: 90vh; overflow-y: auto;}
-        
-        #close-modal {
-            position: absolute; top: 15px; right: 15px; background: rgba(255,255,255,0.1); border: none;
-            border-radius: 50%; color: #fff; width: 36px; height: 36px; cursor: pointer; font-weight: bold;
-            z-index: 1000;
-        }
-        #close-modal:hover { background: rgba(255,255,255,0.2); }
-
-       .modal-header { display: flex; align-items: center; gap: 20px; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px;}
-       .symbol-box { width: 70px; height: 70px; display: flex; justify-content: center; align-items: center; font-size: 2.2rem; font-weight: 800; border-radius: 10px; background-color: #21262d; border: 2px solid transparent; }
-       
-       .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-       .properties-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background-color: #0d1117; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); align-content: start; }
-       .prop-item { display: flex; flex-direction: column; }
-       .prop-item.label { font-size: 0.7rem; text-transform: uppercase; color: #8b949e; }
-       .prop-item.value { font-size: 0.95rem; font-weight: 600; color: #e6edf3; }
-
-       .spectra-section { grid-column: 1 / -1; margin-top: 10px; }
-        
-       .canvas-wrapper { position: relative; width: 100%; display: block; }
-        
-        #spectra-canvas { width: 100%; height: 120px; background-color: #000; border: 2px solid #30363d; border-radius: 6px; cursor: crosshair; display: block;}
-        
-        /* 3D Interaktivitet cursor */
-        #orbital-canvas { width: 100%; height: 260px; background-color: #000; border: 2px solid #30363d; border-radius: 6px; display: block; cursor: grab; touch-action: none; }
-        #orbital-canvas:active { cursor: grabbing; }
-
-       .orbital-ui {
-            display: flex; gap: 10px; margin-bottom: 10px; background: #21262d; padding: 10px; border-radius: 6px; align-items: center; flex-wrap: wrap;
-        }
-       .orbital-ui label { font-size: 0.85rem; font-weight: bold; color: #c9d1d9; }
-       .orbital-ui select {
-            background: #0d1117; color: #c9d1d9; border: 1px solid #30363d; padding: 4px 8px; border-radius: 4px; outline: none; margin-left: 5px; cursor: pointer;
-        }
-
-        #spectra-tooltip {
-            position: absolute; background: rgba(13,17,23,0.95); color: #fff; padding: 12px; border-radius: 6px;
-            border: 1px solid var(--highlight); pointer-events: none; font-size: 0.85rem; z-index: 2000; display: none;
-            transform: translate(-50%, -100%); margin-top: -15px; text-align: left; white-space: nowrap; line-height: 1.4;
-        }
-
-        @media (max-width: 1024px) {
-           .dashboard { grid-template-columns: 1fr; }
-           .modal-header { flex-direction: column; text-align: center; }
-           .symbol-box { width: 60px; height: 60px; font-size: 1.8rem; }
-        }
-    </style>
-</head>
-<body>
-    <header>
-        <h1>Kvantemekanisk Periodisk System</h1>
-        <p>Emissionsspektre & 3D Orbitaler via Schrödingers Ligning, Einstein A-Koefficienter og Dipol-Matrix-Elementer.</p>
-    </header>
-
-    <main class="table-wrapper">
-        <ol id="periodic-table-grid" class="periodic-table" aria-label="Periodisk System"></ol>
-    </main>
-
-    <dialog id="element-modal" aria-labelledby="modal-name">
-        <div class="modal-content">
-            <button id="close-modal" aria-label="Luk vindue">X</button>
-            <div class="modal-header">
-                <div id="modal-symbol-box" class="symbol-box" aria-hidden="true"></div>
-                <div class="modal-titles">
-                    <h2 id="modal-name" style="margin:0;">Indlæser...</h2>
-                    <p id="modal-category" style="margin:5px 0; color:#8b949e;">Indlæser Kategori...</p>
-                </div>
-            </div>
-            
-            <div class="dashboard">
-                <section class="properties-grid">
-                    <div class="prop-item"><span class="label">Atomnummer (Z):</span> <span id="modal-number" class="value"></span></div>
-                    <div class="prop-item"><span class="label">Valens Z_eff (Slater):</span> <span id="modal-zeff" class="value"></span></div>
-                    <div class="prop-item"><span class="label">Kvantemekanisk Model:</span> <span class="value">3D Monte Carlo</span></div>
-                    <div class="prop-item"><span class="label">Intensitet:</span> <span class="value">Dipol Matrix (A_21)</span></div>
+                    <div class="prop-item"><span class="label">Intensitet:</span> <span class="value">Einstein A-Koefficient</span></div>
                 </section>
 
                 <section>
@@ -997,10 +259,18 @@
             const shellsList = shellsString.split(";");
 
             function getElementData(Z) {
-                let x, y, cat;
-                if (Z >= 57 && Z <= 71) { x = Z - 57 + 4; y = 9; cat = 'lanthanide'; }
-                else if (Z >= 89 && Z <= 103) { x = Z - 89 + 4; y = 10; cat = 'actinide'; }
-                else {
+                let x = 0;
+                let y = 0;
+                let cat = '';
+                
+                if (Z >= 57) {
+                    if (Z <= 71) { x = Z - 57 + 4; y = 9; cat = 'lanthanide'; }
+                }
+                if (Z >= 89) {
+                    if (Z <= 103) { x = Z - 89 + 4; y = 10; cat = 'actinide'; }
+                }
+                
+                if (x === 0) {
                     if (Z <= 2) { y = 1; }
                     else if (Z <= 10) { y = 2; }
                     else if (Z <= 18) { y = 3; }
@@ -1009,32 +279,59 @@
                     else if (Z <= 86) { y = 6; }
                     else { y = 7; }
 
-                    if (Z===1||Z===3||Z===11||Z===19||Z===37||Z===55||Z===87) { x = 1; }
-                    else if (Z===4||Z===12||Z===20||Z===38||Z===56||Z===88) { x = 2; }
-                    else if (y===1 && Z===2) { x = 18; }
+                    let isAlkali = false;
+                    if (.indexOf(Z)!== -1) { isAlkali = true; }
+                    
+                    let isAlkaline = false;
+                    if (.indexOf(Z)!== -1) { isAlkaline = true; }
+                    
+                    let isMetalloid = false;
+                    if (.indexOf(Z)!== -1) { isMetalloid = true; }
+                    
+                    let isPolyatomic = false;
+                    if (.indexOf(Z)!== -1) { isPolyatomic = true; }
+
+                    if (isAlkali) { x = 1; }
+                    else if (isAlkaline) { x = 2; }
+                    else if (y === 1) {
+                        if (Z === 2) { x = 18; }
+                    }
                     else {
-                        let pStart = y === 2? 3 : (y === 3? 11 : (y === 4? 19 : (y === 5? 37 : (y === 6? 55 : 87))));
+                        let pStart = 0;
+                        if (y === 2) { pStart = 3; }
+                        else if (y === 3) { pStart = 11; }
+                        else if (y === 4) { pStart = 19; }
+                        else if (y === 5) { pStart = 37; }
+                        else if (y === 6) { pStart = 55; }
+                        else if (y === 7) { pStart = 87; }
+
                         let offset = Z - pStart;
-                        if (y === 2 |
-
-| y === 3) { x = offset <= 1? offset + 1 : offset + 11; }
-                        else if (y === 4 |
-
-| y === 5) { x = offset + 1; }
+                        if (y === 2) { x = offset <= 1? offset + 1 : offset + 11; }
+                        else if (y === 3) { x = offset <= 1? offset + 1 : offset + 11; }
+                        else if (y === 4) { x = offset + 1; }
+                        else if (y === 5) { x = offset + 1; }
                         else { x = offset <= 1? offset + 1 : offset - 13; }
                     }
 
-                    if (x === 1 && Z!== 1) { cat = 'alkali-metal'; }
+                    if (x === 1) {
+                        if (Z!== 1) { cat = 'alkali-metal'; }
+                    }
                     else if (x === 2) { cat = 'alkaline-earth-metal'; }
-                    else if (x >= 3 && x <= 12) { cat = 'transition-metal'; }
-                    else if (x === 18) { cat = 'noble-gas'; }
-                    else if (x === 17) { cat = 'diatomic-nonmetal'; }
-                    else if (Z===5||Z===14||Z===32||Z===33||Z===51||Z===52||Z===84) { cat = 'metalloid'; }
-                    else if (Z===6||Z===15||Z===34||Z===16) { cat = 'polyatomic-nonmetal'; }
-                    else { cat = 'post-transition-metal'; }
+                    else if (x >= 3) {
+                        if (x <= 12) { cat = 'transition-metal'; }
+                        else {
+                            if (x === 18) { cat = 'noble-gas'; }
+                            else if (x === 17) { cat = 'diatomic-nonmetal'; }
+                            else if (isMetalloid) { cat = 'metalloid'; }
+                            else if (isPolyatomic) { cat = 'polyatomic-nonmetal'; }
+                            else { cat = 'post-transition-metal'; }
+                        }
+                    }
                 }
+                
                 if (Z === 1) { cat = 'diatomic-nonmetal'; }
                 if (Z >= 104) { cat = 'unknown'; }
+                
                 return { x: x, y: y, cat: cat };
             }
 
@@ -1101,14 +398,16 @@
                 rotY = 0;
             }
 
-            // --- 3. BYG DET PERIODISKE SYSTEM DIREKTE (INGEN INTERNETKALD) ---
+            // --- 3. BYG DET PERIODISKE SYSTEM ---
             function renderPeriodicTable(elements) {
                 let docFrag = document.createDocumentFragment();
                 
                 elements.forEach(element => {
                     const cell = document.createElement('li');
                     cell.classList.add('element');
-                    cell.classList.add(element.category);
+                    let catClass = element.category;
+                    
+                    cell.classList.add(catClass);
                     cell.style.setProperty('--xpos', element.xpos);
                     cell.style.setProperty('--ypos', element.ypos);
 
@@ -1126,15 +425,19 @@
                 });
                 gridContainer.appendChild(docFrag);
             }
-            // Bygger tabellen direkte når siden åbnes
             renderPeriodicTable(elementsDatabase);
 
             // --- 4. FYSIKMOTOR: SLATERS REGLER FOR Z_eff ---
             function calculateZeff(Z, shells) {
                 if (Z === 1) return 1.0;
-                if (typeof shells === 'undefined') return 1.0;
-                if (shells === null) return 1.0;
-                if (shells.length === 0) return 1.0;
+                
+                let isValid = true;
+                if (typeof shells === 'undefined') { isValid = false; }
+                if (shells === null) { isValid = false; }
+                if (isValid === true) {
+                    if (shells.length === 0) { isValid = false; }
+                }
+                if (isValid === false) { return 1.0; }
                 
                 let valence = shells[shells.length - 1];
                 let n_minus_1 = 0;
@@ -1149,6 +452,7 @@
                 return Zeff; 
             }
 
+            // Farvekonvertering (380nm - 780nm)
             function wavelengthToRGB(wl) {
                 let R = 0, G = 0, B = 0;
                 if (wl >= 380) { if (wl < 440) { R = -(wl - 440) / (440 - 380); B = 1; } }
@@ -1195,31 +499,40 @@
                         while(displayLambda < 380) { displayLambda *= 1.5; } 
                         while(displayLambda > 780) { displayLambda *= 0.8; }
 
-                        generatedLines.push({
-                            realLambda: lambda,
-                            lambda: displayLambda,
-                            n1: n1, n2: n2,
-                            l2: n2 - 1,
-                            E1: E1, E2: E2, deltaE: deltaE, Zeff: Zeff,
-                            dipoleMatrix: D12_sq,
-                            einsteinA: A21,
-                            intensity: 0, 
-                            color: wavelengthToRGB(displayLambda),
-                            canvasX: 0
-                        });
+                        let obj1 = new Object();
+                        obj1.realLambda = lambda;
+                        obj1.lambda = displayLambda;
+                        obj1.n1 = n1;
+                        obj1.n2 = n2;
+                        obj1.E1 = E1;
+                        obj1.E2 = E2;
+                        obj1.deltaE = deltaE;
+                        obj1.Zeff = Zeff;
+                        obj1.dipoleMatrix = D12_sq;
+                        obj1.einsteinA = A21;
+                        obj1.intensity = 0;
+                        obj1.color = wavelengthToRGB(displayLambda);
+                        obj1.canvasX = 0;
+                        generatedLines.push(obj1);
                         
-                        let offsetLambda = displayLambda + (fineSplit > 0.5? fineSplit : 0.5);
-                        generatedLines.push({
-                            realLambda: lambda + fineSplit,
-                            lambda: offsetLambda,
-                            n1: n1, n2: n2, 
-                            E1: E1, E2: E2, deltaE: deltaE, Zeff: Zeff,
-                            dipoleMatrix: D12_sq * 0.5,
-                            einsteinA: A21 * 0.5,
-                            intensity: 0,
-                            color: wavelengthToRGB(displayLambda),
-                            canvasX: 0
-                        });
+                        let offsetLambda = displayLambda;
+                        if (fineSplit > 0.5) { offsetLambda += fineSplit; } else { offsetLambda += 0.5; }
+                        
+                        let obj2 = new Object();
+                        obj2.realLambda = lambda + fineSplit;
+                        obj2.lambda = offsetLambda;
+                        obj2.n1 = n1;
+                        obj2.n2 = n2;
+                        obj2.E1 = E1;
+                        obj2.E2 = E2;
+                        obj2.deltaE = deltaE;
+                        obj2.Zeff = Zeff;
+                        obj2.dipoleMatrix = D12_sq * 0.5;
+                        obj2.einsteinA = A21 * 0.5;
+                        obj2.intensity = 0;
+                        obj2.color = wavelengthToRGB(displayLambda);
+                        obj2.canvasX = 0;
+                        generatedLines.push(obj2);
                     }
                 }
 
@@ -1362,10 +675,12 @@
                 for (let i = 0; i < orbitalPoints.length; i++) {
                     let p = orbitalPoints[i];
 
+                    // Rotation omkring Y-aksen (Yaw)
                     let x1 = p.x * cosY + p.z * sinY;
                     let z1 = -p.x * sinY + p.z * cosY;
                     let y1 = p.y;
 
+                    // Rotation omkring X-aksen (Pitch)
                     let y2 = y1 * cosX - z1 * sinX;
                     let z2 = y1 * sinX + z1 * cosX;
                     let x2 = x1;
@@ -1430,7 +745,7 @@
             window.addEventListener('mousemove', dragOrbital, {passive: false});
             window.addEventListener('mouseup', endOrbitalDrag);
             
-            orbCanvas.addEventListener('touchstart', startOrbitalDrag, {passive: false});
+            orbCanvas.addEventListener('touchstart', startOrbitalDrag, {passive: true});
             window.addEventListener('touchmove', dragOrbital, {passive: false});
             window.addEventListener('touchend', endOrbitalDrag);
 
@@ -1442,6 +757,14 @@
                 
                 currentZeff = calculateZeff(element.number, element.shells);
                 document.getElementById('modal-zeff').textContent = currentZeff.toFixed(2);
+                
+                let elConfig = 'N/A';
+                if (element.electron_configuration) { elConfig = element.electron_configuration; }
+                document.getElementById('modal-electron').textContent = elConfig;
+                
+                let massStr = 'N/A';
+                if (element.atomic_mass) { massStr = element.atomic_mass + " u"; }
+                document.getElementById('modal-mass').textContent = massStr;
 
                 const symbolBox = document.getElementById('modal-symbol-box');
                 symbolBox.textContent = element.symbol;
@@ -1450,7 +773,11 @@
 
                 let rootStyles = getComputedStyle(document.body);
                 let tempColor = rootStyles.getPropertyValue('--' + element.category).trim();
-                if (tempColor === '') {
+                
+                let isColorEmpty = false;
+                if (tempColor === '') { isColorEmpty = true; }
+                
+                if (isColorEmpty === true) {
                     activeOrbitalColor = '#58a6ff';
                 } else {
                     activeOrbitalColor = tempColor;
@@ -1507,7 +834,7 @@
                     html += 'E<sub>' + closestLine.n2 + '</sub> = -13.6 &middot; Z<sub>eff</sub>&sup2; / ' + closestLine.n2 + '&sup2; = ' + closestLine.E2.toFixed(2) + ' eV<br>';
                     html += 'E<sub>' + closestLine.n1 + '</sub> = -13.6 &middot; Z<sub>eff</sub>&sup2; / ' + closestLine.n1 + '&sup2; = ' + closestLine.E1.toFixed(2) + ' eV<br>';
                     html += '&Delta;E = E<sub>' + closestLine.n2 + '</sub> - E<sub>' + closestLine.n1 + '</sub> = ' + closestLine.deltaE.toFixed(2) + ' eV<br>';
-                    html += '|D|&sup2; = ' + closestLine.dipoleMatrix.toExponential(2) + '<br>';
+                    html += 'Dipol Matrix&sup2; = ' + closestLine.dipoleMatrix.toExponential(2) + '<br>';
                     html += 'Einstein A<sub>21</sub> &propto; ' + closestLine.einsteinA.toExponential(2) + '<br>';
 
                     tooltip.innerHTML = html;
@@ -1534,19 +861,6 @@
                 if (e.clientY > dim.bottom) { isOutside = true; }
                 
                 if (isOutside === true) {
-                    modal.close(); 
-                    cancelAnimationFrame(animationFrameId);
-                    tooltip.style.display = 'none'; 
-                }
-            });
-        });
-    </script>
-</body>
-</html>utside = true;
-                if (e.clientY < dim.top) outside = true;
-                if (e.clientY > dim.bottom) outside = true;
-                
-                if (outside) {
                     modal.close(); 
                     cancelAnimationFrame(animationFrameId);
                     tooltip.style.display = 'none'; 
