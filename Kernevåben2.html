@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kvantitativ Simulering af Nukleare Eksplosionstyper</title>
+    <style>
+        body { margin: 0; padding: 0; background-color: #0b0c10; overflow: hidden; font-family: sans-serif; color: #c5c6c7; }
+        canvas { display: block; }
+        #hud-container { position: absolute; top: 25px; left: 25px; background: rgba(31, 40, 51, 0.9); padding: 25px; border-radius: 6px; border: 1px solid #45a29e; box-shadow: 0px 8px 16px rgba(0,0,0,0.6); z-index: 100; width: 320px; }
+        h2 { margin-top: 0; font-size: 1.3rem; border-bottom: 2px solid #66fcf1; padding-bottom: 12px; color: #66fcf1; }
+      .btn-panel { display: flex; flex-direction: column; gap: 12px; }
+        button { background-color: #1f2833; color: #c5c6c7; border: 1px solid #45a29e; padding: 12px; cursor: pointer; border-radius: 4px; transition: all 0.25s ease-in-out; font-size: 0.95rem; text-align: left; font-weight: bold; }
+        button:hover { background-color: #45a29e; color: #0b0c10; }
+      .active-mode { background-color: #66fcf1; border-color: #ffffff; color: #0b0c10; }
+      .trigger-btn { background-color: #d11a2a; color: white; text-align: center; border: 2px solid #8b0000; margin-top: 15px; }
+      .trigger-btn:hover { background-color: #ff2a2a; color: white; box-shadow: 0 0 10px #ff2a2a; }
+        #telemetry { margin-top: 20px; font-size: 0.85rem; color: #c5c6c7; line-height: 1.6; background: rgba(11, 12, 16, 0.6); padding: 10px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<div id="hud-container">
+    <h2>Kinematisk Eksplosionsmodel</h2>
+    <div class="btn-panel">
+        <button id="btnAir" class="active-mode">Air Burst (Atmosfærisk)</button>
+        <button id="btnSurface">Surface Burst (Overflade)</button>
+        <button id="btnWater">Underwater Burst (Hydrostatisk)</button>
+        <button id="btnTrigger" class="trigger-btn">INITIER DETONATION</button>
+    </div>
+    <div id="telemetry">
+        <b>Fænomenologi:</b><br>
+        En sfærisk chokfront udbredes i luften uden obstruktion. Ildkuglen trækker vakuum og løfter gasserne i en intens toroidal (doughnut-formet) cirkulation, der danner den ikoniske stamme i champignonskyen. Reflekterede trykbølger ville danne Mach-stammer på terrænet.
+    </div>
+</div>
+
+<canvas id="physicsCanvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('physicsCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    const uiBtnAir = document.getElementById('btnAir');
+    const uiBtnSurface = document.getElementById('btnSurface');
+    const uiBtnWater = document.getElementById('btnWater');
+    const uiBtnTrigger = document.getElementById('btnTrigger');
+    const uiTelemetry = document.getElementById('telemetry');
+    
+    let activeEnvironment = 'AIR'; 
+    let sysWidth, sysHeight, epicenterX, epicenterY, horizonY;
+    let particleArray = new Array();
+    
+    let simState = {
+        backgroundGradient: null,
+        terrainColor: '#111',
+        bubbleAmplitude: 0,
+        bubblePhase: 0,
+        cavitationActive: false,
+        timeSinceDetonation: -1
+    };
+
+    function adaptResolution() {
+        sysWidth = canvas.width = window.innerWidth;
+        sysHeight = canvas.height = window.innerHeight;
+        epicenterX = sysWidth / 2;
+        horizonY = sysHeight * 0.78;
+        updateBackground();
+    }
+    window.addEventListener('resize', adaptResolution);
+    
+    function updateBackground() {
+        if (activeEnvironment === 'WATER') {
+            simState.backgroundGradient = ctx.createLinearGradient(0, 0, 0, sysHeight);
+            simState.backgroundGradient.addColorStop(0, '#001a33');
+            simState.backgroundGradient.addColorStop(1, '#000511');
+            simState.terrainColor = '#00030a';
+        } else {
+            simState.backgroundGradient = '#0b0c10';
+            simState.terrainColor = '#1a1c20';
+        }
+    }
+
+    class Particle {
+        constructor(x, y, category, colorStr, radius, velX, velY, lifetime, dragCoef, gForce) {
+            this.x = x;
+            this.y = y;
+            this.category = category; 
+            this.color = colorStr;
+            this.radius = radius;
+            this.originalRadius = radius;
+            this.vx = velX;
+            this.vy = velY;
+            this.lifetime = lifetime;
+            this.age = 0;
+            this.opacity = 1;
+            this.drag = dragCoef;
+            this.gravity = gForce; 
+        }
+
+        update() {
+            this.age++;
+            this.vx *= this.drag;
+            this.vy *= this.drag;
+            this.vy += this.gravity;
+            
+            // Specifik logik for Champignonskyens hat (Toroidal cirkulation)
+            let isUpdraft = false;
+            if (this.category === 'smoke') { isUpdraft = true; }
+            if (this.category === 'fireball') { isUpdraft = true; }
+
+            if (isUpdraft && activeEnvironment!== 'WATER') {
+                let dx = this.x - epicenterX;
+                if (this.y < epicenterY - 80) {
+                    this.vx += dx * 0.0015; // Skubber hatten udad
+                    this.gravity = -0.06;   // Løfter hatten opad
+                }
+            }
+
+            // Specifik logik for Champignonskyens stamme (Updraft vakuum)
+            if (this.category === 'stem' && activeEnvironment!== 'WATER') {
+                let dx = epicenterX - this.x;
+                this.vx += dx * 0.015; // Suges ind mod midten for at samle stammen
+                this.gravity = -0.08;  // Stærk opdrift i midten
+            }
+
+            this.x += this.vx;
+            this.y += this.vy;
+
+            let lifeRatio = this.age / this.lifetime;
+            this.opacity = 1 - lifeRatio;
+            
+            let isExp = false;
+            if (this.category === 'smoke') { isExp = true; }
+            if (this.category === 'baseSurge') { isExp = true; }
+            if (this.category === 'stem') { isExp = true; }
+
+            if (isExp) {
+                this.radius = this.originalRadius * (1 + lifeRatio * 2.5);
+            } else {
+                this.radius = this.originalRadius * Math.max(0.1, (1 - lifeRatio));
+            }
+        }
+
+        render() {
+            if (this.opacity <= 0) return;
+            if (this.radius <= 0.1) return;
+            ctx.save();
+            ctx.globalAlpha = this.opacity;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fillStyle = this.color;
+            ctx.fill();
+            ctx.restore();
+        }
+    }
+
+    function executeDetonation() {
+        particleArray = new Array();
+        simState.bubbleAmplitude = 0;
+        simState.bubblePhase = 0;
+        simState.timeSinceDetonation = 0;
+        
+        if (activeEnvironment === 'AIR') {
+            epicenterY = sysHeight * 0.35;
+            simState.cavitationActive = false;
+        } else if (activeEnvironment === 'SURFACE') {
+            epicenterY = horizonY;
+            simState.cavitationActive = false;
+        } else if (activeEnvironment === 'WATER') {
+            epicenterY = horizonY - 150;
+            simState.cavitationActive = true;
+        }
+
+        const flashPalette = new Array('#ffffff', '#ffedcc', '#ffcc00', '#ff6600', '#cc3300');
+        let blastCount = activeEnvironment === 'WATER'? 600 : 900;
+        
+        // Sfærisk eksplosion (Selve hatten og chokbølgen)
+        for (let i = 0; i < blastCount; i++) {
+            let theta = Math.random() * Math.PI * 2;
+            let magnitude = Math.random() * (activeEnvironment === 'AIR'? 28 : 18);
+            let vx = Math.cos(theta) * magnitude;
+            let vy = Math.sin(theta) * magnitude;
+            
+            if (activeEnvironment === 'SURFACE' && vy > 1) {
+                vy *= 0.15; 
+            }
+            
+            let pIndex = Math.floor(Math.random() * flashPalette.length);
+            let color = flashPalette[pIndex];
+            let cat = (Math.random() > 0.45)? 'fireball' : 'smoke';
+            if (cat === 'smoke') {
+                if (activeEnvironment === 'WATER') {
+                    color = '#aaccff';
+                } else {
+                    color = '#444444';
+                }
+            }
+            
+            let pSize = Math.random() * (activeEnvironment === 'WATER'? 6 : 14) + 3;
+            let friction = activeEnvironment === 'WATER'? 0.82 : 0.95; 
+            let lift = activeEnvironment === 'WATER'? -0.15 : 0.015; 
+            let lifespan = Math.random() * 160 + 60;
+            
+            particleArray.push(new Particle(epicenterX, epicenterY, cat, color, pSize, vx, vy, lifespan, friction, lift));
+        }
+
+        // Generering af Champignonskyens stamme
+        if (activeEnvironment!== 'WATER') {
+            for (let i = 0; i < 250; i++) {
+                let vx = (Math.random() - 0.5) * 16;
+                let vy = (Math.random() * -8);
+                let pSize = Math.random() * 15 + 5;
+                let lifespan = Math.random() * 180 + 80;
+                let stemColor = '#333333';
+                if (Math.random() > 0.5) { stemColor = '#222222'; }
+                
+                particleArray.push(new Particle(epicenterX, horizonY, 'stem', stemColor, pSize, vx, vy, lifespan, 0.94, -0.05));
+            }
+        }
+
+        // Base Surge (Tæthedsstrøm)
+        if (activeEnvironment!== 'AIR') {
+            for (let i = 0; i < 450; i++) {
+                let side = (Math.random() > 0.5? 1 : -1);
+                let vx = (Math.random() * 14 + 3) * side;
+                let vy = activeEnvironment === 'WATER'? (Math.random() * 2 - 1) : -(Math.random() * 4);
+                let surgeColor = activeEnvironment === 'WATER'? 'rgba(170, 210, 230, 0.6)' : 'rgba(90, 75, 65, 0.8)';
+                let yStart = activeEnvironment === 'WATER'? horizonY - 30 : horizonY;
+                
+                particleArray.push(new Particle(epicenterX, yStart, 'baseSurge', surgeColor, Math.random() * 25 + 10, vx, vy, 220, 0.97, 0.005));
+            }
+        }
+    }
+
+    function frameUpdate() {
+        ctx.fillStyle = simState.backgroundGradient;
+        ctx.fillRect(0, 0, sysWidth, sysHeight);
+        
+        if (activeEnvironment!== 'AIR') {
+            ctx.fillStyle = simState.terrainColor;
+            ctx.fillRect(0, horizonY, sysWidth, sysHeight - horizonY);
+        }
+
+        // Viser den ekspanderende ildkugle i atmosfæren
+        if (simState.timeSinceDetonation >= 0 && activeEnvironment!== 'WATER') {
+            let fbTime = simState.timeSinceDetonation;
+            if (fbTime < 120) {
+                let fbRadius = fbTime * 5; 
+                if (fbRadius > 180) { fbRadius = 180; } // Maksimal størrelse
+                let fbOpacity = 1.0 - (fbTime / 120);
+                
+                ctx.save();
+                ctx.globalAlpha = fbOpacity;
+                ctx.beginPath();
+                ctx.arc(epicenterX, epicenterY, fbRadius, 0, Math.PI * 2);
+                let gradient = ctx.createRadialGradient(epicenterX, epicenterY, 0, epicenterX, epicenterY, fbRadius);
+                gradient.addColorStop(0, '#ffffff'); // Hvid kerne
+                gradient.addColorStop(0.3, '#ffcc00'); // Gul/orange midte
+                gradient.addColorStop(1, '#cc0000'); // Mørkerød kant
+                ctx.fillStyle = gradient;
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        // Undervands kavitationsboble
+        if (activeEnvironment === 'WATER' && simState.cavitationActive && particleArray.length > 0) {
+            simState.bubblePhase += 0.06;
+            let currentDepth = epicenterY - (simState.bubblePhase * 12); 
+            simState.bubbleAmplitude = Math.sin(simState.bubblePhase * 0.8) * 80 + 100; 
+            
+            if (simState.bubbleAmplitude > 5 && currentDepth > horizonY - 300) {
+                ctx.beginPath();
+                ctx.arc(epicenterX, currentDepth, simState.bubbleAmplitude, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(210, 245, 255, 0.15)';
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(120, 200, 255, 0.6)';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+            } else if (currentDepth <= horizonY - 300) {
+                simState.cavitationActive = false; 
+            }
+        }
+
+        // Opdaterer partikler (Champignonsky)
+        for (let i = particleArray.length - 1; i >= 0; i--) {
+            let p = particleArray[i];
+            p.update();
+            p.render();
+            if (p.age > p.lifetime) {
+                particleArray.splice(i, 1);
+            }
+        }
+
+        // Viser det dobbelte lysglimt over det hele
+        if (simState.timeSinceDetonation >= 0 && activeEnvironment!== 'WATER') {
+            simState.timeSinceDetonation++;
+            let t = simState.timeSinceDetonation;
+            let flashOpacity = 0;
+            
+            if (t < 5) {
+                flashOpacity = 1.0; // Det første hurtige glimt
+            } else if (t >= 5 && t < 10) {
+                flashOpacity = 0.15; // Mellemste formørkelse (chokfronten blokerer)
+            } else if (t >= 10 && t < 45) {
+                flashOpacity = 1.0 - ((t - 10) / 35); // Det andet længerevarende glimt
+            }
+            
+            if (flashOpacity > 0) {
+                ctx.save();
+                ctx.fillStyle = 'rgba(255, 250, 245, ' + flashOpacity + ')';
+                ctx.fillRect(0, 0, sysWidth, sysHeight);
+                ctx.restore();
+            }
+        } else if (activeEnvironment === 'WATER' && simState.timeSinceDetonation >= 0) {
+             simState.timeSinceDetonation++; // Holder tiden kørende for undervands
+        }
+
+        requestAnimationFrame(frameUpdate);
+    }
+
+    function switchMode(buttonId, envParam, telemetryText) {
+        let btns = document.querySelectorAll('.btn-panel button');
+        for(let i=0; i<btns.length; i++) {
+            if (btns[i].classList.contains('trigger-btn') === false) {
+                btns[i].classList.remove('active-mode');
+            }
+        }
+        document.getElementById(buttonId).classList.add('active-mode');
+        activeEnvironment = envParam;
+        uiTelemetry.innerHTML = '<b>Fænomenologi:</b><br>' + telemetryText;
+        updateBackground();
+    }
+
+    uiBtnAir.onclick = function() { switchMode('btnAir', 'AIR', 'En sfærisk chokfront udbredes. Først ses det dobbelte lysglimt og ildkuglen. Derefter trækker ildkuglen vakuum og danner en intens toroidal (doughnut-formet) cirkulation i toppen, mens en stamme af støv suges op for at danne den ikoniske champignonsky.'); };
+    uiBtnSurface.onclick = function() { switchMode('btnSurface', 'SURFACE', 'Halvkugle-eksplosion med ildkugle og dobbelt lysglimt. Varmen overføres direkte til jorden, og der graves et krater. Det resulterende støv trækkes op gennem en tyk stamme, hvilket producerer massivt lokalt radioaktivt nedfald.'); };
+    uiBtnWater.onclick = function() { switchMode('btnWater', 'WATER', 'Nedsænket eksplosion under massivt tryk. Ildkuglen kvæles øjeblikkeligt af det inkompressible vand (intet lysglimt). Udvikler pulserende kavitationsbobler og producerer en horisontal basissky (base surge).'); };
+    uiBtnTrigger.onclick = executeDetonation;
+
+    adaptResolution();
+    frameUpdate();
+</script>
+</body>
+</html>
