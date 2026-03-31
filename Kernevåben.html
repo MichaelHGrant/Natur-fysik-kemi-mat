@@ -5,85 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kvantitativ Simulering af Nukleare Eksplosionstyper</title>
     <style>
-        /* CSS Styling til at skabe en uafbrudt Canvas-visning i Dark Mode */
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: #0b0c10;
-            overflow: hidden;
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            color: #c5c6c7;
-        }
-        canvas {
-            display: block;
-        }
-        /* Informationspanel med kontrolknapper */
-        #hud-container {
-            position: absolute;
-            top: 25px;
-            left: 25px;
-            background: rgba(31, 40, 51, 0.9);
-            padding: 25px;
-            border-radius: 6px;
-            border: 1px solid #45a29e;
-            box-shadow: 0px 8px 16px rgba(0,0,0,0.6);
-            z-index: 100;
-            width: 320px;
-        }
-        h2 { 
-            margin-top: 0; 
-            font-size: 1.3rem; 
-            border-bottom: 2px solid #66fcf1; 
-            padding-bottom: 12px; 
-            color: #66fcf1;
-        }
-      .btn-panel { 
-            display: flex; 
-            flex-direction: column; 
-            gap: 12px; 
-        }
-        button {
-            background-color: #1f2833; 
-            color: #c5c6c7;
-            border: 1px solid #45a29e; 
-            padding: 12px;
-            cursor: pointer; 
-            border-radius: 4px;
-            transition: all 0.25s ease-in-out; 
-            font-size: 0.95rem; 
-            text-align: left;
-            font-weight: bold;
-        }
-        button:hover { 
-            background-color: #45a29e; 
-            color: #0b0c10; 
-        }
-      .active-mode { 
-            background-color: #66fcf1; 
-            border-color: #ffffff; 
-            color: #0b0c10; 
-        }
-      .trigger-btn {
-            background-color: #d11a2a; 
-            color: white; 
-            text-align: center; 
-            border: 2px solid #8b0000;
-            margin-top: 15px;
-        }
-      .trigger-btn:hover {
-            background-color: #ff2a2a; 
-            color: white;
-            box-shadow: 0 0 10px #ff2a2a;
-        }
-        #telemetry { 
-            margin-top: 20px; 
-            font-size: 0.85rem; 
-            color: #c5c6c7; 
-            line-height: 1.6; 
-            background: rgba(11, 12, 16, 0.6);
-            padding: 10px;
-            border-radius: 4px;
-        }
+        body { margin: 0; padding: 0; background-color: #0b0c10; overflow: hidden; font-family: sans-serif; color: #c5c6c7; }
+        canvas { display: block; }
+        #hud-container { position: absolute; top: 25px; left: 25px; background: rgba(31, 40, 51, 0.9); padding: 25px; border-radius: 6px; border: 1px solid #45a29e; box-shadow: 0px 8px 16px rgba(0,0,0,0.6); z-index: 100; width: 320px; }
+        h2 { margin-top: 0; font-size: 1.3rem; border-bottom: 2px solid #66fcf1; padding-bottom: 12px; color: #66fcf1; }
+       .btn-panel { display: flex; flex-direction: column; gap: 12px; }
+        button { background-color: #1f2833; color: #c5c6c7; border: 1px solid #45a29e; padding: 12px; cursor: pointer; border-radius: 4px; transition: all 0.25s ease-in-out; font-size: 0.95rem; text-align: left; font-weight: bold; }
+        button:hover { background-color: #45a29e; color: #0b0c10; }
+       .active-mode { background-color: #66fcf1; border-color: #ffffff; color: #0b0c10; }
+       .trigger-btn { background-color: #d11a2a; color: white; text-align: center; border: 2px solid #8b0000; margin-top: 15px; }
+       .trigger-btn:hover { background-color: #ff2a2a; color: white; box-shadow: 0 0 10px #ff2a2a; }
+        #telemetry { margin-top: 20px; font-size: 0.85rem; color: #c5c6c7; line-height: 1.6; background: rgba(11, 12, 16, 0.6); padding: 10px; border-radius: 4px; }
     </style>
 </head>
 <body>
@@ -105,7 +37,6 @@
 <canvas id="physicsCanvas"></canvas>
 
 <script>
-    // Systeminitialisering
     const canvas = document.getElementById('physicsCanvas');
     const ctx = canvas.getContext('2d');
     
@@ -115,12 +46,10 @@
     const uiBtnTrigger = document.getElementById('btnTrigger');
     const uiTelemetry = document.getElementById('telemetry');
     
-    // Miljøvariable
     let activeEnvironment = 'AIR'; 
     let sysWidth, sysHeight, epicenterX, epicenterY, horizonY;
-    let particleArray =;
+    let particleArray = new Array();
     
-    // Statusobjekt til afvikling af specielle tidsafhængige fænomener
     let simState = {
         backgroundGradient: null,
         terrainColor: '#111',
@@ -150,350 +79,6 @@
         }
     }
 
-    // Kinematisk Partikel Klasse med Euler integration
-    class Particle {
-        constructor(x, y, category, colorStr, radius, velX, velY, lifetime, dragCoef, gForce) {
-            this.x = x;
-            this.y = y;
-            this.category = category; // 'flash', 'fireball', 'smoke', 'baseSurge'
-            this.color = colorStr;
-            this.radius = radius;
-            this.originalRadius = radius;
-            this.vx = velX;
-            this.vy = velY;
-            this.lifetime = lifetime;
-            this.age = 0;
-            this.opacity = 1;
-            this.drag = dragCoef;
-            this.gravity = gForce; 
-        }
-
-        update() {
-            this.age++;
-            // Integration af aerodynamisk modstand (friction)
-            this.vx *= this.drag;
-            this.vy *= this.drag;
-            // Integration af tyngde / termisk opdrift
-            this.vy += this.gravity;
-            
-            // Simuler Rayleigh-Taylor ustabilitet og Toroidal cirkulation (Air/Surface Bursts)
-            if ((this.category === 'smoke' |
-
-| this.category === 'fireball') && activeEnvironment!== 'WATER') {
-                let dx = this.x - epicenterX;
-                // Når skyen stiger, skub partikler ud i siderne, men fasthold midten
-                if (this.y < epicenterY - 80) {
-                    this.vx += dx * 0.0012; // Udadgående rullende kraft
-                    this.gravity = -0.06; // Ekstra konvektiv opdrift pga varme
-                }
-            }
-
-            // Positionsopdatering
-            this.x += this.vx;
-            this.y += this.vy;
-
-            // Opacitet og optisk ekspansion
-            let lifeRatio = this.age / this.lifetime;
-            this.opacity = 1 - lifeRatio;
-            
-            if (this.category === 'smoke' |
-
-| this.category === 'baseSurge') {
-                // Skygasser afkøles og udvider sig
-                this.radius = this.originalRadius * (1 + lifeRatio * 2.5);
-            } else {
-                // Ildkugle og flash køler indad
-                this.radius = this.originalRadius * Math.max(0.1, (1 - lifeRatio));
-            }
-        }
-
-        render() {
-            if (this.opacity <= 0 |
-
-| this.radius <= 0.1) return;
-            ctx.save();
-            ctx.globalAlpha = this.opacity;
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-            ctx.fillStyle = this.color;
-            ctx.fill();
-            ctx.restore();
-        }
-    }
-
-    // Affyring af fysikpakken
-    function executeDetonation() {
-        particleArray =;
-        simState.bubbleAmplitude = 0;
-        simState.bubblePhase = 0;
-        
-        // Fastlæg detonationens højdeprofil
-        if (activeEnvironment === 'AIR') {
-            epicenterY = sysHeight * 0.35;
-            simState.cavitationActive = false;
-        } else if (activeEnvironment === 'SURFACE') {
-            epicenterY = horizonY;
-            simState.cavitationActive = false;
-        } else if (activeEnvironment === 'WATER') {
-            epicenterY = horizonY - 150;
-            simState.cavitationActive = true;
-        }
-
-        const flashPalette = ['#ffffff', '#ffedcc', '#ffcc00', '#ff6600', '#cc3300'];
-        let blastCount = activeEnvironment === 'WATER'? 600 : 900;
-        
-        // Sfærisk ekspansion
-        for (let i = 0; i < blastCount; i++) {
-            let theta = Math.random() * Math.PI * 2;
-            let magnitude = Math.random() * (activeEnvironment === 'AIR'? 28 : 18);
-            let vx = Math.cos(theta) * magnitude;
-            let vy = Math.sin(theta) * magnitude;
-            
-            // Halvkugle-begrænsning ved kontakt med faste legemer (Surface burst)
-            if (activeEnvironment === 'SURFACE' && vy > 1) {
-                vy *= 0.15; // Jorden absorberer stødenergien massivt nedad
-            }
-            
-            let color = flashPalette[Math.floor(Math.random() * flashPalette.length)];
-            let cat = (Math.random() > 0.45)? 'fireball' : 'smoke';
-            if (cat === 'smoke') color = (activeEnvironment === 'WATER')? '#aaccff' : '#444444';
-            
-            let pSize = Math.random() * (activeEnvironment === 'WATER'? 6 : 14) + 3;
-            // Vands høje densitet øger drag (modstanden)
-            let friction = activeEnvironment === 'WATER'? 0.82 : 0.95; 
-            // Varm gas i luft flyver op, damp i vand presser opad
-            let lift = activeEnvironment === 'WATER'? -0.15 : 0.015; 
-            let lifespan = Math.random() * 160 + 60;
-            
-            particleArray.push(new Particle(epicenterX, epicenterY, cat, color, pSize, vx, vy, lifespan, friction, lift));
-        }
-
-        // Base Surge (Tæthedsstrøm og radioaktiv regn) ved Overflade- og Undervandseksplosioner
-        if (activeEnvironment === 'SURFACE' |
-
-| activeEnvironment === 'WATER') {
-            for (let i = 0; i < 450; i++) {
-                let side = (Math.random() > 0.5? 1 : -1);
-                // Ekstrem radial horisontal hastighed pga damptrykskollaps
-                let vx = (Math.random() * 14 + 3) * side;
-                let vy = activeEnvironment === 'WATER'? (Math.random() * 2 - 1) : -(Math.random() * 4);
-                let surgeColor = activeEnvironment === 'WATER'? 'rgba(170, 210, 230, 0.6)' : 'rgba(90, 75, 65, 0.8)';
-                let yStart = activeEnvironment === 'WATER'? horizonY - 30 : horizonY;
-                
-                particleArray.push(new Particle(epicenterX, yStart, 'baseSurge', surgeColor, Math.random() * 25 + 10, vx, vy, 220, 0.97, 0.005));
-            }
-        }
-    }
-
-    // CPU-optimeret Render Loop
-    function frameUpdate() {
-        // Genoptegn baggrund med transparent lag for let motion-blur
-        ctx.fillStyle = simState.backgroundGradient;
-        ctx.fillRect(0, 0, sysWidth, sysHeight);
-        
-        // Tegn lithosfæren (jordoverflade / havbund)
-        if (activeEnvironment === 'SURFACE' |
-
-| activeEnvironment === 'WATER') {
-            ctx.fillStyle = simState.terrainColor;
-            ctx.fillRect(0, horizonY, sysWidth, sysHeight - horizonY);
-        }
-
-        // Fænomenologisk rendering af inertial kavitation (Underwater Oscillation)
-        if (activeEnvironment === 'WATER' && simState.cavitationActive && particleArray.length > 0) {
-            simState.bubblePhase += 0.06;
-            let currentDepth = epicenterY - (simState.bubblePhase * 12); // Opdrift af boblen
-            simState.bubbleAmplitude = Math.sin(simState.bubblePhase * 0.8) * 80 + 100; // Radial kontrahering
-            
-            if (simState.bubbleAmplitude > 5 && currentDepth > horizonY - 300) {
-                ctx.beginPath();
-                ctx.arc(epicenterX, currentDepth, simState.bubbleAmplitude, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(210, 245, 255, 0.15)';
-                ctx.fill();
-                ctx.strokeStyle = 'rgba(120, 200, 255, 0.6)';
-                ctx.lineWidth = 3;
-                ctx.stroke();
-            } else if (currentDepth <= horizonY - 300) {
-                // Boblen bryder overfladen - blow-out
-                simState.cavitationActive = false; 
-            }
-        }
-
-        // Iterér baglæns og opdatér partikler (for at tillade array splicing under loopet)
-        for (let i = particleArray.length - 1; i >= 0; i--) {
-            let p = particleArray[i];
-            p.update();
-            p.render();
-            if (p.age > p.lifetime) {
-                particleArray.splice(i, 1);
-            }
-        }
-        requestAnimationFrame(frameUpdate);
-    }
-
-    // Interaktionshåndtering
-    function switchMode(buttonId, envParam, telemetryText) {
-        document.querySelectorAll('.btn-panel button:not(.trigger-btn)').forEach(b => b.classList.remove('active-mode'));
-        document.getElementById(buttonId).classList.add('active-mode');
-        activeEnvironment = envParam;
-        uiTelemetry.innerHTML = `<b>Fænomenologi:</b><br>${telemetryText}`;
-        updateBackground();
-    }
-
-    uiBtnAir.onclick = () => switchMode('btnAir', 'AIR', 'En sfærisk chokfront udbredes i luften uden obstruktion. Ildkuglen trækker vakuum og løfter gasserne i en intens toroidal (doughnut-formet) cirkulation, der danner den ikoniske stamme i paddehatteskyen. Reflekterede trykbølger ville danne Mach-stammer på terrænet.');
-    uiBtnSurface.onclick = () => switchMode('btnSurface', 'SURFACE', 'Halvkugle-eksplosion, der overfører gigantisk kinetisk og termisk energi direkte til jordoverfladen. <!DOCTYPE html>
-<html lang="da">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kvantitativ Simulering af Nukleare Eksplosionstyper</title>
-    <style>
-        /* CSS Styling til at skabe en uafbrudt Canvas-visning i Dark Mode */
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: #0b0c10;
-            overflow: hidden;
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            color: #c5c6c7;
-        }
-        canvas {
-            display: block;
-        }
-        /* Informationspanel med kontrolknapper */
-        #hud-container {
-            position: absolute;
-            top: 25px;
-            left: 25px;
-            background: rgba(31, 40, 51, 0.9);
-            padding: 25px;
-            border-radius: 6px;
-            border: 1px solid #45a29e;
-            box-shadow: 0px 8px 16px rgba(0,0,0,0.6);
-            z-index: 100;
-            width: 320px;
-        }
-        h2 { 
-            margin-top: 0; 
-            font-size: 1.3rem; 
-            border-bottom: 2px solid #66fcf1; 
-            padding-bottom: 12px; 
-            color: #66fcf1;
-        }
-       .btn-panel { 
-            display: flex; 
-            flex-direction: column; 
-            gap: 12px; 
-        }
-        button {
-            background-color: #1f2833; 
-            color: #c5c6c7;
-            border: 1px solid #45a29e; 
-            padding: 12px;
-            cursor: pointer; 
-            border-radius: 4px;
-            transition: all 0.25s ease-in-out; 
-            font-size: 0.95rem; 
-            text-align: left;
-            font-weight: bold;
-        }
-        button:hover { 
-            background-color: #45a29e; 
-            color: #0b0c10; 
-        }
-       .active-mode { 
-            background-color: #66fcf1; 
-            border-color: #ffffff; 
-            color: #0b0c10; 
-        }
-       .trigger-btn {
-            background-color: #d11a2a; 
-            color: white; 
-            text-align: center; 
-            border: 2px solid #8b0000;
-            margin-top: 15px;
-        }
-       .trigger-btn:hover {
-            background-color: #ff2a2a; 
-            color: white;
-            box-shadow: 0 0 10px #ff2a2a;
-        }
-        #telemetry { 
-            margin-top: 20px; 
-            font-size: 0.85rem; 
-            color: #c5c6c7; 
-            line-height: 1.6; 
-            background: rgba(11, 12, 16, 0.6);
-            padding: 10px;
-            border-radius: 4px;
-        }
-    </style>
-</head>
-<body>
-
-<div id="hud-container">
-    <h2>Kinematisk Eksplosionsmodel</h2>
-    <div class="btn-panel">
-        <button id="btnAir" class="active-mode">Air Burst (Atmosfærisk)</button>
-        <button id="btnSurface">Surface Burst (Overflade)</button>
-        <button id="btnWater">Underwater Burst (Hydrostatisk)</button>
-        <button id="btnTrigger" class="trigger-btn">INITIER DETONATION</button>
-    </div>
-    <div id="telemetry">
-        <b>Fænomenologi:</b><br>
-        En sfærisk chokfront udbredes i luften uden obstruktion. Ildkuglen trækker vakuum og løfter gasserne i en intens toroidal (doughnut-formet) cirkulation, der danner den ikoniske stamme i paddehatteskyen. Reflekterede trykbølger ville danne Mach-stammer på terrænet.
-    </div>
-</div>
-
-<canvas id="physicsCanvas"></canvas>
-
-<script>
-    // Systeminitialisering
-    const canvas = document.getElementById('physicsCanvas');
-    const ctx = canvas.getContext('2d');
-    
-    const uiBtnAir = document.getElementById('btnAir');
-    const uiBtnSurface = document.getElementById('btnSurface');
-    const uiBtnWater = document.getElementById('btnWater');
-    const uiBtnTrigger = document.getElementById('btnTrigger');
-    const uiTelemetry = document.getElementById('telemetry');
-    
-    // Miljøvariable
-    let activeEnvironment = 'AIR'; 
-    let sysWidth, sysHeight, epicenterX, epicenterY, horizonY;
-    let particleArray =;
-    
-    // Statusobjekt til afvikling af specielle tidsafhængige fænomener
-    let simState = {
-        backgroundGradient: null,
-        terrainColor: '#111',
-        bubbleAmplitude: 0,
-        bubblePhase: 0,
-        cavitationActive: false
-    };
-
-    function adaptResolution() {
-        sysWidth = canvas.width = window.innerWidth;
-        sysHeight = canvas.height = window.innerHeight;
-        epicenterX = sysWidth / 2;
-        horizonY = sysHeight * 0.78;
-        updateBackground();
-    }
-    window.addEventListener('resize', adaptResolution);
-    
-    function updateBackground() {
-        if (activeEnvironment === 'WATER') {
-            simState.backgroundGradient = ctx.createLinearGradient(0, 0, 0, sysHeight);
-            simState.backgroundGradient.addColorStop(0, '#001a33');
-            simState.backgroundGradient.addColorStop(1, '#000511');
-            simState.terrainColor = '#00030a';
-        } else {
-            simState.backgroundGradient = '#0b0c10';
-            simState.terrainColor = '#1a1c20';
-        }
-    }
-
-    // Kinematisk Partikel Klasse med Euler integration
     class Particle {
         constructor(x, y, category, colorStr, radius, velX, velY, lifetime, dragCoef, gForce) {
             this.x = x;
@@ -513,47 +98,42 @@
 
         update() {
             this.age++;
-            // Integration af aerodynamisk modstand (friction)
             this.vx *= this.drag;
             this.vy *= this.drag;
-            // Integration af tyngde / termisk opdrift
             this.vy += this.gravity;
             
-            // Simuler Rayleigh-Taylor ustabilitet og Toroidal cirkulation (Air/Surface Bursts)
-            if ((this.category === 'smoke' |
+            let isUpdraft = false;
+            if (this.category === 'smoke') isUpdraft = true;
+            if (this.category === 'fireball') isUpdraft = true;
 
-| this.category === 'fireball') && activeEnvironment!== 'WATER') {
+            if (isUpdraft && activeEnvironment!== 'WATER') {
                 let dx = this.x - epicenterX;
-                // Når skyen stiger, skub partikler ud i siderne, men fasthold midten
                 if (this.y < epicenterY - 80) {
-                    this.vx += dx * 0.0012; // Udadgående rullende kraft
-                    this.gravity = -0.06; // Ekstra konvektiv opdrift pga varme
+                    this.vx += dx * 0.0012; 
+                    this.gravity = -0.06; 
                 }
             }
 
-            // Positionsopdatering
             this.x += this.vx;
             this.y += this.vy;
 
-            // Opacitet og optisk ekspansion
             let lifeRatio = this.age / this.lifetime;
             this.opacity = 1 - lifeRatio;
             
-            if (this.category === 'smoke' |
+            let isExp = false;
+            if (this.category === 'smoke') isExp = true;
+            if (this.category === 'baseSurge') isExp = true;
 
-| this.category === 'baseSurge') {
-                // Skygasser afkøles og udvider sig
+            if (isExp) {
                 this.radius = this.originalRadius * (1 + lifeRatio * 2.5);
             } else {
-                // Ildkugle og flash køler indad
                 this.radius = this.originalRadius * Math.max(0.1, (1 - lifeRatio));
             }
         }
 
         render() {
-            if (this.opacity <= 0 |
-
-| this.radius <= 0.1) return;
+            if (this.opacity <= 0) return;
+            if (this.radius <= 0.1) return;
             ctx.save();
             ctx.globalAlpha = this.opacity;
             ctx.beginPath();
@@ -564,13 +144,11 @@
         }
     }
 
-    // Affyring af fysikpakken
     function executeDetonation() {
-        particleArray =;
+        particleArray = new Array();
         simState.bubbleAmplitude = 0;
         simState.bubblePhase = 0;
         
-        // Fastlæg detonationens højdeprofil
         if (activeEnvironment === 'AIR') {
             epicenterY = sysHeight * 0.35;
             simState.cavitationActive = false;
@@ -582,42 +160,41 @@
             simState.cavitationActive = true;
         }
 
-        const flashPalette = ['#ffffff', '#ffedcc', '#ffcc00', '#ff6600', '#cc3300'];
+        const flashPalette = new Array('#ffffff', '#ffedcc', '#ffcc00', '#ff6600', '#cc3300');
         let blastCount = activeEnvironment === 'WATER'? 600 : 900;
         
-        // Sfærisk ekspansion
         for (let i = 0; i < blastCount; i++) {
             let theta = Math.random() * Math.PI * 2;
             let magnitude = Math.random() * (activeEnvironment === 'AIR'? 28 : 18);
             let vx = Math.cos(theta) * magnitude;
             let vy = Math.sin(theta) * magnitude;
             
-            // Halvkugle-begrænsning ved kontakt med faste legemer (Surface burst)
             if (activeEnvironment === 'SURFACE' && vy > 1) {
-                vy *= 0.15; // Jorden absorberer stødenergien massivt nedad
+                vy *= 0.15; 
             }
             
-            let color = flashPalette[Math.floor(Math.random() * flashPalette.length)];
+            let pIndex = Math.floor(Math.random() * flashPalette.length);
+            let color = flashPalette[pIndex];
             let cat = (Math.random() > 0.45)? 'fireball' : 'smoke';
-            if (cat === 'smoke') color = (activeEnvironment === 'WATER')? '#aaccff' : '#444444';
+            if (cat === 'smoke') {
+                if (activeEnvironment === 'WATER') {
+                    color = '#aaccff';
+                } else {
+                    color = '#444444';
+                }
+            }
             
             let pSize = Math.random() * (activeEnvironment === 'WATER'? 6 : 14) + 3;
-            // Vands høje densitet øger drag (modstanden)
             let friction = activeEnvironment === 'WATER'? 0.82 : 0.95; 
-            // Varm gas i luft flyver op, damp i vand presser opad
             let lift = activeEnvironment === 'WATER'? -0.15 : 0.015; 
             let lifespan = Math.random() * 160 + 60;
             
             particleArray.push(new Particle(epicenterX, epicenterY, cat, color, pSize, vx, vy, lifespan, friction, lift));
         }
 
-        // Base Surge (Tæthedsstrøm og radioaktiv regn) ved Overflade- og Undervandseksplosioner
-        if (activeEnvironment === 'SURFACE' |
-
-| activeEnvironment === 'WATER') {
+        if (activeEnvironment!== 'AIR') {
             for (let i = 0; i < 450; i++) {
                 let side = (Math.random() > 0.5? 1 : -1);
-                // Ekstrem radial horisontal hastighed pga damptrykskollaps
                 let vx = (Math.random() * 14 + 3) * side;
                 let vy = activeEnvironment === 'WATER'? (Math.random() * 2 - 1) : -(Math.random() * 4);
                 let surgeColor = activeEnvironment === 'WATER'? 'rgba(170, 210, 230, 0.6)' : 'rgba(90, 75, 65, 0.8)';
@@ -628,25 +205,19 @@
         }
     }
 
-    // CPU-optimeret Render Loop
     function frameUpdate() {
-        // Genoptegn baggrund med transparent lag for let motion-blur
         ctx.fillStyle = simState.backgroundGradient;
         ctx.fillRect(0, 0, sysWidth, sysHeight);
         
-        // Tegn lithosfæren (jordoverflade / havbund)
-        if (activeEnvironment === 'SURFACE' |
-
-| activeEnvironment === 'WATER') {
+        if (activeEnvironment!== 'AIR') {
             ctx.fillStyle = simState.terrainColor;
             ctx.fillRect(0, horizonY, sysWidth, sysHeight - horizonY);
         }
 
-        // Fænomenologisk rendering af inertial kavitation (Underwater Oscillation)
         if (activeEnvironment === 'WATER' && simState.cavitationActive && particleArray.length > 0) {
             simState.bubblePhase += 0.06;
-            let currentDepth = epicenterY - (simState.bubblePhase * 12); // Opdrift af boblen
-            simState.bubbleAmplitude = Math.sin(simState.bubblePhase * 0.8) * 80 + 100; // Radial kontrahering
+            let currentDepth = epicenterY - (simState.bubblePhase * 12); 
+            simState.bubbleAmplitude = Math.sin(simState.bubblePhase * 0.8) * 80 + 100; 
             
             if (simState.bubbleAmplitude > 5 && currentDepth > horizonY - 300) {
                 ctx.beginPath();
@@ -657,12 +228,10 @@
                 ctx.lineWidth = 3;
                 ctx.stroke();
             } else if (currentDepth <= horizonY - 300) {
-                // Boblen bryder overfladen - blow-out
                 simState.cavitationActive = false; 
             }
         }
 
-        // Iterér baglæns og opdatér partikler (for at tillade array splicing under loopet)
         for (let i = particleArray.length - 1; i >= 0; i--) {
             let p = particleArray[i];
             p.update();
@@ -674,30 +243,24 @@
         requestAnimationFrame(frameUpdate);
     }
 
-    // Interaktionshåndtering
     function switchMode(buttonId, envParam, telemetryText) {
-        document.querySelectorAll('.btn-panel button:not(.trigger-btn)').forEach(b => b.classList.remove('active-mode'));
+        let btns = document.querySelectorAll('.btn-panel button');
+        for(let i=0; i<btns.length; i++) {
+            if (btns[i].classList.contains('trigger-btn') === false) {
+                btns[i].classList.remove('active-mode');
+            }
+        }
         document.getElementById(buttonId).classList.add('active-mode');
         activeEnvironment = envParam;
-        uiTelemetry.innerHTML = `<b>Fænomenologi:</b><br>${telemetryText}`;
+        uiTelemetry.innerHTML = '<b>Fænomenologi:</b><br>' + telemetryText;
         updateBackground();
     }
 
-    uiBtnAir.onclick = () => switchMode('btnAir', 'AIR', 'En sfærisk chokfront udbredes i luften uden obstruktion. Ildkuglen trækker vakuum og løfter gasserne i en intens toroidal (doughnut-formet) cirkulation, der danner den ikoniske stamme i paddehatteskyen. Reflekterede trykbølger ville danne Mach-stammer på terrænet.');
-    uiBtnSurface.onclick = () => switchMode('btnSurface', 'SURFACE', 'Halvkugle-eksplosion, der overfører gigantisk kinetisk og termisk energi direkte til jordoverfladen. Graver store kratere, og det resulterende støv blandes i ildkuglen (scavenging), hvilket producerer grusomt og massivt lokalt radioaktivt nedfald.');
-    uiBtnWater.onclick = () => switchMode('btnWater', 'WATER', 'Nedsænket eksplosion under massivt tryk. Ildkuglen kvæles øjeblikkeligt af det inkompressible vand, hvorefter det udvikler pulserende dampplasmer (kavitation) mod havets hydrostatiske tryk. Producerer desuden en ekstremt fatal, lynhurtig horisontal vanddampståge; basisskyen (base surge).');
+    uiBtnAir.onclick = function() { switchMode('btnAir', 'AIR', 'En sfærisk chokfront udbredes i luften uden obstruktion. Ildkuglen trækker vakuum og løfter gasserne i en intens toroidal (doughnut-formet) cirkulation, der danner den ikoniske stamme i paddehatteskyen. Reflekterede trykbølger ville danne Mach-stammer på terrænet.'); };
+    uiBtnSurface.onclick = function() { switchMode('btnSurface', 'SURFACE', 'Halvkugle-eksplosion, der overfører gigantisk kinetisk og termisk energi direkte til jordoverfladen. Graver store kratere, og det resulterende støv blandes i ildkuglen (scavenging), hvilket producerer grusomt og massivt lokalt radioaktivt nedfald.'); };
+    uiBtnWater.onclick = function() { switchMode('btnWater', 'WATER', 'Nedsænket eksplosion under massivt tryk. Ildkuglen kvæles øjeblikkeligt af det inkompressible vand, hvorefter det udvikler pulserende dampplasmer (kavitation) mod havets hydrostatiske tryk. Producerer desuden en ekstremt fatal, lynhurtig horisontal vanddampståge; basisskyen (base surge).'); };
     uiBtnTrigger.onclick = executeDetonation;
 
-    // Afvikl motor
-    adaptResolution();
-    frameUpdate();
-</script>
-</body>
-</html>store kratere, og det resulterende støv blandes i ildkuglen (scavenging), hvilket producerer grusomt og massivt lokalt radioaktivt nedfald.');
-    uiBtnWater.onclick = () => switchMode('btnWater', 'WATER', 'Nedsænket eksplosion under massivt tryk. Ildkuglen kvæles øjeblikkeligt af det inkompressible vand, hvorefter det udvikler pulserende dampplasmer (kavitation) mod havets hydrostatiske tryk. Producerer desuden en ekstremt fatal, lynhurtig horisontal vanddampståge; basisskyen (base surge).');
-    uiBtnTrigger.onclick = executeDetonation;
-
-    // Afvikl motor
     adaptResolution();
     frameUpdate();
 </script>
