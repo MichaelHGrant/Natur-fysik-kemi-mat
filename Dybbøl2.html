@@ -10,13 +10,12 @@
             background-color: #2c251d;
             color: #2b2b2b;
             margin: 0;
-            padding: 20px; /* Giver luft omkring boksen på små skærme */
+            padding: 20px;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
             box-sizing: border-box;
-            /* overflow: hidden; er fjernet, så man nu kan scrolle! */
         }
         #game-container {
             background-color: #fffaf0;
@@ -30,12 +29,34 @@
             position: relative;
             transition: all 0.3s ease;
             margin: auto;
+            overflow: hidden; /* Holder overlayet inden for rammen */
         }
+        
+        /* Knap til kortet i toppen */
+        #show-map-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background-color: #3a2b1c;
+            color: #fffaf0;
+            border: 1px solid #1a1005;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Georgia', serif;
+            font-size: 0.9em;
+            z-index: 5;
+            transition: background-color 0.2s;
+        }
+        #show-map-btn:hover {
+            background-color: #8b0000;
+        }
+
         h1 {
             color: #8b0000;
             border-bottom: 2px solid #8b0000;
             padding-bottom: 10px;
-            margin-top: 0;
+            margin-top: 20px;
         }
         #story-text {
             font-size: 1.3em;
@@ -70,6 +91,47 @@
             padding-top: 15px;
         }
 
+        /* Taktisk Kort Modal (Pop-up vindue) */
+        #map-modal {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+            z-index: 20;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        #map-modal.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .map-content {
+            background-color: #f4ecd8;
+            width: 90%;
+            max-height: 90%;
+            border: 3px solid #5a4b3c;
+            border-radius: 6px;
+            padding: 20px;
+            overflow-y: auto;
+            text-align: left;
+            box-sizing: border-box;
+        }
+        .map-content h2 {
+            margin-top: 0;
+            color: #8b0000;
+            border-bottom: 1px solid #5a4b3c;
+            padding-bottom: 5px;
+        }
+        .map-content img {
+            width: 100%;
+            border: 2px solid #3a2b1c;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+
         /* Animationer */
         .fade-in {
             animation: fadeIn 0.8s ease-in;
@@ -78,7 +140,6 @@
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
-
         .shake {
             animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
         }
@@ -88,7 +149,6 @@
             30%, 50%, 70% { transform: translate3d(-8px, 0, 0); }
             40%, 60% { transform: translate3d(8px, 0, 0); }
         }
-        
         #overlay {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -96,6 +156,7 @@
             pointer-events: none;
             opacity: 0;
             border-radius: 4px;
+            z-index: 10;
         }
         .flash-red {
             animation: flashRed 0.5s ease-out;
@@ -110,6 +171,28 @@
 
 <div id="game-container">
     <div id="overlay"></div>
+    
+    <button id="show-map-btn">🗺️ Taktisk Kort</button>
+
+    <div id="map-modal">
+        <div class="map-content">
+            <h2>Det Taktiske Overblik</h2>
+            <img src="https://via.placeholder.com/800x400/dcd3be/5a4b3c?text=Inds%C3%A6t+Kort+over+Dybb%C3%B8l+Her" alt="Kort over Dybbøl">
+            
+            <h3>1. De 10 Skanser</h3>
+            <p>Forsvarslinjen består af 10 jordskanser, nummereret fra syd (skanse I ved Vemmingbund) til nord (skanse X ved Alssund). Skanse II, IV og VI på selve Dybbøl Banke er under hårdest pres.</p>
+            
+            <h3>2. Troppepositioner</h3>
+            <p><strong>Danske styrker:</strong> 11.000 trætte mand i de forreste linjer. Reserverne (8. Brigade) står tilbage mod broerne.<br>
+            <strong>Preussiske styrker:</strong> 37.000 mand under Prins Friedrich Karl, klar i løbegravene kun 150-200 meter væk.</p>
+            
+            <h3>3. Terræn & Flåde</h3>
+            <p>Vemmingbund i syd tillader flådestøtte fra panserskibet <i>Rolf Krake</i>. I ryggen har du pontonbroerne over Alssund. Bliver broerne taget, er hæren fanget.</p>
+
+            <button class="btn" id="close-map-btn" style="width: 100%; margin: 15px 0 0 0;">Luk Kort</button>
+        </div>
+    </div>
+
     <h1>Slaget ved Dybbøl</h1>
     <p><i>18. april 1864 - Generalens Telt</i></p>
     <div id="story-content" class="fade-in">
@@ -130,28 +213,24 @@
         if (!audioCtx) {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
-        // Vækker lyden, hvis browseren har sat den på pause (vigtigt på mobil)
         if (audioCtx.state === 'suspended') {
             audioCtx.resume();
         }
     }
 
-    // NY OG FORBEDRET KANONLYD (Hvid støj med filter)
     function playCannonSound() {
         if (!audioCtx) return;
-        
-        const bufferSize = audioCtx.sampleRate * 1; // 1 sekund støj
+        const bufferSize = audioCtx.sampleRate * 1; 
         const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
         const data = buffer.getChannelData(0);
         
         for (let i = 0; i < bufferSize; i++) {
-            data[i] = Math.random() * 2 - 1; // Genererer hvid støj
+            data[i] = Math.random() * 2 - 1; 
         }
         
         const noise = audioCtx.createBufferSource();
         noise.buffer = buffer;
         
-        // Filter der gør støjen dyb og buldrende
         const filter = audioCtx.createBiquadFilter();
         filter.type = 'lowpass';
         filter.frequency.value = 400; 
@@ -167,13 +246,12 @@
         noise.start();
     }
 
-    // BLØDERE KLIK-LYD
     function playClickSound() {
         if (!audioCtx) return;
         const oscillator = audioCtx.createOscillator();
         const gainNode = audioCtx.createGain();
         
-        oscillator.type = 'triangle'; // Blødere end square/sine
+        oscillator.type = 'triangle'; 
         oscillator.frequency.setValueAtTime(300, audioCtx.currentTime);
         oscillator.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.1);
         
@@ -344,10 +422,29 @@
         });
     }
 
+    // Kort Logik
     document.addEventListener('DOMContentLoaded', () => {
         const startKnap = document.getElementById('start-btn');
+        const mapBtn = document.getElementById('show-map-btn');
+        const mapModal = document.getElementById('map-modal');
+        const closeMapBtn = document.getElementById('close-map-btn');
+
         if (startKnap) {
             startKnap.addEventListener('click', startGame);
+        }
+
+        // Åbn kort
+        if (mapBtn) {
+            mapBtn.addEventListener('click', () => {
+                mapModal.classList.add('active');
+            });
+        }
+
+        // Luk kort
+        if (closeMapBtn) {
+            closeMapBtn.addEventListener('click', () => {
+                mapModal.classList.remove('active');
+            });
         }
     });
 
