@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slaget ved Dybbøl - 1864</title>
+    <style>
+        body {
+            font-family: 'Georgia', serif;
+            background-color: #f4ecd8;
+            color: #2b2b2b;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        #game-container {
+            background-color: #fffaf0;
+            border: 2px solid #5a4b3c;
+            border-radius: 8px;
+            padding: 30px;
+            max-width: 600px;
+            width: 90%;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+        h1 {
+            color: #8b0000;
+            border-bottom: 2px solid #8b0000;
+            padding-bottom: 10px;
+        }
+        #story-text {
+            font-size: 1.2em;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            min-height: 120px;
+        }
+        .btn {
+            background-color: #5a4b3c;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            margin: 8px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s;
+            width: 90%;
+            max-width: 400px;
+        }
+        .btn:hover {
+            background-color: #8b0000;
+        }
+        .hidden {
+            display: none;
+        }
+        #historical-note {
+            margin-top: 20px;
+            font-size: 0.9em;
+            font-style: italic;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <h1>Slaget ved Dybbøl</h1>
+    <p><i>18. april 1864</i></p>
+    <div id="story-text">
+        Velkommen, General! Prøjsernes kanoner har bombet skanserne i ugevis. Det er tidlig morgen. Fjenden gør klar til stormløb mod vores nedslidte forsvarsværker. Hvad er dine ordrer?
+    </div>
+    <div id="choices-container">
+        </div>
+    <p id="historical-note"></p>
+</div>
+
+<script>
+    // Spillets 'state machine' (historien og valgene)
+    const storyNodes = {
+        start: {
+            text: "Klokken er 10:00. Den prøjseriske kanonild stopper pludselig. Det betyder kun én ting: Infanteriet angriber snart! Hvad gør vi?",
+            choices: [
+                { text: "Befal tropperne at blive i skanserne og tage kampen op! (Historisk)", next: "historical_defeat" },
+                { text: "Iværksæt et desperat, overraskende modangreb ud af skanserne!", next: "counter_attack" },
+                { text: "Beordr en fuld tilbagetrækning over broerne til Als for at redde hæren.", next: "retreat_als" }
+            ],
+            note: "Du er nu den danske overgeneral (historisk General Gerlach, efter de Meza)."
+        },
+        historical_defeat: {
+            text: "Du vælger at holde skanserne. Over 35.000 friske preussiske soldater stormer frem mod de udmattede danske tropper. Skanse efter skanse falder. Det 8. Brigade forsøger et heroisk modangreb, men overmagten er for stor. Vi må trække os tilbage til Als med svære tab.",
+            choices: [
+                { text: "Spil igen og prøv at ændre historien", next: "start" }
+            ],
+            note: "Dette var det historiske udfald den 18. april 1864. Danmark mistede Dybbøl og senere krigen."
+        },
+        counter_attack: {
+            text: "Du giver ordre til et overraskelsesangreb! Danske soldater med påplantede bajonetter stormer ud af de ødelagte skanser, netop som prøjserne samler sig i løbegravene. Fjenden overraskes totalt, og deres forreste rækker knækker! Men... de har stadig massivt overtal.",
+            choices: [
+                { text: "Udnyt panikken til at trække hovedstyrken i sikkerhed på Als.", next: "counter_retreat" },
+                { text: "Press fordelen! Vi kæmper til sidste mand!", next: "total_wipeout" }
+            ],
+            note: "I virkeligheden forsøgte 8. Brigade et modangreb senere på dagen, som var modigt, men tragisk."
+        },
+        retreat_als: {
+            text: "Ligesom de Meza gjorde ved Dannevirke, tager du en hård, men taktisk klog beslutning. Du beordrer hæren over pontonbroerne til øen Als, før prøjserne kan udslette jer. Broerne sprænges i luften bag jer.",
+            choices: [
+                { text: "Spil igen", next: "start" }
+            ],
+            note: "Alternativt udfald: Hæren er reddet! Men politikerne i København er rasende og vil formodentlig stille dig for en krigsret."
+        },
+        counter_retreat: {
+            text: "Dit overraskelsesangreb købte jer værdifuld tid! Mens prøjserne omgrupperer i forvirring, marcherer den danske hær i god orden over til Als. I har mistet skanserne, men hæren overlever med stoltheden i behold og meget færre tab.",
+            choices: [
+                { text: "Spil igen", next: "start" }
+            ],
+            note: "Bedste alternative udfald! Du har tabt slaget, men reddet hærens moral og liv."
+        },
+        total_wipeout: {
+            text: "Dristigheden koster jer alt. Efter den første chok-effekt sætter den prøjseriske maskine ind. Med deres moderne bagladerifler og overvældende artilleri bliver den danske hær fuldstændig udslettet på marken foran skanserne.",
+            choices: [
+                { text: "Spil igen", next: "start" }
+            ],
+            note: "Værste udfald. Ikke blot tabes slaget, men hele den danske hær er udslettet."
+        }
+    };
+
+    // DOM elementer
+    const storyTextElement = document.getElementById('story-text');
+    const choicesContainer = document.getElementById('choices-container');
+    const noteElement = document.getElementById('historical-note');
+
+    // Funktion til at vise en bestemt del af historien
+    function showNode(nodeKey) {
+        const node = storyNodes[nodeKey];
+        
+        // Opdater tekst og note
+        storyTextElement.innerHTML = node.text;
+        noteElement.innerHTML = node.note || "";
+
+        // Ryd gamle knapper
+        choicesContainer.innerHTML = '';
+
+        // Opret nye knapper baseret på valgmuligheder
+        node.choices.forEach(choice => {
+            const button = document.createElement('button');
+            button.innerText = choice.text;
+            button.classList.add('btn');
+            button.addEventListener('click', () => showNode(choice.next));
+            choicesContainer.appendChild(button);
+        });
+    }
+
+    // Start spillet
+    showNode('start');
+
+</script>
+
+</body>
+</html>
