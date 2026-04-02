@@ -2,7 +2,7 @@
 <html lang="da">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Fluid Loading: Det Syngende Vinglas</title>
     
     <!-- Tailwind CSS til design -->
@@ -17,90 +17,112 @@
     </script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
-    <!-- Three.js og OrbitControls (Klassisk indlæsning for stabilitet) -->
+    <!-- Three.js og OrbitControls -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
     <style>
-        body { margin: 0; overflow: hidden; background-color: #0f172a; color: white; font-family: sans-serif; }
-        #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
-        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 1.5rem; box-sizing: border-box; }
+        body, html { margin: 0; padding: 0; height: 100%; background-color: #0f172a; color: white; font-family: sans-serif; overflow-x: hidden; }
+        
+        /* 3D Containeren fungerer nu som en fast baggrund */
+        #canvas-container { position: fixed; top: 0; left: 0; width: 100%; height: 100vh; z-index: 1; pointer-events: none; }
+        
+        /* Dette tillader at vi rører ved glasset (OrbitControls) mens baggrunden bliver tegnet over */
+        #canvas-container canvas { pointer-events: auto; }
+
+        /* UI laget er nu rullebart på små skærme */
+        #ui-scroll-container { 
+            position: relative; 
+            z-index: 10; 
+            min-height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+            padding: 1rem;
+            pointer-events: none; /* Lader klik gå igennem til 3D, undtagen på selve panelerne */
+        }
+        
         .pointer-events-auto { pointer-events: auto; }
         input[type=range] { accent-color: #e11d48; cursor: pointer; }
         
-        /* Simpel scrollbar til modal */
         ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #1e293b; }
-        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(71, 85, 105, 0.5); border-radius: 4px; }
+        
+        /* Mobil specifikke justeringer */
+        @media (max-width: 768px) {
+            #ui-scroll-container { padding: 0.5rem; justify-content: flex-start; }
+            .panel-container { margin-bottom: 1rem; }
+        }
     </style>
 </head>
 <body>
 
-    <!-- 3D Lærred -->
+    <!-- Fast 3D Baggrund -->
     <div id="canvas-container"></div>
 
-    <!-- Brugerflade (UI) -->
-    <div id="ui-layer">
+    <!-- Rullebart UI Lag -->
+    <div id="ui-scroll-container">
         
-        <!-- Top Container for paneler (Flexbox) -->
-        <div class="flex flex-col md:flex-row justify-between items-start gap-4">
+        <!-- Top Wrapper for at holde panelerne fra hinanden på desktop -->
+        <div class="flex flex-col md:flex-row justify-between items-start gap-4 w-full max-w-7xl mx-auto h-full flex-1">
             
-            <!-- Venstre: Kontrolpanel -->
-            <div class="bg-slate-800/95 backdrop-blur rounded-xl p-6 shadow-2xl pointer-events-auto border border-slate-700 w-full md:w-96">
-                <h1 class="text-2xl font-bold mb-1 text-rose-500">Det Syngende Vinglas</h1>
-                <p class="text-sm text-slate-300 mb-6">Akustisk Fluid Loading Simulator</p>
+            <!-- Venstre / Top: Kontrolpanel -->
+            <div class="panel-container bg-slate-800/80 backdrop-blur-md rounded-2xl p-5 shadow-2xl pointer-events-auto border border-slate-700 w-full md:w-96 flex-shrink-0">
+                <h1 class="text-xl md:text-2xl font-bold mb-1 text-rose-500">Det Syngende Vinglas</h1>
+                <p class="text-xs md:text-sm text-slate-300 mb-5">Akustisk Fluid Loading Simulator</p>
                 
-                <div class="space-y-6">
+                <div class="space-y-5">
                     <!-- Slider: Volumen -->
                     <div>
                         <div class="flex justify-between mb-1">
-                            <label class="text-sm font-medium">Væskestand (Volumen)</label>
-                            <span id="level-val" class="text-sm font-mono text-rose-400">50%</span>
+                            <label class="text-xs md:text-sm font-medium">Væskestand</label>
+                            <span id="level-val" class="text-xs md:text-sm font-mono text-rose-400">50%</span>
                         </div>
-                        <input type="range" id="slider-level" min="0" max="100" value="50" class="w-full h-2 bg-slate-700 rounded-lg appearance-none">
+                        <input type="range" id="slider-level" min="0" max="100" value="50" class="w-full h-2 bg-slate-700/50 rounded-lg appearance-none">
                     </div>
 
                     <!-- Slider: Densitet -->
                     <div>
                         <div class="flex justify-between mb-1">
-                            <label class="text-sm font-medium">Væsketype (Densitet)</label>
-                            <span id="density-val" class="text-sm font-mono text-rose-400">Vin (1.0 kg/L)</span>
+                            <label class="text-xs md:text-sm font-medium">Væsketype</label>
+                            <span id="density-val" class="text-xs md:text-sm font-mono text-rose-400">Vin (1.0 kg/L)</span>
                         </div>
-                        <input type="range" id="slider-density" min="0.8" max="1.5" step="0.1" value="1.0" class="w-full h-2 bg-slate-700 rounded-lg appearance-none">
+                        <input type="range" id="slider-density" min="0.8" max="1.5" step="0.1" value="1.0" class="w-full h-2 bg-slate-700/50 rounded-lg appearance-none">
                     </div>
 
-                    <!-- NY Slider: Dæmpning -->
+                    <!-- Slider: Dæmpning -->
                     <div>
                         <div class="flex justify-between mb-1">
-                            <label class="text-sm font-medium">Dæmpning (Damping)</label>
-                            <span id="damping-val" class="text-sm font-mono text-rose-400">Lav</span>
+                            <label class="text-xs md:text-sm font-medium">Dæmpning (Fingertryk)</label>
+                            <span id="damping-val" class="text-xs md:text-sm font-mono text-rose-400">Lav</span>
                         </div>
-                        <input type="range" id="slider-damping" min="100" max="1200" step="50" value="300" class="w-full h-2 bg-slate-700 rounded-lg appearance-none">
+                        <input type="range" id="slider-damping" min="100" max="1200" step="50" value="300" class="w-full h-2 bg-slate-700/50 rounded-lg appearance-none">
                     </div>
                 </div>
 
-                <div class="mt-8 pt-6 border-t border-slate-700">
+                <div class="mt-6 pt-5 border-t border-slate-700/50">
                     <div class="flex justify-between items-center mb-4">
-                        <span class="text-slate-400">Aktuel Frekvens:</span>
-                        <span id="freq-display" class="text-3xl font-bold text-white font-mono">--- Hz</span>
+                        <span class="text-sm text-slate-400">Aktuel Frekvens:</span>
+                        <span id="freq-display" class="text-2xl md:text-3xl font-bold text-white font-mono">--- Hz</span>
                     </div>
                     
-                    <div class="flex gap-3">
-                        <button id="btn-sound" class="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2">
+                    <div class="flex gap-2">
+                        <button id="btn-sound" class="flex-1 bg-rose-600 hover:bg-rose-500 text-white text-sm font-semibold py-2.5 px-3 rounded-lg transition-colors flex items-center justify-center gap-2">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>
                             Spil Lyd
                         </button>
-                        <button id="btn-physics" class="bg-slate-700 hover:bg-slate-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
-                            Fysikken bag
+                        <button id="btn-physics" class="bg-slate-700 hover:bg-slate-600 text-white text-sm font-semibold py-2.5 px-3 rounded-lg transition-colors">
+                            Fysik
                         </button>
                     </div>
                 </div>
             </div>
 
-            <!-- Højre: Graf over Frekvensspektrum (Rykket op pga fjernet mt-auto) -->
-            <div class="w-full md:w-1/2 max-w-lg bg-slate-800/95 backdrop-blur rounded-xl p-4 shadow-2xl pointer-events-auto border border-slate-700">
-                <h3 class="text-sm font-medium text-slate-300 mb-2">Frekvensspektrum (Relativ Intensitet)</h3>
-                <div class="h-56 w-full relative">
+            <!-- Højre / Bund: Graf -->
+            <div class="panel-container w-full md:w-1/2 max-w-lg bg-slate-800/80 backdrop-blur-md rounded-2xl p-4 shadow-2xl pointer-events-auto border border-slate-700 mt-auto md:mt-0">
+                <h3 class="text-xs md:text-sm font-medium text-slate-300 mb-2">Frekvensspektrum (Relativ Intensitet)</h3>
+                <!-- Højden er dynamisk tilpasset mobil -->
+                <div class="h-40 md:h-56 w-full relative">
                     <canvas id="freqChart"></canvas>
                 </div>
             </div>
@@ -108,26 +130,26 @@
         </div>
     </div>
 
-    <!-- Pop-up Modal til Fysik -->
-    <div id="physics-modal" style="display: none;" class="fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-50 flex items-center justify-center pointer-events-auto">
-        <div class="bg-slate-900 border border-slate-700 rounded-2xl p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto relative shadow-2xl mx-4">
-            <button id="btn-close-modal" class="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors">
-                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+    <!-- Pop-up Modal -->
+    <div id="physics-modal" style="display: none;" class="fixed inset-0 bg-slate-950/95 backdrop-blur-md z-50 flex items-center justify-center pointer-events-auto p-4">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl p-6 md:p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto relative shadow-2xl">
+            <button id="btn-close-modal" class="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors bg-slate-800 p-1 rounded-full">
+                <svg class="w-6 h-6 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
-            <h2 class="text-3xl font-bold text-rose-500 mb-6">Fysikken bag Fluid Loading</h2>
-            <div class="text-slate-300 space-y-4 leading-relaxed">
+            <h2 class="text-2xl md:text-3xl font-bold text-rose-500 mb-4 md:mb-6 pr-8">Fysikken bag Fluid Loading</h2>
+            <div class="text-sm md:text-base text-slate-300 space-y-4 md:space-y-6 leading-relaxed">
                 <p>Når et vinglas "synger" på grund af <em>stick-slip</em> friktion fra en finger på kanten, vibrerer selve glasset. Det bøjer geometrisk og skifter form lynhurtigt.</p>
-                <p>Når vi hælder væske i glasset, sker der noget kontraintuitivt: <strong>Tonen bliver dybere!</strong> Væsken blødgør ikke glasset, men fungerer i stedet som en <em>tilføjet masse</em>, der tvinges til at svinge med glassets vægge. Denne forøgelse i masse sænker resonansfrekvensen. Dette fænomen kaldes <strong>Fluid Loading</strong>.</p>
-                <div class="bg-slate-800 p-4 rounded-lg border border-slate-700 my-6 text-center text-lg overflow-x-auto">
+                <p>Når vi hælder væske i glasset, sker der noget kontraintuitivt: <strong>Tonen bliver dybere!</strong> Væsken fungerer som en <em>tilføjet masse</em>, der tvinges til at svinge med glassets vægge. Denne masse forøger systemets samlede inerti og sænker resonansfrekvensen (Fluid Loading).</p>
+                <div class="bg-slate-800 p-3 md:p-4 rounded-lg border border-slate-700 my-4 text-center text-sm md:text-lg overflow-x-auto">
                     $$f = \frac{f_0}{\sqrt{1 + \alpha \left(\frac{h}{H}\right)^4}}$$
                 </div>
-                <ul class="list-disc pl-6 space-y-2">
-                    <li>$f$ er den resulterende frekvens (det vi hører).</li>
-                    <li>$f_0$ er frekvensen for det tomme glas (her sat til 800 Hz).</li>
-                    <li>$h$ er væskens højde, og $H$ er glassets fulde højde.</li>
-                    <li>$\alpha$ er en konstant, der afhænger af væskens densitet. Jo tungere væske, jo dybere tone.</li>
+                <ul class="list-disc pl-5 space-y-1 md:space-y-2">
+                    <li>$f$: Resulterende frekvens (det vi hører).</li>
+                    <li>$f_0$: Frekvens for tomt glas (800 Hz).</li>
+                    <li>$h$: Væskens højde, $H$: Glassets højde.</li>
+                    <li>$\alpha$: Konstant for væskens densitet.</li>
                 </ul>
-                <p class="mt-4 text-sm text-slate-400">Læg mærke til i formlen, at effekten vokser kraftigt (i fjerde potens), efterhånden som væsken nærmer sig kanten af glasset, fordi det er heroppe vibrationerne er størst.</p>
+                <p class="text-xs md:text-sm text-slate-400">Læg mærke til i formlen, at effekten vokser kraftigt (i fjerde potens), efterhånden som væsken nærmer sig kanten af glasset, fordi det er heroppe vibrationerne (udslaget) er størst.</p>
             </div>
         </div>
     </div>
@@ -148,17 +170,15 @@
             let audioCtx, oscillator, gainNode;
             let isPlaying = false;
             
-            const F0 = 800; // Grundtone (tomt glas)
+            const F0 = 800; // Grundtone
             let currentFreq = F0;
 
-            // Dimensioner for 3D glasset
             const stemHeight = 4.0;
             const bowlHeight = 5.5;
             const glassThickness = 0.08;
             const totalHeight = stemHeight + bowlHeight;
-            const steps = 50; // Øget lidt for blødere kurver
+            const steps = 50;
 
-            // Start systemet
             init3D();
             initChart();
             initUI();
@@ -171,20 +191,29 @@
                 scene = new THREE.Scene();
                 scene.fog = new THREE.FogExp2(0x0f172a, 0.02); 
 
-                // RYKKET KAMERA TILBAGE: z=24 gør glasset væsentligt mindre på skærmen
+                // MOBIL-VENLIGT KAMERA
+                // Tjekker skærmens bredde for at beregne hvor langt tilbage kameraet skal være.
+                // På små skærme skal det længere tilbage, så glasset ikke bliver dækket af UI.
+                const isMobile = window.innerWidth < 768;
+                const cameraZ = isMobile ? 32 : 24; 
+                // På mobil rykker vi også kameraet lidt op, så glasset ligger mere centralt under top-menuen
+                const cameraY = isMobile ? 4 : 2;
+
                 camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-                camera.position.set(0, 2, 24); 
+                camera.position.set(0, cameraY, cameraZ); 
 
                 renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
                 renderer.setSize(window.innerWidth, window.innerHeight);
-                renderer.setPixelRatio(window.devicePixelRatio);
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Begræns pixelratio på mobil for performance
                 container.appendChild(renderer.domElement);
 
                 controls = new THREE.OrbitControls(camera, renderer.domElement);
                 controls.enableDamping = true;
                 controls.dampingFactor = 0.05;
-                controls.minDistance = 5;
-                controls.maxDistance = 40;
+                controls.minDistance = 10;
+                controls.maxDistance = 50;
+                // Deaktiver panorerig så brugeren ikke rykker glasset væk på touch-skærme
+                controls.enablePan = false; 
                 controls.target.set(0, 0, 0);
 
                 const ambient = new THREE.AmbientLight(0xffffff, 0.5);
@@ -203,24 +232,20 @@
                 window.addEventListener('resize', onWindowResize);
             }
 
-            // --- KLASSISK RØDVINSGLAS (Bordeaux form) ---
             function getBowlRadius(t) {
-                // Et 3. grads polynomium giver den perfekte klassiske tulipanform 
-                // Bred midtpå, smal foroven.
                 return 0.15 + 9.0 * t - 13.0 * t * t + 5.0 * t * t * t;
             }
 
-            // --- 2. 3D GLAS & VÆSKE ---
             function createGlass() {
                 glassGroup = new THREE.Group();
                 const points = [];
 
                 // Yderside
                 points.push(new THREE.Vector2(0, 0));
-                points.push(new THREE.Vector2(1.5, 0)); // Fod er lidt smallere
+                points.push(new THREE.Vector2(1.5, 0)); 
                 points.push(new THREE.Vector2(1.5, 0.15));
                 points.push(new THREE.Vector2(0.2, 0.3));
-                points.push(new THREE.Vector2(0.2, stemHeight)); // Stilk
+                points.push(new THREE.Vector2(0.2, stemHeight)); 
                 
                 for(let i=0; i<=steps; i++) {
                     let t = i/steps;
@@ -236,11 +261,8 @@
                     let r = getBowlRadius(t) - glassThickness;
                     if(r < 0) r = 0;
                     
-                    if (i===0) {
-                        points.push(new THREE.Vector2(0, y + glassThickness)); 
-                    } else {
-                        points.push(new THREE.Vector2(r, y));
-                    }
+                    if (i===0) points.push(new THREE.Vector2(0, y + glassThickness)); 
+                    else points.push(new THREE.Vector2(r, y));
                 }
 
                 const glassGeom = new THREE.LatheGeometry(points, 64);
@@ -258,7 +280,11 @@
                 const glassMesh = new THREE.Mesh(glassGeom, glassMat);
                 glassGroup.add(glassMesh);
                 
-                glassGroup.position.y = -totalHeight / 2;
+                // På mobil rykker vi selve glasgruppen en anelse ned
+                const isMobile = window.innerWidth < 768;
+                const offsetY = isMobile ? 2 : 0;
+                glassGroup.position.y = (-totalHeight / 2) - offsetY;
+                
                 scene.add(glassGroup);
             }
 
@@ -316,19 +342,16 @@
                 
                 document.getElementById('level-val').innerText = `${levelRaw}%`;
                 
-                // Densitet tekst
                 let typeStr = "Vin";
                 if(densityRaw < 0.9) typeStr = "Sprit";
                 if(densityRaw > 1.2) typeStr = "Sirup";
                 document.getElementById('density-val').innerText = `${typeStr} (${Number(densityRaw).toFixed(1)} kg/L)`;
 
-                // Dæmpning tekst
                 let dampStr = "Mellem";
                 if(dampingRaw < 350) dampStr = "Lav";
                 else if(dampingRaw > 800) dampStr = "Høj";
                 document.getElementById('damping-val').innerText = dampStr;
 
-                // Formlen for Fluid Loading (Væskebelastning)
                 const h_over_H = levelRaw / 100.0;
                 const alpha = parseFloat(densityRaw) * 1.5; 
                 
@@ -338,8 +361,6 @@
 
                 if(isPlaying && oscillator && audioCtx) {
                     oscillator.frequency.setTargetAtTime(currentFreq, audioCtx.currentTime, 0.05);
-                    
-                    // Dæmpning påvirker også lydstyrken lidt. Høj dæmpning = svagere lyd.
                     const dynamicGain = 0.5 * (300 / dampingRaw); 
                     if(gainNode) gainNode.gain.setTargetAtTime(dynamicGain, audioCtx.currentTime, 0.1);
                 }
@@ -380,7 +401,6 @@
                     gainNode.connect(audioCtx.destination);
                     
                     gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-                    
                     const dynamicGain = 0.5 * (300 / dampingRaw);
                     gainNode.gain.setTargetAtTime(dynamicGain, audioCtx.currentTime, 0.1); 
                     
@@ -422,13 +442,15 @@
                         scales: {
                             x: {
                                 min: 300, max: 1200,
-                                title: { display: true, text: 'Frekvens (Hz)' },
-                                grid: { color: 'rgba(255,255,255,0.1)' }
+                                title: { display: false }, // Skjult på mobil for at spare plads
+                                grid: { color: 'rgba(255,255,255,0.05)' },
+                                ticks: { font: { size: 10 } }
                             },
                             y: {
                                 min: 0, max: 100,
-                                title: { display: true, text: 'Relativ Intensitet (%)' },
-                                grid: { color: 'rgba(255,255,255,0.1)' }
+                                title: { display: false },
+                                grid: { color: 'rgba(255,255,255,0.05)' },
+                                ticks: { display: false } // Skjul y-tal for renere look på mobil
                             }
                         },
                         plugins: { legend: { display: false } }
@@ -441,20 +463,12 @@
                 
                 const labels = [];
                 const data = [];
-                
-                // Udregn maksimal højde baseret på dæmpning (høj dæmpning = lavere spids)
                 const maxIntensity = 100 * (300 / damping);
 
-                for(let x = 300; x <= 1200; x += 5) {
+                for(let x = 300; x <= 1200; x += 10) { // Lidt grovere steps (10) for bedre mobil performance
                     labels.push(x);
-                    
-                    // Dæmpning (damping variable) styrer nu bredden af toppen. 
-                    // Højere dæmpning gør klokkekurven bredere.
                     let y = maxIntensity * Math.exp(-Math.pow(x - f, 2) / damping);
-                    
-                    // Overtone er tilsvarende dæmpet
                     y += (maxIntensity * 0.2) * Math.exp(-Math.pow(x - (f * 1.5), 2) / (damping*3));
-                    
                     data.push(y);
                 }
                 
@@ -465,9 +479,13 @@
 
             // --- 5. UI & EVENT LISTENERS ---
             function initUI() {
-                document.getElementById('slider-level').addEventListener('input', updatePhysics);
-                document.getElementById('slider-density').addEventListener('input', updatePhysics);
-                document.getElementById('slider-damping').addEventListener('input', updatePhysics); // Ny slider koblet til
+                // Brug både 'input' og 'change' for bedre touch-slider support
+                ['input', 'change'].forEach(evt => {
+                    document.getElementById('slider-level').addEventListener(evt, updatePhysics);
+                    document.getElementById('slider-density').addEventListener(evt, updatePhysics);
+                    document.getElementById('slider-damping').addEventListener(evt, updatePhysics); 
+                });
+                
                 document.getElementById('btn-sound').addEventListener('click', toggleSound);
 
                 const modal = document.getElementById('physics-modal');
@@ -481,6 +499,15 @@
 
             function onWindowResize() {
                 if(camera && renderer) {
+                    const isMobile = window.innerWidth < 768;
+                    camera.position.z = isMobile ? 32 : 24;
+                    camera.position.y = isMobile ? 4 : 2;
+                    
+                    if(glassGroup) {
+                        const offsetY = isMobile ? 2 : 0;
+                        glassGroup.position.y = (-totalHeight / 2) - offsetY;
+                    }
+
                     camera.aspect = window.innerWidth / window.innerHeight;
                     camera.updateProjectionMatrix();
                     renderer.setSize(window.innerWidth, window.innerHeight);
