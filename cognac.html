@@ -5,8 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cognacens Tårer - Temperatur & Marangoni-effekten</title>
     
-    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
-    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>
+      MathJax = {
+        tex: {
+          inlineMath: [['$', '$'], ['\\(', '\\)']],
+          displayMath: [['$$', '$$'], ['\\[', '\\]']]
+        }
+      };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 
     <style>
         body {
@@ -148,6 +155,7 @@
             overflow-x: auto;
             margin: 15px 0;
             border: 1px solid #333;
+            text-align: center; /* Centrerer block-matematik */
         }
         .temp-display {
             color: #e67e22;
@@ -213,7 +221,7 @@
                 $$ \tau = \frac{d\gamma}{dx} = \frac{\partial \gamma}{\partial c} \frac{dc}{dx} + \frac{\partial \gamma}{\partial T} \frac{dT}{dx} $$
             </div>
 
-            <p>Fordi tilføjelse af alkohol sænker overfladespændingen ($\frac{\partial \gamma}{\partial c} < 0$), og koncentrationen falder op ad glasset ($\frac{dc}{dx} < 0$), bliver det første led positivt. Samtidig sænker højere temperaturer ofte overfladespændingen ($\frac{\partial \gamma}{\partial T} < 0$), og fordampningen gør, at temperaturen falder op ad glasset ($\frac{dT}{dx} < 0$), hvilket gør det andet led positivt. Nettokraften ($\tau > 0$) trækker væsken op, indtil tyngdekraften tager over.</p>
+            <p>Fordi tilføjelse af alkohol sænker overfladespændingen ($\frac{\partial \gamma}{\partial c} &lt; 0$), og koncentrationen falder op ad glasset ($\frac{dc}{dx} &lt; 0$), bliver det første led positivt. Samtidig sænker højere temperaturer ofte overfladespændingen ($\frac{\partial \gamma}{\partial T} &lt; 0$), og fordampningen gør, at temperaturen falder op ad glasset ($\frac{dT}{dx} &lt; 0$), hvilket gør det andet led positivt. Nettokraften ($\tau &gt; 0$) trækker væsken op, indtil tyngdekraften tager over.</p>
         </div>
     </div>
 
@@ -271,17 +279,13 @@
                 const baseGravityForce = parseFloat(gravSlider.value);
                 const currentTemp = parseFloat(tempSlider.value);
                 
-                // Beregn temperaturfaktoren (Base er sat til 20 grader = faktor 1.0)
-                // For hver grad over 20, øges aktiviteten med 6%
+                // Beregn temperaturfaktoren (Base er sat til 20 grader)
                 const tempFactor = 1 + (currentTemp - 20) * 0.06;
 
-                // De reelle kræfter der virker på dråben i dette frame
                 const marangoniForce = baseMarangoniForce * tempFactor;
-                // Viskositeten falder med varmen, så den falder hurtigere
                 const gravityForce = baseGravityForce * tempFactor; 
 
                 if (this.state === 'climbing') {
-                    // Trækkes op ad glasset
                     this.y -= marangoniForce * (Math.random() * 0.5 + 0.5); 
                     this.x += (Math.random() - 0.5) * 0.4; 
                     
@@ -294,14 +298,12 @@
                     }
                 } 
                 else if (this.state === 'pooling') {
-                    // Dråben samler sig - varme = mere fordampning oppe = hurtigere ophobning af vand
                     this.radius += 0.03 * marangoniForce; 
                     if (this.radius >= this.maxRadius) {
                         this.state = 'falling';
                     }
                 } 
                 else if (this.state === 'falling') {
-                    // Falder ned igen (hjulpet af lavere viskositet pga tempFactor)
                     this.y += gravityForce * (this.radius / 3); 
                     if (this.y >= liquidLevel) {
                         this.reset();
@@ -318,7 +320,6 @@
             }
         }
 
-        // Fyld partikler i systemet
         for(let i = 0; i < 70; i++) {
             tears.push(new Tear());
         }
@@ -326,7 +327,6 @@
         function animate() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Tegn Glasset
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)'; 
             ctx.lineWidth = 4;
             ctx.beginPath();
@@ -336,7 +336,6 @@
             ctx.lineTo(glassRight + 10, 50);
             ctx.stroke();
 
-            // Tegn væsken i bunden
             ctx.fillStyle = 'rgba(210, 105, 30, 0.4)'; 
             ctx.beginPath();
             ctx.moveTo(glassLeft + 2, liquidLevel);
@@ -346,7 +345,6 @@
             ctx.closePath();
             ctx.fill();
             
-            // Tegn menisken (overfladen)
             ctx.strokeStyle = 'rgba(210, 105, 30, 0.8)';
             ctx.lineWidth = 2;
             ctx.beginPath();
@@ -354,7 +352,6 @@
             ctx.lineTo(glassRight - 2, liquidLevel);
             ctx.stroke();
 
-            // Opdater og tegn dråber
             tears.forEach(tear => {
                 tear.update();
                 tear.draw();
