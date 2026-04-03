@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulation af Damphuller i Ris (Rund, Jævnt Fordelt)</title>
+    <title>Simulation af Damphuller i Ris (Uperfekt Close-Packed)</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -71,7 +71,7 @@
             padding: 25px 35px;
             border-radius: 8px;
             width: 80%;
-            max-width: 650px;
+            max-width: 700px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.3);
             line-height: 1.6;
             max-height: 80vh;
@@ -95,16 +95,20 @@
             border-left: 4px solid #2196F3;
             padding: 10px 15px;
             margin: 15px 0;
-            font-family: monospace;
             font-size: 1.1em;
             overflow-x: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
         }
     </style>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
 <body>
 
     <h1>Risens Fluiddynamik</h1>
-    <p>Se hvordan dampen danner et tætpakket (close-packed) mønster af huller.</p>
+    <p>Se hvordan dampen danner et realistisk, uperfekt tætpakket mønster af huller.</p>
     
     <div class="controls">
         <button id="infoBtn">Forklar Fysikken & Matematikken</button>
@@ -126,17 +130,34 @@
     <div id="physicsModal" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
-            <h2>Fysikken bag jævnt fordelte damphuller</h2>
-            <p>Når vi ser på overfladen af risene, vil hullerne ofte placere sig i et jævnt fordelt mønster. Dette skyldes princippet om at minimere energi og maksimere floweffektivitet.</p>
+            <h2>Fysikken bag de realistiske damphuller</h2>
+            <p>I naturen forsøger systemer at minimere deres energi. Når mange damphuller skal dele et begrænset areal (som overfladen i en gryde), vil de ideelt set fordele sig i et perfekt <strong>hexagonalt mønster</strong> for at have mest mulig afstand til hinanden (maksimering af flow, minimering af tryk).</p>
             
-            <h3>Selvorganisering og Close-Packing</h3>
-            <p>Når dampkanalerne dannes i en ensartet masse, vil de "skubbe" til hinanden. Hver kanal repræsenterer en zone med lavt tryk, og for at udligne trykket mest effektivt i hele rismassen, fordeler kanalerne sig automatisk med størst mulig indbyrdes afstand. Resultatet er et mønster kendt som <strong>hexagonal close-packing</strong>.</p>
+            <h3>Hvorfor er mønstret IKKE perfekt hexagonalt i virkeligheden?</h3>
+            <p>Der er to primære fysiske årsager til, at mønstret udebliver som et fejlfrit gitter og i stedet bliver "uperfekt tætpakket":</p>
             
-            <p>Dette er den samme matematiske struktur, bier bruger til at bygge bikuber, og som molekyler arrangerer sig i under visse krystalliseringsprocesser. Modellen kan beskrives som:</p>
+            <ol>
+                <li><strong>Granulær heterogenitet (Strukturel støj):</strong> Ris er ikke en ensartet væske. Det er faste gryn af forskellig størrelse, der ligger tilfældigt. Den lokale permeabilitet (hvor let dampen slipper igennem) varierer fra millimeter til millimeter. Dampen finder den *lokalt* nemmeste vej, hvilket forskyder hullet væk fra den perfekte matematiske position.</li>
+                <li><strong>Randbetingelser (Geometrisk frustration):</strong> En rund gryde kan matematisk set ikke udfyldes med perfekte sekskanter uden at skabe "topologiske defekter" (fejl i gitteret) nær kanten. Kantens form tvinger mønstret til at deformere.</li>
+            </ol>
+
+            <h3>Matematikken bag afvigelsen</h3>
+            <p>Vi kan modellere placeringen af et hul, $\vec{r}_i$, som en kombination af dets ideelle placering i et krystalgitter $\vec{r}_{ideal}$ plus et støjled $\vec{\eta}$, der repræsenterer den granulære uorden:</p>
+            
             <div class="math-box">
-                N &asymp; 1 / &lambda;<sup>2</sup>
+                $$ \vec{r}_i = \vec{r}_{ideal} + \vec{\eta}(x, y) $$
+                
+                $$ \vec{\eta} \propto \nabla \kappa(x,y)^{-1} $$
             </div>
-            <p>Hvor tætheden af huller (<em>N</em>) er omvendt proportional med kvadratet på den karakteristiske afstand (<em>&lambda;</em>) mellem kanalerne. Afstanden <em>&lambda;</em> er dikteret af forholdet mellem den opadgående opdriftskraft fra dampen og den modstand/kohesion, rismassen yder.</p>
+            
+            <p>
+                <strong>Hvor:</strong><br>
+                $\vec{r}_i$ = Den faktiske placering af damphullet på overfladen.<br>
+                $\vec{r}_{ideal}$ = Den perfekte hexagonale position bestemt af den gennemsnitlige afstand $\lambda$.<br>
+                $\vec{\eta}(x,y)$ = Forskydningsvektoren (støjen) skabt af de lokale forhold.<br>
+                $\kappa(x,y)$ = Det lokale felt for rismassens permeabilitet (gennemtrængelighed). Hvor modstanden er mindst, trækkes hullet hen.
+            </p>
+            <p>I animationen bagved er dette implementeret ved først at udregne et hexagonalt <em>close-packing</em> gitter, hvorefter hvert knudepunkt rykkes tilfældigt i en vilkårlig retning med en magnitude svarende til ca. 40% af afstanden mellem hullerne. Dette skaber det genkendelige, naturlige rismønster.</p>
         </div>
     </div>
 
@@ -167,36 +188,40 @@
         let grid = []; 
         let particles = []; 
         let surfaceHoles = []; 
-        let potentialHoles = []; // Det pre-kalkulerede hexagonale gitter
+        let potentialHoles = []; 
 
-        // Funktion til at generere hexagonalt (close-packed) gitter inden i gryden
-        function generateHexGrid() {
-            let hexGrid = [];
-            const spacing = 16; // Afstand mellem huller
-            const rowHeight = spacing * Math.sqrt(3) / 2; // Matematikken bag hexagonale rækker
+        function generatePerturbedGrid() {
+            let pGrid = [];
+            const spacing = 18; // Grundlæggende afstand mellem huller
+            const rowHeight = spacing * Math.sqrt(3) / 2; 
+            const jitterAmount = spacing * 0.45; // Støjfaktor (afvigelse fra idealet)
             
             for (let y = -potRadius; y < potRadius; y += rowHeight) {
                 let rowNum = Math.round((y + potRadius) / rowHeight);
-                let offsetX = (rowNum % 2 === 0) ? 0 : spacing / 2; // Forskyd hver anden række
+                let offsetX = (rowNum % 2 === 0) ? 0 : spacing / 2; 
                 
                 for (let x = -potRadius - spacing; x < potRadius + spacing; x += spacing) {
-                    let actualX = potCenterX + x + offsetX;
-                    let actualY = potCenterY + y;
                     
-                    // Tjek om punktet er inden for den runde gryde (med lidt margin)
+                    // Tilføj stokastisk støj (jitter) for at simulere granularitet
+                    let jitterX = (Math.random() - 0.5) * 2 * jitterAmount;
+                    let jitterY = (Math.random() - 0.5) * 2 * jitterAmount;
+
+                    let actualX = potCenterX + x + offsetX + jitterX;
+                    let actualY = potCenterY + y + jitterY;
+                    
                     let distToCenter = Math.sqrt(Math.pow(actualX - potCenterX, 2) + Math.pow(actualY - potCenterY, 2));
+                    
                     if (distToCenter < potRadius - 12) {
-                        hexGrid.push({
+                        pGrid.push({
                             x: actualX,
                             y: actualY,
                             radius: 0,
-                            maxRadius: 2.5 + Math.random() * 1.5 // Lidt variation i størrelse for realisme
+                            maxRadius: 2.0 + Math.random() * 2.0 // Størrelsesvariation grundet lokal modstand
                         });
                     }
                 }
             }
-            // Bland arrayet så hullerne opstår tilfældigt over tid, men fastlåst til gitteret
-            return hexGrid.sort(() => Math.random() - 0.5); 
+            return pGrid.sort(() => Math.random() - 0.5); 
         }
 
         function initSimulation() {
@@ -209,7 +234,7 @@
                 }
             }
             surfaceHoles = [];
-            potentialHoles = generateHexGrid();
+            potentialHoles = generatePerturbedGrid();
         }
 
         class Particle {
@@ -257,7 +282,6 @@
         }
 
         function animate() {
-            // SIDE VIEW
             sideCtx.fillStyle = '#fafad2';
             sideCtx.fillRect(0, 0, sideCanvas.width, sideCanvas.height);
 
@@ -281,7 +305,6 @@
                 p.draw();
                 
                 if (p.y <= 0) {
-                    // Træk et hul fra vores "close-packed" gitter
                     if (Math.random() < 0.6 && potentialHoles.length > 0) {
                         surfaceHoles.push(potentialHoles.pop());
                     }
@@ -289,7 +312,6 @@
                 }
             }
 
-            // TOP VIEW
             topCtx.fillStyle = '#e0e0e0'; 
             topCtx.fillRect(0, 0, topCanvas.width, topCanvas.height);
 
