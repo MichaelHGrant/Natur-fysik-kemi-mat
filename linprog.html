@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interaktiv Lineær Programmering</title>
+    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .controls {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+        label { font-weight: bold; margin-bottom: 5px; }
+        input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 100px;}
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            align-self: flex-end;
+        }
+        button:hover { background-color: #0056b3; }
+        .result {
+            font-size: 1.2em;
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #d4edda;
+            color: #155724;
+            border-radius: 8px;
+            border: 1px solid #c3e6cb;
+        }
+        #plot { width: 100%; height: 500px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Optimer dit bageri (Lineær Programmering)</h2>
+    <p>Juster profitten for kagerne for at se, hvordan det optimale produktionspunkt ændrer sig inden for begrænsningerne (8 kg mel, 12 æg).</p>
+    
+    <div class="controls">
+        <div class="input-group">
+            <label for="profitX">Profit pr. Chokoladekage (kr):</label>
+            <input type="number" id="profitX" value="20" min="0">
+        </div>
+        <div class="input-group">
+            <label for="profitY">Profit pr. Vaniljekage (kr):</label>
+            <input type="number" id="profitY" value="30" min="0">
+        </div>
+        <button onclick="calculateAndPlot()">Beregn Optimal Løsning</button>
+    </div>
+
+    <div class="result" id="resultText">
+        Tryk på "Beregn" for at finde den optimale profit.
+    </div>
+
+    <div id="plot"></div>
+</div>
+
+<script>
+    // De faste hjørnepunkter baseret på mel og æg begrænsningerne
+    const vertices = [
+        {x: 0, y: 0, name: "(0,0) - Gør ingenting"},
+        {x: 4, y: 0, name: "(4,0) - Kun chokolade"},
+        {x: 2, y: 3, name: "(2,3) - Blanding"},
+        {x: 0, y: 4, name: "(0,4) - Kun vanilje"}
+    ];
+
+    function calculateAndPlot() {
+        // Hent inputværdier
+        const px = parseFloat(document.getElementById('profitX').value) || 0;
+        const py = parseFloat(document.getElementById('profitY').value) || 0;
+
+        let maxProfit = -1;
+        let bestVertex = null;
+
+        // Udregn profit for alle hjørnepunkter
+        vertices.forEach(v => {
+            const profit = (px * v.x) + (py * v.y);
+            if (profit > maxProfit) {
+                maxProfit = profit;
+                bestVertex = v;
+            }
+        });
+
+        // Opdater tekstresultatet
+        document.getElementById('resultText').innerHTML = 
+            `<strong>Optimal løsning fundet!</strong><br>
+             For at maksimere profitten skal du bage <strong>${bestVertex.x} chokoladekager</strong> og <strong>${bestVertex.y} vaniljekager</strong>.<br>
+             Dette giver en total profit på <strong>${maxProfit} kr.</strong>`;
+
+        drawPlot(bestVertex);
+    }
+
+    function drawPlot(bestVertex) {
+        // Definer polygonet (løsningsrummet)
+        // Punkterne skal være i rækkefølge for at tegne en lukket form
+        const polygon = {
+            x: [0, 4, 2, 0, 0],
+            y: [0, 0, 3, 4, 0],
+            fill: 'toself',
+            fillcolor: 'rgba(0, 123, 255, 0.2)',
+            line: {color: 'rgba(0, 123, 255, 0.8)'},
+            name: 'Løsningsrum',
+            type: 'scatter',
+            mode: 'lines+markers'
+        };
+
+        // Fremhæv det optimale punkt med en stor stjerne
+        const optimalPoint = {
+            x: [bestVertex.x],
+            y: [bestVertex.y],
+            mode: 'markers',
+            marker: {
+                symbol: 'star',
+                size: 20,
+                color: 'gold',
+                line: {color: 'black', width: 1}
+            },
+            name: 'Optimalt Punkt',
+            type: 'scatter'
+        };
+
+        const layout = {
+            title: 'Grafisk Løsning (Løsningsrum)',
+            xaxis: {title: 'Chokoladekager (x)', range: [-0.5, 5]},
+            yaxis: {title: 'Vaniljekager (y)', range: [-0.5, 5]},
+            showlegend: true
+        };
+
+        Plotly.newPlot('plot', [polygon, optimalPoint], layout);
+    }
+
+    // Kør en indledende beregning, når siden indlæses
+    window.onload = calculateAndPlot;
+</script>
+
+</body>
+</html>
