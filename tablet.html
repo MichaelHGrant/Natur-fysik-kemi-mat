@@ -16,6 +16,7 @@
         }
         h1 {
             color: #333;
+            text-align: center;
         }
         .controls {
             background: white;
@@ -23,7 +24,7 @@
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             margin-bottom: 20px;
-            width: 300px;
+            width: 320px;
             text-align: center;
         }
         canvas {
@@ -40,17 +41,73 @@
             padding: 10px 20px;
             border-radius: 5px;
             cursor: pointer;
-            font-size: 16px;
+            font-size: 15px;
             margin-top: 10px;
+            width: 100%;
         }
         button:hover {
             background-color: #00796b;
         }
-        .info {
+        .btn-info {
+            background-color: #3f51b5;
+        }
+        .btn-info:hover {
+            background-color: #303f9f;
+        }
+        .info-box {
             text-align: left;
             margin-top: 15px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
             font-size: 14px;
-            color: #555;
+            color: #444;
+            border: 1px solid #ddd;
+        }
+        .timer-display {
+            font-size: 18px;
+            font-weight: bold;
+            color: #d32f2f;
+            margin-bottom: 10px;
+        }
+
+        /* Modal (Pop-op vindue) CSS */
+        .modal {
+            display: none; 
+            position: fixed; 
+            z-index: 10; 
+            left: 0;
+            top: 0;
+            width: 100%; 
+            height: 100%; 
+            overflow: auto; 
+            background-color: rgba(0,0,0,0.6); 
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 10% auto; 
+            padding: 25px;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 500px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            line-height: 1.5;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+        }
+        .modal-content h2 {
+            margin-top: 0;
+            color: #3f51b5;
         }
     </style>
 </head>
@@ -59,18 +116,40 @@
     <h1>Opdrift vs. Temperatur</h1>
 
     <div class="controls">
+        <div class="timer-display">Tid: <span id="timeDisplay">0.0</span> s</div>
+        
         <label for="tempSlider">Vandtemperatur: <span id="tempDisplay">20</span> °C</label><br>
         <input type="range" id="tempSlider" min="1" max="100" value="20" style="width: 100%; margin-top: 10px;">
-        <button id="resetBtn">Sæt ny tablet i vandet</button>
         
-        <div class="info">
-            <strong>Fysik-data i realtid:</strong><br>
-            Masse (Tyngdekraft): <span id="massDisplay">100</span> g<br>
-            Effektivt Volumen (Opdrift): <span id="volDisplay">40</span> ml
+        <button id="resetBtn">Sæt ny tablet i vandet</button>
+        <button id="infoBtn" class="btn-info">Forklar Fysikken</button>
+        
+        <div class="info-box">
+            <strong>Realtidsdata:</strong><br>
+            Tyngdekraft (Masse): <span id="massDisplay">100.0</span> g<br>
+            Opdrift (Effektivt Volumen): <span id="volDisplay">40.0</span> ml
         </div>
     </div>
 
     <canvas id="glass" width="200" height="400"></canvas>
+
+    <div id="physicsModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Fysikken bag simulationen</h2>
+            <p><strong>1. Tyngdekraft vs. Opdrift:</strong><br>
+            Tabletten synker i starten, fordi dens masse (tyngdekraft) er større end massen af det vand, den fortrænger (opdrift - Arkimedes' lov).</p>
+            
+            <p><strong>2. Kemien skaber gas:</strong><br>
+            Når tabletten rammer vandet, starter en kemisk reaktion, der frigiver CO2-gasbobler. Nogle af boblerne klistrer til tablettens overflade.</p>
+
+            <p><strong>3. Vendepunktet:</strong><br>
+            Gassen vejer næsten ingenting, men fylder meget. Boblerne øger derfor tablettens "effektive volumen" drastisk, uden at øge massen. Når det samlede volumen skaber en opdrift, der overstiger tablettens vægt, stiger den mod overfladen.</p>
+
+            <p><strong>4. Temperaturens rolle (Arrhenius):</strong><br>
+            Vandtemperaturen styrer, hvor hurtigt reaktionen sker. I varmt vand dannes der gas så hurtigt, at tabletten lynhurtigt får nok "redningsveste" på til at stige op. I koldt vand går det langsommere, og tabletten når måske helt at opløses på bunden, før den kan nå at stige.</p>
+        </div>
+    </div>
 
     <script>
         const canvas = document.getElementById('glass');
@@ -79,28 +158,50 @@
         const tempDisplay = document.getElementById('tempDisplay');
         const massDisplay = document.getElementById('massDisplay');
         const volDisplay = document.getElementById('volDisplay');
+        const timeDisplay = document.getElementById('timeDisplay');
         const resetBtn = document.getElementById('resetBtn');
+        
+        // Modal variabler
+        const modal = document.getElementById("physicsModal");
+        const infoBtn = document.getElementById("infoBtn");
+        const span = document.getElementsByClassName("close")[0];
 
-        // Fysiske variabler
+        // Fysiske og tidsmæssige variabler
         let tablet = {
-            y: 360,          // Startposition (bunden af glasset)
+            y: 360,          
             radius: 25,
-            mass: 100,       // Startmasse (trækker ned)
-            baseVolume: 40,  // Tablettens eget volumen
+            mass: 100,       
+            baseVolume: 40,  
             attachedBubbles: 0,
             active: false
         };
 
         let bubbles = [];
         let animationId;
-        const waterDensity = 1.0; // Forenklet densitet
+        const waterDensity = 1.0; 
+        
+        let startTime = 0;
+        let currentTime = 0;
+
+        // Modal logik
+        infoBtn.onclick = function() {
+            modal.style.display = "block";
+        }
+        span.onclick = function() {
+            modal.style.display = "none";
+        }
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
 
         // Opdater temperatur-tekst når slideren ændres
         tempSlider.addEventListener('input', () => {
             tempDisplay.textContent = tempSlider.value;
         });
 
-        // Nulstil simulationen
+        // Nulstil simulationen og start timer
         resetBtn.addEventListener('click', () => {
             tablet.y = 360;
             tablet.mass = 100;
@@ -108,6 +209,11 @@
             tablet.attachedBubbles = 0;
             tablet.active = true;
             bubbles = [];
+            
+            startTime = Date.now();
+            currentTime = 0;
+            timeDisplay.textContent = "0.0";
+
             cancelAnimationFrame(animationId);
             animate();
         });
@@ -125,21 +231,19 @@
         function updatePhysics() {
             if (!tablet.active) return;
 
+            // Opdater timer
+            currentTime = (Date.now() - startTime) / 1000;
+            timeDisplay.textContent = currentTime.toFixed(1);
+
             const temperature = parseInt(tempSlider.value);
-            
-            // 1. Reaktionshastighed afhænger af temperatur (Arrhenius-inspireret)
             const reactionRate = temperature * 0.005;
 
-            // 2. Tabletten mister masse (opløses) baseret på reaktionen
             if (tablet.mass > 0) {
                 tablet.mass -= reactionRate;
-                tablet.baseVolume -= reactionRate * 0.4; // Volumen falder også lidt
+                tablet.baseVolume -= reactionRate * 0.4; 
             }
 
-            // 3. Generer bobler
-            // Højere temperatur = flere bobler pr. frame
             if (Math.random() < reactionRate * 2) {
-                // Nogle bobler sætter sig fast, andre stiger til tops
                 const sticksToTablet = Math.random() > 0.5; 
                 bubbles.push(createBubble(sticksToTablet));
                 if (sticksToTablet) {
@@ -147,24 +251,19 @@
                 }
             }
 
-            // 4. Boblerne der sidder fast, øger det samlede volumen (opdriften)
-            // Hver fastsiddende boble bidrager lidt til volumenet
             const totalVolume = tablet.baseVolume + (tablet.attachedBubbles * 0.5);
-
-            // 5. Arkimedes' lov: Opdrift vs Tyngdekraft
             const buoyancy = totalVolume * waterDensity;
-            const gravity = tablet.mass; // Vi antager massen dikterer tyngdekraften her for simpelhed
+            const gravity = tablet.mass; 
 
-            // Hvis opdriften er større end massen, stiger tabletten
             if (buoyancy > gravity) {
-                tablet.y -= 2; // Stiger opad
+                tablet.y -= 2; 
             }
 
             // Opdater UI data
             massDisplay.textContent = Math.max(0, tablet.mass).toFixed(1);
             volDisplay.textContent = Math.max(0, totalVolume).toFixed(1);
 
-            // Hvis tabletten når overfladen eller forsvinder
+            // Stop simulation/timer når tabletten er oppe eller forsvundet
             if (tablet.y < 20 || tablet.mass <= 0) {
                 tablet.active = false;
             }
@@ -181,24 +280,18 @@
                 ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
                 ctx.fill();
 
-                // Bevæg frie bobler opad
                 if (!b.attached || !tablet.active) {
                     b.y -= b.speed;
-                } else {
-                    // Fastgjorte bobler følger tabletten
-                    // Vi simplificerer ved bare at lade dem være i tablettens højde + lidt tilfældigt
                 }
 
-                // Fjern bobler der når overfladen
                 if (b.y < 0) {
                     bubbles.splice(i, 1);
                 }
             }
 
-            // Tegn tablet (hvis der er noget tilbage af den)
+            // Tegn tablet
             if (tablet.mass > 0) {
                 ctx.fillStyle = '#00bcd4';
-                // Radius skrumper let i takt med at den opløses
                 const currentRadius = Math.max(5, tablet.radius * (tablet.mass / 100));
                 
                 ctx.beginPath();
