@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brusetablet Simulation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f0f4f8;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            width: 300px;
+            text-align: center;
+        }
+        canvas {
+            background: #e0f7fa;
+            border: 2px solid #b2ebf2;
+            border-bottom: 6px solid #80deea;
+            border-radius: 5px 5px 20px 20px;
+            box-shadow: inset 0 0 20px rgba(0,150,255,0.2);
+        }
+        button {
+            background-color: #009688;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #00796b;
+        }
+        .info {
+            text-align: left;
+            margin-top: 15px;
+            font-size: 14px;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Opdrift vs. Temperatur</h1>
+
+    <div class="controls">
+        <label for="tempSlider">Vandtemperatur: <span id="tempDisplay">20</span> °C</label><br>
+        <input type="range" id="tempSlider" min="1" max="100" value="20" style="width: 100%; margin-top: 10px;">
+        <button id="resetBtn">Sæt ny tablet i vandet</button>
+        
+        <div class="info">
+            <strong>Fysik-data i realtid:</strong><br>
+            Masse (Tyngdekraft): <span id="massDisplay">100</span> g<br>
+            Effektivt Volumen (Opdrift): <span id="volDisplay">40</span> ml
+        </div>
+    </div>
+
+    <canvas id="glass" width="200" height="400"></canvas>
+
+    <script>
+        const canvas = document.getElementById('glass');
+        const ctx = canvas.getContext('2d');
+        const tempSlider = document.getElementById('tempSlider');
+        const tempDisplay = document.getElementById('tempDisplay');
+        const massDisplay = document.getElementById('massDisplay');
+        const volDisplay = document.getElementById('volDisplay');
+        const resetBtn = document.getElementById('resetBtn');
+
+        // Fysiske variabler
+        let tablet = {
+            y: 360,          // Startposition (bunden af glasset)
+            radius: 25,
+            mass: 100,       // Startmasse (trækker ned)
+            baseVolume: 40,  // Tablettens eget volumen
+            attachedBubbles: 0,
+            active: false
+        };
+
+        let bubbles = [];
+        let animationId;
+        const waterDensity = 1.0; // Forenklet densitet
+
+        // Opdater temperatur-tekst når slideren ændres
+        tempSlider.addEventListener('input', () => {
+            tempDisplay.textContent = tempSlider.value;
+        });
+
+        // Nulstil simulationen
+        resetBtn.addEventListener('click', () => {
+            tablet.y = 360;
+            tablet.mass = 100;
+            tablet.baseVolume = 40;
+            tablet.attachedBubbles = 0;
+            tablet.active = true;
+            bubbles = [];
+            cancelAnimationFrame(animationId);
+            animate();
+        });
+
+        function createBubble(isAttached) {
+            return {
+                x: (canvas.width / 2) + (Math.random() * 40 - 20),
+                y: tablet.y + (Math.random() * 20 - 10),
+                radius: Math.random() * 3 + 1,
+                attached: isAttached,
+                speed: Math.random() * 2 + 1
+            };
+        }
+
+        function updatePhysics() {
+            if (!tablet.active) return;
+
+            const temperature = parseInt(tempSlider.value);
+            
+            // 1. Reaktionshastighed afhænger af temperatur (Arrhenius-inspireret)
+            const reactionRate = temperature * 0.005;
+
+            // 2. Tabletten mister masse (opløses) baseret på reaktionen
+            if (tablet.mass > 0) {
+                tablet.mass -= reactionRate;
+                tablet.baseVolume -= reactionRate * 0.4; // Volumen falder også lidt
+            }
+
+            // 3. Generer bobler
+            // Højere temperatur = flere bobler pr. frame
+            if (Math.random() < reactionRate * 2) {
+                // Nogle bobler sætter sig fast, andre stiger til tops
+                const sticksToTablet = Math.random() > 0.5; 
+                bubbles.push(createBubble(sticksToTablet));
+                if (sticksToTablet) {
+                    tablet.attachedBubbles += 1;
+                }
+            }
+
+            // 4. Boblerne der sidder fast, øger det samlede volumen (opdriften)
+            // Hver fastsiddende boble bidrager lidt til volumenet
+            const totalVolume = tablet.baseVolume + (tablet.attachedBubbles * 0.5);
+
+            // 5. Arkimedes' lov: Opdrift vs Tyngdekraft
+            const buoyancy = totalVolume * waterDensity;
+            const gravity = tablet.mass; // Vi antager massen dikterer tyngdekraften her for simpelhed
+
+            // Hvis opdriften er større end massen, stiger tabletten
+            if (buoyancy > gravity) {
+                tablet.y -= 2; // Stiger opad
+            }
+
+            // Opdater UI data
+            massDisplay.textContent = Math.max(0, tablet.mass).toFixed(1);
+            volDisplay.textContent = Math.max(0, totalVolume).toFixed(1);
+
+            // Hvis tabletten når overfladen eller forsvinder
+            if (tablet.y < 20 || tablet.mass <= 0) {
+                tablet.active = false;
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Tegn bobler
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            for (let i = bubbles.length - 1; i >= 0; i--) {
+                let b = bubbles[i];
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Bevæg frie bobler opad
+                if (!b.attached || !tablet.active) {
+                    b.y -= b.speed;
+                } else {
+                    // Fastgjorte bobler følger tabletten
+                    // Vi simplificerer ved bare at lade dem være i tablettens højde + lidt tilfældigt
+                }
+
+                // Fjern bobler der når overfladen
+                if (b.y < 0) {
+                    bubbles.splice(i, 1);
+                }
+            }
+
+            // Tegn tablet (hvis der er noget tilbage af den)
+            if (tablet.mass > 0) {
+                ctx.fillStyle = '#00bcd4';
+                // Radius skrumper let i takt med at den opløses
+                const currentRadius = Math.max(5, tablet.radius * (tablet.mass / 100));
+                
+                ctx.beginPath();
+                ctx.ellipse(canvas.width / 2, tablet.y, currentRadius, currentRadius * 0.4, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#00838f';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+        }
+
+        function animate() {
+            updatePhysics();
+            draw();
+            animationId = requestAnimationFrame(animate);
+        }
+
+        // Start automatisk
+        resetBtn.click();
+    </script>
+</body>
+</html>
