@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cognacens Tårer - Marangoni-effekten</title>
+    
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
     <style>
         body {
             background-color: #121212;
@@ -56,12 +60,97 @@
             cursor: pointer;
             accent-color: #d2691e;
         }
+        
+        /* Knap til pop-op */
+        .info-btn {
+            background-color: #d2691e;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 25px;
+            transition: background 0.3s, transform 0.1s;
+        }
+        .info-btn:hover {
+            background-color: #e67e22;
+        }
+        .info-btn:active {
+            transform: scale(0.98);
+        }
+
+        /* Modal (Pop-op vindue) styles */
+        .modal-overlay {
+            display: none; /* Skjult som standard */
+            position: fixed;
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .modal-content {
+            background: #1e1e1e;
+            color: #e0e0e0;
+            padding: 40px;
+            border-radius: 12px;
+            max-width: 700px;
+            max-height: 85vh;
+            overflow-y: auto;
+            position: relative;
+            border: 1px solid #444;
+            box-shadow: 0 10px 40px rgba(0,0,0,1);
+        }
+        .close-btn {
+            position: absolute;
+            top: 15px; 
+            right: 20px;
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+        .close-btn:hover {
+            color: #fff;
+        }
+        .modal-content h2 {
+            color: #d2691e;
+            margin-top: 0;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+        .modal-content h3 {
+            color: #e67e22;
+            margin-top: 25px;
+        }
+        .modal-content p, .modal-content li {
+            line-height: 1.6;
+            text-align: left;
+            max-width: none;
+            color: #ccc;
+        }
+        .math-block {
+            background: #121212;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 15px 0;
+            border: 1px solid #333;
+        }
     </style>
 </head>
 <body>
 
     <h1>Cognacens Tårer</h1>
-    <p>En interaktiv simulation af Marangoni-effekten. Alkoholen fordamper på glassets sider, overfladespændingen stiger, og væsken trækkes op – indtil tyngdekraften tager over, og dråberne falder.</p>
+    <p>En interaktiv simulation af Marangoni-effekten.</p>
     
     <canvas id="glassCanvas" width="500" height="400"></canvas>
 
@@ -76,44 +165,96 @@
         </label>
     </div>
 
+    <button class="info-btn" id="openModalBtn">Læs om Fysikken og Matematikken</button>
+
+    <div class="modal-overlay" id="infoModal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeModalBtn">&times;</span>
+            <h2>Fysikken bag fænomenet</h2>
+            
+            <p>Cognac består primært af to væsker: vand og ethanol (alkohol). Disse har forskellige egenskaber, hvilket er nøglen til dansen:</p>
+            <ul>
+                <li><b>Forskellig fordampningshastighed:</b> Alkohol fordamper hurtigere end vand. Når væskefilmen sidder tyndt på glassets inderside, fordamper alkoholen herfra meget hurtigere.</li>
+                <li><b>Forskellig overfladespænding:</b> Vand har en væsentlig højere overfladespænding end alkohol.</li>
+                <li><b>Gradienten opstår:</b> Efterhånden som alkoholen fordamper fra filmen på glasset, stiger koncentrationen af vand, og dermed bliver overfladespændingen højere her end i bunden af glasset.</li>
+                <li><b>Væsken trækkes opad (Marangoni-effekten):</b> Væsker trækkes naturligt mod områder med højere overfladespænding. Den høje spænding oppe på glassiden trækker væske op fra bunden.</li>
+            </ul>
+
+            <h3>Den matematiske beskrivelse</h3>
+            <p>Vi kan beskrive dette matematisk ved at se på spændingen i væskens overflade. Overfladespændingen $\gamma$ afhænger af både alkoholkoncentrationen $c$ og temperaturen $T$. Ændringen kan udtrykkes som den totale afledte:</p>
+            
+            <div class="math-block">
+                $$ d\gamma = \left(\frac{\partial \gamma}{\partial c}\right)_T dc + \left(\frac{\partial \gamma}{\partial T}\right)_c dT $$
+            </div>
+
+            <p>For cognac er det fordampningen af alkohol, der er dominerende, så vi kan forsimple det til:</p>
+            
+            <div class="math-block">
+                $$ d\gamma \approx \left(\frac{\partial \gamma}{\partial c}\right) dc $$
+            </div>
+
+            <p>Da tilføjelse af alkohol sænker overfladespændingen for vand, er gradienten negativ: $\frac{\partial \gamma}{\partial c} < 0$. Når væsken bevæger sig op ad glasset ($x$-retningen), falder alkoholkoncentrationen, hvilket betyder at $\frac{dc}{dx} < 0$. Marangoni-spændingen (kraften der trækker væsken opad) er givet ved gradienten af overfladespændingen:</p>
+            
+            <div class="math-block">
+                $$ \tau = \nabla \gamma = \frac{d\gamma}{dx} = \frac{\partial \gamma}{\partial c} \frac{dc}{dx} $$
+            </div>
+
+            <p>Fordi de to afledte begge er negative, bliver produktet positivt ($\tau > 0$). Det betyder, at der er en opadgående nettokraft, som balancerer mod tyngdekraften, indtil dråben bliver for tung og falder.</p>
+        </div>
+    </div>
+
     <script>
+        // --- Modal Logik ---
+        const modal = document.getElementById('infoModal');
+        const openModalBtn = document.getElementById('openModalBtn');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+
+        // Åbn modal
+        openModalBtn.addEventListener('click', () => {
+            modal.style.display = 'flex';
+        });
+
+        // Luk modal ved klik på kryds
+        closeModalBtn.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+
+        // Luk modal ved klik uden for boksen
+        window.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+
+
+        // --- Canvas Logik (Samme som før) ---
         const canvas = document.getElementById('glassCanvas');
         const ctx = canvas.getContext('2d');
         const evapSlider = document.getElementById('evapSlider');
         const gravSlider = document.getElementById('gravSlider');
 
-        // Opsætning af glassets dimensioner
         const glassWidth = 260;
         const glassLeft = (canvas.width - glassWidth) / 2;
         const glassRight = (canvas.width + glassWidth) / 2;
         const liquidLevel = 280; 
-        const maxClimbHeight = 100; // Hvor højt væsken kan kravle op
+        const maxClimbHeight = 100; 
 
         const tears = [];
 
-        // Klasse til at styre hver enkelt "tåre" (partikel)
         class Tear {
             constructor() {
                 this.reset();
-                // Spred partiklerne ud fra starten, så de ikke alle starter på én gang
                 this.y = liquidLevel - Math.random() * (liquidLevel - maxClimbHeight); 
             }
             
             reset() {
-                // Tildel tåren tilfældigt til venstre eller højre side af glasset
                 this.side = Math.random() > 0.5 ? 'left' : 'right';
                 this.x = this.side === 'left' ? glassLeft : glassRight;
-                
-                // Start nede i væsken
                 this.y = liquidLevel + Math.random() * 10; 
-                this.radius = 1 + Math.random() * 1.5; // Tynd film på vej op
-                
-                // State machine: climbing (kravler op), pooling (samler sig), falling (falder)
+                this.radius = 1 + Math.random() * 1.5; 
                 this.state = 'climbing'; 
-                
-                // Hver dråbe har sit eget unikke vendepunkt oppe på glasset
                 this.poolTargetY = maxClimbHeight + Math.random() * 60; 
-                this.maxRadius = 3.5 + Math.random() * 2.5; // Hvor stor dråben bliver før den falder
+                this.maxRadius = 3.5 + Math.random() * 2.5; 
             }
 
             update() {
@@ -121,39 +262,28 @@
                 const gravityForce = parseFloat(gravSlider.value);
 
                 if (this.state === 'climbing') {
-                    // Trækkes op ad glasset af Marangoni-spændingen
                     this.y -= marangoniForce * (Math.random() * 0.5 + 0.5); 
-                    
-                    // Simuler at filmen bliver tyndere/bredere
                     this.x += (Math.random() - 0.5) * 0.4; 
                     
-                    // Holder partiklen inden for glassets væg
                     if(this.side === 'left' && this.x < glassLeft - 2) this.x = glassLeft - 2;
                     if(this.side === 'right' && this.x > glassRight + 2) this.x = glassRight + 2;
 
-                    // Skift tilstand, når den når toppen af filmen
                     if (this.y <= this.poolTargetY) {
                         this.state = 'pooling';
-                        this.x = this.side === 'left' ? glassLeft + 1 : glassRight - 1; // Sæt den fast på indersiden
+                        this.x = this.side === 'left' ? glassLeft + 1 : glassRight - 1; 
                     }
                 } 
                 else if (this.state === 'pooling') {
-                    // Dråben vokser, mens væske akkumulerer
                     this.radius += 0.03 * marangoniForce; 
-                    
                     if (this.radius >= this.maxRadius) {
                         this.state = 'falling';
                     }
                 } 
                 else if (this.state === 'falling') {
-                    // Tyngdekraften overvinder overfladespændingen
-                    // Store dråber falder hurtigere
                     this.y += gravityForce * (this.radius / 3); 
-                    
-                    // Nulstil, når den rammer væskeoverfladen igen
                     if (this.y >= liquidLevel) {
                         this.reset();
-                        this.y = liquidLevel; // Tving start fra overfladen næste gang
+                        this.y = liquidLevel; 
                     }
                 }
             }
@@ -161,47 +291,36 @@
             draw() {
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                
-                // Cognac-farve med let transparens
                 ctx.fillStyle = 'rgba(210, 105, 30, 0.7)'; 
                 ctx.fill();
             }
         }
 
-        // Generer tårerne over tid for at skabe et organisk flow
         for(let i = 0; i < 70; i++) {
             tears.push(new Tear());
         }
 
-        // Animations-loopet
         function animate() {
-            // Ryd canvas til den mørke baggrund
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // 1. Tegn glasset (et simpelt U-formet tværsnit)
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)'; // Glas-refleksion
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)'; 
             ctx.lineWidth = 4;
             ctx.beginPath();
-            // Venstre kant
             ctx.moveTo(glassLeft - 10, 50);
             ctx.lineTo(glassLeft, liquidLevel + 30);
-            // Bunden af glasset (buet)
             ctx.quadraticCurveTo(canvas.width / 2, canvas.height - 30, glassRight, liquidLevel + 30);
-            // Højre kant
             ctx.lineTo(glassRight + 10, 50);
             ctx.stroke();
 
-            // 2. Tegn selve væsken i bunden af glasset
-            ctx.fillStyle = 'rgba(210, 105, 30, 0.4)'; // Basis cognac-væske
+            ctx.fillStyle = 'rgba(210, 105, 30, 0.4)'; 
             ctx.beginPath();
             ctx.moveTo(glassLeft + 2, liquidLevel);
-            ctx.lineTo(glassRight - 2, liquidLevel); // Væskeoverfladen
+            ctx.lineTo(glassRight - 2, liquidLevel); 
             ctx.lineTo(glassRight - 1, liquidLevel + 30);
             ctx.quadraticCurveTo(canvas.width / 2, canvas.height - 34, glassLeft + 1, liquidLevel + 30);
             ctx.closePath();
             ctx.fill();
             
-            // Tegn en mørkere streg for at markere væskeoverfladen (menisken)
             ctx.strokeStyle = 'rgba(210, 105, 30, 0.8)';
             ctx.lineWidth = 2;
             ctx.beginPath();
@@ -209,17 +328,14 @@
             ctx.lineTo(glassRight - 2, liquidLevel);
             ctx.stroke();
 
-            // 3. Opdater og tegn alle tårerne
             tears.forEach(tear => {
                 tear.update();
                 tear.draw();
             });
 
-            // Bed browseren om at tegne næste frame
             requestAnimationFrame(animate);
         }
 
-        // Start animationen
         animate();
     </script>
 </body>
