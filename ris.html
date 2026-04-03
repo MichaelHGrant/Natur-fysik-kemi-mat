@@ -111,7 +111,7 @@
     
     <div class="controls">
         <button id="infoBtn">Forklar Fysikken & Matematikken</button>
-        <button onclick="resetSimulation()">Nulstil Gryde</button>
+        <button id="resetBtn">Nulstil Gryde</button>
     </div>
 
     <div class="canvas-container">
@@ -161,167 +161,211 @@
     </div>
 
     <script>
-        const modal = document.getElementById("physicsModal");
-        const btn = document.getElementById("infoBtn");
-        const span = document.getElementsByClassName("close")[0];
-
-        btn.onclick = function() { modal.style.display = "block"; }
-        span.onclick = function() { modal.style.display = "none"; }
-        window.onclick = function(event) {
-            if (event.target == modal) { modal.style.display = "none"; }
-        }
-
-        const sideCanvas = document.getElementById('sideCanvas');
-        const sideCtx = sideCanvas.getContext('2d');
-        const topCanvas = document.getElementById('topCanvas');
-        const topCtx = topCanvas.getContext('2d');
-        
-        const cols = 60;
-        const rows = 60;
-        const cellSize = 5;
-        
-        const potRadius = topCanvas.width / 2;
-        const potCenterX = topCanvas.width / 2;
-        const potCenterY = topCanvas.height / 2;
-
-        let grid = []; 
-        let particles = []; 
-        let surfaceHoles = []; 
-        let potentialHoles = []; 
-
-        function generatePerturbedGrid() {
-            let pGrid = [];
-            const spacing = 18; // Grundlæggende afstand mellem huller
-            const rowHeight = spacing * Math.sqrt(3) / 2; 
-            const jitterAmount = spacing * 0.45; // Støjfaktor (afvigelse fra idealet)
+        // Vent med at køre koden til hele siden er indlæst
+        document.addEventListener('DOMContentLoaded', () => {
             
-            for (let y = -potRadius; y < potRadius; y += rowHeight) {
-                let rowNum = Math.round((y + potRadius) / rowHeight);
-                let offsetX = (rowNum % 2 === 0) ? 0 : spacing / 2; 
+            // Opsætning af Modal (Pop-up) og Knapper
+            const modal = document.getElementById("physicsModal");
+            const infoBtn = document.getElementById("infoBtn");
+            const resetBtn = document.getElementById("resetBtn");
+            const span = document.getElementsByClassName("close")[0];
+
+            infoBtn.onclick = function() { modal.style.display = "block"; }
+            span.onclick = function() { modal.style.display = "none"; }
+            window.onclick = function(event) {
+                if (event.target == modal) { modal.style.display = "none"; }
+            }
+
+            // Opsætning af Canvas
+            const sideCanvas = document.getElementById('sideCanvas');
+            const sideCtx = sideCanvas.getContext('2d');
+            const topCanvas = document.getElementById('topCanvas');
+            const topCtx = topCanvas.getContext('2d');
+            
+            const cols = 60;
+            const rows = 60;
+            const cellSize = 5;
+            
+            const potRadius = topCanvas.width / 2;
+            const potCenterX = topCanvas.width / 2;
+            const potCenterY = topCanvas.height / 2;
+
+            let grid = []; 
+            let particles = []; 
+            let surfaceHoles = []; 
+            let potentialHoles = []; 
+
+            function generatePerturbedGrid() {
+                let pGrid = [];
+                const spacing = 18; 
+                const rowHeight = spacing * Math.sqrt(3) / 2; 
+                const jitterAmount = spacing * 0.45; 
                 
-                for (let x = -potRadius - spacing; x < potRadius + spacing; x += spacing) {
+                for (let y = -potRadius; y < potRadius; y += rowHeight) {
+                    let rowNum = Math.round((y + potRadius) / rowHeight);
+                    let offsetX = (rowNum % 2 === 0) ? 0 : spacing / 2; 
                     
-                    // Tilføj stokastisk støj (jitter) for at simulere granularitet
-                    let jitterX = (Math.random() - 0.5) * 2 * jitterAmount;
-                    let jitterY = (Math.random() - 0.5) * 2 * jitterAmount;
+                    for (let x = -potRadius - spacing; x < potRadius + spacing; x += spacing) {
+                        
+                        let jitterX = (Math.random() - 0.5) * 2 * jitterAmount;
+                        let jitterY = (Math.random() - 0.5) * 2 * jitterAmount;
 
-                    let actualX = potCenterX + x + offsetX + jitterX;
-                    let actualY = potCenterY + y + jitterY;
-                    
-                    let distToCenter = Math.sqrt(Math.pow(actualX - potCenterX, 2) + Math.pow(actualY - potCenterY, 2));
-                    
-                    if (distToCenter < potRadius - 12) {
-                        pGrid.push({
-                            x: actualX,
-                            y: actualY,
-                            radius: 0,
-                            maxRadius: 2.0 + Math.random() * 2.0 // Størrelsesvariation grundet lokal modstand
-                        });
+                        let actualX = potCenterX + x + offsetX + jitterX;
+                        let actualY = potCenterY + y + jitterY;
+                        
+                        let distToCenter = Math.sqrt(Math.pow(actualX - potCenterX, 2) + Math.pow(actualY - potCenterY, 2));
+                        
+                        if (distToCenter < potRadius - 12) {
+                            pGrid.push({
+                                x: actualX,
+                                y: actualY,
+                                radius: 0,
+                                maxRadius: 2.0 + Math.random() * 2.0 
+                            });
+                        }
                     }
                 }
-            }
-            return pGrid.sort(() => Math.random() - 0.5); 
-        }
-
-        function initSimulation() {
-            grid = [];
-            particles = [];
-            for (let i = 0; i < cols; i++) {
-                grid[i] = [];
-                for (let j = 0; j < rows; j++) {
-                    grid[i][j] = Math.random() * 0.1; 
-                }
-            }
-            surfaceHoles = [];
-            potentialHoles = generatePerturbedGrid();
-        }
-
-        class Particle {
-            constructor(x, y) {
-                this.x = x;
-                this.y = y;
+                return pGrid.sort(() => Math.random() - 0.5); 
             }
 
-            move() {
-                if (this.y > 0) {
-                    let leftX = Math.max(0, this.x - 1);
-                    let rightX = Math.min(cols - 1, this.x + 1);
-                    let upY = this.y - 1;
-
-                    let permLeft = grid[leftX][upY];
-                    let permUp = grid[this.x][upY];
-                    let permRight = grid[rightX][upY];
-
-                    let maxPerm = Math.max(permLeft, permUp, permRight);
-                    
-                    if (maxPerm === permUp || Math.random() > 0.6) {
-                        this.y = upY;
-                    } else if (maxPerm === permLeft && Math.random() > 0.5) {
-                        this.x = leftX; this.y = upY;
-                    } else {
-                        this.x = rightX; this.y = upY;
+            function initSimulation() {
+                grid = [];
+                particles = [];
+                for (let i = 0; i < cols; i++) {
+                    grid[i] = [];
+                    for (let j = 0; j < rows; j++) {
+                        grid[i][j] = Math.random() * 0.1; 
                     }
+                }
+                surfaceHoles = [];
+                potentialHoles = generatePerturbedGrid();
+            }
 
-                    grid[this.x][this.y] = Math.min(1.0, grid[this.x][this.y] + 0.1); 
+            class Particle {
+                constructor(x, y) {
+                    this.x = x;
+                    this.y = y;
+                }
+
+                move() {
+                    if (this.y > 0) {
+                        let leftX = Math.max(0, this.x - 1);
+                        let rightX = Math.min(cols - 1, this.x + 1);
+                        let upY = this.y - 1;
+
+                        let permLeft = grid[leftX][upY];
+                        let permUp = grid[this.x][upY];
+                        let permRight = grid[rightX][upY];
+
+                        let maxPerm = Math.max(permLeft, permUp, permRight);
+                        
+                        if (maxPerm === permUp || Math.random() > 0.6) {
+                            this.y = upY;
+                        } else if (maxPerm === permLeft && Math.random() > 0.5) {
+                            this.x = leftX; this.y = upY;
+                        } else {
+                            this.x = rightX; this.y = upY;
+                        }
+
+                        grid[this.x][this.y] = Math.min(1.0, grid[this.x][this.y] + 0.1); 
+                    }
+                }
+
+                draw() {
+                    sideCtx.fillStyle = 'rgba(100, 200, 255, 0.8)';
+                    sideCtx.beginPath();
+                    sideCtx.arc(this.x * cellSize + cellSize/2, this.y * cellSize + cellSize/2, cellSize/1.5, 0, Math.PI * 2);
+                    sideCtx.fill();
                 }
             }
 
-            draw() {
-                sideCtx.fillStyle = 'rgba(100, 200, 255, 0.8)';
-                sideCtx.beginPath();
-                sideCtx.arc(this.x * cellSize + cellSize/2, this.y * cellSize + cellSize/2, cellSize/1.5, 0, Math.PI * 2);
-                sideCtx.fill();
+            function resetSimulation() {
+                initSimulation();
+                sideCtx.clearRect(0, 0, sideCanvas.width, sideCanvas.height);
+                topCtx.clearRect(0, 0, topCanvas.width, topCanvas.height);
             }
-        }
 
-        function resetSimulation() {
+            // Bind reset-funktionen sikkert til knappen
+            resetBtn.onclick = resetSimulation;
+
+            function animate() {
+                sideCtx.fillStyle = '#fafad2';
+                sideCtx.fillRect(0, 0, sideCanvas.width, sideCanvas.height);
+
+                for (let i = 0; i < cols; i++) {
+                    for (let j = 0; j < rows; j++) {
+                        if (grid[i][j] > 0.2) {
+                            let alpha = Math.min(0.7, grid[i][j]);
+                            sideCtx.fillStyle = `rgba(150, 140, 100, ${alpha})`;
+                            sideCtx.fillRect(i * cellSize, j * cellSize, cellSize, cellSize);
+                        }
+                    }
+                }
+
+                for(let i=0; i<6; i++) {
+                    particles.push(new Particle(Math.floor(Math.random() * cols), rows - 1));
+                }
+
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    let p = particles[i];
+                    p.move();
+                    p.draw();
+                    
+                    if (p.y <= 0) {
+                        if (Math.random() < 0.6 && potentialHoles.length > 0) {
+                            surfaceHoles.push(potentialHoles.pop());
+                        }
+                        particles.splice(i, 1);
+                    }
+                }
+
+                topCtx.fillStyle = '#e0e0e0'; 
+                topCtx.fillRect(0, 0, topCanvas.width, topCanvas.height);
+
+                topCtx.save();
+
+                topCtx.beginPath();
+                topCtx.arc(potCenterX, potCenterY, potRadius, 0, Math.PI * 2);
+                topCtx.fillStyle = '#fafad2'; 
+                topCtx.fill();
+                topCtx.clip(); 
+
+                topCtx.fillStyle = 'rgba(200, 190, 150, 0.2)';
+                for(let i = 0; i < 150; i++) {
+                    topCtx.fillRect(Math.random()*topCanvas.width, Math.random()*topCanvas.height, 6, 2);
+                }
+
+                surfaceHoles.forEach(hole => {
+                    if (hole.radius < hole.maxRadius) {
+                        hole.radius += 0.1; 
+                    }
+                    
+                    topCtx.beginPath();
+                    topCtx.arc(hole.x, hole.y, hole.radius + 1, 0, Math.PI * 2);
+                    topCtx.fillStyle = 'rgba(120, 110, 80, 0.3)';
+                    topCtx.fill();
+
+                    topCtx.beginPath();
+                    topCtx.arc(hole.x, hole.y, hole.radius, 0, Math.PI * 2);
+                    topCtx.fillStyle = 'rgba(80, 75, 60, 0.9)';
+                    topCtx.fill();
+                });
+
+                topCtx.restore();
+
+                topCtx.beginPath();
+                topCtx.arc(potCenterX, potCenterY, potRadius - 1.5, 0, Math.PI * 2); 
+                topCtx.lineWidth = 3;
+                topCtx.strokeStyle = '#555'; 
+                topCtx.stroke();
+
+                requestAnimationFrame(animate);
+            }
+
+            // Start hele forløbet
             initSimulation();
-            sideCtx.clearRect(0, 0, sideCanvas.width, sideCanvas.height);
-            topCtx.clearRect(0, 0, topCanvas.width, topCanvas.height);
-        }
-
-        function animate() {
-            sideCtx.fillStyle = '#fafad2';
-            sideCtx.fillRect(0, 0, sideCanvas.width, sideCanvas.height);
-
-            for (let i = 0; i < cols; i++) {
-                for (let j = 0; j < rows; j++) {
-                    if (grid[i][j] > 0.2) {
-                        let alpha = Math.min(0.7, grid[i][j]);
-                        sideCtx.fillStyle = `rgba(150, 140, 100, ${alpha})`;
-                        sideCtx.fillRect(i * cellSize, j * cellSize, cellSize, cellSize);
-                    }
-                }
-            }
-
-            for(let i=0; i<6; i++) {
-                particles.push(new Particle(Math.floor(Math.random() * cols), rows - 1));
-            }
-
-            for (let i = particles.length - 1; i >= 0; i--) {
-                let p = particles[i];
-                p.move();
-                p.draw();
-                
-                if (p.y <= 0) {
-                    if (Math.random() < 0.6 && potentialHoles.length > 0) {
-                        surfaceHoles.push(potentialHoles.pop());
-                    }
-                    particles.splice(i, 1);
-                }
-            }
-
-            topCtx.fillStyle = '#e0e0e0'; 
-            topCtx.fillRect(0, 0, topCanvas.width, topCanvas.height);
-
-            topCtx.save();
-
-            topCtx.beginPath();
-            topCtx.arc(potCenterX, potCenterY, potRadius, 0, Math.PI * 2);
-            topCtx.fillStyle = '#fafad2'; 
-            topCtx.fill();
-            topCtx.clip(); 
-
-            topCtx.fillStyle = 'rgba(200, 190, 150, 0.2)';
-            for(let i = 0; i < 150; i++) {
-                topCtx.fillRect(Math.random()*topCanvas.width, Math.random()*topCanvas.height, 6
+            animate();
+        });
+    </script>
+</body>
+</html>
