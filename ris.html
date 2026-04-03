@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulation af Damphuller i Ris (Mange Huller & Matematik)</title>
+    <title>Simulation af Damphuller i Ris (Rund Gryde & Matematik)</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -47,11 +47,15 @@
             align-items: center;
         }
         canvas {
-            background-color: #fafad2;
-            border: 2px solid #555;
             border-radius: 5px;
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
+        /* Specifik styling for tværsnit */
+        #sideCanvas {
+            background-color: #fafad2;
+            border: 2px solid #555;
+        }
+        /* Ingen specifik CSS form for top view, JS styrer det */
 
         /* Modal Styles med Scroll */
         .modal {
@@ -66,7 +70,7 @@
         }
         .modal-content {
             background-color: #fff;
-            margin: 5% auto; /* Mindre margin for at give plads til mere højde */
+            margin: 5% auto;
             padding: 25px 35px;
             border-radius: 8px;
             width: 80%;
@@ -74,9 +78,8 @@
             box-shadow: 0 5px 15px rgba(0,0,0,0.3);
             line-height: 1.6;
             
-            /* Gør vinduet scrollbart */
-            max-height: 80vh; /* Maksimal højde på 80% af skærmens højde */
-            overflow-y: auto; /* Aktiver vertikal scroll, når indholdet er for langt */
+            max-height: 80vh;
+            overflow-y: auto;
         }
         .close {
             color: #aaa;
@@ -191,6 +194,11 @@
         const rows = 60;
         const cellSize = 5;
         
+        // Definer grydens form set ovenfra
+        const potRadius = topCanvas.width / 2;
+        const potCenterX = topCanvas.width / 2;
+        const potCenterY = topCanvas.height / 2;
+
         let grid = []; 
         let particles = []; 
         let surfaceHoles = []; 
@@ -233,7 +241,7 @@
                         this.x = rightX; this.y = upY;
                     }
 
-                    grid[this.x][this.y] = Math.min(1.0, grid[this.x][this.y] + 0.1); // Graver hurtigere for flere kanaler
+                    grid[this.x][this.y] = Math.min(1.0, grid[this.x][this.y] + 0.1); 
                 }
             }
 
@@ -266,7 +274,6 @@
                 }
             }
 
-            // Skaber endnu mere damp for at generere flere huller
             for(let i=0; i<6; i++) {
                 particles.push(new Particle(Math.floor(Math.random() * cols), rows - 1));
             }
@@ -276,13 +283,17 @@
                 p.move();
                 p.draw();
                 
-                // Når dampen bryder overfladen
                 if (p.y <= 0) {
-                    // Markant øget chance for huller (op til 450 stk) og lidt mindre maksimal radius, så der er plads til dem
                     if (Math.random() < 0.6 && surfaceHoles.length < 450) {
+                        // Huller skal også placeres inden for gryden
+                        const angle = Math.random() * Math.PI * 2;
+                        const radius = Math.random() * potRadius;
+                        const holeX = potCenterX + Math.cos(angle) * radius;
+                        const holeY = potCenterY + Math.sin(angle) * radius;
+
                         surfaceHoles.push({
-                            x: Math.random() * topCanvas.width,
-                            y: Math.random() * topCanvas.height,
+                            x: holeX,
+                            y: holeY,
                             radius: 0,
                             maxRadius: 1.5 + Math.random() * 3 
                         });
@@ -292,14 +303,27 @@
             }
 
             // --- TOP VIEW ---
-            topCtx.fillStyle = '#fafad2';
+            // Tegn baggrund (fx en bordplade)
+            topCtx.fillStyle = '#e0e0e0'; // Lysegrå bordplade
             topCtx.fillRect(0, 0, topCanvas.width, topCanvas.height);
 
+            // Gem den aktuelle kontekst for at anvende klippe-stien
+            topCtx.save();
+
+            // Tegn og klip grydens runde form
+            topCtx.beginPath();
+            topCtx.arc(potCenterX, potCenterY, potRadius, 0, Math.PI * 2);
+            topCtx.fillStyle = '#fafad2'; // Ris-farve
+            topCtx.fill();
+            topCtx.clip(); // Anvend klippe-sti
+
+            // Tegn risstruktur (nu klippet)
             topCtx.fillStyle = 'rgba(200, 190, 150, 0.2)';
             for(let i = 0; i < 150; i++) {
                 topCtx.fillRect(Math.random()*topCanvas.width, Math.random()*topCanvas.height, 6, 2);
             }
 
+            // Tegn huller (nu klippet)
             surfaceHoles.forEach(hole => {
                 if (hole.radius < hole.maxRadius) {
                     hole.radius += 0.1; 
@@ -315,6 +339,16 @@
                 topCtx.fillStyle = 'rgba(80, 75, 60, 0.9)';
                 topCtx.fill();
             });
+
+            // Gendan konteksten for at fjerne klippe-stien og tegne grydekanten
+            topCtx.restore();
+
+            // Tegn grydekanten (rammen)
+            topCtx.beginPath();
+            topCtx.arc(potCenterX, potCenterY, potRadius - 1.5, 0, Math.PI * 2); // Juster radius for ramme-tykkelse
+            topCtx.lineWidth = 3;
+            topCtx.strokeStyle = '#555'; // Mørkegrå kant
+            topCtx.stroke();
 
             requestAnimationFrame(animate);
         }
