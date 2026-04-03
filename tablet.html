@@ -71,7 +71,7 @@
             margin-bottom: 10px;
         }
 
-        /* Modal (Pop-op vindue) CSS */
+        /* Modal (Pop-op vindue) CSS med scroll */
         .modal {
             display: none; 
             position: fixed; 
@@ -80,18 +80,20 @@
             top: 0;
             width: 100%; 
             height: 100%; 
-            overflow: auto; 
+            overflow: hidden; /* Forhindrer hele siden i at scrolle */
             background-color: rgba(0,0,0,0.6); 
         }
         .modal-content {
             background-color: #fefefe;
-            margin: 10% auto; 
+            margin: 5% auto; /* Lidt højere oppe på skærmen */
             padding: 25px;
             border-radius: 10px;
             width: 80%;
-            max-width: 500px;
+            max-width: 600px;
+            max-height: 80vh; /* Maksimal højde = 80% af skærmens højde */
+            overflow-y: auto; /* Gør indholdet scrollbart, hvis det fylder mere end højden */
             box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-            line-height: 1.5;
+            line-height: 1.6;
         }
         .close {
             color: #aaa;
@@ -108,6 +110,15 @@
         .modal-content h2 {
             margin-top: 0;
             color: #3f51b5;
+        }
+        .math-block {
+            background-color: #f4f4f4;
+            padding: 10px;
+            border-left: 4px solid #3f51b5;
+            font-family: monospace;
+            font-size: 14px;
+            margin: 10px 0;
+            overflow-x: auto;
         }
     </style>
 </head>
@@ -136,18 +147,45 @@
     <div id="physicsModal" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
-            <h2>Fysikken bag simulationen</h2>
-            <p><strong>1. Tyngdekraft vs. Opdrift:</strong><br>
-            Tabletten synker i starten, fordi dens masse (tyngdekraft) er større end massen af det vand, den fortrænger (opdrift - Arkimedes' lov).</p>
+            <h2>Fysikken og Matematikken</h2>
             
-            <p><strong>2. Kemien skaber gas:</strong><br>
-            Når tabletten rammer vandet, starter en kemisk reaktion, der frigiver CO2-gasbobler. Nogle af boblerne klistrer til tablettens overflade.</p>
+            <p><strong>1. Kræfterne der er på spil</strong><br>
+            To primære kræfter virker på tabletten i den lodrette akse:</p>
+            <ul>
+                <li><strong>Tyngdekraften:</strong> Trækker tabletten nedad.</li>
+                <li><strong>Opdriften:</strong> Skubber tabletten opad (Arkimedes' lov).</li>
+            </ul>
+            <div class="math-block">
+                <i>F<sub>t</sub>(t) = m(t) &middot; g</i><br>
+                <i>F<sub>op</sub>(t) = &rho;<sub>v</sub> &middot; V<sub>total</sub>(t) &middot; g</i>
+            </div>
+            <p>Hvor <i>m</i> er massen, <i>g</i> er tyngdeaccelerationen, <i>&rho;<sub>v</sub></i> er vandets densitet, og <i>V<sub>total</sub></i> er det samlede volumen af tablet + gasbobler.</p>
+            
+            <hr>
 
-            <p><strong>3. Vendepunktet:</strong><br>
-            Gassen vejer næsten ingenting, men fylder meget. Boblerne øger derfor tablettens "effektive volumen" drastisk, uden at øge massen. Når det samlede volumen skaber en opdrift, der overstiger tablettens vægt, stiger den mod overfladen.</p>
+            <p><strong>2. Betingelsen for opstigning</strong><br>
+            Tabletten stiger mod overfladen præcis, når opdriften bliver større end tyngdekraften:</p>
+            <div class="math-block">
+                <i>F<sub>op</sub>(t) > F<sub>t</sub>(t)</i>
+            </div>
+            <p>Sætter vi ligningerne ind og fjerner <i>g</i> på begge sider, får vi betingelsen for, hvornår tabletten stiger:</p>
+            <div class="math-block">
+                <i>&rho;<sub>v</sub> &middot; (V<sub>tab</sub>(t) + V<sub>gas</sub>(t)) > m(t)</i>
+            </div>
+            <p>Isolerer vi volumenet for gassen (<i>V<sub>gas</sub></i>), ser vi, at tabletten stiger, når gasvolumenet opfylder:</p>
+            <div class="math-block">
+                <i>V<sub>gas</sub>(t) > (m(t) / &rho;<sub>v</sub>) - V<sub>tab</sub>(t)</i>
+            </div>
 
-            <p><strong>4. Temperaturens rolle (Arrhenius):</strong><br>
-            Vandtemperaturen styrer, hvor hurtigt reaktionen sker. I varmt vand dannes der gas så hurtigt, at tabletten lynhurtigt får nok "redningsveste" på til at stige op. I koldt vand går det langsommere, og tabletten når måske helt at opløses på bunden, før den kan nå at stige.</p>
+            <hr>
+
+            <p><strong>3. Temperaturens rolle (Arrhenius-ligningen)</strong><br>
+            Hvornår <i>V<sub>gas</sub></i> bliver stort nok, afhænger af reaktionshastigheden <i>k</i>, som styres kraftigt af vandets temperatur <i>T</i> (i Kelvin):</p>
+            <div class="math-block">
+                <i>k(T) = A &middot; e<sup>-E<sub>a</sub> / (R &middot; T)</sup></i>
+            </div>
+            <p><strong>Hvad betyder det i praksis?</strong><br>
+            Højere temperatur gør eksponenten i ligningen mindre negativ, hvilket får reaktionshastigheden til at eksplodere. I simulationen resulterer det i massiv gasudvikling på få sekunder, så betingelsen for opstigning nås lynhurtigt.</p>
         </div>
     </div>
 
@@ -186,13 +224,17 @@
         // Modal logik
         infoBtn.onclick = function() {
             modal.style.display = "block";
+            // Forhindre baggrunden i at scrolle når modal er åben
+            document.body.style.overflow = "hidden";
         }
         span.onclick = function() {
             modal.style.display = "none";
+            document.body.style.overflow = "auto";
         }
         window.onclick = function(event) {
             if (event.target == modal) {
                 modal.style.display = "none";
+                document.body.style.overflow = "auto";
             }
         }
 
