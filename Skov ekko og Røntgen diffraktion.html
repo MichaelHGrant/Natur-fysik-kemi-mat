@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skovens Akustik - Bølgespredning</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #0b1a10; /* Mørkegrøn skovbund */
+            color: #e0e0e0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        #info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px 25px;
+            border-radius: 8px;
+            border: 1px solid #2e8b57;
+            pointer-events: none;
+            z-index: 10;
+        }
+        h2 { margin: 0 0 10px 0; color: #4db8ff; }
+        p { margin: 5px 0; line-height: 1.5; font-size: 14px; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+
+    <div id="info-panel">
+        <h2>3D Spredning & Ekkotæthed</h2>
+        <p><strong>Klik med musen</strong> et sted på skærmen for at <br>udløse en lydimpuls (f.eks. et håndklap).</p>
+        <p>De grønne cirkler repræsenterer træstammer.</p>
+        <p>Læg mærke til, hvordan den primære bølgefront (hvid)<br>skaber kaskader af sekundære refleksioner (blå),<br>hvilket lynhurtigt øger ekkotætheden og spreder energien.</p>
+    </div>
+
+    <canvas id="simCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Tilpas lærred til skærmstørrelse
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Generer tilfældige træstammer i terrænet
+        const trees =;
+        const numTrees = 180; // Antal træer i simulationen
+        for (let i = 0; i < numTrees; i++) {
+            trees.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                radius: Math.random() * 4 + 2 // Variation i stammediameter
+            });
+        }
+
+        let waves =;
+        const waveSpeed = 2.5;
+
+        // Udløs en lydbølge ved museklik
+        window.addEventListener('mousedown', (e) => {
+            waves.push({
+                x: e.clientX,
+                y: e.clientY,
+                radius: 0,
+                energy: 1.0,        // Start-energi
+                isPrimary: true,    // Er det det originale klap?
+                hitTrees: new Set() // Holder styr på hvilke træer bølgen har ramt
+            });
+        });
+
+        function animate() {
+            // Skab en "fade" effekt for at illudere energihenfald i luften (absorption)
+            ctx.fillStyle = 'rgba(11, 26, 16, 0.25)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Tegn træstammer
+            trees.forEach(tree => {
+                ctx.beginPath();
+                ctx.arc(tree.x, tree.y, tree.radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#3cb371';
+                ctx.fill();
+                ctx.strokeStyle = '#2e8b57';
+                ctx.stroke();
+            });
+
+            // Opdater og tegn lydbølger
+            for (let i = waves.length - 1; i >= 0; i--) {
+                let w = waves[i];
+                
+                // Bølgen udvider sig med lydens (simulerede) hastighed
+                w.radius += waveSpeed;
+                
+                // Energien dæmpes over tid. Det originale signal overlever lidt længere
+                w.energy -= w.isPrimary? 0.003 : 0.008;
+
+                // Fjern bølgen, hvis energien er døet ud
+                if (w.energy <= 0 |
+
+| w.radius > Math.max(canvas.width, canvas.height)) {
+                    waves.splice(i, 1);
+                    continue;
+                }
+
+                // Tegn selve bølgens ring
+                ctx.beginPath();
+                ctx.arc(w.x, w.y, w.radius, 0, Math.PI * 2);
+                ctx.strokeStyle = w.isPrimary? `rgba(255, 255, 255, ${w.energy})` : `rgba(77, 184, 255, ${w.energy * 0.7})`;
+                ctx.lineWidth = w.isPrimary? 2 : 1;
+                ctx.stroke();
+
+                // Beregn spredning (scattering) kun for den primære bølge for at holde simulationen stabil
+                if (w.isPrimary) {
+                    trees.forEach((tree, index) => {
+                        // Hvis træet ikke allerede er ramt af netop denne bølgefront
+                        if (!w.hitTrees.has(index)) {
+                            const dist = Math.hypot(tree.x - w.x, tree.y - w.y);
+                            
+                            // Tjek om bølgefronten krydser træet
+                            if (dist < w.radius + tree.radius && dist > w.radius - waveSpeed * 2) {
+                                w.hitTrees.add(index);
+                                
+                                // Opret en ny, svagere sekundær refleksionsbølge
+                                // Den reflekterede energi er meget lavere pga. absorption og spredningsgeometri
+                                waves.push({
+                                    x: tree.x,
+                                    y: tree.y,
+                                    radius: tree.radius,
+                                    energy: w.energy * 0.4, 
+                                    isPrimary: false
+                                });
+                            }
+                        }
+                    });
+                }
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
