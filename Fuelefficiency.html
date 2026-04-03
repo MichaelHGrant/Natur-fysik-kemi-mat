@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optimer Din Kørsel</title>
+    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .info-box {
+            background: #e7f3fe;
+            border-left: 5px solid #2196F3;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .controls {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+        label { font-weight: bold; margin-bottom: 8px; }
+        input { padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px;}
+        button {
+            padding: 10px 20px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+            align-self: flex-end;
+            transition: background 0.2s;
+        }
+        button:hover { background-color: #218838; }
+        .result {
+            font-size: 1.2em;
+            margin-bottom: 20px;
+            padding: 20px;
+            background-color: #d4edda;
+            color: #155724;
+            border-radius: 8px;
+            border: 1px solid #c3e6cb;
+            line-height: 1.5;
+        }
+        #plot { width: 100%; height: 550px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Rækkevidde-optimering med Lineær Programmering</h2>
+    <div class="info-box">
+        <strong>Faste værdier i denne model:</strong><br>
+        🚗 <strong>Landevej (x-akse):</strong> 80 km/t. Forbrug: 4 liter/time.<br>
+        🏎️ <strong>Motorvej (y-akse):</strong> 130 km/t. Forbrug: 13 liter/time.
+    </div>
+    <p>Juster dine begrænsninger nedenfor for at finde ud af, hvordan du skal fordele din tid mellem landevej og motorvej for at nå længst muligt frem.</p>
+    
+    <div class="controls">
+        <div class="input-group">
+            <label for="maxTime">Maksimal tid til rådighed (timer):</label>
+            <input type="number" id="maxTime" value="5" min="0.1" step="0.5">
+        </div>
+        <div class="input-group">
+            <label for="maxFuel">Brændstof på tanken (liter):</label>
+            <input type="number" id="maxFuel" value="40" min="1" step="1">
+        </div>
+        <button onclick="calculateAndPlot()">Udregn Rute</button>
+    </div>
+
+    <div class="result" id="resultText">
+        Tryk på "Udregn Rute" for at se resultatet.
+    </div>
+
+    <div id="plot"></div>
+</div>
+
+<script>
+    // Konstanter for køremåder
+    const speedX = 80;  // km/t på landevej
+    const speedY = 130; // km/t på motorvej
+    const fuelX = 4;    // liter/time på landevej
+    const fuelY = 13;   // liter/time på motorvej
+
+    function calculateAndPlot() {
+        const maxTime = parseFloat(document.getElementById('maxTime').value) || 0;
+        const maxFuel = parseFloat(document.getElementById('maxFuel').value) || 0;
+
+        // Find alle mulige hjørnepunkter (intersections)
+        let points = [];
+        
+        // 1. Origo (0,0)
+        points.push({x: 0, y: 0});
+        
+        // 2. Skæringer med x-aksen (kun landevej)
+        points.push({x: Math.min(maxTime, maxFuel / fuelX), y: 0});
+        
+        // 3. Skæringer med y-aksen (kun motorvej)
+        points.push({x: 0, y: Math.min(maxTime, maxFuel / fuelY)});
+        
+        // 4. Skæring mellem tids- og brændstofbegrænsningen
+        // Ligning 1: x + y = maxTime  => y = maxTime - x
+        // Ligning 2: fuelX*x + fuelY*y = maxFuel
+        // fuelX*x + fuelY*(maxTime - x) = maxFuel
+        // x*(fuelX - fuelY) = maxFuel - fuelY*maxTime
+        const xIntersect = (maxFuel - fuelY * maxTime) / (fuelX - fuelY);
+        const yIntersect = maxTime - xIntersect;
+
+        // Tjek om skæringspunktet er gyldigt (større end 0 og inden for grænserne)
+        if (xIntersect >= -0.001 && yIntersect >= -0.001 && 
+            xIntersect <= maxTime + 0.001 && yIntersect <= maxTime + 0.001) {
+            points.push({x: Math.max(0, xIntersect), y: Math.max(0, yIntersect)});
+        }
+
+        // Fjern eventuelle duplikater (hvis linjerne krydser på en akse)
+        points = points.filter((v, i, a) => a.findIndex(t => (Math.abs(t.x - v.x) < 0.01 && Math.abs(t.y - v.y) < 0.01)) === i);
+
+        // Find den maksimale distance
+        let maxDistance = -1;
+        let bestPoint = null;
+
+        points.forEach(p => {
+            const distance = (speedX * p.x) + (speedY * p.y);
+            if (distance > maxDistance) {
+                maxDistance = distance;
+                bestPoint = p;
+            }
+        });
+
+        // Sorter punkter mod uret (counter-clockwise) for at tegne et pænt polygon i Plotly
+        points.sort((a, b) => {
+            let angleA = Math.atan2(a.y, a.x);
+            let angleB = Math.atan2(b.y, b.x);
+            return angleA - angleB;
+        });
+        // Luk polygonet ved at tilføje det første punkt til sidst
+        if(points.length > 0) points.push(points[0]);
+
+        // Formater resultatet
+        document.getElementById('resultText').innerHTML = 
+            `<strong>Maksimal Rækkevidde: ${maxDistance.toFixed(1)} km</strong><br><br>
+             For at nå længst muligt skal du køre:<br>
+             • <strong>${bestPoint.x.toFixed(2)} timer</strong> på landevej (${(bestPoint.x * speedX).toFixed(1)} km)<br>
+             • <strong>${bestPoint.y.toFixed(2)} timer</strong> på motorvej (${(bestPoint.y * speedY).toFixed(1)} km)<br>
+             <em>(Totalt forbrug: ${(bestPoint.x * fuelX + bestPoint.y * fuelY).toFixed(1)} liter | Total tid: ${(bestPoint.x + bestPoint.y).toFixed(2)} timer)</em>`;
+
+        drawPlot(points, bestPoint, maxTime, maxFuel);
+    }
+
+    function drawPlot(polygonPoints, bestPoint, maxTime, maxFuel) {
+        const xCoords = polygonPoints.map(p => p.x);
+        const yCoords = polygonPoints.map(p => p.y);
+
+        const polygon = {
+            x: xCoords,
+            y: yCoords,
+            fill: 'toself',
+            fillcolor: 'rgba(40, 167, 69, 0.2)',
+            line: {color: 'rgba(40, 167, 69, 0.8)', width: 2},
+            name: 'Mulige kombinationer (Løsningsrum)',
+            type: 'scatter',
+            mode: 'lines'
+        };
+
+        const optimalPoint = {
+            x: [bestPoint.x],
+            y: [bestPoint.y],
+            mode: 'markers',
+            marker: {
+                symbol: 'star',
+                size: 22,
+                color: '#ffc107',
+                line: {color: '#333', width: 1.5}
+            },
+            name: 'Optimalt Punkt (Max Distance)',
+            type: 'scatter'
+        };
+
+        const layout = {
+            title: 'Grafisk Løsning for Rækkevidde',
+            xaxis: {title: 'Timer på Landevej (x)', range: [-0.5, Math.max(maxTime, maxFuel/fuelX) + 1]},
+            yaxis: {title: 'Timer på Motorvej (y)', range: [-0.5, Math.max(maxTime, maxFuel/fuelY) + 1]},
+            showlegend: true,
+            hovermode: 'closest'
+        };
+
+        Plotly.newPlot('plot', [polygon, optimalPoint], layout);
+    }
+
+    // Kør når siden indlæses
+    window.onload = calculateAndPlot;
+</script>
+
+</body>
+</html>
