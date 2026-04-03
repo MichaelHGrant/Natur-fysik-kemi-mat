@@ -6,21 +6,19 @@
     <title>Simulation af Damphuller i Ris</title>
     <style>
         body {
-            font-family: sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f4f4f9;
             display: flex;
             flex-direction: column;
             align-items: center;
             padding: 20px;
+            color: #333;
         }
-        canvas {
-            background-color: #fafad2; /* Farven på kogte ris */
-            border: 2px solid #333;
-            border-radius: 5px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        }
+        h1 { margin-bottom: 5px; }
         .controls {
-            margin-top: 15px;
+            margin: 20px 0;
+            display: flex;
+            gap: 15px;
         }
         button {
             padding: 10px 20px;
@@ -30,42 +28,141 @@
             color: white;
             border: none;
             border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: background-color 0.2s;
         }
         button:hover { background-color: #45a049; }
+        #infoBtn { background-color: #2196F3; }
+        #infoBtn:hover { background-color: #0b7dda; }
+
+        .canvas-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            justify-content: center;
+        }
+        .view-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        canvas {
+            background-color: #fafad2; /* Farven på kogte ris */
+            border: 2px solid #555;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        /* Modal (Pop-up) Styles */
+        .modal {
+            display: none; 
+            position: fixed; 
+            z-index: 10; 
+            left: 0; 
+            top: 0; 
+            width: 100%; 
+            height: 100%; 
+            background-color: rgba(0,0,0,0.5); 
+        }
+        .modal-content {
+            background-color: #fff;
+            margin: 10% auto; 
+            padding: 25px;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 600px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            line-height: 1.6;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover, .close:focus {
+            color: #000;
+            text-decoration: none;
+        }
     </style>
 </head>
 <body>
 
-    <h2>Fluiddynamik i Gryden: Kanaldannelse</h2>
-    <p>Damp (blå) opstår i bunden og baner vej gennem rismassen. Når en kanal først er dannet, falder modstanden, og mere damp følger samme vej, hvilket skaber "damphuller" i overfladen.</p>
-    
-    <canvas id="riceCanvas" width="400" height="300"></canvas>
+    <h1>Risens Fluiddynamik</h1>
+    <p>Se hvordan dampen baner sig vej gennem risene og danner huller på overfladen.</p>
     
     <div class="controls">
+        <button id="infoBtn">Forklar Fysikken</button>
         <button onclick="resetSimulation()">Nulstil Gryde</button>
     </div>
 
-    <script>
-        const canvas = document.getElementById('riceCanvas');
-        const ctx = canvas.getContext('2d');
+    <div class="canvas-container">
+        <div class="view-box">
+            <h3>Set fra siden (Tværsnit)</h3>
+            <canvas id="sideCanvas" width="300" height="300"></canvas>
+        </div>
         
-        const cols = 80;
+        <div class="view-box">
+            <h3>Set ovenfra (Overflade)</h3>
+            <canvas id="topCanvas" width="300" height="300"></canvas>
+        </div>
+    </div>
+
+    <div id="physicsModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Fysikken bag damphullerne</h2>
+            <p>Når du koger ris, oplever du et fænomen kaldet <strong>flerfaset strømning i et porøst medium</strong>. Her er hvad der sker:</p>
+            <ul>
+                <li><strong>Starten:</strong> Vandet koger i bunden af gryden og bliver til damp. Damp fylder ca. 1700 gange mere end vand, hvilket skaber et overtryk i bunden.</li>
+                <li><strong>Modstanden:</strong> Risene svulmer op og frigiver klistret stivelse. Dette gør rismassen tæt og svær for dampen at trænge igennem (lav permeabilitet).</li>
+                <li><strong>Kanaldannelse (Channeling):</strong> I stedet for at sive jævnt op, finder dampen <em>den mindste modstands vej</em>. Når først lidt damp bryder igennem et lille punkt, bliver modstanden netop der mindre.</li>
+                <li><strong>Selvforstærkning:</strong> Mere damp søger nu mod denne svage kanal, udvider den og "graver" et rør hele vejen op til overfladen.</li>
+                <li><strong>Resultatet:</strong> Når vandet er væk, falder risene til ro, og de små skorstene, dampen har bygget, står tilbage som huller på overfladen.</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // --- Modal Logik ---
+        const modal = document.getElementById("physicsModal");
+        const btn = document.getElementById("infoBtn");
+        const span = document.getElementsByClassName("close")[0];
+
+        btn.onclick = function() { modal.style.display = "block"; }
+        span.onclick = function() { modal.style.display = "none"; }
+        window.onclick = function(event) {
+            if (event.target == modal) { modal.style.display = "none"; }
+        }
+
+        // --- Canvas Opsætning ---
+        const sideCanvas = document.getElementById('sideCanvas');
+        const sideCtx = sideCanvas.getContext('2d');
+        const topCanvas = document.getElementById('topCanvas');
+        const topCtx = topCanvas.getContext('2d');
+        
+        const cols = 60;
         const rows = 60;
         const cellSize = 5;
         
-        let grid = []; // Gitter der gemmer permeabilitet (gennemtrængelighed)
-        let particles = []; // Dampbobler
+        let grid = []; // Gitter til permeabilitet (side view)
+        let particles = []; // Dampbobler (side view)
+        let surfaceHoles = []; // Huller på overfladen (top view)
 
-        // Initialiser gitteret (rismassen)
-        function initGrid() {
+        function initSimulation() {
+            // Nulstil Side View
             grid = [];
+            particles = [];
             for (let i = 0; i < cols; i++) {
                 grid[i] = [];
                 for (let j = 0; j < rows; j++) {
-                    // Start med tilfældig, lav permeabilitet overalt
-                    grid[i][j] = Math.random() * 0.1;
+                    grid[i][j] = Math.random() * 0.1; // Tilfældig startmodstand
                 }
             }
+
+            // Nulstil Top View
+            surfaceHoles = [];
         }
 
         class Particle {
@@ -76,7 +173,6 @@
 
             move() {
                 if (this.y > 0) {
-                    // Tjek mulige retninger: op-venstre, op, op-højre
                     let leftX = Math.max(0, this.x - 1);
                     let rightX = Math.min(cols - 1, this.x + 1);
                     let upY = this.y - 1;
@@ -85,78 +181,111 @@
                     let permUp = grid[this.x][upY];
                     let permRight = grid[rightX][upY];
 
-                    // Find retningen med HØJEST permeabilitet (mindst modstand)
                     let maxPerm = Math.max(permLeft, permUp, permRight);
                     
                     if (maxPerm === permUp || Math.random() > 0.7) {
-                        this.y = upY; // Gå lige op
+                        this.y = upY;
                     } else if (maxPerm === permLeft && Math.random() > 0.5) {
-                        this.x = leftX;
-                        this.y = upY;
+                        this.x = leftX; this.y = upY;
                     } else {
-                        this.x = rightX;
-                        this.y = upY;
+                        this.x = rightX; this.y = upY;
                     }
 
-                    // Når dampen passerer, øges permeabiliteten (kanalen udvides/graves ud)
+                    // Grav kanalen ud
                     grid[this.x][this.y] = Math.min(1.0, grid[this.x][this.y] + 0.05);
                 }
             }
 
             draw() {
-                ctx.fillStyle = 'rgba(100, 200, 255, 0.8)'; // Blå damp
-                ctx.beginPath();
-                ctx.arc(this.x * cellSize + cellSize/2, this.y * cellSize + cellSize/2, cellSize/1.5, 0, Math.PI * 2);
-                ctx.fill();
+                sideCtx.fillStyle = 'rgba(100, 200, 255, 0.8)';
+                sideCtx.beginPath();
+                sideCtx.arc(this.x * cellSize + cellSize/2, this.y * cellSize + cellSize/2, cellSize/1.5, 0, Math.PI * 2);
+                sideCtx.fill();
             }
         }
 
         function resetSimulation() {
-            initGrid();
-            particles = [];
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            initSimulation();
+            sideCtx.clearRect(0, 0, sideCanvas.width, sideCanvas.height);
+            topCtx.clearRect(0, 0, topCanvas.width, topCanvas.height);
         }
 
         function animate() {
-            // Tegn baggrund (ris)
-            ctx.fillStyle = '#fafad2';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // --- SIDE VIEW ---
+            sideCtx.fillStyle = '#fafad2';
+            sideCtx.fillRect(0, 0, sideCanvas.width, sideCanvas.height);
 
-            // Tegn kanalerne (hvor permeabiliteten er høj)
+            // Tegn rismassens kanaler
             for (let i = 0; i < cols; i++) {
                 for (let j = 0; j < rows; j++) {
                     if (grid[i][j] > 0.2) {
-                        // Mørkere farve for at illustrere hullerne/kanalerne
                         let alpha = Math.min(0.6, grid[i][j]);
-                        ctx.fillStyle = `rgba(150, 140, 100, ${alpha})`;
-                        ctx.fillRect(i * cellSize, j * cellSize, cellSize, cellSize);
+                        sideCtx.fillStyle = `rgba(150, 140, 100, ${alpha})`;
+                        sideCtx.fillRect(i * cellSize, j * cellSize, cellSize, cellSize);
                     }
                 }
             }
 
-            // Skab ny damp i bunden
-            for(let i=0; i<3; i++) {
-                let randomX = Math.floor(Math.random() * cols);
-                particles.push(new Particle(randomX, rows - 1));
+            // Skab damp i bunden
+            for(let i=0; i<2; i++) {
+                particles.push(new Particle(Math.floor(Math.random() * cols), rows - 1));
             }
 
-            // Opdater og tegn dampbobler
+            // Flyt damp
             for (let i = particles.length - 1; i >= 0; i--) {
                 let p = particles[i];
                 p.move();
                 p.draw();
                 
-                // Fjern damp, der er nået til overfladen
+                // Når dampen bryder overfladen i Side View
                 if (p.y <= 0) {
+                    // Tjek om der skal laves et hul i Top View (tilfældigt fordelt for realismens skyld)
+                    if (Math.random() < 0.1 && surfaceHoles.length < 60) {
+                        surfaceHoles.push({
+                            x: Math.random() * topCanvas.width,
+                            y: Math.random() * topCanvas.height,
+                            radius: 0,
+                            maxRadius: 3 + Math.random() * 6
+                        });
+                    }
                     particles.splice(i, 1);
                 }
             }
 
+            // --- TOP VIEW ---
+            topCtx.fillStyle = '#fafad2';
+            topCtx.fillRect(0, 0, topCanvas.width, topCanvas.height);
+
+            // Tegn struktur i risene (svage linjer)
+            topCtx.fillStyle = 'rgba(200, 190, 150, 0.2)';
+            for(let i = 0; i < 100; i++) {
+                topCtx.fillRect(Math.random()*topCanvas.width, Math.random()*topCanvas.height, 6, 2);
+            }
+
+            // Tegn hullerne der opstår
+            surfaceHoles.forEach(hole => {
+                if (hole.radius < hole.maxRadius) {
+                    hole.radius += 0.05; // Hullet vokser langsomt
+                }
+                
+                // Ydre skygge for dybde
+                topCtx.beginPath();
+                topCtx.arc(hole.x, hole.y, hole.radius + 1, 0, Math.PI * 2);
+                topCtx.fillStyle = 'rgba(120, 110, 80, 0.3)';
+                topCtx.fill();
+
+                // Selve det mørke hul
+                topCtx.beginPath();
+                topCtx.arc(hole.x, hole.y, hole.radius, 0, Math.PI * 2);
+                topCtx.fillStyle = 'rgba(80, 75, 60, 0.9)';
+                topCtx.fill();
+            });
+
             requestAnimationFrame(animate);
         }
 
-        // Start
-        initGrid();
+        // Start simulering
+        initSimulation();
         animate();
     </script>
 </body>
