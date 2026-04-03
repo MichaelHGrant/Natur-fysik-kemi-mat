@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulation af Damphuller i Ris</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background-color: #f4f4f9;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        canvas {
+            background-color: #fafad2; /* Farven på kogte ris */
+            border: 2px solid #333;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .controls {
+            margin-top: 15px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        button:hover { background-color: #45a049; }
+    </style>
+</head>
+<body>
+
+    <h2>Fluiddynamik i Gryden: Kanaldannelse</h2>
+    <p>Damp (blå) opstår i bunden og baner vej gennem rismassen. Når en kanal først er dannet, falder modstanden, og mere damp følger samme vej, hvilket skaber "damphuller" i overfladen.</p>
+    
+    <canvas id="riceCanvas" width="400" height="300"></canvas>
+    
+    <div class="controls">
+        <button onclick="resetSimulation()">Nulstil Gryde</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('riceCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        const cols = 80;
+        const rows = 60;
+        const cellSize = 5;
+        
+        let grid = []; // Gitter der gemmer permeabilitet (gennemtrængelighed)
+        let particles = []; // Dampbobler
+
+        // Initialiser gitteret (rismassen)
+        function initGrid() {
+            grid = [];
+            for (let i = 0; i < cols; i++) {
+                grid[i] = [];
+                for (let j = 0; j < rows; j++) {
+                    // Start med tilfældig, lav permeabilitet overalt
+                    grid[i][j] = Math.random() * 0.1;
+                }
+            }
+        }
+
+        class Particle {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+            }
+
+            move() {
+                if (this.y > 0) {
+                    // Tjek mulige retninger: op-venstre, op, op-højre
+                    let leftX = Math.max(0, this.x - 1);
+                    let rightX = Math.min(cols - 1, this.x + 1);
+                    let upY = this.y - 1;
+
+                    let permLeft = grid[leftX][upY];
+                    let permUp = grid[this.x][upY];
+                    let permRight = grid[rightX][upY];
+
+                    // Find retningen med HØJEST permeabilitet (mindst modstand)
+                    let maxPerm = Math.max(permLeft, permUp, permRight);
+                    
+                    if (maxPerm === permUp || Math.random() > 0.7) {
+                        this.y = upY; // Gå lige op
+                    } else if (maxPerm === permLeft && Math.random() > 0.5) {
+                        this.x = leftX;
+                        this.y = upY;
+                    } else {
+                        this.x = rightX;
+                        this.y = upY;
+                    }
+
+                    // Når dampen passerer, øges permeabiliteten (kanalen udvides/graves ud)
+                    grid[this.x][this.y] = Math.min(1.0, grid[this.x][this.y] + 0.05);
+                }
+            }
+
+            draw() {
+                ctx.fillStyle = 'rgba(100, 200, 255, 0.8)'; // Blå damp
+                ctx.beginPath();
+                ctx.arc(this.x * cellSize + cellSize/2, this.y * cellSize + cellSize/2, cellSize/1.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function resetSimulation() {
+            initGrid();
+            particles = [];
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function animate() {
+            // Tegn baggrund (ris)
+            ctx.fillStyle = '#fafad2';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Tegn kanalerne (hvor permeabiliteten er høj)
+            for (let i = 0; i < cols; i++) {
+                for (let j = 0; j < rows; j++) {
+                    if (grid[i][j] > 0.2) {
+                        // Mørkere farve for at illustrere hullerne/kanalerne
+                        let alpha = Math.min(0.6, grid[i][j]);
+                        ctx.fillStyle = `rgba(150, 140, 100, ${alpha})`;
+                        ctx.fillRect(i * cellSize, j * cellSize, cellSize, cellSize);
+                    }
+                }
+            }
+
+            // Skab ny damp i bunden
+            for(let i=0; i<3; i++) {
+                let randomX = Math.floor(Math.random() * cols);
+                particles.push(new Particle(randomX, rows - 1));
+            }
+
+            // Opdater og tegn dampbobler
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.move();
+                p.draw();
+                
+                // Fjern damp, der er nået til overfladen
+                if (p.y <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        // Start
+        initGrid();
+        animate();
+    </script>
+</body>
+</html>
