@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Skovens Akustik - Bølgespredning</title>
+    <title>Skovens Akustik - Bølgespredning med Lyd</title>
     <style>
         body {
             margin: 0;
@@ -31,10 +31,9 @@
 <body>
 
     <div id="info-panel">
-        <h2>3D Spredning & Ekkotæthed</h2>
-        <p><strong>Klik med musen</strong> et sted på skærmen for at <br>udløse en lydimpuls (f.eks. et håndklap).</p>
-        <p>De grønne cirkler repræsenterer træstammer.</p>
-        <p>Læg mærke til, hvordan den primære bølgefront (hvid)<br>skaber kaskader af sekundære refleksioner (blå),<br>hvilket lynhurtigt øger ekkotætheden og spreder energien.</p>
+        <h2>3D Spredning & Ekkotæthed (Nu med lyd)</h2>
+        <p><strong>Klik med musen</strong> for at udløse et håndklap.</p>
+        <p>Du vil høre det primære klap, efterfulgt af en <br>sværm af mikroskopiske, asynkrone ekkoer<br>(flutter-ekko) fra stammerne.</p>
     </div>
 
     <canvas id="simCanvas"></canvas>
@@ -43,6 +42,49 @@
         const canvas = document.getElementById('simCanvas');
         const ctx = canvas.getContext('2d');
 
+        // --- LYD OPSÆTNING (Web Audio API) ---
+        const AudioContext = window.AudioContext |
+
+| window.webkitAudioContext;
+        let audioCtx = new AudioContext();
+
+        // Funktion til at syntetisere et "klap" eller et ekko via hvid støj
+        function playNoiseBurst(volume, duration, panX) {
+            // Browser-sikkerhed kræver, at AudioContext genoptages ved bruger-interaktion
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            const bufferSize = audioCtx.sampleRate * duration;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            
+            // Fyld bufferen op med tilfældig hvid støj
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+
+            const noiseSource = audioCtx.createBufferSource();
+            noiseSource.buffer = buffer;
+
+            // Styr lyden med et eksponentielt henfald for at få det til at lyde som et skarpt smæld
+            const gainNode = audioCtx.createGain();
+            gainNode.gain.setValueAtTime(volume, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+
+            // Panorering (højre/venstre) baseret på træets position
+            const panner = audioCtx.createStereoPanner();
+            panner.pan.value = panX;
+
+            // Forbind lyd-noderne
+            noiseSource.connect(gainNode);
+            gainNode.connect(panner);
+            panner.connect(audioCtx.destination);
+
+            noiseSource.start();
+        }
+        // --- SLUT LYD OPSÆTNING ---
+
         function resize() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
@@ -50,7 +92,6 @@
         window.addEventListener('resize', resize);
         resize();
 
-        // Oprettet sikkert uden brug af kantede parenteser
         const trees = new Array();
         const numTrees = 180; 
         for (let i = 0; i < numTrees; i++) {
@@ -65,6 +106,9 @@
         const waveSpeed = 2.5;
 
         window.addEventListener('mousedown', function(e) {
+            // Afspil det oprindelige håndklap højlydt (Volumen 0.8, Længde 0.15s, Centreret)
+            playNoiseBurst(0.8, 0.15, 0); 
+
             waves.push({
                 x: e.clientX,
                 y: e.clientY,
@@ -99,7 +143,6 @@
                     w.energy -= 0.008;
                 }
 
-                // Delt op i to if-statements for at undgå det problematiske ELLER-tegn
                 if (w.energy <= 0) {
                     waves.splice(i, 1);
                     continue;
@@ -129,10 +172,18 @@
                             const dy = tree.y - w.y;
                             const dist = Math.sqrt(dx * dx + dy * dy);
                             
+                            // Tjek om bølgefronten rammer træet
                             if (dist < w.radius + tree.radius) {
                                 if (dist > w.radius - waveSpeed * 2) {
                                     w.hitTrees.add(index);
                                     
+                                    // 1. Udregn stereopanorering (-1 er fuld venstre, 1 er fuld højre)
+                                    let pan = (tree.x / canvas.width) * 2 - 1;
+                                    
+                                    // 2. Afspil et ekko. Lydstyrken gøres afhængig af bølgefrontens energi
+                                    let echoVolume = w.energy * 0.04; 
+                                    playNoiseBurst(echoVolume, 0.05, pan);
+
                                     waves.push({
                                         x: tree.x,
                                         y: tree.y,
