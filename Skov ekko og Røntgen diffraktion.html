@@ -43,19 +43,23 @@
         const ctx = canvas.getContext('2d');
 
         // --- LYD OPSÆTNING (Web Audio API) ---
-        const AudioContext = window.AudioContext |
-
-| window.webkitAudioContext;
-        let audioCtx = new AudioContext();
+        let audioCtx;
+        if (window.AudioContext) {
+            audioCtx = new window.AudioContext();
+        } else if (window.webkitAudioContext) {
+            audioCtx = new window.webkitAudioContext();
+        }
 
         // Funktion til at syntetisere et "klap" eller et ekko via hvid støj
         function playNoiseBurst(volume, duration, panX) {
+            if (!audioCtx) return;
+            
             // Browser-sikkerhed kræver, at AudioContext genoptages ved bruger-interaktion
             if (audioCtx.state === 'suspended') {
                 audioCtx.resume();
             }
 
-            const bufferSize = audioCtx.sampleRate * duration;
+            const bufferSize = Math.floor(audioCtx.sampleRate * duration);
             const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
             const data = buffer.getChannelData(0);
             
@@ -72,15 +76,18 @@
             gainNode.gain.setValueAtTime(volume, audioCtx.currentTime);
             gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
 
+            let targetNode = gainNode;
+
             // Panorering (højre/venstre) baseret på træets position
-            const panner = audioCtx.createStereoPanner();
-            panner.pan.value = panX;
+            if (audioCtx.createStereoPanner) {
+                const panner = audioCtx.createStereoPanner();
+                panner.pan.value = panX;
+                gainNode.connect(panner);
+                targetNode = panner;
+            }
 
-            // Forbind lyd-noderne
-            noiseSource.connect(gainNode);
-            gainNode.connect(panner);
-            panner.connect(audioCtx.destination);
-
+            // Forbind lyd-noderne og afspil
+            targetNode.connect(audioCtx.destination);
             noiseSource.start();
         }
         // --- SLUT LYD OPSÆTNING ---
@@ -106,7 +113,7 @@
         const waveSpeed = 2.5;
 
         window.addEventListener('mousedown', function(e) {
-            // Afspil det oprindelige håndklap højlydt (Volumen 0.8, Længde 0.15s, Centreret)
+            // Afspil det oprindelige håndklap (Høj volumen, længere varighed, centreret)
             playNoiseBurst(0.8, 0.15, 0); 
 
             waves.push({
@@ -177,10 +184,10 @@
                                 if (dist > w.radius - waveSpeed * 2) {
                                     w.hitTrees.add(index);
                                     
-                                    // 1. Udregn stereopanorering (-1 er fuld venstre, 1 er fuld højre)
+                                    // Udregn stereopanorering (-1 er fuld venstre, 1 er fuld højre)
                                     let pan = (tree.x / canvas.width) * 2 - 1;
                                     
-                                    // 2. Afspil et ekko. Lydstyrken gøres afhængig af bølgefrontens energi
+                                    // Afspil et ekko. Lydstyrken gøres afhængig af bølgefrontens energi
                                     let echoVolume = w.energy * 0.04; 
                                     playNoiseBurst(echoVolume, 0.05, pan);
 
