@@ -5,7 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Skovens Akustik - Dynamisk Frekvensrespons</title>
     
-    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: new Array( new Array('$', '$') ),
+                displayMath: new Array( new Array('$$', '$$') )
+            }
+        };
+    </script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
     <style>
@@ -82,7 +89,7 @@
         }
         #physics-modal h3 { color: #4db8ff; margin-top: 0; font-size: 22px; }
         #physics-modal p { margin-bottom: 12px; line-height: 1.6; font-size: 15px;}
-       .math-block { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px; text-align: center; margin: 10px 0; }
+      .math-block { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px; text-align: center; margin: 10px 0; }
         
         #close-btn {
             margin-top: 20px;
@@ -102,32 +109,36 @@
     <div id="info-panel">
         <h2>Skovens Akustik & Ekkotæthed</h2>
         <p><strong>Klik med musen i skoven</strong> for at udløse et håndklap.</p>
-        <p>Du vil høre klappet og returlyden. Se grafen<br>nederst til højre opdatere sig alt efter,<br>hvor tæt på træerne du befinder dig.</p>
+        <p>Se DTFT-grafen nederst til højre. Den udregner <br>det virkelige interferensmønster (frekvensresponsen)<br>baseret på de specifikke afstande fra dit klik <br>til samtlige træer på skærmen.</p>
         <button id="physics-btn">Læs om fysikken og matematikken</button>
     </div>
 
     <div id="graph-panel">
-        <h4>Lokal Frekvensrespons (Ekko)</h4>
-        <p id="graph-metrics">Klik i skoven for at beregne ekko...</p>
+        <h4>Akustisk Frekvensrespons (Målepunkt)</h4>
+        <p id="graph-metrics" style="color: #4db8ff;">Klik i skoven for at beregne ekko...</p>
         <canvas id="graphCanvas" width="350" height="200"></canvas>
     </div>
 
     <div id="overlay"></div>
 
     <div id="physics-modal">
-        <h3>Fysikken bag Skovens Ekko & Grafen</h3>
-        <p><strong>1. Multipel Spredning og Frekvensrespons</strong><br>
-        Grafen til højre viser, hvordan skoven filtrerer lyden. Lave frekvenser (< 250 Hz) bøjer omkring træerne via diffraktion. Mellemtonen (1 - 3 kHz) kastes stærkt tilbage, fordi bølgelængden passer til stammediameteren. Høje frekvenser (> 4 kHz) absorberes ekstremt hurtigt af blade og bark. Det effektive bølgetal for denne proces beskrives som:</p>
+        <h3>Fysikken bag Skovens Ekko & Røntgendiffraktion</h3>
+        
+        <p><strong>1. Multipel Spredning og Det Effektive Bølgetal</strong><br>
+        I en skov er der ingen faste vægge, kun tusindvis af spredere (træstammer). I tredimensionel spredningsteori beskrives lydens udbredelse gennem dette medium ved et effektivt komplekst bølgetal:</p>
         
         <div class="math-block">
             $$k_{eff}(r;s)=k+\frac{2\pi\nu}{k}f(r;s,s)$$
         </div>
         
+        <p>Hvor $k$ er bølgetallet i fri luft, $\nu$ er tætheden af træer, og $f(r;s,s)$ er den komplekse spredningsamplitude.</p>
+
         <p><strong>2. Røntgen-diffraktion og Krystal-analogien</strong><br>
-        Lydspredning i skoven opfører sig som røntgendiffraktion i et krystal. Hvis træerne stod i et perfekt gitter, ville vi få skarpe ekkoer (Bragg-peaks). Men fordi træerne står uregelmæssigt (analogt med atomers <em>termiske agitation</em> i et krystal), svækkes ekkoet markant - hvilket beskrives ved <em>Debye-Waller faktoren</em>. Den tabte kohærente energi spredes i stedet som diffus støj (Thermal Diffuse Scattering).</p>
+        Lydspredning i skoven opfører sig matematisk på nøjagtig samme måde som røntgendiffraktion i et krystalgitter. I et perfekt ordnet krystalgitter skabes skarpe, kohærente refleksioner (Bragg-peaks). Men da atomer besidder termisk energi og udsættes for konstant agitation, vil et ekstremt hurtigt "øjebliksbillede" (snapshot) vise dem forskudt asymmetrisk fra deres ideelle positioner. Denne asymmetriske agitation svækker det kohærente ekko markant – en svækkelse der kvantificeres med <em>Debye-Waller faktoren</em>. Den tabte kohærente energi spredes i stedet som diffus støj (Thermal Diffuse Scattering).<br><br>
+        Tilsvarende gælder for akustik: Hvis skovens træer stod i et fuldstændigt præcist, periodisk gitter, ville de skabe et "sonisk krystal" med klare, retningsbestemte ekkoer (Bragg-diffraktion). Men fordi træerne i en naturlig skov står uregelmæssigt (fuldstændig analogt med atomernes termiske agitation i krystallens snapshot), destrueres det rene ekko, og lyden udsendes i stedet som uordnet, diffus støj (flutter-ekko).</p>
 
         <p><strong>3. Energiens Henfald ($t^{-2}$ loven)</strong><br>
-        Fordi skoven er et åbent miljø med høj absorption, falder ekko-energien ikke eksponentielt, men derimod efter en potenslov:</p>
+        Da skoven er et åbent medium, falder ekko-energien ikke eksponentielt som i et lukket rum, men aftager derimod efter en potenslov:</p>
 
         <div class="math-block">
             $$E(t)\propto t^{-2}$$
@@ -207,8 +218,8 @@
             noiseSource.start();
         }
 
-        // --- GRAF TEGNING ---
-        function drawDynamicGraph(densityFactor, proximityFactor) {
+        // --- GRAF TEGNING (Faktisk DTFT Udregning) ---
+        function drawDynamicGraph(cx, cy) {
             const gCanvas = document.getElementById('graphCanvas');
             const gCtx = gCanvas.getContext('2d');
             
@@ -240,44 +251,75 @@
             gCtx.fillStyle = '#e0e0e0';
             gCtx.font = '10px sans-serif';
             gCtx.fillText('Amplitude', 5, 12);
-            gCtx.fillText('10k Hz', 300, 185);
+            gCtx.fillText('8k Hz', 300, 185);
             gCtx.fillText('0 Hz', 40, 185);
 
-            // Udregn dynamiske værdier baseret på omgivelserne
-            // Max amplitude peak (Y går fra top 0 til bund 200, så lavere tal = højere graf)
-            // Høj density = stærkere peak i midten
-            let peakY = 140 - (densityFactor * 70) - (proximityFactor * 20); 
-            
-            // Høj density = høje frekvenser dræbes hurtigere (X-værdien skubbes til venstre)
-            let dropOffX = 270 - (densityFactor * 50);
+            // Tjek for opstart uden koordinater
+            if (cx === 0 && cy === 0) { return; }
 
-            // Tegn selve kurven
+            // UDREGN FREKVENSRESPONS VIA DISCRETE-TIME FOURIER TRANSFORM (DTFT)
+            const numPoints = 200;
+            const maxFreq = 8000;
+            let magnitudes = new Array();
+            let maxMag = 0.0001;
+
+            for (let i = 0; i < numPoints; i++) {
+                let f = (i / numPoints) * maxFreq;
+                let real = 0;
+                let imag = 0;
+
+                trees.forEach(function(tree) {
+                    let dx = tree.x - cx;
+                    let dy = tree.y - cy;
+                    let dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 1) { dist = 1; }
+
+                    // Lydens hastighed (skaleret til canvas for realisme, f f.eks. 1 px = 0.1m)
+                    let timeDelay = (2 * dist) / 3430.0; 
+
+                    // Lavfrekvent diffraktion betyder at dybe toner ikke kastes godt tilbage
+                    let scatterEfficiency = 1.0 - Math.exp(-f / 500.0);
+
+                    // Højfrekvent dæmpning i luften og barken (eksponentielt tab)
+                    let absorption = Math.exp(-0.0000003 * f * f * dist);
+
+                    // Bølgens amplitude (Inverse Square Law * Filtere)
+                    let amp = (tree.radius / dist) * scatterEfficiency * absorption;
+
+                    // Summer faserne for interferens
+                    let phase = -2 * Math.PI * f * timeDelay;
+                    real += amp * Math.cos(phase);
+                    imag += amp * Math.sin(phase);
+                });
+
+                let mag = Math.sqrt(real * real + imag * imag);
+                magnitudes.push(mag);
+                if (mag > maxMag) { maxMag = mag; }
+            }
+
+            // Tegn det beregnede DTFT frekvensspektrum
             gCtx.beginPath();
-            gCtx.moveTo(40, 160); 
-            
-            // Diffraktion og jordeffekt i bunden
-            gCtx.bezierCurveTo(60, 160, 70, 140, 90, 145); 
-            
-            // Skov-vinduet (mid-peak)
-            gCtx.bezierCurveTo(120, 140, 150, peakY, 200, peakY); 
-            
-            // Højfrekvent dæmpning (Absorption)
-            gCtx.bezierCurveTo(230, peakY + 10, dropOffX, 160, 330, 165); 
+            gCtx.moveTo(40, 170); 
+
+            for (let i = 0; i < numPoints; i++) {
+                let x = 40 + (i / numPoints) * 290;
+                let y = 160 - (magnitudes[i] / maxMag) * 130; 
+                gCtx.lineTo(x, y);
+            }
 
             gCtx.strokeStyle = '#4db8ff';
-            gCtx.lineWidth = 3;
+            gCtx.lineWidth = 1.5;
             gCtx.stroke();
 
-            // Udfyld formen
+            // Udfyld under kurven
             gCtx.lineTo(330, 170);
             gCtx.lineTo(40, 170);
-            gCtx.fillStyle = 'rgba(77, 184, 255, 0.2)';
+            gCtx.fillStyle = 'rgba(77, 184, 255, 0.4)';
             gCtx.fill();
 
-            // Tekst opdatering
+            // Opdater status tekst
             const metricsText = document.getElementById('graph-metrics');
-            let tD = Math.round(densityFactor * 100);
-            metricsText.innerHTML = "Lokal Tæthed: " + tD + "% | Absorption: " + (tD > 50? "Høj" : "Lav");
+            metricsText.innerHTML = "Sand frekvensrespons udregnet fra " + trees.length + " spredningspunkter.";
         }
 
         // --- SKOV SIMULATION ---
@@ -298,46 +340,21 @@
             });
         }
 
-        // Tegn en tom graf ved start
+        // Tegn tom graf ved start
         drawDynamicGraph(0, 0);
 
         let waves = new Array();
         const waveSpeed = 2.5;
 
-        // Udløs bølge ved klik
+        // Udløs bølge og udregn DTFT ved klik på terrænet
         window.addEventListener('mousedown', function(e) {
             let cx = e.clientX;
             let cy = e.clientY;
 
             playNoiseBurst(0.8, 0.15, 0); 
 
-            // Beregn lokal geometri for grafen
-            let treesInRadius = 0;
-            let closestDist = 9999;
-
-            trees.forEach(function(t) {
-                const dx = t.x - cx;
-                const dy = t.y - cy;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                
-                if (dist < 150) {
-                    treesInRadius++;
-                }
-                if (dist < closestDist) {
-                    closestDist = dist;
-                }
-            });
-
-            // Normaliser værdier til graf-faktorer (0.0 til 1.0)
-            let densityFactor = treesInRadius / 15.0; 
-            if (densityFactor > 1.0) { densityFactor = 1.0; }
-            
-            let proximityFactor = 1.0 - (closestDist / 100.0);
-            if (proximityFactor < 0.0) { proximityFactor = 0.0; }
-            if (proximityFactor > 1.0) { proximityFactor = 1.0; }
-
-            // Opdater frekvensgrafen
-            drawDynamicGraph(densityFactor, proximityFactor);
+            // Beregn den faktiske graf ud fra klik-positionen!
+            drawDynamicGraph(cx, cy);
 
             waves.push({
                 x: cx,
