@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frekvensrespons i Skov</title>
+    <style>
+        body { 
+            background-color: #0b1a10; 
+            color: #e0e0e0; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            padding: 20px; 
+        }
+       .container { 
+            max-width: 800px; 
+            margin: 0 auto; 
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #2e8b57;
+        }
+        h2 { color: #4db8ff; margin-top: 0; }
+        canvas { 
+            background-color: #112618; 
+            border: 1px solid #2e8b57; 
+            border-radius: 4px; 
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Spektral Frekvensrespons for Skovekko</h2>
+        <p>Denne graf illustrerer, hvordan skoven fungerer som et filter for en bredbåndet lydimpuls (som et håndklap). Grafen viser den relative amplitude af det returnerede ekko på lytterens startposition.</p>
+        <canvas id="graphCanvas" width="750" height="400"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('graphCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Tegn baggrundsgitter
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.lineWidth = 1;
+        for(let i = 0; i < 10; i++) {
+            ctx.beginPath();
+            ctx.moveTo(50, 40 + i * 32);
+            ctx.lineTo(700, 40 + i * 32);
+            ctx.stroke();
+        }
+
+        // Tegn akser
+        ctx.strokeStyle = '#e0e0e0';
+        ctx.lineWidth = 2;
+        // Y-akse
+        ctx.beginPath(); 
+        ctx.moveTo(50, 20); 
+        ctx.lineTo(50, 360); 
+        ctx.stroke();
+        // X-akse
+        ctx.beginPath(); 
+        ctx.moveTo(50, 360); 
+        ctx.lineTo(720, 360); 
+        ctx.stroke();
+
+        // Tekst og labels til akser
+        ctx.fillStyle = '#e0e0e0';
+        ctx.font = '14px sans-serif';
+        ctx.fillText('Relativ Amplitude af Ekko (dB)', 10, 15);
+        ctx.fillText('Frekvens (Hz)', 630, 390);
+
+        // Opretter arrays sikkert uden firkantede parenteser
+        const freqs = new Array("0", "250", "500", "1k", "2k", "3k", "4k", "10k");
+        const xPos = new Array(50, 120, 200, 350, 450, 550, 620, 700);
+
+        // Indsæt markeringer på X-aksen
+        for(let i = 0; i < freqs.length; i++) {
+            ctx.fillText(freqs[i], xPos[i] - 10, 380);
+            ctx.beginPath();
+            ctx.moveTo(xPos[i], 360);
+            ctx.lineTo(xPos[i], 365);
+            ctx.stroke();
+        }
+
+        // Tegn selve frekvensresponskurven ved hjælp af Bezier-kurver
+        ctx.beginPath();
+        // Start ved lave frekvenser (Lav refleksion pga. diffraktion)
+        ctx.moveTo(50, 350); 
+        
+        // Stiger lidt og dykker så omkring 250-500 Hz (Jordeffekt)
+        ctx.bezierCurveTo(90, 350, 100, 320, 120, 320); 
+        ctx.bezierCurveTo(150, 320, 180, 350, 200, 345); 
+        
+        // Stiger stejlt op mod 1 kHz til 3 kHz (Maksimalt ekko / Skov-vinduet)
+        ctx.bezierCurveTo(250, 330, 300, 100, 350, 80);  
+        ctx.bezierCurveTo(450, 60, 500, 70, 550, 120);   
+        
+        // Falder drastisk ved høje frekvenser over 4 kHz (Absorption)
+        ctx.bezierCurveTo(600, 180, 650, 300, 700, 340); 
+
+        // Sæt farve og tegn linjen
+        ctx.strokeStyle = '#4db8ff';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // Udfyld området under kurven for visuel effekt
+        ctx.lineTo(700, 360);
+        ctx.lineTo(50, 360);
+        ctx.fillStyle = 'rgba(77, 184, 255, 0.2)';
+        ctx.fill();
+
+        // Tilføj forklarende tekstbokse direkte på grafen
+        ctx.fillStyle = '#ffcc00';
+        ctx.font = '13px sans-serif';
+        ctx.fillText('Jordeffektens udfasning', 110, 310);
+        
+        ctx.fillStyle = '#3cb371';
+        ctx.fillText('Optimal geometrisk spredning', 340, 50);
+        ctx.fillText('(Maksimal returnering)', 360, 65);
+        
+        ctx.fillStyle = '#e74c3c';
+        ctx.fillText('Kraftig absorption i blade/luft', 510, 250);
+    </script>
+</body>
+</html>
