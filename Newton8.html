@@ -4,15 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>3D Newtons Kanon - Realistisk Planet (Mobil & PC)</title>
-    
     <style>
         body { 
             margin: 0; 
-            overflow: hidden; 
+            overflow: hidden; /* Forhindrer uønsket scroll af hele siden */
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             background-color: #020205; 
             color: white; 
-            touch-action: none; /* Forhindrer uønsket scroll på mobil */
+            display: flex;
+            flex-direction: row;
         }
        .back-link {
             position: absolute;
@@ -24,7 +24,7 @@
         
         #ui-container { 
             position: absolute; 
-            top: 40px; /* Flyttet lidt ned så linket har plads */
+            top: 40px; 
             left: 15px; 
             background: rgba(15, 15, 20, 0.85); 
             padding: 15px; 
@@ -74,16 +74,34 @@
             width: 100vw;
             height: 100vh;
             z-index: 1;
+            touch-action: none; /* Tillader 3D rotation på mobil uden at scrolle siden */
         }
 
-        /* Mobil Responsivitet */
+        /* Mobil Responsivitet - Split skærmen op */
         @media (max-width: 600px) {
+            body {
+                flex-direction: column;
+            }
+           .back-link {
+                top: 10px; left: 10px;
+            }
             #ui-container {
-                width: calc(100% - 20px);
-                left: 10px;
-                top: 40px;
-                max-height: 45vh; /* Sørger for at UI kun fylder toppen */
-                padding: 12px;
+                position: relative;
+                width: 100%;
+                left: 0;
+                top: 0;
+                height: 50vh; 
+                max-height: 50vh; 
+                padding: 15px;
+                padding-top: 35px; /* Plads til back-link */
+                border-radius: 0;
+                border: none;
+                border-bottom: 2px solid #555;
+            }
+            #canvas-container {
+                position: relative;
+                width: 100%;
+                height: 50vh;
             }
             h2 { font-size: 16px; margin-bottom: 5px; padding-bottom: 5px; }
            .control-group { margin-top: 8px; }
@@ -165,17 +183,19 @@
 
         // --- 1. Opsætning af Scene ---
         const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 2000);
         
-        // Zoom kameraet langt ud på mobilen så det hele kan ses
+        // Brug det fysiske lærreds bredde/højde i stedet for hele vinduet
+        const camera = new THREE.PerspectiveCamera(45, canvasContainer.clientWidth / canvasContainer.clientHeight, 0.1, 2000);
+        
+        // Zoom kameraet endnu længere ud på mobilen så det hele med sikkerhed kan ses
         if (window.innerWidth <= 600) {
-            camera.position.set(0, R_EARTH * SCALE * 2.0, R_EARTH * SCALE * 7.5);
+            camera.position.set(0, R_EARTH * SCALE * 2.0, R_EARTH * SCALE * 9.0);
         } else {
             camera.position.set(R_EARTH * SCALE * 2.5, R_EARTH * SCALE * 1.5, R_EARTH * SCALE * 3.5);
         }
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); 
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
         renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -186,12 +206,6 @@
         controls.enablePan = false; // DEAKTIVERER PANORERING SÅ JORDEN IKKE SKUBBES UD AF CENTRUM
         controls.minDistance = R_EARTH * SCALE * 1.1; 
         controls.maxDistance = R_EARTH * SCALE * 20;
-
-        // For at centrere Jorden i den nederste del af skærmen på mobil, skyder vi kameraets centerpunkt op
-        if (window.innerWidth <= 600) {
-            const offsetY = -window.innerHeight * 0.15; 
-            camera.setViewOffset(window.innerWidth, window.innerHeight, 0, offsetY, window.innerWidth, window.innerHeight);
-        }
 
         // --- 2. Byg Jorden og Hjælpelinjer ---
         const earthGroup = new THREE.Group();
@@ -455,15 +469,9 @@
         connectSlider('sldHeight', 'valHeight');
 
         window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            if (window.innerWidth <= 600) {
-                const offsetY = -window.innerHeight * 0.15; 
-                camera.setViewOffset(window.innerWidth, window.innerHeight, 0, offsetY, window.innerWidth, window.innerHeight);
-            } else {
-                camera.clearViewOffset();
-            }
+            camera.aspect = canvasContainer.clientWidth / canvasContainer.clientHeight;
             camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
         });
 
         resetSim();
