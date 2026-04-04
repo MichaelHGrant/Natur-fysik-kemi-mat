@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skovens Akustik - Dynamisk Frekvensrespons</title>
+    
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #0b1a10;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        #info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px 25px;
+            border-radius: 8px;
+            border: 1px solid #2e8b57;
+            pointer-events: auto;
+            z-index: 10;
+        }
+        #graph-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #4db8ff;
+            pointer-events: auto;
+            z-index: 10;
+        }
+        h2 { margin: 0 0 10px 0; color: #4db8ff; font-size: 18px; }
+        h4 { margin: 0 0 10px 0; color: #ffcc00; font-size: 15px; }
+        p { margin: 5px 0; line-height: 1.5; font-size: 13px; }
+        canvas { display: block; }
+        #graphCanvas { background-color: #112618; border-radius: 4px; }
+        
+        #physics-btn {
+            margin-top: 15px;
+            padding: 10px 15px;
+            background-color: #2e8b57;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        #physics-btn:hover { background-color: #3cb371; }
+        
+        #overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 50;
+        }
+        
+        #physics-modal {
+            display: none;
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: #112618;
+            padding: 30px;
+            border-radius: 10px;
+            border: 2px solid #4db8ff;
+            z-index: 100;
+            max-width: 650px;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+        }
+        #physics-modal h3 { color: #4db8ff; margin-top: 0; font-size: 22px; }
+        #physics-modal p { margin-bottom: 12px; line-height: 1.6; font-size: 15px;}
+       .math-block { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px; text-align: center; margin: 10px 0; }
+        
+        #close-btn {
+            margin-top: 20px;
+            padding: 8px 16px;
+            background-color: #c0392b;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        #close-btn:hover { background-color: #e74c3c; }
+    </style>
+</head>
+<body>
+
+    <div id="info-panel">
+        <h2>Skovens Akustik & Ekkotæthed</h2>
+        <p><strong>Klik med musen i skoven</strong> for at udløse et håndklap.</p>
+        <p>Du vil høre klappet og returlyden. Se grafen<br>nederst til højre opdatere sig alt efter,<br>hvor tæt på træerne du befinder dig.</p>
+        <button id="physics-btn">Læs om fysikken og matematikken</button>
+    </div>
+
+    <div id="graph-panel">
+        <h4>Lokal Frekvensrespons (Ekko)</h4>
+        <p id="graph-metrics">Klik i skoven for at beregne ekko...</p>
+        <canvas id="graphCanvas" width="350" height="200"></canvas>
+    </div>
+
+    <div id="overlay"></div>
+
+    <div id="physics-modal">
+        <h3>Fysikken bag Skovens Ekko & Grafen</h3>
+        <p><strong>1. Multipel Spredning og Frekvensrespons</strong><br>
+        Grafen til højre viser, hvordan skoven filtrerer lyden. Lave frekvenser (< 250 Hz) bøjer omkring træerne via diffraktion. Mellemtonen (1 - 3 kHz) kastes stærkt tilbage, fordi bølgelængden passer til stammediameteren. Høje frekvenser (> 4 kHz) absorberes ekstremt hurtigt af blade og bark. Det effektive bølgetal for denne proces beskrives som:</p>
+        
+        <div class="math-block">
+            $$k_{eff}(r;s)=k+\frac{2\pi\nu}{k}f(r;s,s)$$
+        </div>
+        
+        <p><strong>2. Røntgen-diffraktion og Krystal-analogien</strong><br>
+        Lydspredning i skoven opfører sig som røntgendiffraktion i et krystal. Hvis træerne stod i et perfekt gitter, ville vi få skarpe ekkoer (Bragg-peaks). Men fordi træerne står uregelmæssigt (analogt med atomers <em>termiske agitation</em> i et krystal), svækkes ekkoet markant - hvilket beskrives ved <em>Debye-Waller faktoren</em>. Den tabte kohærente energi spredes i stedet som diffus støj (Thermal Diffuse Scattering).</p>
+
+        <p><strong>3. Energiens Henfald ($t^{-2}$ loven)</strong><br>
+        Fordi skoven er et åbent miljø med høj absorption, falder ekko-energien ikke eksponentielt, men derimod efter en potenslov:</p>
+
+        <div class="math-block">
+            $$E(t)\propto t^{-2}$$
+        </div>
+
+        <button id="close-btn">Luk vindue</button>
+    </div>
+
+    <canvas id="simCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // --- HÅNDTERING AF POP-OP VINDUE ---
+        const btnOpen = document.getElementById('physics-btn');
+        const btnClose = document.getElementById('close-btn');
+        const modal = document.getElementById('physics-modal');
+        const overlay = document.getElementById('overlay');
+        const infoPanel = document.getElementById('info-panel');
+        const graphPanel = document.getElementById('graph-panel');
+
+        btnOpen.addEventListener('click', function() {
+            modal.style.display = 'block';
+            overlay.style.display = 'block';
+        });
+
+        btnClose.addEventListener('click', function() {
+            modal.style.display = 'none';
+            overlay.style.display = 'none';
+        });
+
+        // Forhindrer klik på UI i at udløse bølger i baggrunden
+        infoPanel.addEventListener('mousedown', function(e) { e.stopPropagation(); });
+        graphPanel.addEventListener('mousedown', function(e) { e.stopPropagation(); });
+        modal.addEventListener('mousedown', function(e) { e.stopPropagation(); });
+        // --- SLUT POP-OP HÅNDTERING ---
+
+        // --- LYD OPSÆTNING ---
+        let audioCtx;
+        if (window.AudioContext) {
+            audioCtx = new window.AudioContext();
+        } else {
+            if (window.webkitAudioContext) {
+                audioCtx = new window.webkitAudioContext();
+            }
+        }
+
+        function playNoiseBurst(volume, duration, panX) {
+            if (!audioCtx) { return; }
+            if (audioCtx.state === 'suspended') { audioCtx.resume(); }
+
+            const bufferSize = Math.floor(audioCtx.sampleRate * duration);
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+
+            const noiseSource = audioCtx.createBufferSource();
+            noiseSource.buffer = buffer;
+
+            const gainNode = audioCtx.createGain();
+            gainNode.gain.setValueAtTime(volume, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+
+            let targetNode = gainNode;
+            if (audioCtx.createStereoPanner) {
+                const panner = audioCtx.createStereoPanner();
+                panner.pan.value = panX;
+                gainNode.connect(panner);
+                targetNode = panner;
+            }
+
+            targetNode.connect(audioCtx.destination);
+            noiseSource.start();
+        }
+
+        // --- GRAF TEGNING ---
+        function drawDynamicGraph(densityFactor, proximityFactor) {
+            const gCanvas = document.getElementById('graphCanvas');
+            const gCtx = gCanvas.getContext('2d');
+            
+            // Ryd lærredet
+            gCtx.clearRect(0, 0, gCanvas.width, gCanvas.height);
+            gCtx.fillStyle = '#112618';
+            gCtx.fillRect(0, 0, gCanvas.width, gCanvas.height);
+
+            // Tegn Gitter
+            gCtx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+            gCtx.lineWidth = 1;
+            for(let i = 0; i < 6; i++) {
+                gCtx.beginPath();
+                gCtx.moveTo(40, 20 + i * 30);
+                gCtx.lineTo(330, 20 + i * 30);
+                gCtx.stroke();
+            }
+
+            // Akser
+            gCtx.strokeStyle = '#e0e0e0';
+            gCtx.lineWidth = 2;
+            gCtx.beginPath(); 
+            gCtx.moveTo(40, 10); 
+            gCtx.lineTo(40, 170); // Y
+            gCtx.lineTo(340, 170); // X
+            gCtx.stroke();
+
+            // Labels
+            gCtx.fillStyle = '#e0e0e0';
+            gCtx.font = '10px sans-serif';
+            gCtx.fillText('Amplitude', 5, 12);
+            gCtx.fillText('10k Hz', 300, 185);
+            gCtx.fillText('0 Hz', 40, 185);
+
+            // Udregn dynamiske værdier baseret på omgivelserne
+            // Max amplitude peak (Y går fra top 0 til bund 200, så lavere tal = højere graf)
+            // Høj density = stærkere peak i midten
+            let peakY = 140 - (densityFactor * 70) - (proximityFactor * 20); 
+            
+            // Høj density = høje frekvenser dræbes hurtigere (X-værdien skubbes til venstre)
+            let dropOffX = 270 - (densityFactor * 50);
+
+            // Tegn selve kurven
+            gCtx.beginPath();
+            gCtx.moveTo(40, 160); 
+            
+            // Diffraktion og jordeffekt i bunden
+            gCtx.bezierCurveTo(60, 160, 70, 140, 90, 145); 
+            
+            // Skov-vinduet (mid-peak)
+            gCtx.bezierCurveTo(120, 140, 150, peakY, 200, peakY); 
+            
+            // Højfrekvent dæmpning (Absorption)
+            gCtx.bezierCurveTo(230, peakY + 10, dropOffX, 160, 330, 165); 
+
+            gCtx.strokeStyle = '#4db8ff';
+            gCtx.lineWidth = 3;
+            gCtx.stroke();
+
+            // Udfyld formen
+            gCtx.lineTo(330, 170);
+            gCtx.lineTo(40, 170);
+            gCtx.fillStyle = 'rgba(77, 184, 255, 0.2)';
+            gCtx.fill();
+
+            // Tekst opdatering
+            const metricsText = document.getElementById('graph-metrics');
+            let tD = Math.round(densityFactor * 100);
+            metricsText.innerHTML = "Lokal Tæthed: " + tD + "% | Absorption: " + (tD > 50? "Høj" : "Lav");
+        }
+
+        // --- SKOV SIMULATION ---
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        const trees = new Array();
+        const numTrees = 180; 
+        for (let i = 0; i < numTrees; i++) {
+            trees.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                radius: Math.random() * 4 + 2 
+            });
+        }
+
+        // Tegn en tom graf ved start
+        drawDynamicGraph(0, 0);
+
+        let waves = new Array();
+        const waveSpeed = 2.5;
+
+        // Udløs bølge ved klik
+        window.addEventListener('mousedown', function(e) {
+            let cx = e.clientX;
+            let cy = e.clientY;
+
+            playNoiseBurst(0.8, 0.15, 0); 
+
+            // Beregn lokal geometri for grafen
+            let treesInRadius = 0;
+            let closestDist = 9999;
+
+            trees.forEach(function(t) {
+                const dx = t.x - cx;
+                const dy = t.y - cy;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (dist < 150) {
+                    treesInRadius++;
+                }
+                if (dist < closestDist) {
+                    closestDist = dist;
+                }
+            });
+
+            // Normaliser værdier til graf-faktorer (0.0 til 1.0)
+            let densityFactor = treesInRadius / 15.0; 
+            if (densityFactor > 1.0) { densityFactor = 1.0; }
+            
+            let proximityFactor = 1.0 - (closestDist / 100.0);
+            if (proximityFactor < 0.0) { proximityFactor = 0.0; }
+            if (proximityFactor > 1.0) { proximityFactor = 1.0; }
+
+            // Opdater frekvensgrafen
+            drawDynamicGraph(densityFactor, proximityFactor);
+
+            waves.push({
+                x: cx,
+                y: cy,
+                radius: 0,
+                energy: 1.0,        
+                isPrimary: true,    
+                hitTrees: new Set() 
+            });
+        });
+
+        function animate() {
+            ctx.fillStyle = 'rgba(11, 26, 16, 0.25)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            trees.forEach(function(tree) {
+                ctx.beginPath();
+                ctx.arc(tree.x, tree.y, tree.radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#3cb371';
+                ctx.fill();
+                ctx.strokeStyle = '#2e8b57';
+                ctx.stroke();
+            });
+
+            for (let i = waves.length - 1; i >= 0; i--) {
+                let w = waves[i];
+                
+                w.radius += waveSpeed;
+                
+                if (w.isPrimary) {
+                    w.energy -= 0.003;
+                } else {
+                    w.energy -= 0.008;
+                }
+
+                if (w.energy <= 0) {
+                    waves.splice(i, 1);
+                    continue;
+                }
+                
+                if (w.radius > Math.max(canvas.width, canvas.height)) {
+                    waves.splice(i, 1);
+                    continue;
+                }
+
+                ctx.beginPath();
+                ctx.arc(w.x, w.y, w.radius, 0, Math.PI * 2);
+                
+                if (w.isPrimary) {
+                    ctx.strokeStyle = 'rgba(255, 255, 255, ' + w.energy + ')';
+                    ctx.lineWidth = 2;
+                } else {
+                    ctx.strokeStyle = 'rgba(77, 184, 255, ' + (w.energy * 0.7) + ')';
+                    ctx.lineWidth = 1;
+                }
+                ctx.stroke();
+
+                if (w.isPrimary) {
+                    trees.forEach(function(tree, index) {
+                        if (!w.hitTrees.has(index)) {
+                            const dx = tree.x - w.x;
+                            const dy = tree.y - w.y;
+                            const dist = Math.sqrt(dx * dx + dy * dy);
+                            
+                            if (dist < w.radius + tree.radius) {
+                                if (dist > w.radius - waveSpeed * 2) {
+                                    w.hitTrees.add(index);
+                                    
+                                    let pan = (tree.x / canvas.width) * 2 - 1;
+                                    let echoVolume = w.energy * 0.04; 
+                                    
+                                    playNoiseBurst(echoVolume, 0.05, pan);
+
+                                    waves.push({
+                                        x: tree.x,
+                                        y: tree.y,
+                                        radius: tree.radius,
+                                        energy: w.energy * 0.4, 
+                                        isPrimary: false
+                                    });
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
