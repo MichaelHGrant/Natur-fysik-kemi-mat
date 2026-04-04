@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Skovens Akustik - Tids- og Frekvensrespons med Download</title>
+    <title>Skovens Akustik - Målestok og Lyd-eksport</title>
     
     <script>
         window.MathJax = {
@@ -33,6 +33,7 @@
             border: 1px solid #2e8b57;
             pointer-events: auto;
             z-index: 10;
+            width: 320px;
         }
         #time-panel {
             position: absolute;
@@ -60,9 +61,9 @@
         h4 { margin: 0 0 10px 0; font-size: 15px; }
         p { margin: 5px 0; line-height: 1.5; font-size: 13px; }
         canvas { display: block; }
-       .small-canvas { background-color: #112618; border-radius: 4px; }
+      .small-canvas { background-color: #112618; border-radius: 4px; }
         
-       .btn-style {
+      .btn-style {
             margin-top: 10px;
             padding: 10px 15px;
             background-color: #2e8b57;
@@ -75,11 +76,18 @@
             display: block;
             width: 100%;
         }
-       .btn-style:hover { background-color: #3cb371; }
+      .btn-style:hover { background-color: #3cb371; }
         #replay-btn { background-color: #d35400; }
         #replay-btn:hover { background-color: #e67e22; }
         #download-btn { background-color: #8e44ad; }
         #download-btn:hover { background-color: #9b59b6; }
+
+       .slider-container {
+            margin-top: 15px;
+            background: rgba(255,255,255,0.1);
+            padding: 10px;
+            border-radius: 4px;
+        }
         
         #overlay {
             display: none;
@@ -106,7 +114,7 @@
         }
         #physics-modal h3 { color: #4db8ff; margin-top: 0; font-size: 22px; }
         #physics-modal p { margin-bottom: 12px; line-height: 1.6; font-size: 15px;}
-       .math-block { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px; text-align: center; margin: 10px 0; }
+      .math-block { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px; text-align: center; margin: 10px 0; }
         
         #close-btn {
             margin-top: 20px;
@@ -124,10 +132,17 @@
 <body>
 
     <div id="info-panel">
-        <h2>Skovens Akustik & Ekkotæthed</h2>
-        <p><strong>Klik i skoven</strong> for at udløse et håndklap.</p>
-        <p>Lyden udregnes nu matematisk og afspilles i<br><strong>sand tid</strong>, mens de visuelle grafer og<br>animationer vises i slow-motion for overblik.</p>
-        <button id="physics-btn" class="btn-style">Læs om fysikken og matematikken</button>
+        <h2>Skovens Akustik & Ekko</h2>
+        <p>Klik på skærmen for at udløse en lydimpuls. Lydfilen udregnes i sand tid baseret på afstanden til alle træerne.</p>
+        
+        <div class="slider-container">
+            <label for="scale-slider" style="display:block; font-size:13px; font-weight:bold; margin-bottom:5px;">
+                Målestok: 100 pixels = <span id="scale-val">20</span> meter
+            </label>
+            <input type="range" id="scale-slider" min="5" max="100" value="20" style="width:100%;">
+        </div>
+
+        <button id="physics-btn" class="btn-style">Læs om fysikken bag</button>
         <button id="replay-btn" class="btn-style">Genafspil Lydfil</button>
         <button id="download-btn" class="btn-style">Gem Lydfil (.wav)</button>
     </div>
@@ -155,14 +170,13 @@
         <div class="math-block">
             $$k_{eff}(r;s)=k+\frac{2\pi\nu}{k}f(r;s,s)$$
         </div>
-        <p>Hvor $k$ er bølgetallet i fri luft, $\nu$ er tætheden af træer, og $f(r;s,s)$ er den komplekse spredningsamplitude.</p>
 
         <p><strong>2. Røntgen-diffraktion og Krystal-analogien</strong><br>
-        Lydspredning i skoven opfører sig matematisk på nøjagtig samme måde som røntgendiffraktion i et krystalgitter. I et perfekt ordnet krystalgitter skabes skarpe, kohærente refleksioner (Bragg-peaks). Men da atomer besidder termisk energi og udsættes for konstant agitation, vil et ekstremt hurtigt "øjebliksbillede" vise dem forskudt asymmetrisk fra deres ideelle positioner. Denne asymmetriske agitation svækker det kohærente ekko markant – en svækkelse der kvantificeres med <em>Debye-Waller faktoren</em>. Den tabte energi spredes i stedet som diffus støj (Thermal Diffuse Scattering).<br><br>
-        Tilsvarende for akustik: Hvis træerne i en skov stod i et præcist gitter, ville de skabe et "sonisk krystal" med klare ekkoer (Bragg-diffraktion). Men fordi træerne står uregelmæssigt (analogt med atomers termiske agitation i krystallens snapshot), destrueres det rene ekko, og lyden udsendes i stedet som diffus støj (flutter-ekko).</p>
+        Lydspredning i skoven opfører sig matematisk på samme måde som røntgendiffraktion i et krystalgitter. I et perfekt ordnet krystal skabes skarpe, kohærente refleksioner (Bragg-peaks). Men da atomer har termisk energi, vil et "øjebliksbillede" vise dem forskudt asymmetrisk. Denne asymmetriske agitation svækker det kohærente ekko – hvilket kvantificeres med <em>Debye-Waller faktoren</em>. Den tabte energi spredes i stedet som diffus støj.<br><br>
+        Tilsvarende for akustik: Fordi træerne i skoven står uregelmæssigt (analogt med atomers termiske agitation), destrueres det rene ekko, og lyden spredes i stedet som diffus støj (flutter-ekko).</p>
 
         <p><strong>3. Energiens Henfald ($t^{-2}$ loven)</strong><br>
-        Da skoven er et åbent medium, falder ekko-energien ikke eksponentielt som i et lukket rum, men aftager derimod efter en potenslov:</p>
+        Da skoven er et åbent medium, aftager ekko-energien efter en potenslov:</p>
 
         <div class="math-block">
             $$E(t)\propto t^{-2}$$
@@ -187,6 +201,15 @@
         const infoPanel = document.getElementById('info-panel');
         const graphPanel = document.getElementById('graph-panel');
         const timePanel = document.getElementById('time-panel');
+        const scaleSlider = document.getElementById('scale-slider');
+        const scaleVal = document.getElementById('scale-val');
+
+        let metersPer100px = parseInt(scaleSlider.value);
+
+        scaleSlider.addEventListener('input', function(e) {
+            metersPer100px = parseInt(scaleSlider.value);
+            scaleVal.innerHTML = metersPer100px;
+        });
 
         btnOpen.addEventListener('click', function() {
             modal.style.display = 'block';
@@ -203,7 +226,7 @@
             playLastBuffer();
         });
 
-        // Omdan Web Audio API buffer til WAV fil og trigger download
+        // WAV Encoder & Downloader
         btnDownload.addEventListener('click', function(e) {
             e.stopPropagation();
             if (!lastAudioBuffer) {
@@ -222,14 +245,12 @@
             document.body.removeChild(a);
         });
 
-        // Forhindrer klik på UI i at udløse bølger i baggrunden
+        // Forhindrer at museklik på menuerne aktiverer ekko i baggrunden
         infoPanel.addEventListener('mousedown', function(e) { e.stopPropagation(); });
         graphPanel.addEventListener('mousedown', function(e) { e.stopPropagation(); });
         timePanel.addEventListener('mousedown', function(e) { e.stopPropagation(); });
         modal.addEventListener('mousedown', function(e) { e.stopPropagation(); });
-        // --- SLUT UI ---
 
-        // --- WAV ENCODER ---
         function audioBufferToWav(buffer) {
             let numOfChan = buffer.numberOfChannels;
             let length = buffer.length * numOfChan * 2 + 44;
@@ -245,7 +266,6 @@
                 view.setUint16(offset, data, true);
                 offset += 2;
             }
-
             function setUint32(data) {
                 view.setUint32(offset, data, true);
                 offset += 4;
@@ -288,11 +308,11 @@
             blobArgs.push(bufferData);
             return new Blob(blobArgs, {type: "audio/wav"});
         }
-        // --- SLUT WAV ENCODER ---
 
-        // --- LYD OPSÆTNING & SYNTESE I SAND TID ---
+        // --- LYD OPSÆTNING ---
         let audioCtx;
         let lastAudioBuffer = null;
+        let maxEchoTimeSeconds = 2.0;
 
         if (window.AudioContext) {
             audioCtx = new window.AudioContext();
@@ -306,7 +326,12 @@
             if (!audioCtx) { return; }
             if (audioCtx.state === 'suspended') { audioCtx.resume(); }
 
-            const duration = 2.5; 
+            // Beregn max afstand på lærredet for at sætte lydfilens varighed
+            let maxDistPx = Math.sqrt(canvas.width * canvas.width + canvas.height * canvas.height);
+            let maxDistMeters = maxDistPx * (metersPer100px / 100.0);
+            maxEchoTimeSeconds = (2 * maxDistMeters) / 343.0; // Ægte lydhastighed
+            
+            let duration = maxEchoTimeSeconds + 0.2; // Lidt ekstra tid i halen
             const sampleRate = audioCtx.sampleRate;
             const bufferSize = Math.floor(sampleRate * duration);
             const buffer = audioCtx.createBuffer(2, bufferSize, sampleRate);
@@ -314,40 +339,43 @@
             const left = buffer.getChannelData(0);
             const right = buffer.getChannelData(1);
 
-            const clapLen = Math.floor(sampleRate * 0.05);
+            const clapLen = Math.floor(sampleRate * 0.03);
             const baseClap = new Float32Array(clapLen);
 
+            // Syntetiser kildelyd
             for (let i = 0; i < clapLen; i++) {
                 let noise = Math.random() * 2 - 1;
-                let env = Math.exp(-i / (sampleRate * 0.005)); 
+                let env = Math.exp(-i / (sampleRate * 0.003)); 
                 Reflect.set(baseClap, i, noise * env);
-                
                 Reflect.set(left, i, noise * env * 0.8);
                 Reflect.set(right, i, noise * env * 0.8);
             }
 
+            // Integrer ekko fra hvert træ
             trees.forEach(function(tree) {
                 let dx = tree.x - cx;
                 let dy = tree.y - cy;
-                let dist = Math.sqrt(dx * dx + dy * dy);
-                if (dist < 1) { dist = 1; }
+                let distPx = Math.sqrt(dx * dx + dy * dy);
+                if (distPx < 1) { distPx = 1; }
 
-                let time_s = (2 * dist) / 1000.0; 
+                let distMeters = distPx * (metersPer100px / 100.0);
+                let time_s = (2 * distMeters) / 343.0; 
                 let delaySamples = Math.floor(time_s * sampleRate);
 
                 if (delaySamples + clapLen < bufferSize) {
-                    let amp = (tree.radius * 25.0) / dist; 
+                    // Amplitude falder med afstand og træets radius
+                    let amp = (tree.radius * 0.5) / distMeters; 
                     
                     let pan = dx / canvas.width; 
                     let panLeft = Math.min(1.0, 1.0 - pan);
                     let panRight = Math.min(1.0, 1.0 + pan);
 
-                    let alpha = Math.min(0.95, dist * 0.003); 
+                    // Luft- og barkabsorption (lowpass filter effect)
+                    let alpha = Math.min(0.95, distMeters * 0.015); 
                     let prev = 0;
 
                     for (let i = 0; i < clapLen; i++) {
                         let s = Reflect.get(baseClap, i);
-                        
                         s = alpha * prev + (1.0 - alpha) * s;
                         prev = s;
 
@@ -377,7 +405,7 @@
             source.start();
         }
 
-        // --- FREKVENSRESPONS (DTFT) GRAF ---
+        // --- FREKVENSRESPONS (DTFT) ---
         function drawFrequencyGraph(cx, cy) {
             const gCanvas = document.getElementById('graphCanvas');
             const gCtx = gCanvas.getContext('2d');
@@ -426,13 +454,15 @@
                 trees.forEach(function(tree) {
                     let dx = tree.x - cx;
                     let dy = tree.y - cy;
-                    let dist = Math.sqrt(dx * dx + dy * dy);
-                    if (dist < 1) { dist = 1; }
+                    let distPx = Math.sqrt(dx * dx + dy * dy);
+                    if (distPx < 1) { distPx = 1; }
 
-                    let timeDelay = (2 * dist) / 1000.0; 
+                    let distMeters = distPx * (metersPer100px / 100.0);
+                    let timeDelay = (2 * distMeters) / 343.0; 
+                    
                     let scatterEfficiency = 1.0 - Math.exp(-f / 500.0);
-                    let absorption = Math.exp(-0.00000002 * f * f * dist);
-                    let amp = ((tree.radius * 25.0) / dist) * scatterEfficiency * absorption;
+                    let absorption = Math.exp(-0.00000002 * f * f * distMeters);
+                    let amp = ((tree.radius * 0.5) / distMeters) * scatterEfficiency * absorption;
 
                     let phase = -2 * Math.PI * f * timeDelay;
                     real += amp * Math.cos(phase);
@@ -463,10 +493,10 @@
             gCtx.fillStyle = 'rgba(77, 184, 255, 0.4)';
             gCtx.fill();
 
-            document.getElementById('graph-metrics').innerHTML = "Respons udregnet fra " + trees.length + " træer.";
+            document.getElementById('graph-metrics').innerHTML = "Sand frekvensrespons udregnet.";
         }
 
-        // --- TIDSRESPONS (ENERGIHENFALD) GRAF ---
+        // --- TIDSRESPONS (ENERGIHENFALD) ---
         function drawTimeGraph(cx, cy) {
             const tCanvas = document.getElementById('timeCanvas');
             const tCtx = tCanvas.getContext('2d');
@@ -492,17 +522,18 @@
             tCtx.lineTo(340, 170); 
             tCtx.stroke();
 
+            let maxTimeMs = Math.floor(maxEchoTimeSeconds * 1000); 
+            
             tCtx.fillStyle = '#e0e0e0';
             tCtx.font = '10px sans-serif';
             tCtx.fillText('Energi', 5, 12);
-            tCtx.fillText('Tid (ms)', 290, 185);
+            tCtx.fillText('Tid (' + maxTimeMs + ' ms)', 260, 185);
             tCtx.fillText('0', 40, 185);
 
             if (cx === 0) {
                 if (cy === 0) { return; }
             }
 
-            let maxTimeMs = 1500; 
             let echoes = new Array();
             let maxEnergy = 0.0001;
             let minDelay = 9999;
@@ -510,16 +541,16 @@
             trees.forEach(function(tree) {
                 let dx = tree.x - cx;
                 let dy = tree.y - cy;
-                let dist = Math.sqrt(dx * dx + dy * dy);
-                if (dist < 1) { dist = 1; }
+                let distPx = Math.sqrt(dx * dx + dy * dy);
+                if (distPx < 1) { distPx = 1; }
 
-                let time_s = (2 * dist) / 1000.0;
-                let time_ms = time_s * 1000;
+                let distMeters = distPx * (metersPer100px / 100.0);
+                let time_ms = ((2 * distMeters) / 343.0) * 1000;
                 
                 if (time_ms < minDelay) { minDelay = time_ms; }
 
                 if (time_ms <= maxTimeMs) {
-                    let energy = 10000.0 / (dist * dist);
+                    let energy = 100.0 / (distMeters * distMeters);
                     echoes.push({ t: time_ms, e: energy });
                     if (energy > maxEnergy) { maxEnergy = energy; }
                 }
@@ -540,7 +571,7 @@
 
             tCtx.beginPath();
             let firstPoint = true;
-            for (let t = minDelay; t <= maxTimeMs; t += 2) {
+            for (let t = minDelay; t <= maxTimeMs; t += (maxTimeMs/100)) {
                 let x = 40 + (t / maxTimeMs) * 290;
                 let theoreticalEnergy = maxEnergy * Math.pow(minDelay / t, 2);
                 let y = 170 - (theoreticalEnergy / maxEnergy) * 140;
@@ -568,23 +599,26 @@
         function resize() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
+            drawFrequencyGraph(0, 0);
+            drawTimeGraph(0, 0);
         }
         window.addEventListener('resize', resize);
-        resize();
-
+        
         const trees = new Array();
         const numTrees = 180; 
-        for (let i = 0; i < numTrees; i++) {
-            trees.push({
-                x: Math.random() * canvas.width,
-                y: Math.random() * canvas.height,
-                radius: Math.random() * 4 + 2 
-            });
+        
+        function initTrees() {
+            for (let i = 0; i < numTrees; i++) {
+                trees.push({
+                    x: Math.random() * window.innerWidth,
+                    y: Math.random() * window.innerHeight,
+                    radius: Math.random() * 4 + 2 
+                });
+            }
         }
-
-        // Tegn tomme grafer ved opstart
-        drawFrequencyGraph(0, 0);
-        drawTimeGraph(0, 0);
+        
+        initTrees();
+        resize();
 
         let waves = new Array();
         const waveSpeed = 2.5;
@@ -611,7 +645,7 @@
             ctx.fillStyle = 'rgba(11, 26, 16, 0.25)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // TEGN MÅLESTOK I BUNDEN (10 meter = 100 pixels)
+            // TEGN MÅLESTOK I BUNDEN (Dynamisk baseret på slideren)
             let scaleX = canvas.width / 2 - 50; 
             let scaleY = canvas.height - 30;
             
@@ -629,7 +663,7 @@
             
             ctx.font = '14px sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText('10 meter', scaleX + 50, scaleY - 10);
+            ctx.fillText(metersPer100px + ' meter', scaleX + 50, scaleY - 10);
 
             // TEGN TRÆER
             trees.forEach(function(tree) {
@@ -641,7 +675,7 @@
                 ctx.stroke();
             });
 
-            // TEGN BØLGER
+            // TEGN BØLGER (Visuel repræsentation)
             for (let i = waves.length - 1; i >= 0; i--) {
                 let w = Reflect.get(waves, i);
                 
@@ -680,10 +714,10 @@
                         if (!w.hitTrees.has(index)) {
                             const dx = tree.x - w.x;
                             const dy = tree.y - w.y;
-                            const dist = Math.sqrt(dx * dx + dy * dy);
+                            const distPx = Math.sqrt(dx * dx + dy * dy);
                             
-                            if (dist < w.radius + tree.radius) {
-                                if (dist > w.radius - waveSpeed * 2) {
+                            if (distPx < w.radius + tree.radius) {
+                                if (distPx > w.radius - waveSpeed * 2) {
                                     w.hitTrees.add(index);
                                     
                                     waves.push({
