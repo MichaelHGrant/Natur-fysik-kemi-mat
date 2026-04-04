@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Skovens Akustik - Tids- og Frekvensrespons med Sand Lydfil</title>
+    <title>Skovens Akustik - Tids- og Frekvensrespons med Download</title>
     
     <script>
         window.MathJax = {
@@ -60,9 +60,9 @@
         h4 { margin: 0 0 10px 0; font-size: 15px; }
         p { margin: 5px 0; line-height: 1.5; font-size: 13px; }
         canvas { display: block; }
-     .small-canvas { background-color: #112618; border-radius: 4px; }
+       .small-canvas { background-color: #112618; border-radius: 4px; }
         
-      .btn-style {
+       .btn-style {
             margin-top: 10px;
             padding: 10px 15px;
             background-color: #2e8b57;
@@ -75,9 +75,11 @@
             display: block;
             width: 100%;
         }
-      .btn-style:hover { background-color: #3cb371; }
+       .btn-style:hover { background-color: #3cb371; }
         #replay-btn { background-color: #d35400; }
         #replay-btn:hover { background-color: #e67e22; }
+        #download-btn { background-color: #8e44ad; }
+        #download-btn:hover { background-color: #9b59b6; }
         
         #overlay {
             display: none;
@@ -104,7 +106,7 @@
         }
         #physics-modal h3 { color: #4db8ff; margin-top: 0; font-size: 22px; }
         #physics-modal p { margin-bottom: 12px; line-height: 1.6; font-size: 15px;}
-     .math-block { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px; text-align: center; margin: 10px 0; }
+       .math-block { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px; text-align: center; margin: 10px 0; }
         
         #close-btn {
             margin-top: 20px;
@@ -126,7 +128,8 @@
         <p><strong>Klik i skoven</strong> for at udløse et håndklap.</p>
         <p>Lyden udregnes nu matematisk og afspilles i<br><strong>sand tid</strong>, mens de visuelle grafer og<br>animationer vises i slow-motion for overblik.</p>
         <button id="physics-btn" class="btn-style">Læs om fysikken og matematikken</button>
-        <button id="replay-btn" class="btn-style">Genafspil Lydfil (Sandt Ekko)</button>
+        <button id="replay-btn" class="btn-style">Genafspil Lydfil</button>
+        <button id="download-btn" class="btn-style">Gem Lydfil (.wav)</button>
     </div>
 
     <div id="time-panel">
@@ -178,6 +181,7 @@
         const btnOpen = document.getElementById('physics-btn');
         const btnClose = document.getElementById('close-btn');
         const btnReplay = document.getElementById('replay-btn');
+        const btnDownload = document.getElementById('download-btn');
         const modal = document.getElementById('physics-modal');
         const overlay = document.getElementById('overlay');
         const infoPanel = document.getElementById('info-panel');
@@ -199,12 +203,92 @@
             playLastBuffer();
         });
 
+        // Omdan Web Audio API buffer til WAV fil og trigger download
+        btnDownload.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (!lastAudioBuffer) {
+                alert("Klik i skoven først for at generere en lydfil.");
+                return;
+            }
+            let wavBlob = audioBufferToWav(lastAudioBuffer);
+            let url = URL.createObjectURL(wavBlob);
+            let a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = 'skov_ekko.wav';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        });
+
         // Forhindrer klik på UI i at udløse bølger i baggrunden
         infoPanel.addEventListener('mousedown', function(e) { e.stopPropagation(); });
         graphPanel.addEventListener('mousedown', function(e) { e.stopPropagation(); });
         timePanel.addEventListener('mousedown', function(e) { e.stopPropagation(); });
         modal.addEventListener('mousedown', function(e) { e.stopPropagation(); });
         // --- SLUT UI ---
+
+        // --- WAV ENCODER ---
+        function audioBufferToWav(buffer) {
+            let numOfChan = buffer.numberOfChannels;
+            let length = buffer.length * numOfChan * 2 + 44;
+            let bufferData = new ArrayBuffer(length);
+            let view = new DataView(bufferData);
+            let channels = new Array();
+            let i;
+            let sample;
+            let offset = 0;
+            let pos = 0;
+
+            function setUint16(data) {
+                view.setUint16(offset, data, true);
+                offset += 2;
+            }
+
+            function setUint32(data) {
+                view.setUint32(offset, data, true);
+                offset += 4;
+            }
+
+            setUint32(0x46464952); // "RIFF"
+            setUint32(length - 8);
+            setUint32(0x45564157); // "WAVE"
+            setUint32(0x20746d66); // "fmt "
+            setUint32(16);
+            setUint16(1);
+            setUint16(numOfChan);
+            setUint32(buffer.sampleRate);
+            setUint32(buffer.sampleRate * 2 * numOfChan);
+            setUint16(numOfChan * 2);
+            setUint16(16);
+            setUint32(0x61746164); // "data"
+            setUint32(length - pos - 4);
+
+            for(i = 0; i < buffer.numberOfChannels; i++) {
+                channels.push(buffer.getChannelData(i));
+            }
+
+            while(pos < buffer.length) {
+                for(i = 0; i < numOfChan; i++) {
+                    let chanData = Reflect.get(channels, i);
+                    sample = Math.max(-1, Math.min(1, Reflect.get(chanData, pos)));
+                    if (0.5 + sample < 0) {
+                        sample = sample * 32768;
+                    } else {
+                        sample = sample * 32767;
+                    }
+                    view.setInt16(offset, sample, true);
+                    offset += 2;
+                }
+                pos++;
+            }
+
+            let blobArgs = new Array();
+            blobArgs.push(bufferData);
+            return new Blob(blobArgs, {type: "audio/wav"});
+        }
+        // --- SLUT WAV ENCODER ---
 
         // --- LYD OPSÆTNING & SYNTESE I SAND TID ---
         let audioCtx;
@@ -218,22 +302,18 @@
             }
         }
 
-        // Denne funktion bygger selve lydfilen (AudioBuffer)
         function synthesizeAndPlayEcho(cx, cy) {
             if (!audioCtx) { return; }
             if (audioCtx.state === 'suspended') { audioCtx.resume(); }
 
-            // Lydfilens varighed forlænget til at kunne rumme det "langsomme" ekko
             const duration = 2.5; 
             const sampleRate = audioCtx.sampleRate;
             const bufferSize = Math.floor(sampleRate * duration);
             const buffer = audioCtx.createBuffer(2, bufferSize, sampleRate);
             
-            // Vi henter venstre og højre kanal
             const left = buffer.getChannelData(0);
             const right = buffer.getChannelData(1);
 
-            // Generer kildelyden (Det tørre håndklap - 50 millisekunder)
             const clapLen = Math.floor(sampleRate * 0.05);
             const baseClap = new Float32Array(clapLen);
 
@@ -242,32 +322,26 @@
                 let env = Math.exp(-i / (sampleRate * 0.005)); 
                 Reflect.set(baseClap, i, noise * env);
                 
-                // Tilføj den direkte lyd til filen i starten (t=0)
                 Reflect.set(left, i, noise * env * 0.8);
                 Reflect.set(right, i, noise * env * 0.8);
             }
 
-            // Beregn refleksionerne fra alle træerne og skriv dem ind i lydfilen
             trees.forEach(function(tree) {
                 let dx = tree.x - cx;
                 let dy = tree.y - cy;
                 let dist = Math.sqrt(dx * dx + dy * dy);
                 if (dist < 1) { dist = 1; }
 
-                // HER "SNYDER" VI FYSIKKEN FOR AT GØRE EKKOET HØRBART
-                // Vi sænker lydens hastighed, så ekkoet bliver spredt ud over meget længere tid
                 let time_s = (2 * dist) / 1000.0; 
                 let delaySamples = Math.floor(time_s * sampleRate);
 
                 if (delaySamples + clapLen < bufferSize) {
-                    // Vi skruer også ekstremt meget op for refleksionen for at gøre den tydeligere
                     let amp = (tree.radius * 25.0) / dist; 
                     
                     let pan = dx / canvas.width; 
                     let panLeft = Math.min(1.0, 1.0 - pan);
                     let panRight = Math.min(1.0, 1.0 + pan);
 
-                    // Matematisk IIR-lavpasfilter til at simulere absorption fra træstammen
                     let alpha = Math.min(0.95, dist * 0.003); 
                     let prev = 0;
 
@@ -355,12 +429,9 @@
                     let dist = Math.sqrt(dx * dx + dy * dy);
                     if (dist < 1) { dist = 1; }
 
-                    // Opdateret tidsforsinkelse der matcher den nye hørbarhed
                     let timeDelay = (2 * dist) / 1000.0; 
                     let scatterEfficiency = 1.0 - Math.exp(-f / 500.0);
                     let absorption = Math.exp(-0.00000002 * f * f * dist);
-                    
-                    // Opdateret amplitude der matcher lyden
                     let amp = ((tree.radius * 25.0) / dist) * scatterEfficiency * absorption;
 
                     let phase = -2 * Math.PI * f * timeDelay;
@@ -431,7 +502,6 @@
                 if (cy === 0) { return; }
             }
 
-            // Skaleret op til 1500ms for at vise det manipulerede, forlængede ekko
             let maxTimeMs = 1500; 
             let echoes = new Array();
             let maxEnergy = 0.0001;
@@ -443,7 +513,6 @@
                 let dist = Math.sqrt(dx * dx + dy * dy);
                 if (dist < 1) { dist = 1; }
 
-                // Opdateret tidsforsinkelse der matcher hørbarheden
                 let time_s = (2 * dist) / 1000.0;
                 let time_ms = time_s * 1000;
                 
@@ -520,19 +589,14 @@
         let waves = new Array();
         const waveSpeed = 2.5;
 
-        // Udløs bølge, byg audio og grafer ved klik
         window.addEventListener('mousedown', function(e) {
             let cx = e.clientX;
             let cy = e.clientY;
 
-            // Genererer og afspiller den ægte lydfil!
             synthesizeAndPlayEcho(cx, cy); 
-
-            // Opdaterer graferne
             drawFrequencyGraph(cx, cy);
             drawTimeGraph(cx, cy);
 
-            // Starter den visuelle slow-motion bølge
             waves.push({
                 x: cx,
                 y: cy,
@@ -547,6 +611,27 @@
             ctx.fillStyle = 'rgba(11, 26, 16, 0.25)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+            // TEGN MÅLESTOK I BUNDEN (10 meter = 100 pixels)
+            let scaleX = canvas.width / 2 - 50; 
+            let scaleY = canvas.height - 30;
+            
+            ctx.strokeStyle = '#ffffff';
+            ctx.fillStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(scaleX, scaleY);
+            ctx.lineTo(scaleX + 100, scaleY);
+            ctx.moveTo(scaleX, scaleY - 5);
+            ctx.lineTo(scaleX, scaleY + 5);
+            ctx.moveTo(scaleX + 100, scaleY - 5);
+            ctx.lineTo(scaleX + 100, scaleY + 5);
+            ctx.stroke();
+            
+            ctx.font = '14px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('10 meter', scaleX + 50, scaleY - 10);
+
+            // TEGN TRÆER
             trees.forEach(function(tree) {
                 ctx.beginPath();
                 ctx.arc(tree.x, tree.y, tree.radius, 0, Math.PI * 2);
@@ -556,6 +641,7 @@
                 ctx.stroke();
             });
 
+            // TEGN BØLGER
             for (let i = waves.length - 1; i >= 0; i--) {
                 let w = Reflect.get(waves, i);
                 
@@ -596,7 +682,6 @@
                             const dy = tree.y - w.y;
                             const dist = Math.sqrt(dx * dx + dy * dy);
                             
-                            // Visuel refleksion 
                             if (dist < w.radius + tree.radius) {
                                 if (dist > w.radius - waveSpeed * 2) {
                                     w.hitTrees.add(index);
