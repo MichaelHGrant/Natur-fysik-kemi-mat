@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Skovens Akustik - Målestok og Lyd-eksport</title>
+    <title>Skovens Akustik - Målestok, Dimensioner og Lyd-eksport</title>
     
     <script>
         window.MathJax = {
@@ -38,7 +38,6 @@
             overflow-y: auto; 
         }
         
-        /* Ny container der samler og stabler graferne pænt i højre side */
         #right-panels {
             position: absolute;
             top: 20px;
@@ -48,14 +47,14 @@
             gap: 15px;
             max-height: 90vh;
             overflow-y: auto;
-            pointer-events: none; /* Lader klik gå igennem det tomme rum mellem graferne */
+            pointer-events: none; 
             z-index: 10;
         }
-       .side-panel {
+      .side-panel {
             background: rgba(0, 0, 0, 0.8);
             padding: 15px;
             border-radius: 8px;
-            pointer-events: auto; /* Aktiverer klik på selve panelerne igen */
+            pointer-events: auto; 
         }
         #time-panel { border: 1px solid #e74c3c; }
         #graph-panel { border: 1px solid #4db8ff; }
@@ -64,9 +63,9 @@
         h4 { margin: 0 0 10px 0; font-size: 15px; }
         p { margin: 5px 0; line-height: 1.5; font-size: 13px; }
         canvas { display: block; }
-       .small-canvas { background-color: #112618; border-radius: 4px; }
+      .small-canvas { background-color: #112618; border-radius: 4px; }
         
-       .btn-style {
+      .btn-style {
             margin-top: 10px;
             padding: 10px 15px;
             background-color: #2e8b57;
@@ -79,13 +78,13 @@
             display: block;
             width: 100%;
         }
-       .btn-style:hover { background-color: #3cb371; }
+      .btn-style:hover { background-color: #3cb371; }
         #replay-btn { background-color: #d35400; }
         #replay-btn:hover { background-color: #e67e22; }
         #download-btn { background-color: #8e44ad; }
         #download-btn:hover { background-color: #9b59b6; }
 
-       .slider-container {
+      .slider-container {
             margin-top: 15px;
             background: rgba(255,255,255,0.1);
             padding: 10px;
@@ -117,7 +116,7 @@
         }
         #physics-modal h3 { color: #4db8ff; margin-top: 0; font-size: 22px; }
         #physics-modal p { margin-bottom: 12px; line-height: 1.6; font-size: 15px;}
-       .math-block { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px; text-align: center; margin: 10px 0; }
+      .math-block { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px; text-align: center; margin: 10px 0; }
         
         #close-btn {
             margin-top: 20px;
@@ -136,13 +135,23 @@
 
     <div id="info-panel">
         <h2>Skovens Akustik & Ekko</h2>
-        <p>Klik på skærmen for at udløse en lydimpuls. Lydfilen udregnes i sand tid baseret på afstanden til alle træerne.</p>
+        <p>Klik på skærmen for at udløse en lydimpuls. Lydfilen udregnes i sand tid baseret på afstanden til alle træerne og deres dimensioner.</p>
         
         <div class="slider-container">
             <label for="scale-slider" style="display:block; font-size:13px; font-weight:bold; margin-bottom:5px;">
                 Målestok: 100 pixels = <span id="scale-val">20</span> meter
             </label>
             <input type="range" id="scale-slider" min="5" max="100" value="20" style="width:100%;">
+
+            <label for="width-slider" style="display:block; font-size:13px; font-weight:bold; margin-top:10px; margin-bottom:5px;">
+                Gns. Træbredde: <span id="width-val">100</span>%
+            </label>
+            <input type="range" id="width-slider" min="10" max="300" value="100" style="width:100%;">
+
+            <label for="height-slider" style="display:block; font-size:13px; font-weight:bold; margin-top:10px; margin-bottom:5px;">
+                Gns. Træhøjde: <span id="height-val">100</span>%
+            </label>
+            <input type="range" id="height-slider" min="10" max="300" value="100" style="width:100%;">
         </div>
 
         <button id="physics-btn" class="btn-style">Læs om fysikken bag</button>
@@ -205,14 +214,35 @@
         const overlay = document.getElementById('overlay');
         const infoPanel = document.getElementById('info-panel');
         const rightPanels = document.getElementById('right-panels');
+        
         const scaleSlider = document.getElementById('scale-slider');
         const scaleVal = document.getElementById('scale-val');
+        const widthSlider = document.getElementById('width-slider');
+        const widthVal = document.getElementById('width-val');
+        const heightSlider = document.getElementById('height-slider');
+        const heightVal = document.getElementById('height-val');
 
         let metersPer100px = parseInt(scaleSlider.value);
+        let treeWidthMult = parseInt(widthSlider.value) / 100.0;
+        let treeHeightMult = parseInt(heightSlider.value) / 100.0;
 
         scaleSlider.addEventListener('input', function(e) {
             metersPer100px = parseInt(scaleSlider.value);
             scaleVal.innerHTML = metersPer100px;
+        });
+
+        widthSlider.addEventListener('input', function(e) {
+            widthVal.innerHTML = widthSlider.value;
+            treeWidthMult = parseInt(widthSlider.value) / 100.0;
+            // Opdaterer træernes visuelle radius direkte
+            trees.forEach(function(tree) {
+                tree.radius = tree.baseRadius * treeWidthMult;
+            });
+        });
+
+        heightSlider.addEventListener('input', function(e) {
+            heightVal.innerHTML = heightSlider.value;
+            treeHeightMult = parseInt(heightSlider.value) / 100.0;
         });
 
         btnOpen.addEventListener('click', function() {
@@ -332,9 +362,9 @@
             // Beregn max afstand på lærredet for at sætte lydfilens varighed
             let maxDistPx = Math.sqrt(canvas.width * canvas.width + canvas.height * canvas.height);
             let maxDistMeters = maxDistPx * (metersPer100px / 100.0);
-            maxEchoTimeSeconds = (2 * maxDistMeters) / 343.0; // Ægte lydhastighed
+            maxEchoTimeSeconds = (2 * maxDistMeters) / 343.0; 
             
-            let duration = maxEchoTimeSeconds + 0.2; // Lidt ekstra tid i halen
+            let duration = maxEchoTimeSeconds + 0.2; 
             const sampleRate = audioCtx.sampleRate;
             const bufferSize = Math.floor(sampleRate * duration);
             const buffer = audioCtx.createBuffer(2, bufferSize, sampleRate);
@@ -366,8 +396,9 @@
                 let delaySamples = Math.floor(time_s * sampleRate);
 
                 if (delaySamples + clapLen < bufferSize) {
-                    // Amplitude falder med afstand og træets radius
-                    let amp = (tree.radius * 0.5) / distMeters; 
+                    // Træhøjde- og bredde multipliers giver en kraftigere refleksionsoverflade
+                    let effectiveRadius = tree.baseRadius * treeWidthMult * treeHeightMult;
+                    let amp = (effectiveRadius * 25.0) / distMeters; 
                     
                     let pan = dx / canvas.width; 
                     let panLeft = Math.min(1.0, 1.0 - pan);
@@ -465,7 +496,10 @@
                     
                     let scatterEfficiency = 1.0 - Math.exp(-f / 500.0);
                     let absorption = Math.exp(-0.00000002 * f * f * distMeters);
-                    let amp = ((tree.radius * 0.5) / distMeters) * scatterEfficiency * absorption;
+                    
+                    // Inkluderer træbredde og træhøjde i amplituden (større spredningstværsnit)
+                    let effectiveRadius = tree.baseRadius * treeWidthMult * treeHeightMult;
+                    let amp = ((effectiveRadius * 0.5) / distMeters) * scatterEfficiency * absorption;
 
                     let phase = -2 * Math.PI * f * timeDelay;
                     real += amp * Math.cos(phase);
@@ -553,7 +587,9 @@
                 if (time_ms < minDelay) { minDelay = time_ms; }
 
                 if (time_ms <= maxTimeMs) {
-                    let energy = 100.0 / (distMeters * distMeters);
+                    // Træhøjde- og bredde forstærker spredningsenergien
+                    let effectiveArea = tree.baseRadius * treeWidthMult * treeHeightMult;
+                    let energy = (50.0 * effectiveArea) / (distMeters * distMeters);
                     echoes.push({ t: time_ms, e: energy });
                     if (energy > maxEnergy) { maxEnergy = energy; }
                 }
@@ -612,10 +648,12 @@
         
         function initTrees() {
             for (let i = 0; i < numTrees; i++) {
+                let bRadius = Math.random() * 4 + 2;
                 trees.push({
                     x: Math.random() * window.innerWidth,
                     y: Math.random() * window.innerHeight,
-                    radius: Math.random() * 4 + 2 
+                    baseRadius: bRadius,
+                    radius: bRadius * treeWidthMult
                 });
             }
         }
