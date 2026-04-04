@@ -3,8 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Skovens Akustik - Dynamisk Frekvensrespons</title>
+    <title>Skovens Akustik - Tids- og Frekvensrespons</title>
     
+    <script>
+        // Skudsikker opsætning af MathJax uden brug af kantede parenteser (arrays)
+        window.MathJax = {
+            tex: {
+                inlineMath: new Array( new Array('$', '$'), new Array('\\(', '\\)') ),
+                displayMath: new Array( new Array('$$', '$$') )
+            }
+        };
+    </script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
     <style>
@@ -26,6 +35,19 @@
             pointer-events: auto;
             z-index: 10;
         }
+        /* Nyt panel til tidsrespons */
+        #time-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e74c3c;
+            pointer-events: auto;
+            z-index: 10;
+        }
+        /* Panel til frekvensrespons */
         #graph-panel {
             position: absolute;
             bottom: 20px;
@@ -38,10 +60,10 @@
             z-index: 10;
         }
         h2 { margin: 0 0 10px 0; color: #4db8ff; font-size: 18px; }
-        h4 { margin: 0 0 10px 0; color: #ffcc00; font-size: 15px; }
+        h4 { margin: 0 0 10px 0; font-size: 15px; }
         p { margin: 5px 0; line-height: 1.5; font-size: 13px; }
         canvas { display: block; }
-        #graphCanvas { background-color: #112618; border-radius: 4px; }
+       .small-canvas { background-color: #112618; border-radius: 4px; }
         
         #physics-btn {
             margin-top: 15px;
@@ -101,14 +123,20 @@
     <div id="info-panel">
         <h2>Skovens Akustik & Ekkotæthed</h2>
         <p><strong>Klik med musen i skoven</strong> for at udløse et håndklap.</p>
-        <p>Se DTFT-grafen nederst til højre. Den udregner <br>det virkelige interferensmønster (frekvensresponsen)<br>baseret på de specifikke afstande fra dit klik <br>til samtlige træer på skærmen (0 - 2 kHz).</p>
+        <p>Brug graferne forneden til at se, hvordan <br>det kaotiske netværk af træer påvirker <br>både tidshenfaldet og frekvensresponsen.</p>
         <button id="physics-btn">Læs om fysikken og matematikken</button>
     </div>
 
+    <div id="time-panel">
+        <h4 style="color: #e74c3c;">Tidsrespons & Energihenfald</h4>
+        <p id="time-metrics" style="color: #e74c3c;">Venter på impuls...</p>
+        <canvas id="timeCanvas" class="small-canvas" width="350" height="200"></canvas>
+    </div>
+
     <div id="graph-panel">
-        <h4>Akustisk Frekvensrespons (Målepunkt)</h4>
-        <p id="graph-metrics" style="color: #4db8ff;">Klik i skoven for at beregne ekko...</p>
-        <canvas id="graphCanvas" width="350" height="200"></canvas>
+        <h4 style="color: #4db8ff;">Akustisk Frekvensrespons (DTFT)</h4>
+        <p id="graph-metrics" style="color: #4db8ff;">Venter på impuls...</p>
+        <canvas id="graphCanvas" class="small-canvas" width="350" height="200"></canvas>
     </div>
 
     <div id="overlay"></div>
@@ -117,24 +145,24 @@
         <h3>Fysikken bag Skovens Ekko & Røntgendiffraktion</h3>
         
         <p><strong>1. Multipel Spredning og Det Effektive Bølgetal</strong><br>
-        I en skov er der ingen faste vægge, kun tusindvis af spredere (træstammer). I tredimensionel spredningsteori beskrives lydens udbredelse gennem dette medium ved et effektivt komplekst bølgetal:</p>
+        I en skov beskrives lydens udbredelse gennem dette medium ved et effektivt komplekst bølgetal:</p>
         
         <div class="math-block">
             $$k_{eff}(r;s)=k+\frac{2\pi\nu}{k}f(r;s,s)$$
         </div>
-        
-        <p>Hvor \( k \) er bølgetallet i fri luft, \( \nu \) er tætheden af træer, og \( f(r;s,s) \) er den komplekse spredningsamplitude.</p>
+        <p>Hvor $k$ er bølgetallet i fri luft, $\nu$ er tætheden af træer, og $f(r;s,s)$ er den komplekse spredningsamplitude.</p>
 
         <p><strong>2. Røntgen-diffraktion og Krystal-analogien</strong><br>
-        Lydspredning i skoven opfører sig matematisk på nøjagtig samme måde som røntgendiffraktion i et krystalgitter. I et perfekt ordnet krystalgitter skabes skarpe, kohærente refleksioner (Bragg-peaks). Men da atomer besidder termisk energi og udsættes for konstant agitation, vil et ekstremt hurtigt "øjebliksbillede" (snapshot) vise dem forskudt asymmetrisk fra deres ideelle positioner. Denne asymmetriske agitation svækker det kohærente ekko markant – en svækkelse der kvantificeres med <em>Debye-Waller faktoren</em>. Den tabte kohærente energi spredes i stedet som diffus støj (Thermal Diffuse Scattering).<br><br>
-        Tilsvarende gælder for akustik: Hvis skovens træer stod i et fuldstændigt præcist, periodisk gitter, ville de skabe et "sonisk krystal" med klare, retningsbestemte ekkoer (Bragg-diffraktion). Men fordi træerne i en naturlig skov står uregelmæssigt (fuldstændig analogt med atomernes termiske agitation i krystallens snapshot), destrueres det rene ekko, og lyden udsendes i stedet som uordnet, diffus støj (flutter-ekko).</p>
+        Lydspredning i skoven opfører sig matematisk på nøjagtig samme måde som røntgendiffraktion i et krystalgitter. I et perfekt ordnet krystalgitter skabes skarpe, kohærente refleksioner (Bragg-peaks). Men da atomer besidder termisk energi og udsættes for konstant agitation, vil et ekstremt hurtigt "øjebliksbillede" vise dem forskudt asymmetrisk fra deres ideelle positioner. Denne asymmetriske agitation svækker det kohærente ekko markant – en svækkelse der kvantificeres med <em>Debye-Waller faktoren</em>. Den tabte energi spredes i stedet som diffus støj (Thermal Diffuse Scattering).<br><br>
+        Tilsvarende for akustik: Hvis træerne i en skov stod i et præcist gitter, ville de skabe et "sonisk krystal" med klare ekkoer (Bragg-diffraktion). Men fordi træerne står uregelmæssigt (analogt med atomers termiske agitation i krystallens snapshot), destrueres det rene ekko, og lyden udsendes i stedet som diffus støj (flutter-ekko).</p>
 
-        <p><strong>3. Energiens Henfald (\( t^{-2} \) loven)</strong><br>
+        <p><strong>3. Energiens Henfald ($t^{-2}$ loven)</strong><br>
         Da skoven er et åbent medium, falder ekko-energien ikke eksponentielt som i et lukket rum, men aftager derimod efter en potenslov:</p>
 
         <div class="math-block">
             $$E(t)\propto t^{-2}$$
         </div>
+        <p>Denne lov visualiseres i <strong>Tidsrespons-grafen</strong> (nederst til venstre), hvor de diskrete refleksioner fra træstammerne hurtigt omfavnes af den teoretiske $t^{-2}$ kurve.</p>
 
         <button id="close-btn">Luk vindue</button>
     </div>
@@ -152,6 +180,7 @@
         const overlay = document.getElementById('overlay');
         const infoPanel = document.getElementById('info-panel');
         const graphPanel = document.getElementById('graph-panel');
+        const timePanel = document.getElementById('time-panel');
 
         btnOpen.addEventListener('click', function() {
             modal.style.display = 'block';
@@ -166,6 +195,7 @@
         // Forhindrer klik på UI i at udløse bølger i baggrunden
         infoPanel.addEventListener('mousedown', function(e) { e.stopPropagation(); });
         graphPanel.addEventListener('mousedown', function(e) { e.stopPropagation(); });
+        timePanel.addEventListener('mousedown', function(e) { e.stopPropagation(); });
         modal.addEventListener('mousedown', function(e) { e.stopPropagation(); });
         // --- SLUT POP-OP HÅNDTERING ---
 
@@ -187,7 +217,6 @@
             const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
             const data = buffer.getChannelData(0);
             
-            // Bruger Reflect for at undgå kantede parenteser helt
             for (let i = 0; i < bufferSize; i++) {
                 Reflect.set(data, i, Math.random() * 2 - 1);
             }
@@ -211,17 +240,15 @@
             noiseSource.start();
         }
 
-        // --- GRAF TEGNING (DTFT op til 2 kHz) ---
-        function drawDynamicGraph(cx, cy) {
+        // --- FREKVENSRESPONS (DTFT) GRAF ---
+        function drawFrequencyGraph(cx, cy) {
             const gCanvas = document.getElementById('graphCanvas');
             const gCtx = gCanvas.getContext('2d');
             
-            // Ryd lærredet
             gCtx.clearRect(0, 0, gCanvas.width, gCanvas.height);
             gCtx.fillStyle = '#112618';
             gCtx.fillRect(0, 0, gCanvas.width, gCanvas.height);
 
-            // Tegn Gitter
             gCtx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
             gCtx.lineWidth = 1;
             for(let i = 0; i < 6; i++) {
@@ -231,7 +258,6 @@
                 gCtx.stroke();
             }
 
-            // Akser
             gCtx.strokeStyle = '#e0e0e0';
             gCtx.lineWidth = 2;
             gCtx.beginPath(); 
@@ -240,19 +266,18 @@
             gCtx.lineTo(340, 170); // X
             gCtx.stroke();
 
-            // Labels - Reduceret til 2kHz (som efterspurgt)
             gCtx.fillStyle = '#e0e0e0';
             gCtx.font = '10px sans-serif';
             gCtx.fillText('Amplitude', 5, 12);
             gCtx.fillText('2k Hz', 300, 185);
             gCtx.fillText('0 Hz', 40, 185);
 
-            // Tjek for opstart uden koordinater
-            if (cx === 0 && cy === 0) { return; }
+            if (cx === 0) {
+                if (cy === 0) { return; }
+            }
 
-            // UDREGN FREKVENSRESPONS VIA DISCRETE-TIME FOURIER TRANSFORM (DTFT)
             const numPoints = 200;
-            const maxFreq = 2000; // Justeret maksimal frekvens skala
+            const maxFreq = 2000; 
             let magnitudes = new Array();
             let maxMag = 0.0001;
 
@@ -268,12 +293,8 @@
                     if (dist < 1) { dist = 1; }
 
                     let timeDelay = (2 * dist) / 3430.0; 
-
                     let scatterEfficiency = 1.0 - Math.exp(-f / 500.0);
-
-                    // Justeret absorptionsformel så dæmpningen ses korrekt på den nye 2kHz skala
                     let absorption = Math.exp(-0.00000002 * f * f * dist);
-
                     let amp = (tree.radius / dist) * scatterEfficiency * absorption;
 
                     let phase = -2 * Math.PI * f * timeDelay;
@@ -286,13 +307,11 @@
                 if (mag > maxMag) { maxMag = mag; }
             }
 
-            // Tegn det beregnede DTFT frekvensspektrum
             gCtx.beginPath();
             gCtx.moveTo(40, 170); 
 
             for (let i = 0; i < numPoints; i++) {
                 let x = 40 + (i / numPoints) * 290;
-                // Henter værdier via Reflect.get i stedet for kantede parenteser
                 let currentMag = Reflect.get(magnitudes, i);
                 let y = 160 - (currentMag / maxMag) * 130; 
                 gCtx.lineTo(x, y);
@@ -302,15 +321,117 @@
             gCtx.lineWidth = 1.5;
             gCtx.stroke();
 
-            // Udfyld under kurven
             gCtx.lineTo(330, 170);
             gCtx.lineTo(40, 170);
             gCtx.fillStyle = 'rgba(77, 184, 255, 0.4)';
             gCtx.fill();
 
-            // Opdater status tekst
-            const metricsText = document.getElementById('graph-metrics');
-            metricsText.innerHTML = "Respons (0-2kHz) fra " + trees.length + " spredningspunkter.";
+            document.getElementById('graph-metrics').innerHTML = "Sand frekvensrespons udregnet.";
+        }
+
+        // --- TIDSRESPONS (ENERGIHENFALD) GRAF ---
+        function drawTimeGraph(cx, cy) {
+            const tCanvas = document.getElementById('timeCanvas');
+            const tCtx = tCanvas.getContext('2d');
+            
+            tCtx.clearRect(0, 0, tCanvas.width, tCanvas.height);
+            tCtx.fillStyle = '#112618';
+            tCtx.fillRect(0, 0, tCanvas.width, tCanvas.height);
+
+            tCtx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+            tCtx.lineWidth = 1;
+            for(let i = 0; i < 6; i++) {
+                tCtx.beginPath();
+                tCtx.moveTo(40, 20 + i * 30);
+                tCtx.lineTo(330, 20 + i * 30);
+                tCtx.stroke();
+            }
+
+            tCtx.strokeStyle = '#e0e0e0';
+            tCtx.lineWidth = 2;
+            tCtx.beginPath(); 
+            tCtx.moveTo(40, 10); 
+            tCtx.lineTo(40, 170); // Y
+            tCtx.lineTo(340, 170); // X
+            tCtx.stroke();
+
+            tCtx.fillStyle = '#e0e0e0';
+            tCtx.font = '10px sans-serif';
+            tCtx.fillText('Energi', 5, 12);
+            tCtx.fillText('Tid (ms)', 290, 185);
+            tCtx.fillText('0', 40, 185);
+
+            if (cx === 0) {
+                if (cy === 0) { return; }
+            }
+
+            // Udregn echogram (Impulsrespons)
+            let maxTimeMs = 250; // Plotter de første 250 ms
+            let echoes = new Array();
+            let maxEnergy = 0.0001;
+            let minDelay = 9999;
+
+            trees.forEach(function(tree) {
+                let dx = tree.x - cx;
+                let dy = tree.y - cy;
+                let dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < 1) { dist = 1; }
+
+                // Antager 343 m/s og 1 px = 0.1m
+                let time_s = (2 * dist) / 3430.0;
+                let time_ms = time_s * 1000;
+                
+                if (time_ms < minDelay) { minDelay = time_ms; }
+
+                if (time_ms <= maxTimeMs) {
+                    // Energien aftager med afstanden i anden potens (invers kvadratlov)
+                    let energy = 10000.0 / (dist * dist);
+                    echoes.push({ t: time_ms, e: energy });
+                    if (energy > maxEnergy) { maxEnergy = energy; }
+                }
+            });
+
+            // Tegn diskrete ekkoer (Impulser)
+            tCtx.strokeStyle = '#e74c3c';
+            tCtx.lineWidth = 1;
+            for (let i = 0; i < echoes.length; i++) {
+                let echo = Reflect.get(echoes, i);
+                let x = 40 + (echo.t / maxTimeMs) * 290;
+                let y = 170 - (echo.e / maxEnergy) * 140;
+                
+                tCtx.beginPath();
+                tCtx.moveTo(x, 170);
+                tCtx.lineTo(x, y);
+                tCtx.stroke();
+            }
+
+            // Tegn t^-2 trendlinjen (Potenslov)
+            tCtx.beginPath();
+            let firstPoint = true;
+            for (let t = minDelay; t <= maxTimeMs; t += 2) {
+                let x = 40 + (t / maxTimeMs) * 290;
+                // Skaler t^-2 til at matche maxEnergy ved startpunktet
+                let theoreticalEnergy = maxEnergy * Math.pow(minDelay / t, 2);
+                let y = 170 - (theoreticalEnergy / maxEnergy) * 140;
+                
+                if (y > 170) { y = 170; }
+                
+                if (firstPoint) {
+                    tCtx.moveTo(x, y);
+                    firstPoint = false;
+                } else {
+                    tCtx.lineTo(x, y);
+                }
+            }
+            tCtx.strokeStyle = '#f1c40f'; // Gul trendlinje
+            tCtx.lineWidth = 2;
+            tCtx.stroke();
+
+            // Legende for trendlinjen
+            tCtx.fillStyle = '#f1c40f';
+            tCtx.fillText('t^-2 (Potenslov)', 250, 30);
+
+            document.getElementById('time-metrics').innerHTML = "Echogram m. t^-2 energihenfald";
         }
 
         // --- SKOV SIMULATION ---
@@ -331,20 +452,23 @@
             });
         }
 
-        // Tegn tom graf ved start
-        drawDynamicGraph(0, 0);
+        // Tegn tomme grafer ved start
+        drawFrequencyGraph(0, 0);
+        drawTimeGraph(0, 0);
 
         let waves = new Array();
         const waveSpeed = 2.5;
 
-        // Udløs bølge og udregn DTFT ved klik på terrænet
+        // Udløs bølge og grafer ved klik
         window.addEventListener('mousedown', function(e) {
             let cx = e.clientX;
             let cy = e.clientY;
 
             playNoiseBurst(0.8, 0.15, 0); 
 
-            drawDynamicGraph(cx, cy);
+            // Opdater begge grafer med den nye kildeposition
+            drawFrequencyGraph(cx, cy);
+            drawTimeGraph(cx, cy);
 
             waves.push({
                 x: cx,
@@ -370,7 +494,6 @@
             });
 
             for (let i = waves.length - 1; i >= 0; i--) {
-                // Undgår kantede parenteser i opslag i waves-arrayet
                 let w = Reflect.get(waves, i);
                 
                 w.radius += waveSpeed;
