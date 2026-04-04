@@ -5,14 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Skovens Akustik - Dynamisk Frekvensrespons</title>
     
-    <script>
-        window.MathJax = {
-            tex: {
-                inlineMath: new Array( new Array('$', '$') ),
-                displayMath: new Array( new Array('$$', '$$') )
-            }
-        };
-    </script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
     <style>
@@ -89,7 +81,7 @@
         }
         #physics-modal h3 { color: #4db8ff; margin-top: 0; font-size: 22px; }
         #physics-modal p { margin-bottom: 12px; line-height: 1.6; font-size: 15px;}
-      .math-block { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px; text-align: center; margin: 10px 0; }
+       .math-block { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px; text-align: center; margin: 10px 0; }
         
         #close-btn {
             margin-top: 20px;
@@ -109,7 +101,7 @@
     <div id="info-panel">
         <h2>Skovens Akustik & Ekkotæthed</h2>
         <p><strong>Klik med musen i skoven</strong> for at udløse et håndklap.</p>
-        <p>Se DTFT-grafen nederst til højre. Den udregner <br>det virkelige interferensmønster (frekvensresponsen)<br>baseret på de specifikke afstande fra dit klik <br>til samtlige træer på skærmen.</p>
+        <p>Se DTFT-grafen nederst til højre. Den udregner <br>det virkelige interferensmønster (frekvensresponsen)<br>baseret på de specifikke afstande fra dit klik <br>til samtlige træer på skærmen (0 - 2 kHz).</p>
         <button id="physics-btn">Læs om fysikken og matematikken</button>
     </div>
 
@@ -131,13 +123,13 @@
             $$k_{eff}(r;s)=k+\frac{2\pi\nu}{k}f(r;s,s)$$
         </div>
         
-        <p>Hvor $k$ er bølgetallet i fri luft, $\nu$ er tætheden af træer, og $f(r;s,s)$ er den komplekse spredningsamplitude.</p>
+        <p>Hvor \( k \) er bølgetallet i fri luft, \( \nu \) er tætheden af træer, og \( f(r;s,s) \) er den komplekse spredningsamplitude.</p>
 
         <p><strong>2. Røntgen-diffraktion og Krystal-analogien</strong><br>
         Lydspredning i skoven opfører sig matematisk på nøjagtig samme måde som røntgendiffraktion i et krystalgitter. I et perfekt ordnet krystalgitter skabes skarpe, kohærente refleksioner (Bragg-peaks). Men da atomer besidder termisk energi og udsættes for konstant agitation, vil et ekstremt hurtigt "øjebliksbillede" (snapshot) vise dem forskudt asymmetrisk fra deres ideelle positioner. Denne asymmetriske agitation svækker det kohærente ekko markant – en svækkelse der kvantificeres med <em>Debye-Waller faktoren</em>. Den tabte kohærente energi spredes i stedet som diffus støj (Thermal Diffuse Scattering).<br><br>
         Tilsvarende gælder for akustik: Hvis skovens træer stod i et fuldstændigt præcist, periodisk gitter, ville de skabe et "sonisk krystal" med klare, retningsbestemte ekkoer (Bragg-diffraktion). Men fordi træerne i en naturlig skov står uregelmæssigt (fuldstændig analogt med atomernes termiske agitation i krystallens snapshot), destrueres det rene ekko, og lyden udsendes i stedet som uordnet, diffus støj (flutter-ekko).</p>
 
-        <p><strong>3. Energiens Henfald ($t^{-2}$ loven)</strong><br>
+        <p><strong>3. Energiens Henfald (\( t^{-2} \) loven)</strong><br>
         Da skoven er et åbent medium, falder ekko-energien ikke eksponentielt som i et lukket rum, men aftager derimod efter en potenslov:</p>
 
         <div class="math-block">
@@ -195,8 +187,9 @@
             const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
             const data = buffer.getChannelData(0);
             
+            // Bruger Reflect for at undgå kantede parenteser helt
             for (let i = 0; i < bufferSize; i++) {
-                data[i] = Math.random() * 2 - 1;
+                Reflect.set(data, i, Math.random() * 2 - 1);
             }
 
             const noiseSource = audioCtx.createBufferSource();
@@ -218,7 +211,7 @@
             noiseSource.start();
         }
 
-        // --- GRAF TEGNING (Faktisk DTFT Udregning) ---
+        // --- GRAF TEGNING (DTFT op til 2 kHz) ---
         function drawDynamicGraph(cx, cy) {
             const gCanvas = document.getElementById('graphCanvas');
             const gCtx = gCanvas.getContext('2d');
@@ -247,11 +240,11 @@
             gCtx.lineTo(340, 170); // X
             gCtx.stroke();
 
-            // Labels
+            // Labels - Reduceret til 2kHz (som efterspurgt)
             gCtx.fillStyle = '#e0e0e0';
             gCtx.font = '10px sans-serif';
             gCtx.fillText('Amplitude', 5, 12);
-            gCtx.fillText('8k Hz', 300, 185);
+            gCtx.fillText('2k Hz', 300, 185);
             gCtx.fillText('0 Hz', 40, 185);
 
             // Tjek for opstart uden koordinater
@@ -259,7 +252,7 @@
 
             // UDREGN FREKVENSRESPONS VIA DISCRETE-TIME FOURIER TRANSFORM (DTFT)
             const numPoints = 200;
-            const maxFreq = 8000;
+            const maxFreq = 2000; // Justeret maksimal frekvens skala
             let magnitudes = new Array();
             let maxMag = 0.0001;
 
@@ -274,19 +267,15 @@
                     let dist = Math.sqrt(dx * dx + dy * dy);
                     if (dist < 1) { dist = 1; }
 
-                    // Lydens hastighed (skaleret til canvas for realisme, f f.eks. 1 px = 0.1m)
                     let timeDelay = (2 * dist) / 3430.0; 
 
-                    // Lavfrekvent diffraktion betyder at dybe toner ikke kastes godt tilbage
                     let scatterEfficiency = 1.0 - Math.exp(-f / 500.0);
 
-                    // Højfrekvent dæmpning i luften og barken (eksponentielt tab)
-                    let absorption = Math.exp(-0.0000003 * f * f * dist);
+                    // Justeret absorptionsformel så dæmpningen ses korrekt på den nye 2kHz skala
+                    let absorption = Math.exp(-0.00000002 * f * f * dist);
 
-                    // Bølgens amplitude (Inverse Square Law * Filtere)
                     let amp = (tree.radius / dist) * scatterEfficiency * absorption;
 
-                    // Summer faserne for interferens
                     let phase = -2 * Math.PI * f * timeDelay;
                     real += amp * Math.cos(phase);
                     imag += amp * Math.sin(phase);
@@ -303,7 +292,9 @@
 
             for (let i = 0; i < numPoints; i++) {
                 let x = 40 + (i / numPoints) * 290;
-                let y = 160 - (magnitudes[i] / maxMag) * 130; 
+                // Henter værdier via Reflect.get i stedet for kantede parenteser
+                let currentMag = Reflect.get(magnitudes, i);
+                let y = 160 - (currentMag / maxMag) * 130; 
                 gCtx.lineTo(x, y);
             }
 
@@ -319,7 +310,7 @@
 
             // Opdater status tekst
             const metricsText = document.getElementById('graph-metrics');
-            metricsText.innerHTML = "Sand frekvensrespons udregnet fra " + trees.length + " spredningspunkter.";
+            metricsText.innerHTML = "Respons (0-2kHz) fra " + trees.length + " spredningspunkter.";
         }
 
         // --- SKOV SIMULATION ---
@@ -353,7 +344,6 @@
 
             playNoiseBurst(0.8, 0.15, 0); 
 
-            // Beregn den faktiske graf ud fra klik-positionen!
             drawDynamicGraph(cx, cy);
 
             waves.push({
@@ -380,7 +370,8 @@
             });
 
             for (let i = waves.length - 1; i >= 0; i--) {
-                let w = waves[i];
+                // Undgår kantede parenteser i opslag i waves-arrayet
+                let w = Reflect.get(waves, i);
                 
                 w.radius += waveSpeed;
                 
