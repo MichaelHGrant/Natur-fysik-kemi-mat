@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Brusetablet Simulation</title>
+    <title>Graf: Opstigningstid vs. Temperatur</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -18,57 +19,34 @@
             color: #333;
             text-align: center;
         }
-        .controls {
+        .container {
             background: white;
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-            width: 320px;
+            width: 80%;
+            max-width: 800px;
             text-align: center;
         }
-        canvas {
-            background: #e0f7fa;
-            border: 2px solid #b2ebf2;
-            border-bottom: 6px solid #80deea;
-            border-radius: 5px 5px 20px 20px;
-            box-shadow: inset 0 0 20px rgba(0,150,255,0.2);
+        .chart-container {
+            position: relative;
+            height: 50vh;
+            width: 100%;
+            margin-bottom: 20px;
         }
         button {
-            background-color: #009688;
+            background-color: #3f51b5;
             color: white;
             border: none;
-            padding: 10px 20px;
+            padding: 12px 24px;
             border-radius: 5px;
             cursor: pointer;
-            font-size: 15px;
+            font-size: 16px;
             margin-top: 10px;
-            width: 100%;
+            transition: background-color 0.3s;
         }
         button:hover {
-            background-color: #00796b;
-        }
-        .btn-info {
-            background-color: #3f51b5;
-        }
-        .btn-info:hover {
             background-color: #303f9f;
-        }
-        .info-box {
-            text-align: left;
-            margin-top: 15px;
-            padding: 10px;
-            background-color: #f9f9f9;
-            border-radius: 5px;
-            font-size: 14px;
-            color: #444;
-            border: 1px solid #ddd;
-        }
-        .timer-display {
-            font-size: 18px;
-            font-weight: bold;
-            color: #d32f2f;
-            margin-bottom: 10px;
         }
 
         /* Modal (Pop-op vindue) CSS med scroll */
@@ -80,18 +58,18 @@
             top: 0;
             width: 100%; 
             height: 100%; 
-            overflow: hidden; /* Forhindrer hele siden i at scrolle */
+            overflow: hidden; 
             background-color: rgba(0,0,0,0.6); 
         }
         .modal-content {
             background-color: #fefefe;
-            margin: 5% auto; /* Lidt højere oppe på skærmen */
+            margin: 5% auto; 
             padding: 25px;
             border-radius: 10px;
             width: 80%;
             max-width: 600px;
-            max-height: 80vh; /* Maksimal højde = 80% af skærmens højde */
-            overflow-y: auto; /* Gør indholdet scrollbart, hvis det fylder mere end højden */
+            max-height: 80vh; 
+            overflow-y: auto; 
             box-shadow: 0 5px 15px rgba(0,0,0,0.3);
             line-height: 1.6;
         }
@@ -124,107 +102,59 @@
 </head>
 <body>
 
-    <h1>Opdrift vs. Temperatur</h1>
+    <h1>Opstigningstid som funktion af Temperatur</h1>
 
-    <div class="controls">
-        <div class="timer-display">Tid: <span id="timeDisplay">0.0</span> s</div>
-        
-        <label for="tempSlider">Vandtemperatur: <span id="tempDisplay">20</span> °C</label><br>
-        <input type="range" id="tempSlider" min="1" max="100" value="20" style="width: 100%; margin-top: 10px;">
-        
-        <button id="resetBtn">Sæt ny tablet i vandet</button>
-        <button id="infoBtn" class="btn-info">Forklar Fysikken</button>
-        
-        <div class="info-box">
-            <strong>Realtidsdata:</strong><br>
-            Tyngdekraft (Masse): <span id="massDisplay">100.0</span> g<br>
-            Opdrift (Effektivt Volumen): <span id="volDisplay">40.0</span> ml
+    <div class="container">
+        <div class="chart-container">
+            <canvas id="timeTempChart"></canvas>
         </div>
+        <button id="infoBtn">Forklar Fysikken og Matematikken bag grafen</button>
     </div>
-
-    <canvas id="glass" width="200" height="400"></canvas>
 
     <div id="physicsModal" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
-            <h2>Fysikken og Matematikken</h2>
+            <h2>Fysikken og Matematikken bag grafen</h2>
             
-            <p><strong>1. Kræfterne der er på spil</strong><br>
-            To primære kræfter virker på tabletten i den lodrette akse:</p>
-            <ul>
-                <li><strong>Tyngdekraften:</strong> Trækker tabletten nedad.</li>
-                <li><strong>Opdriften:</strong> Skubber tabletten opad (Arkimedes' lov).</li>
-            </ul>
+            <p>Grafen viser en omvendt, eksponentielt faldende kurve. Men hvorfor ser den sådan ud? Det skyldes forholdet mellem <strong>tid</strong> og <strong>reaktionshastighed</strong>.</p>
+            
+            <p><strong>1. Tiden er omvendt proportional med hastigheden</strong><br>
+            For at tabletten kan stige op, skal den producere en bestemt mængde gas (det kritiske gasvolumen). Tiden (<i>t</i>), det tager at nå dette volumen, afhænger af, hvor hurtigt reaktionen forløber (hastigheden <i>k</i>):</p>
             <div class="math-block">
-                <i>F<sub>t</sub>(t) = m(t) &middot; g</i><br>
-                <i>F<sub>op</sub>(t) = &rho;<sub>v</sub> &middot; V<sub>total</sub>(t) &middot; g</i>
+                <i>t &prop; 1 / k</i>
             </div>
-            <p>Hvor <i>m</i> er massen, <i>g</i> er tyngdeaccelerationen, <i>&rho;<sub>v</sub></i> er vandets densitet, og <i>V<sub>total</sub></i> er det samlede volumen af tablet + gasbobler.</p>
             
             <hr>
 
-            <p><strong>2. Betingelsen for opstigning</strong><br>
-            Tabletten stiger mod overfladen præcis, når opdriften bliver større end tyngdekraften:</p>
-            <div class="math-block">
-                <i>F<sub>op</sub>(t) > F<sub>t</sub>(t)</i>
-            </div>
-            <p>Sætter vi ligningerne ind og fjerner <i>g</i> på begge sider, får vi betingelsen for, hvornår tabletten stiger:</p>
-            <div class="math-block">
-                <i>&rho;<sub>v</sub> &middot; (V<sub>tab</sub>(t) + V<sub>gas</sub>(t)) > m(t)</i>
-            </div>
-            <p>Isolerer vi volumenet for gassen (<i>V<sub>gas</sub></i>), ser vi, at tabletten stiger, når gasvolumenet opfylder:</p>
-            <div class="math-block">
-                <i>V<sub>gas</sub>(t) > (m(t) / &rho;<sub>v</sub>) - V<sub>tab</sub>(t)</i>
-            </div>
-
-            <hr>
-
-            <p><strong>3. Temperaturens rolle (Arrhenius-ligningen)</strong><br>
-            Hvornår <i>V<sub>gas</sub></i> bliver stort nok, afhænger af reaktionshastigheden <i>k</i>, som styres kraftigt af vandets temperatur <i>T</i> (i Kelvin):</p>
+            <p><strong>2. Arrhenius-ligningen</strong><br>
+            Den kemiske reaktionshastighed <i>k</i> afhænger af vandets temperatur <i>T</i> (i Kelvin) ifølge Arrhenius-ligningen:</p>
             <div class="math-block">
                 <i>k(T) = A &middot; e<sup>-E<sub>a</sub> / (R &middot; T)</sup></i>
             </div>
-            <p><strong>Hvad betyder det i praksis?</strong><br>
-            Højere temperatur gør eksponenten i ligningen mindre negativ, hvilket får reaktionshastigheden til at eksplodere. I simulationen resulterer det i massiv gasudvikling på få sekunder, så betingelsen for opstigning nås lynhurtigt.</p>
+            <p>Hvor <i>A</i> er en konstant, <i>E<sub>a</sub></i> er aktiveringsenergien, og <i>R</i> er gaskonstanten.</p>
+
+            <hr>
+
+            <p><strong>3. Opstilling af grafens matematiske model</strong><br>
+            Når vi indsætter udtrykket for <i>k</i> i vores tidsligning, vender vi brøken på hovedet (eksponenten skifter fortegn fra minus til plus):</p>
+            <div class="math-block">
+                <i>t(T) = C &middot; e<sup>E<sub>a</sub> / (R &middot; T)</sup></i>
+            </div>
+            <p>Dette er formlen, der tegner grafen, du ser! I JavaScript-koden bag denne graf er formlen tilpasset, så en tablet i 0 &deg;C vand (273,15 K) er cirka 120 sekunder om at stige op, mens den i 100 &deg;C vand (373,15 K) kun er 5 sekunder om det.</p>
+
+            <p><strong>Hvad grafen fortæller os:</strong><br>
+            Ved lave temperaturer betyder en lille ændring i temperatur en enorm forskel i tid (den stejle del af kurven til venstre). Ved høje temperaturer går det allerede så stærkt, at endnu mere varme næsten ikke ændrer på opstigningstiden (den flade del til højre).</p>
         </div>
     </div>
 
     <script>
-        const canvas = document.getElementById('glass');
-        const ctx = canvas.getContext('2d');
-        const tempSlider = document.getElementById('tempSlider');
-        const tempDisplay = document.getElementById('tempDisplay');
-        const massDisplay = document.getElementById('massDisplay');
-        const volDisplay = document.getElementById('volDisplay');
-        const timeDisplay = document.getElementById('timeDisplay');
-        const resetBtn = document.getElementById('resetBtn');
-        
-        // Modal variabler
+        // Modal logik
         const modal = document.getElementById("physicsModal");
         const infoBtn = document.getElementById("infoBtn");
         const span = document.getElementsByClassName("close")[0];
 
-        // Fysiske og tidsmæssige variabler
-        let tablet = {
-            y: 360,          
-            radius: 25,
-            mass: 100,       
-            baseVolume: 40,  
-            attachedBubbles: 0,
-            active: false
-        };
-
-        let bubbles = [];
-        let animationId;
-        const waterDensity = 1.0; 
-        
-        let startTime = 0;
-        let currentTime = 0;
-
-        // Modal logik
         infoBtn.onclick = function() {
             modal.style.display = "block";
-            // Forhindre baggrunden i at scrolle når modal er åben
             document.body.style.overflow = "hidden";
         }
         span.onclick = function() {
@@ -238,121 +168,79 @@
             }
         }
 
-        // Opdater temperatur-tekst når slideren ændres
-        tempSlider.addEventListener('input', () => {
-            tempDisplay.textContent = tempSlider.value;
-        });
+        // --- Generering af data til grafen ---
+        const temperatures = [];
+        const times = [];
 
-        // Nulstil simulationen og start timer
-        resetBtn.addEventListener('click', () => {
-            tablet.y = 360;
-            tablet.mass = 100;
-            tablet.baseVolume = 40;
-            tablet.attachedBubbles = 0;
-            tablet.active = true;
-            bubbles = [];
+        // Vi beregner tiden for temperaturer fra 0 til 100 grader Celsius
+        for (let temp_C = 0; temp_C <= 100; temp_C += 2) {
+            temperatures.push(temp_C);
             
-            startTime = Date.now();
-            currentTime = 0;
-            timeDisplay.textContent = "0.0";
+            // Konverterer til Kelvin for Arrhenius-beregningen
+            const temp_K = temp_C + 273.15;
+            
+            // Simuleret tids-funktion baseret på omvendt Arrhenius: t = C * e^(B / T)
+            // Konstanterne (C=0.00084 og B=3242) er valgt for at ramme ca. 120s ved 0 grader og 5s ved 100 grader.
+            let time_s = 0.00084 * Math.exp(3242 / temp_K);
+            
+            times.push(time_s.toFixed(1));
+        }
 
-            cancelAnimationFrame(animationId);
-            animate();
+        // --- Opsætning af Chart.js ---
+        const ctx = document.getElementById('timeTempChart').getContext('2d');
+        const timeTempChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: temperatures,
+                datasets: [{
+                    label: 'Opstigningstid (sekunder)',
+                    data: times,
+                    borderColor: '#3f51b5',
+                    backgroundColor: 'rgba(63, 81, 181, 0.1)',
+                    borderWidth: 3,
+                    pointRadius: 2,
+                    pointHoverRadius: 6,
+                    fill: true,
+                    tension: 0.4 // Gør kurven blød og pæn
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `Tid: ${context.parsed.y} s`;
+                            },
+                            title: function(context) {
+                                return `Temperatur: ${context[0].label} °C`;
+                            }
+                        }
+                    },
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Vandtemperatur (°C)',
+                            font: { size: 14, weight: 'bold' }
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Tid før opstigning (Sekunder)',
+                            font: { size: 14, weight: 'bold' }
+                        },
+                        beginAtZero: true
+                    }
+                }
+            }
         });
-
-        function createBubble(isAttached) {
-            return {
-                x: (canvas.width / 2) + (Math.random() * 40 - 20),
-                y: tablet.y + (Math.random() * 20 - 10),
-                radius: Math.random() * 3 + 1,
-                attached: isAttached,
-                speed: Math.random() * 2 + 1
-            };
-        }
-
-        function updatePhysics() {
-            if (!tablet.active) return;
-
-            // Opdater timer
-            currentTime = (Date.now() - startTime) / 1000;
-            timeDisplay.textContent = currentTime.toFixed(1);
-
-            const temperature = parseInt(tempSlider.value);
-            const reactionRate = temperature * 0.005;
-
-            if (tablet.mass > 0) {
-                tablet.mass -= reactionRate;
-                tablet.baseVolume -= reactionRate * 0.4; 
-            }
-
-            if (Math.random() < reactionRate * 2) {
-                const sticksToTablet = Math.random() > 0.5; 
-                bubbles.push(createBubble(sticksToTablet));
-                if (sticksToTablet) {
-                    tablet.attachedBubbles += 1;
-                }
-            }
-
-            const totalVolume = tablet.baseVolume + (tablet.attachedBubbles * 0.5);
-            const buoyancy = totalVolume * waterDensity;
-            const gravity = tablet.mass; 
-
-            if (buoyancy > gravity) {
-                tablet.y -= 2; 
-            }
-
-            // Opdater UI data
-            massDisplay.textContent = Math.max(0, tablet.mass).toFixed(1);
-            volDisplay.textContent = Math.max(0, totalVolume).toFixed(1);
-
-            // Stop simulation/timer når tabletten er oppe eller forsvundet
-            if (tablet.y < 20 || tablet.mass <= 0) {
-                tablet.active = false;
-            }
-        }
-
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Tegn bobler
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-            for (let i = bubbles.length - 1; i >= 0; i--) {
-                let b = bubbles[i];
-                ctx.beginPath();
-                ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
-                ctx.fill();
-
-                if (!b.attached || !tablet.active) {
-                    b.y -= b.speed;
-                }
-
-                if (b.y < 0) {
-                    bubbles.splice(i, 1);
-                }
-            }
-
-            // Tegn tablet
-            if (tablet.mass > 0) {
-                ctx.fillStyle = '#00bcd4';
-                const currentRadius = Math.max(5, tablet.radius * (tablet.mass / 100));
-                
-                ctx.beginPath();
-                ctx.ellipse(canvas.width / 2, tablet.y, currentRadius, currentRadius * 0.4, 0, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.strokeStyle = '#00838f';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-            }
-        }
-
-        function animate() {
-            updatePhysics();
-            draw();
-            animationId = requestAnimationFrame(animate);
-        }
-
-        // Start automatisk
-        resetBtn.click();
     </script>
 </body>
 </html>
