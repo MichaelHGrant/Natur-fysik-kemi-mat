@@ -34,38 +34,39 @@
             pointer-events: auto;
             z-index: 10;
             width: 320px;
-            max-height: 90vh; /* Sikrer at den ikke går ud over skærmen */
-            overflow-y: auto; /* Tilføjer scroll hvis skærmen er meget lille */
+            max-height: 90vh; 
+            overflow-y: auto; 
         }
-        #time-panel {
+        
+        /* Ny container der samler og stabler graferne pænt i højre side */
+        #right-panels {
             position: absolute;
-            top: 20px; /* Flyttet fra bunden til toppen */
-            right: 20px; /* Flyttet fra venstre til højre */
-            background: rgba(0, 0, 0, 0.8);
-            padding: 15px;
-            border-radius: 8px;
-            border: 1px solid #e74c3c;
-            pointer-events: auto;
-            z-index: 10;
-        }
-        #graph-panel {
-            position: absolute;
-            bottom: 20px;
+            top: 20px;
             right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            max-height: 90vh;
+            overflow-y: auto;
+            pointer-events: none; /* Lader klik gå igennem det tomme rum mellem graferne */
+            z-index: 10;
+        }
+       .side-panel {
             background: rgba(0, 0, 0, 0.8);
             padding: 15px;
             border-radius: 8px;
-            border: 1px solid #4db8ff;
-            pointer-events: auto;
-            z-index: 10;
+            pointer-events: auto; /* Aktiverer klik på selve panelerne igen */
         }
+        #time-panel { border: 1px solid #e74c3c; }
+        #graph-panel { border: 1px solid #4db8ff; }
+        
         h2 { margin: 0 0 10px 0; color: #4db8ff; font-size: 18px; }
         h4 { margin: 0 0 10px 0; font-size: 15px; }
         p { margin: 5px 0; line-height: 1.5; font-size: 13px; }
         canvas { display: block; }
-     .small-canvas { background-color: #112618; border-radius: 4px; }
+       .small-canvas { background-color: #112618; border-radius: 4px; }
         
-     .btn-style {
+       .btn-style {
             margin-top: 10px;
             padding: 10px 15px;
             background-color: #2e8b57;
@@ -78,13 +79,13 @@
             display: block;
             width: 100%;
         }
-     .btn-style:hover { background-color: #3cb371; }
+       .btn-style:hover { background-color: #3cb371; }
         #replay-btn { background-color: #d35400; }
         #replay-btn:hover { background-color: #e67e22; }
         #download-btn { background-color: #8e44ad; }
         #download-btn:hover { background-color: #9b59b6; }
 
-      .slider-container {
+       .slider-container {
             margin-top: 15px;
             background: rgba(255,255,255,0.1);
             padding: 10px;
@@ -116,7 +117,7 @@
         }
         #physics-modal h3 { color: #4db8ff; margin-top: 0; font-size: 22px; }
         #physics-modal p { margin-bottom: 12px; line-height: 1.6; font-size: 15px;}
-     .math-block { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px; text-align: center; margin: 10px 0; }
+       .math-block { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px; text-align: center; margin: 10px 0; }
         
         #close-btn {
             margin-top: 20px;
@@ -149,16 +150,18 @@
         <button id="download-btn" class="btn-style">Gem Lydfil (.wav)</button>
     </div>
 
-    <div id="time-panel">
-        <h4 style="color: #e74c3c;">Tidsrespons & Energihenfald</h4>
-        <p id="time-metrics" style="color: #e74c3c;">Venter på impuls...</p>
-        <canvas id="timeCanvas" class="small-canvas" width="350" height="200"></canvas>
-    </div>
+    <div id="right-panels">
+        <div id="time-panel" class="side-panel">
+            <h4 style="color: #e74c3c;">Tidsrespons & Energihenfald</h4>
+            <p id="time-metrics" style="color: #e74c3c;">Venter på impuls...</p>
+            <canvas id="timeCanvas" class="small-canvas" width="280" height="160"></canvas>
+        </div>
 
-    <div id="graph-panel">
-        <h4 style="color: #4db8ff;">Akustisk Frekvensrespons (DTFT)</h4>
-        <p id="graph-metrics" style="color: #4db8ff;">Venter på impuls...</p>
-        <canvas id="graphCanvas" class="small-canvas" width="350" height="200"></canvas>
+        <div id="graph-panel" class="side-panel">
+            <h4 style="color: #4db8ff;">Akustisk Frekvensrespons (DTFT)</h4>
+            <p id="graph-metrics" style="color: #4db8ff;">Venter på impuls...</p>
+            <canvas id="graphCanvas" class="small-canvas" width="280" height="160"></canvas>
+        </div>
     </div>
 
     <div id="overlay"></div>
@@ -201,8 +204,7 @@
         const modal = document.getElementById('physics-modal');
         const overlay = document.getElementById('overlay');
         const infoPanel = document.getElementById('info-panel');
-        const graphPanel = document.getElementById('graph-panel');
-        const timePanel = document.getElementById('time-panel');
+        const rightPanels = document.getElementById('right-panels');
         const scaleSlider = document.getElementById('scale-slider');
         const scaleVal = document.getElementById('scale-val');
 
@@ -249,8 +251,7 @@
 
         // Forhindrer at museklik på menuerne aktiverer ekko i baggrunden
         infoPanel.addEventListener('mousedown', function(e) { e.stopPropagation(); });
-        graphPanel.addEventListener('mousedown', function(e) { e.stopPropagation(); });
-        timePanel.addEventListener('mousedown', function(e) { e.stopPropagation(); });
+        rightPanels.addEventListener('mousedown', function(e) { e.stopPropagation(); });
         modal.addEventListener('mousedown', function(e) { e.stopPropagation(); });
 
         function audioBufferToWav(buffer) {
@@ -418,10 +419,10 @@
 
             gCtx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
             gCtx.lineWidth = 1;
-            for(let i = 0; i < 6; i++) {
+            for(let i = 0; i < 5; i++) {
                 gCtx.beginPath();
-                gCtx.moveTo(40, 20 + i * 30);
-                gCtx.lineTo(330, 20 + i * 30);
+                gCtx.moveTo(40, 20 + i * 25);
+                gCtx.lineTo(260, 20 + i * 25);
                 gCtx.stroke();
             }
 
@@ -429,15 +430,15 @@
             gCtx.lineWidth = 2;
             gCtx.beginPath(); 
             gCtx.moveTo(40, 10); 
-            gCtx.lineTo(40, 170); // Y
-            gCtx.lineTo(340, 170); // X
+            gCtx.lineTo(40, 140); // Y
+            gCtx.lineTo(260, 140); // X
             gCtx.stroke();
 
             gCtx.fillStyle = '#e0e0e0';
             gCtx.font = '10px sans-serif';
             gCtx.fillText('Amplitude', 5, 12);
-            gCtx.fillText('2k Hz', 300, 185);
-            gCtx.fillText('0 Hz', 40, 185);
+            gCtx.fillText('2k Hz', 230, 155);
+            gCtx.fillText('0 Hz', 40, 155);
 
             if (cx === 0) {
                 if (cy === 0) { return; }
@@ -477,12 +478,12 @@
             }
 
             gCtx.beginPath();
-            gCtx.moveTo(40, 170); 
+            gCtx.moveTo(40, 140); 
 
             for (let i = 0; i < numPoints; i++) {
-                let x = 40 + (i / numPoints) * 290;
+                let x = 40 + (i / numPoints) * 220;
                 let currentMag = Reflect.get(magnitudes, i);
-                let y = 160 - (currentMag / maxMag) * 130; 
+                let y = 140 - (currentMag / maxMag) * 120; 
                 gCtx.lineTo(x, y);
             }
 
@@ -490,8 +491,8 @@
             gCtx.lineWidth = 1.5;
             gCtx.stroke();
 
-            gCtx.lineTo(330, 170);
-            gCtx.lineTo(40, 170);
+            gCtx.lineTo(260, 140);
+            gCtx.lineTo(40, 140);
             gCtx.fillStyle = 'rgba(77, 184, 255, 0.4)';
             gCtx.fill();
 
@@ -509,10 +510,10 @@
 
             tCtx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
             tCtx.lineWidth = 1;
-            for(let i = 0; i < 6; i++) {
+            for(let i = 0; i < 5; i++) {
                 tCtx.beginPath();
-                tCtx.moveTo(40, 20 + i * 30);
-                tCtx.lineTo(330, 20 + i * 30);
+                tCtx.moveTo(40, 20 + i * 25);
+                tCtx.lineTo(260, 20 + i * 25);
                 tCtx.stroke();
             }
 
@@ -520,8 +521,8 @@
             tCtx.lineWidth = 2;
             tCtx.beginPath(); 
             tCtx.moveTo(40, 10); 
-            tCtx.lineTo(40, 170); 
-            tCtx.lineTo(340, 170); 
+            tCtx.lineTo(40, 140); 
+            tCtx.lineTo(260, 140); 
             tCtx.stroke();
 
             let maxTimeMs = Math.floor(maxEchoTimeSeconds * 1000); 
@@ -529,8 +530,8 @@
             tCtx.fillStyle = '#e0e0e0';
             tCtx.font = '10px sans-serif';
             tCtx.fillText('Energi', 5, 12);
-            tCtx.fillText('Tid (' + maxTimeMs + ' ms)', 260, 185);
-            tCtx.fillText('0', 40, 185);
+            tCtx.fillText('Tid (' + maxTimeMs + ' ms)', 180, 155);
+            tCtx.fillText('0', 40, 155);
 
             if (cx === 0) {
                 if (cy === 0) { return; }
@@ -562,11 +563,11 @@
             tCtx.lineWidth = 1;
             for (let i = 0; i < echoes.length; i++) {
                 let echo = Reflect.get(echoes, i);
-                let x = 40 + (echo.t / maxTimeMs) * 290;
-                let y = 170 - (echo.e / maxEnergy) * 140;
+                let x = 40 + (echo.t / maxTimeMs) * 220;
+                let y = 140 - (echo.e / maxEnergy) * 120;
                 
                 tCtx.beginPath();
-                tCtx.moveTo(x, 170);
+                tCtx.moveTo(x, 140);
                 tCtx.lineTo(x, y);
                 tCtx.stroke();
             }
@@ -574,11 +575,11 @@
             tCtx.beginPath();
             let firstPoint = true;
             for (let t = minDelay; t <= maxTimeMs; t += (maxTimeMs/100)) {
-                let x = 40 + (t / maxTimeMs) * 290;
+                let x = 40 + (t / maxTimeMs) * 220;
                 let theoreticalEnergy = maxEnergy * Math.pow(minDelay / t, 2);
-                let y = 170 - (theoreticalEnergy / maxEnergy) * 140;
+                let y = 140 - (theoreticalEnergy / maxEnergy) * 120;
                 
-                if (y > 170) { y = 170; }
+                if (y > 140) { y = 140; }
                 
                 if (firstPoint) {
                     tCtx.moveTo(x, y);
@@ -592,7 +593,7 @@
             tCtx.stroke();
 
             tCtx.fillStyle = '#f1c40f';
-            tCtx.fillText('t^-2 (Potenslov)', 250, 30);
+            tCtx.fillText('t^-2 (Potenslov)', 170, 25);
 
             document.getElementById('time-metrics').innerHTML = "Echogram m. t^-2 energihenfald";
         }
@@ -647,7 +648,7 @@
             ctx.fillStyle = 'rgba(11, 26, 16, 0.25)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // TEGN MÅLESTOK I BUNDEN (Dynamisk baseret på slideren)
+            // TEGN MÅLESTOK I BUNDEN
             let scaleX = canvas.width / 2 - 50; 
             let scaleY = canvas.height - 30;
             
