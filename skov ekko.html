@@ -60,9 +60,9 @@
         h4 { margin: 0 0 10px 0; font-size: 15px; }
         p { margin: 5px 0; line-height: 1.5; font-size: 13px; }
         canvas { display: block; }
-      .small-canvas { background-color: #112618; border-radius: 4px; }
+     .small-canvas { background-color: #112618; border-radius: 4px; }
         
-       .btn-style {
+      .btn-style {
             margin-top: 10px;
             padding: 10px 15px;
             background-color: #2e8b57;
@@ -75,7 +75,7 @@
             display: block;
             width: 100%;
         }
-       .btn-style:hover { background-color: #3cb371; }
+      .btn-style:hover { background-color: #3cb371; }
         #replay-btn { background-color: #d35400; }
         #replay-btn:hover { background-color: #e67e22; }
         
@@ -104,7 +104,7 @@
         }
         #physics-modal h3 { color: #4db8ff; margin-top: 0; font-size: 22px; }
         #physics-modal p { margin-bottom: 12px; line-height: 1.6; font-size: 15px;}
-      .math-block { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px; text-align: center; margin: 10px 0; }
+     .math-block { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px; text-align: center; margin: 10px 0; }
         
         #close-btn {
             margin-top: 20px;
@@ -218,14 +218,13 @@
             }
         }
 
-        // Denne funktion bygger selve lydfilen (AudioBuffer) og placerer
-        // hvert enkelt træs ekko præcist i tid med den korrekte dæmpning
+        // Denne funktion bygger selve lydfilen (AudioBuffer)
         function synthesizeAndPlayEcho(cx, cy) {
             if (!audioCtx) { return; }
             if (audioCtx.state === 'suspended') { audioCtx.resume(); }
 
-            // Lydfilens varighed (1.5 sekunder er nok til at dække max afstanden på lærredet)
-            const duration = 1.5; 
+            // Lydfilens varighed forlænget til at kunne rumme det "langsomme" ekko
+            const duration = 2.5; 
             const sampleRate = audioCtx.sampleRate;
             const bufferSize = Math.floor(sampleRate * duration);
             const buffer = audioCtx.createBuffer(2, bufferSize, sampleRate);
@@ -240,7 +239,7 @@
 
             for (let i = 0; i < clapLen; i++) {
                 let noise = Math.random() * 2 - 1;
-                let env = Math.exp(-i / (sampleRate * 0.005)); // Meget skarp transient
+                let env = Math.exp(-i / (sampleRate * 0.005)); 
                 Reflect.set(baseClap, i, noise * env);
                 
                 // Tilføj den direkte lyd til filen i starten (t=0)
@@ -255,12 +254,14 @@
                 let dist = Math.sqrt(dx * dx + dy * dy);
                 if (dist < 1) { dist = 1; }
 
-                // Konverterer afstand til tidsforsinkelse (forudsat 1px = 0.1m, dvs v=3430px/s)
-                let time_s = (2 * dist) / 3430.0;
+                // HER "SNYDER" VI FYSIKKEN FOR AT GØRE EKKOET HØRBART
+                // Vi sænker lydens hastighed, så ekkoet bliver spredt ud over meget længere tid
+                let time_s = (2 * dist) / 1000.0; 
                 let delaySamples = Math.floor(time_s * sampleRate);
 
                 if (delaySamples + clapLen < bufferSize) {
-                    let amp = (tree.radius * 2.0) / dist; // Energihenfald
+                    // Vi skruer også ekstremt meget op for refleksionen for at gøre den tydeligere
+                    let amp = (tree.radius * 25.0) / dist; 
                     
                     let pan = dx / canvas.width; 
                     let panLeft = Math.min(1.0, 1.0 - pan);
@@ -273,13 +274,11 @@
                     for (let i = 0; i < clapLen; i++) {
                         let s = Reflect.get(baseClap, i);
                         
-                        // Påfør lavpasfilteret
                         s = alpha * prev + (1.0 - alpha) * s;
                         prev = s;
 
                         let echoSample = s * amp;
 
-                        // Addér ekkoet til lydsporet med korrekt delay og panorering
                         let currentLeft = Reflect.get(left, delaySamples + i);
                         Reflect.set(left, delaySamples + i, currentLeft + echoSample * panLeft);
 
@@ -356,10 +355,13 @@
                     let dist = Math.sqrt(dx * dx + dy * dy);
                     if (dist < 1) { dist = 1; }
 
-                    let timeDelay = (2 * dist) / 3430.0; 
+                    // Opdateret tidsforsinkelse der matcher den nye hørbarhed
+                    let timeDelay = (2 * dist) / 1000.0; 
                     let scatterEfficiency = 1.0 - Math.exp(-f / 500.0);
                     let absorption = Math.exp(-0.00000002 * f * f * dist);
-                    let amp = (tree.radius / dist) * scatterEfficiency * absorption;
+                    
+                    // Opdateret amplitude der matcher lyden
+                    let amp = ((tree.radius * 25.0) / dist) * scatterEfficiency * absorption;
 
                     let phase = -2 * Math.PI * f * timeDelay;
                     real += amp * Math.cos(phase);
@@ -429,7 +431,8 @@
                 if (cy === 0) { return; }
             }
 
-            let maxTimeMs = 250; 
+            // Skaleret op til 1500ms for at vise det manipulerede, forlængede ekko
+            let maxTimeMs = 1500; 
             let echoes = new Array();
             let maxEnergy = 0.0001;
             let minDelay = 9999;
@@ -440,7 +443,8 @@
                 let dist = Math.sqrt(dx * dx + dy * dy);
                 if (dist < 1) { dist = 1; }
 
-                let time_s = (2 * dist) / 3430.0;
+                // Opdateret tidsforsinkelse der matcher hørbarheden
+                let time_s = (2 * dist) / 1000.0;
                 let time_ms = time_s * 1000;
                 
                 if (time_ms < minDelay) { minDelay = time_ms; }
