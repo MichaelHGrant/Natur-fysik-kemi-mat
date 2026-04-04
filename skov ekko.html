@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Skovens Akustik - Tids- og Frekvensrespons</title>
+    <title>Skovens Akustik - Tids- og Frekvensrespons med Sand Lydfil</title>
     
     <script>
-        // Skudsikker opsætning af MathJax uden brug af kantede parenteser (arrays)
         window.MathJax = {
             tex: {
                 inlineMath: new Array( new Array('$', '$'), new Array('\\(', '\\)') ),
@@ -35,7 +34,6 @@
             pointer-events: auto;
             z-index: 10;
         }
-        /* Nyt panel til tidsrespons */
         #time-panel {
             position: absolute;
             bottom: 20px;
@@ -47,7 +45,6 @@
             pointer-events: auto;
             z-index: 10;
         }
-        /* Panel til frekvensrespons */
         #graph-panel {
             position: absolute;
             bottom: 20px;
@@ -63,10 +60,10 @@
         h4 { margin: 0 0 10px 0; font-size: 15px; }
         p { margin: 5px 0; line-height: 1.5; font-size: 13px; }
         canvas { display: block; }
-       .small-canvas { background-color: #112618; border-radius: 4px; }
+      .small-canvas { background-color: #112618; border-radius: 4px; }
         
-        #physics-btn {
-            margin-top: 15px;
+       .btn-style {
+            margin-top: 10px;
             padding: 10px 15px;
             background-color: #2e8b57;
             color: white;
@@ -75,8 +72,12 @@
             cursor: pointer;
             font-weight: bold;
             transition: background 0.3s;
+            display: block;
+            width: 100%;
         }
-        #physics-btn:hover { background-color: #3cb371; }
+       .btn-style:hover { background-color: #3cb371; }
+        #replay-btn { background-color: #d35400; }
+        #replay-btn:hover { background-color: #e67e22; }
         
         #overlay {
             display: none;
@@ -103,7 +104,7 @@
         }
         #physics-modal h3 { color: #4db8ff; margin-top: 0; font-size: 22px; }
         #physics-modal p { margin-bottom: 12px; line-height: 1.6; font-size: 15px;}
-       .math-block { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px; text-align: center; margin: 10px 0; }
+      .math-block { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px; text-align: center; margin: 10px 0; }
         
         #close-btn {
             margin-top: 20px;
@@ -122,9 +123,10 @@
 
     <div id="info-panel">
         <h2>Skovens Akustik & Ekkotæthed</h2>
-        <p><strong>Klik med musen i skoven</strong> for at udløse et håndklap.</p>
-        <p>Brug graferne forneden til at se, hvordan <br>det kaotiske netværk af træer påvirker <br>både tidshenfaldet og frekvensresponsen.</p>
-        <button id="physics-btn">Læs om fysikken og matematikken</button>
+        <p><strong>Klik i skoven</strong> for at udløse et håndklap.</p>
+        <p>Lyden udregnes nu matematisk og afspilles i<br><strong>sand tid</strong>, mens de visuelle grafer og<br>animationer vises i slow-motion for overblik.</p>
+        <button id="physics-btn" class="btn-style">Læs om fysikken og matematikken</button>
+        <button id="replay-btn" class="btn-style">Genafspil Lydfil (Sandt Ekko)</button>
     </div>
 
     <div id="time-panel">
@@ -162,7 +164,6 @@
         <div class="math-block">
             $$E(t)\propto t^{-2}$$
         </div>
-        <p>Denne lov visualiseres i <strong>Tidsrespons-grafen</strong> (nederst til venstre), hvor de diskrete refleksioner fra træstammerne hurtigt omfavnes af den teoretiske $t^{-2}$ kurve.</p>
 
         <button id="close-btn">Luk vindue</button>
     </div>
@@ -173,9 +174,10 @@
         const canvas = document.getElementById('simCanvas');
         const ctx = canvas.getContext('2d');
 
-        // --- HÅNDTERING AF POP-OP VINDUE ---
+        // --- HÅNDTERING AF UI ---
         const btnOpen = document.getElementById('physics-btn');
         const btnClose = document.getElementById('close-btn');
+        const btnReplay = document.getElementById('replay-btn');
         const modal = document.getElementById('physics-modal');
         const overlay = document.getElementById('overlay');
         const infoPanel = document.getElementById('info-panel');
@@ -192,15 +194,22 @@
             overlay.style.display = 'none';
         });
 
+        btnReplay.addEventListener('click', function(e) {
+            e.stopPropagation();
+            playLastBuffer();
+        });
+
         // Forhindrer klik på UI i at udløse bølger i baggrunden
         infoPanel.addEventListener('mousedown', function(e) { e.stopPropagation(); });
         graphPanel.addEventListener('mousedown', function(e) { e.stopPropagation(); });
         timePanel.addEventListener('mousedown', function(e) { e.stopPropagation(); });
         modal.addEventListener('mousedown', function(e) { e.stopPropagation(); });
-        // --- SLUT POP-OP HÅNDTERING ---
+        // --- SLUT UI ---
 
-        // --- LYD OPSÆTNING ---
+        // --- LYD OPSÆTNING & SYNTESE I SAND TID ---
         let audioCtx;
+        let lastAudioBuffer = null;
+
         if (window.AudioContext) {
             audioCtx = new window.AudioContext();
         } else {
@@ -209,35 +218,90 @@
             }
         }
 
-        function playNoiseBurst(volume, duration, panX) {
+        // Denne funktion bygger selve lydfilen (AudioBuffer) og placerer
+        // hvert enkelt træs ekko præcist i tid med den korrekte dæmpning
+        function synthesizeAndPlayEcho(cx, cy) {
             if (!audioCtx) { return; }
             if (audioCtx.state === 'suspended') { audioCtx.resume(); }
 
-            const bufferSize = Math.floor(audioCtx.sampleRate * duration);
-            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-            const data = buffer.getChannelData(0);
+            // Lydfilens varighed (1.5 sekunder er nok til at dække max afstanden på lærredet)
+            const duration = 1.5; 
+            const sampleRate = audioCtx.sampleRate;
+            const bufferSize = Math.floor(sampleRate * duration);
+            const buffer = audioCtx.createBuffer(2, bufferSize, sampleRate);
             
-            for (let i = 0; i < bufferSize; i++) {
-                Reflect.set(data, i, Math.random() * 2 - 1);
+            // Vi henter venstre og højre kanal
+            const left = buffer.getChannelData(0);
+            const right = buffer.getChannelData(1);
+
+            // Generer kildelyden (Det tørre håndklap - 50 millisekunder)
+            const clapLen = Math.floor(sampleRate * 0.05);
+            const baseClap = new Float32Array(clapLen);
+
+            for (let i = 0; i < clapLen; i++) {
+                let noise = Math.random() * 2 - 1;
+                let env = Math.exp(-i / (sampleRate * 0.005)); // Meget skarp transient
+                Reflect.set(baseClap, i, noise * env);
+                
+                // Tilføj den direkte lyd til filen i starten (t=0)
+                Reflect.set(left, i, noise * env * 0.8);
+                Reflect.set(right, i, noise * env * 0.8);
             }
 
-            const noiseSource = audioCtx.createBufferSource();
-            noiseSource.buffer = buffer;
+            // Beregn refleksionerne fra alle træerne og skriv dem ind i lydfilen
+            trees.forEach(function(tree) {
+                let dx = tree.x - cx;
+                let dy = tree.y - cy;
+                let dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < 1) { dist = 1; }
 
-            const gainNode = audioCtx.createGain();
-            gainNode.gain.setValueAtTime(volume, audioCtx.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+                // Konverterer afstand til tidsforsinkelse (forudsat 1px = 0.1m, dvs v=3430px/s)
+                let time_s = (2 * dist) / 3430.0;
+                let delaySamples = Math.floor(time_s * sampleRate);
 
-            let targetNode = gainNode;
-            if (audioCtx.createStereoPanner) {
-                const panner = audioCtx.createStereoPanner();
-                panner.pan.value = panX;
-                gainNode.connect(panner);
-                targetNode = panner;
-            }
+                if (delaySamples + clapLen < bufferSize) {
+                    let amp = (tree.radius * 2.0) / dist; // Energihenfald
+                    
+                    let pan = dx / canvas.width; 
+                    let panLeft = Math.min(1.0, 1.0 - pan);
+                    let panRight = Math.min(1.0, 1.0 + pan);
 
-            targetNode.connect(audioCtx.destination);
-            noiseSource.start();
+                    // Matematisk IIR-lavpasfilter til at simulere absorption fra træstammen
+                    let alpha = Math.min(0.95, dist * 0.003); 
+                    let prev = 0;
+
+                    for (let i = 0; i < clapLen; i++) {
+                        let s = Reflect.get(baseClap, i);
+                        
+                        // Påfør lavpasfilteret
+                        s = alpha * prev + (1.0 - alpha) * s;
+                        prev = s;
+
+                        let echoSample = s * amp;
+
+                        // Addér ekkoet til lydsporet med korrekt delay og panorering
+                        let currentLeft = Reflect.get(left, delaySamples + i);
+                        Reflect.set(left, delaySamples + i, currentLeft + echoSample * panLeft);
+
+                        let currentRight = Reflect.get(right, delaySamples + i);
+                        Reflect.set(right, delaySamples + i, currentRight + echoSample * panRight);
+                    }
+                }
+            });
+
+            lastAudioBuffer = buffer;
+            playLastBuffer();
+        }
+
+        function playLastBuffer() {
+            if (!audioCtx) { return; }
+            if (!lastAudioBuffer) { return; }
+            if (audioCtx.state === 'suspended') { audioCtx.resume(); }
+            
+            const source = audioCtx.createBufferSource();
+            source.buffer = lastAudioBuffer;
+            source.connect(audioCtx.destination);
+            source.start();
         }
 
         // --- FREKVENSRESPONS (DTFT) GRAF ---
@@ -326,7 +390,7 @@
             gCtx.fillStyle = 'rgba(77, 184, 255, 0.4)';
             gCtx.fill();
 
-            document.getElementById('graph-metrics').innerHTML = "Sand frekvensrespons udregnet.";
+            document.getElementById('graph-metrics').innerHTML = "Respons udregnet fra " + trees.length + " træer.";
         }
 
         // --- TIDSRESPONS (ENERGIHENFALD) GRAF ---
@@ -351,8 +415,8 @@
             tCtx.lineWidth = 2;
             tCtx.beginPath(); 
             tCtx.moveTo(40, 10); 
-            tCtx.lineTo(40, 170); // Y
-            tCtx.lineTo(340, 170); // X
+            tCtx.lineTo(40, 170); 
+            tCtx.lineTo(340, 170); 
             tCtx.stroke();
 
             tCtx.fillStyle = '#e0e0e0';
@@ -365,8 +429,7 @@
                 if (cy === 0) { return; }
             }
 
-            // Udregn echogram (Impulsrespons)
-            let maxTimeMs = 250; // Plotter de første 250 ms
+            let maxTimeMs = 250; 
             let echoes = new Array();
             let maxEnergy = 0.0001;
             let minDelay = 9999;
@@ -377,21 +440,18 @@
                 let dist = Math.sqrt(dx * dx + dy * dy);
                 if (dist < 1) { dist = 1; }
 
-                // Antager 343 m/s og 1 px = 0.1m
                 let time_s = (2 * dist) / 3430.0;
                 let time_ms = time_s * 1000;
                 
                 if (time_ms < minDelay) { minDelay = time_ms; }
 
                 if (time_ms <= maxTimeMs) {
-                    // Energien aftager med afstanden i anden potens (invers kvadratlov)
                     let energy = 10000.0 / (dist * dist);
                     echoes.push({ t: time_ms, e: energy });
                     if (energy > maxEnergy) { maxEnergy = energy; }
                 }
             });
 
-            // Tegn diskrete ekkoer (Impulser)
             tCtx.strokeStyle = '#e74c3c';
             tCtx.lineWidth = 1;
             for (let i = 0; i < echoes.length; i++) {
@@ -405,12 +465,10 @@
                 tCtx.stroke();
             }
 
-            // Tegn t^-2 trendlinjen (Potenslov)
             tCtx.beginPath();
             let firstPoint = true;
             for (let t = minDelay; t <= maxTimeMs; t += 2) {
                 let x = 40 + (t / maxTimeMs) * 290;
-                // Skaler t^-2 til at matche maxEnergy ved startpunktet
                 let theoreticalEnergy = maxEnergy * Math.pow(minDelay / t, 2);
                 let y = 170 - (theoreticalEnergy / maxEnergy) * 140;
                 
@@ -423,11 +481,10 @@
                     tCtx.lineTo(x, y);
                 }
             }
-            tCtx.strokeStyle = '#f1c40f'; // Gul trendlinje
+            tCtx.strokeStyle = '#f1c40f'; 
             tCtx.lineWidth = 2;
             tCtx.stroke();
 
-            // Legende for trendlinjen
             tCtx.fillStyle = '#f1c40f';
             tCtx.fillText('t^-2 (Potenslov)', 250, 30);
 
@@ -452,24 +509,26 @@
             });
         }
 
-        // Tegn tomme grafer ved start
+        // Tegn tomme grafer ved opstart
         drawFrequencyGraph(0, 0);
         drawTimeGraph(0, 0);
 
         let waves = new Array();
         const waveSpeed = 2.5;
 
-        // Udløs bølge og grafer ved klik
+        // Udløs bølge, byg audio og grafer ved klik
         window.addEventListener('mousedown', function(e) {
             let cx = e.clientX;
             let cy = e.clientY;
 
-            playNoiseBurst(0.8, 0.15, 0); 
+            // Genererer og afspiller den ægte lydfil!
+            synthesizeAndPlayEcho(cx, cy); 
 
-            // Opdater begge grafer med den nye kildeposition
+            // Opdaterer graferne
             drawFrequencyGraph(cx, cy);
             drawTimeGraph(cx, cy);
 
+            // Starter den visuelle slow-motion bølge
             waves.push({
                 x: cx,
                 y: cy,
@@ -533,15 +592,11 @@
                             const dy = tree.y - w.y;
                             const dist = Math.sqrt(dx * dx + dy * dy);
                             
+                            // Visuel refleksion 
                             if (dist < w.radius + tree.radius) {
                                 if (dist > w.radius - waveSpeed * 2) {
                                     w.hitTrees.add(index);
                                     
-                                    let pan = (tree.x / canvas.width) * 2 - 1;
-                                    let echoVolume = w.energy * 0.04; 
-                                    
-                                    playNoiseBurst(echoVolume, 0.05, pan);
-
                                     waves.push({
                                         x: tree.x,
                                         y: tree.y,
