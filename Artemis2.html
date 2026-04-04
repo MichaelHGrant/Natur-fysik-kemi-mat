@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Artemis II Trajektorie</title>
+    <style>
+        /* Grundlæggende styling til at skabe et "space" look */
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #040408;
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        /* Styling af kontrolpanelet */
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(10, 15, 30, 0.85);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #2a3b5c;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+        }
+
+        h1 {
+            margin: 0 0 5px 0;
+            font-size: 22px;
+            color: #4facfe;
+            letter-spacing: 1px;
+        }
+
+        .info {
+            font-size: 13px;
+            margin-bottom: 15px;
+            color: #a0aec0;
+            max-width: 250px;
+            line-height: 1.4;
+        }
+
+        label {
+            font-size: 14px;
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+        }
+
+        button {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: #040408;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 15px;
+            width: 100%;
+            transition: opacity 0.2s;
+        }
+
+        button:hover {
+            opacity: 0.8;
+        }
+
+        /* Sikrer at canvas fylder hele skærmen */
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ui">
+        <h1>Artemis II</h1>
+        <div class="info">Simulering af den planlagte "free-return" bane for Orion-rumfartøjet omkring Månen.</div>
+        
+        <label for="speed">Animationshastighed:</label>
+        <input type="range" id="speed" min="0.0001" max="0.003" step="0.0001" value="0.001">
+        
+        <button id="toggleBtn">Sæt på pause</button>
+    </div>
+
+    <canvas id="simCanvas"></canvas>
+
+    <script>
+        // Opsætning af Canvas
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        let width = window.innerWidth;
+        let height = window.innerHeight;
+        canvas.width = width;
+        canvas.height = height;
+
+        // Håndter ændringer i vinduets størrelse
+        window.addEventListener('resize', () => {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+            createStars(); // Genskab stjerner så de fylder den nye skærm
+        });
+
+        // Generering af stjernehimmel
+        let stars = [];
+        function createStars() {
+            stars = [];
+            for(let i = 0; i < 400; i++) {
+                stars.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    radius: Math.random() * 1.5,
+                    alpha: Math.random() * 0.8 + 0.2
+                });
+            }
+        }
+        createStars();
+
+        // Animationsvariabler
+        let progress = 0; // Går fra 0 til 1
+        let speed = 0.001;
+        let isPlaying = true;
+        let trail = [];
+
+        // UI Event Listeners
+        const toggleBtn = document.getElementById('toggleBtn');
+        toggleBtn.addEventListener('click', () => {
+            isPlaying = !isPlaying;
+            toggleBtn.innerText = isPlaying ? "Sæt på pause" : "Genoptag animation";
+        });
+
+        const speedSlider = document.getElementById('speed');
+        speedSlider.addEventListener('input', (e) => {
+            speed = parseFloat(e.target.value);
+        });
+
+        // Matematisk funktion til at beregne et asymmetrisk 8-tal (Lissajous-lignende kurve)
+        function getPosition(p) {
+            let t = p * Math.PI * 2; // Omregn progress (0-1) til radianer (0-2π)
+            let cx = width / 2;
+            let cy = height / 2;
+            let a = width * 0.3; // Afstanden fra centrum til Jorden/Månen
+
+            // Beregn X (frem og tilbage)
+            let x = cx - a * Math.cos(t);
+            
+            // Beregn Y med en modifikator for at gøre loopet ved Månen (højre side) lidt strammere
+            let yAmplitude = height * 0.25;
+            let yModifier = 1 - 0.2 * Math.cos(t); 
+            let y = cy + yAmplitude * Math.sin(2 * t) / 2 * yModifier;
+
+            return {x, y};
+        }
+
+        // Hoved-animationsloopet
+        function draw() {
+            // Ryd lærredet og tegn rumbaggrund
+            ctx.fillStyle = '#040408';
+            ctx.fillRect(0, 0, width, height);
+
+            // Tegn stjerner
+            stars.forEach(star => {
+                ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha})`;
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            let cx = width / 2;
+            let cy = height / 2;
+            let a = width * 0.3;
+
+            // Positioner for himmellegemerne
+            let earthX = cx - a;
+            let earthY = cy;
+            let moonX = cx + a;
+            let moonY = cy;
+
+            // Tegn den ideelle referencelinje (bane)
+            ctx.beginPath();
+            for(let i = 0; i <= 1; i += 0.005) {
+                let pos = getPosition(i);
+                if(i === 0) ctx.moveTo(pos.x, pos.y);
+                else ctx.lineTo(pos.x, pos.y);
+            }
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // Tegn Jorden (blå gradient)
+            let earthGrad = ctx.createRadialGradient(earthX - 10, earthY - 10, 5, earthX, earthY, 40);
+            earthGrad.addColorStop(0, '#4facfe');
+            earthGrad.addColorStop(0.8, '#004a8f');
+            earthGrad.addColorStop(1, '#001b48');
+            
+            // Atmosfæreglød
+            ctx.beginPath();
+            ctx.arc(earthX, earthY, 48, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(79, 172, 254, 0.15)';
+            ctx.fill();
+
+            // Selve Jorden
+            ctx.beginPath();
+            ctx.arc(earthX, earthY, 40, 0, Math.PI * 2);
+            ctx.fillStyle = earthGrad;
+            ctx.fill();
+
+            // Tegn Månen (grå gradient)
+            let moonGrad = ctx.createRadialGradient(moonX - 5, moonY - 5, 2, moonX, moonY, 18);
+            moonGrad.addColorStop(0, '#f0f0f0');
+            moonGrad.addColorStop(0.7, '#888888');
+            moonGrad.addColorStop(1, '#333333');
+            ctx.beginPath();
+            ctx.arc(moonX, moonY, 18, 0, Math.PI * 2);
+            ctx.fillStyle = moonGrad;
+            ctx.fill();
+
+            // Opdater Orion-rumfartøjets position, hvis animationen kører
+            if (isPlaying) {
+                progress += speed;
+                if (progress > 1) {
+                    progress -= 1;
+                    trail = []; // Nulstil sporet når kredsløbet starter forfra
+                }
+            }
+
+            let orionPos = getPosition(progress);
+
+            // Tilføj den aktuelle position til sporet (trail)
+            if (isPlaying) {
+                trail.push({x: orionPos.x, y: orionPos.y});
+                if (trail.length > 180) trail.shift(); // Hold sporet på max 180 punkter
+            }
+
+            // Tegn det flammende spor efter Orion
+            if (trail.length > 1) {
+                ctx.lineCap = 'round';
+                for (let i = 0; i < trail.length - 1; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(trail[i].x, trail[i].y);
+                    ctx.lineTo(trail[i+1].x, trail[i+1].y);
+                    // Fade sporet ud (ældste punkter er mest gennemsigtige)
+                    ctx.strokeStyle = `rgba(255, 140, 0, ${i / trail.length})`;
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                }
+            }
+
+            // Tegn selve Orion-rumfartøjet
+            ctx.beginPath();
+            ctx.arc(orionPos.x, orionPos.y, 4, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+            
+            // Tilføj en lille orange glød omkring fartøjet
+            ctx.beginPath();
+            ctx.arc(orionPos.x, orionPos.y, 10, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255, 140, 0, 0.4)';
+            ctx.fill();
+
+            // Tegn tekst-labels
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '14px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Jorden', earthX, earthY + 70);
+            ctx.fillText('Månen', moonX, moonY + 40);
+            
+            // Orion label følger med fartøjet
+            ctx.font = '12px sans-serif';
+            ctx.fillStyle = '#ff8c00';
+            ctx.fillText('Orion', orionPos.x, orionPos.y - 15);
+
+            // Bed browseren om at tegne næste frame
+            requestAnimationFrame(draw);
+        }
+
+        // Start animationen
+        draw();
+    </script>
+</body>
+</html>
