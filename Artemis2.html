@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Artemis II Trajektorie</title>
+    <title>Artemis II - Korrekt Fysik</title>
     <style>
-        /* Grundlæggende styling til at skabe et "space" look */
         body {
             margin: 0;
             overflow: hidden;
@@ -14,7 +13,6 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
-        /* Styling af kontrolpanelet */
         #ui {
             position: absolute;
             top: 20px;
@@ -31,14 +29,13 @@
             margin: 0 0 5px 0;
             font-size: 22px;
             color: #4facfe;
-            letter-spacing: 1px;
         }
 
         .info {
             font-size: 13px;
             margin-bottom: 15px;
             color: #a0aec0;
-            max-width: 250px;
+            max-width: 280px;
             line-height: 1.4;
         }
 
@@ -47,6 +44,7 @@
             font-weight: bold;
             display: block;
             margin-bottom: 5px;
+            margin-top: 10px;
         }
 
         input[type="range"] {
@@ -67,24 +65,20 @@
             transition: opacity 0.2s;
         }
 
-        button:hover {
-            opacity: 0.8;
-        }
-
-        /* Sikrer at canvas fylder hele skærmen */
-        canvas {
-            display: block;
-        }
+        button:hover { opacity: 0.8; }
+        canvas { display: block; }
     </style>
 </head>
 <body>
 
     <div id="ui">
         <h1>Artemis II</h1>
-        <div class="info">Simulering af den planlagte "free-return" bane for Orion-rumfartøjet omkring Månen.</div>
+        <div class="info">
+            <strong>Opdateret model:</strong> Viser fartøjets sande rute i et inertisystem, hvor Månen kredser om Jorden. Jorden er det primære tyngdepunkt, der trækker fartøjet hjem.
+        </div>
         
-        <label for="speed">Animationshastighed:</label>
-        <input type="range" id="speed" min="0.0001" max="0.003" step="0.0001" value="0.001">
+        <label for="speed">Tidsforløb (hastighed):</label>
+        <input type="range" id="speed" min="0.0002" max="0.003" step="0.0001" value="0.001">
         
         <button id="toggleBtn">Sæt på pause</button>
     </div>
@@ -92,7 +86,6 @@
     <canvas id="simCanvas"></canvas>
 
     <script>
-        // Opsætning af Canvas
         const canvas = document.getElementById('simCanvas');
         const ctx = canvas.getContext('2d');
         let width = window.innerWidth;
@@ -100,16 +93,15 @@
         canvas.width = width;
         canvas.height = height;
 
-        // Håndter ændringer i vinduets størrelse
         window.addEventListener('resize', () => {
             width = window.innerWidth;
             height = window.innerHeight;
             canvas.width = width;
             canvas.height = height;
-            createStars(); // Genskab stjerner så de fylder den nye skærm
+            createStars();
         });
 
-        // Generering af stjernehimmel
+        // Stjerner
         let stars = [];
         function createStars() {
             stars = [];
@@ -124,49 +116,56 @@
         }
         createStars();
 
-        // Animationsvariabler
-        let progress = 0; // Går fra 0 til 1
+        // Variabler
+        let progress = 0; 
         let speed = 0.001;
         let isPlaying = true;
         let trail = [];
 
-        // UI Event Listeners
-        const toggleBtn = document.getElementById('toggleBtn');
-        toggleBtn.addEventListener('click', () => {
+        document.getElementById('toggleBtn').addEventListener('click', (e) => {
             isPlaying = !isPlaying;
-            toggleBtn.innerText = isPlaying ? "Sæt på pause" : "Genoptag animation";
+            e.target.innerText = isPlaying ? "Sæt på pause" : "Genoptag animation";
         });
 
-        const speedSlider = document.getElementById('speed');
-        speedSlider.addEventListener('input', (e) => {
+        document.getElementById('speed').addEventListener('input', (e) => {
             speed = parseFloat(e.target.value);
         });
 
-        // Matematisk funktion til at beregne et asymmetrisk 8-tal (Lissajous-lignende kurve)
-        function getPosition(p) {
-            let t = p * Math.PI * 2; // Omregn progress (0-1) til radianer (0-2π)
-            let cx = width / 2;
-            let cy = height / 2;
-            let a = width * 0.3; // Afstanden fra centrum til Jorden/Månen
+        // Konstanter for banemekanikken
+        // Månen bevæger sig ca. 1/3 af sin bane under den 10-dages mission
+        const deltaTheta = 1.8; // Radianer månen bevæger sig under turen
+        const thetaStart = -1.2; // Startvinkel for Månen
 
-            // Beregn X (frem og tilbage)
-            let x = cx - a * Math.cos(t);
+        function getPositions(p) {
+            const cx = width / 2;
+            const cy = height / 2;
+            const R = Math.min(width, height) * 0.35; // Afstand til Månen
+            const R_max = R + 40; // Orion flyver bag om Månen
+            const H = R * 0.35;   // Bredden på svænget
             
-            // Beregn Y med en modifikator for at gøre loopet ved Månen (højre side) lidt strammere
-            let yAmplitude = height * 0.25;
-            let yModifier = 1 - 0.2 * Math.cos(t); 
-            let y = cy + yAmplitude * Math.sin(2 * t) / 2 * yModifier;
+            // 1. Månens position
+            let moonTheta = thetaStart + p * deltaTheta;
+            let moonX = cx + R * Math.cos(moonTheta);
+            let moonY = cy + R * Math.sin(moonTheta);
 
-            return {x, y};
+            // 2. Orions position udregnes først i et roterende system (som var Månen stille)
+            let t = p * Math.PI * 2;
+            // Lokal X går fra 0 til R_max og tilbage
+            let localX = (R_max / 2) * (1 - Math.cos(t));
+            // Lokal Y svinger for at skabe et kryds
+            let localY = H * Math.sin(2 * t);
+
+            // 3. Konverter Orions position til det globale (bevægelige) system
+            let orionX = cx + localX * Math.cos(moonTheta) - localY * Math.sin(moonTheta);
+            let orionY = cy + localX * Math.sin(moonTheta) + localY * Math.cos(moonTheta);
+
+            return { cx, cy, R, moonX, moonY, orionX, orionY };
         }
 
-        // Hoved-animationsloopet
         function draw() {
-            // Ryd lærredet og tegn rumbaggrund
             ctx.fillStyle = '#040408';
             ctx.fillRect(0, 0, width, height);
 
-            // Tegn stjerner
             stars.forEach(star => {
                 ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha})`;
                 ctx.beginPath();
@@ -174,115 +173,107 @@
                 ctx.fill();
             });
 
-            let cx = width / 2;
-            let cy = height / 2;
-            let a = width * 0.3;
-
-            // Positioner for himmellegemerne
-            let earthX = cx - a;
-            let earthY = cy;
-            let moonX = cx + a;
-            let moonY = cy;
-
-            // Tegn den ideelle referencelinje (bane)
-            ctx.beginPath();
-            for(let i = 0; i <= 1; i += 0.005) {
-                let pos = getPosition(i);
-                if(i === 0) ctx.moveTo(pos.x, pos.y);
-                else ctx.lineTo(pos.x, pos.y);
+            // Opdater tid
+            if (isPlaying) {
+                progress += speed;
+                if (progress > 1) {
+                    progress = 0;
+                    trail = [];
+                }
             }
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+
+            let pos = getPositions(progress);
+
+            // Tegn Månens omløbsbane (firkantet cirkel)
+            ctx.beginPath();
+            ctx.arc(pos.cx, pos.cy, pos.R, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
             ctx.lineWidth = 1;
             ctx.stroke();
 
-            // Tegn Jorden (blå gradient)
-            let earthGrad = ctx.createRadialGradient(earthX - 10, earthY - 10, 5, earthX, earthY, 40);
+            // Tegn Orions planlagte inaktive rute (fremtiden)
+            ctx.beginPath();
+            for(let i = 0; i <= 1; i += 0.005) {
+                let futurePos = getPositions(i);
+                if(i === 0) ctx.moveTo(futurePos.orionX, futurePos.orionY);
+                else ctx.lineTo(futurePos.orionX, futurePos.orionY);
+            }
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 4]);
+            ctx.stroke();
+            ctx.setLineDash([]); // Nulstil streg
+
+            // Tegn Jorden
+            let earthGrad = ctx.createRadialGradient(pos.cx - 10, pos.cy - 10, 5, pos.cx, pos.cy, 40);
             earthGrad.addColorStop(0, '#4facfe');
             earthGrad.addColorStop(0.8, '#004a8f');
             earthGrad.addColorStop(1, '#001b48');
             
-            // Atmosfæreglød
             ctx.beginPath();
-            ctx.arc(earthX, earthY, 48, 0, Math.PI * 2);
+            ctx.arc(pos.cx, pos.cy, 48, 0, Math.PI * 2);
             ctx.fillStyle = 'rgba(79, 172, 254, 0.15)';
             ctx.fill();
 
-            // Selve Jorden
             ctx.beginPath();
-            ctx.arc(earthX, earthY, 40, 0, Math.PI * 2);
+            ctx.arc(pos.cx, pos.cy, 40, 0, Math.PI * 2);
             ctx.fillStyle = earthGrad;
             ctx.fill();
 
-            // Tegn Månen (grå gradient)
-            let moonGrad = ctx.createRadialGradient(moonX - 5, moonY - 5, 2, moonX, moonY, 18);
+            // Tegn Månen
+            let moonGrad = ctx.createRadialGradient(pos.moonX - 5, pos.moonY - 5, 2, pos.moonX, pos.moonY, 15);
             moonGrad.addColorStop(0, '#f0f0f0');
             moonGrad.addColorStop(0.7, '#888888');
             moonGrad.addColorStop(1, '#333333');
+            
             ctx.beginPath();
-            ctx.arc(moonX, moonY, 18, 0, Math.PI * 2);
+            ctx.arc(pos.moonX, pos.moonY, 15, 0, Math.PI * 2);
             ctx.fillStyle = moonGrad;
             ctx.fill();
 
-            // Opdater Orion-rumfartøjets position, hvis animationen kører
+            // Opdater og tegn Orions spor (trail)
             if (isPlaying) {
-                progress += speed;
-                if (progress > 1) {
-                    progress -= 1;
-                    trail = []; // Nulstil sporet når kredsløbet starter forfra
-                }
+                trail.push({x: pos.orionX, y: pos.orionY});
+                if (trail.length > 250) trail.shift();
             }
 
-            let orionPos = getPosition(progress);
-
-            // Tilføj den aktuelle position til sporet (trail)
-            if (isPlaying) {
-                trail.push({x: orionPos.x, y: orionPos.y});
-                if (trail.length > 180) trail.shift(); // Hold sporet på max 180 punkter
-            }
-
-            // Tegn det flammende spor efter Orion
             if (trail.length > 1) {
                 ctx.lineCap = 'round';
                 for (let i = 0; i < trail.length - 1; i++) {
                     ctx.beginPath();
                     ctx.moveTo(trail[i].x, trail[i].y);
                     ctx.lineTo(trail[i+1].x, trail[i+1].y);
-                    // Fade sporet ud (ældste punkter er mest gennemsigtige)
                     ctx.strokeStyle = `rgba(255, 140, 0, ${i / trail.length})`;
                     ctx.lineWidth = 3;
                     ctx.stroke();
                 }
             }
 
-            // Tegn selve Orion-rumfartøjet
+            // Tegn Orion
             ctx.beginPath();
-            ctx.arc(orionPos.x, orionPos.y, 4, 0, Math.PI * 2);
+            ctx.arc(pos.orionX, pos.orionY, 4, 0, Math.PI * 2);
             ctx.fillStyle = '#ffffff';
             ctx.fill();
             
-            // Tilføj en lille orange glød omkring fartøjet
             ctx.beginPath();
-            ctx.arc(orionPos.x, orionPos.y, 10, 0, Math.PI * 2);
+            ctx.arc(pos.orionX, pos.orionY, 10, 0, Math.PI * 2);
             ctx.fillStyle = 'rgba(255, 140, 0, 0.4)';
             ctx.fill();
 
-            // Tegn tekst-labels
+            // Labels
             ctx.fillStyle = '#ffffff';
             ctx.font = '14px sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText('Jorden', earthX, earthY + 70);
-            ctx.fillText('Månen', moonX, moonY + 40);
+            ctx.fillText('Jorden', pos.cx, pos.cy + 70);
+            ctx.fillText('Månen', pos.moonX, pos.moonY + 35);
             
-            // Orion label følger med fartøjet
             ctx.font = '12px sans-serif';
             ctx.fillStyle = '#ff8c00';
-            ctx.fillText('Orion', orionPos.x, orionPos.y - 15);
+            ctx.fillText('Orion', pos.orionX, pos.orionY - 15);
 
-            // Bed browseren om at tegne næste frame
             requestAnimationFrame(draw);
         }
 
-        // Start animationen
         draw();
     </script>
 </body>
