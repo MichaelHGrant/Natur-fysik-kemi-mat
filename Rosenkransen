@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interaktiv Rosenkrans</title>
+    <style>
+        :root {
+            --bg-color: #f4f6f9;
+            --text-color: #333;
+            --bead-color: #d1d8e0;
+            --bead-active: #4a69bd;
+            --bead-our-father: #a5b1c2;
+            --bead-our-father-active: #1e3799;
+        }
+
+        body {
+            font-family: 'Georgia', serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+        }
+
+        h1 {
+            color: var(--bead-active);
+            margin-bottom: 5px;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-top: 20px;
+        }
+
+        .prayer-display {
+            min-height: 150px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 5px solid var(--bead-active);
+        }
+
+        .prayer-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: var(--bead-our-father-active);
+        }
+
+        .prayer-text {
+            font-size: 1.1em;
+            line-height: 1.6;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        button {
+            background-color: var(--bead-active);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1em;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background-color: var(--bead-our-father-active);
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* Perlerække (Beads) */
+        .rosary-beads {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 20px;
+        }
+
+        .bead {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: var(--bead-color);
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.3s;
+        }
+
+        .bead:hover {
+            transform: scale(1.2);
+        }
+
+        .bead.our-father {
+            width: 26px;
+            height: 26px;
+            background-color: var(--bead-our-father);
+        }
+
+        .bead.active {
+            background-color: var(--bead-active);
+            box-shadow: 0 0 8px var(--bead-active);
+        }
+
+        .bead.our-father.active {
+            background-color: var(--bead-our-father-active);
+            box-shadow: 0 0 10px var(--bead-our-father-active);
+        }
+
+        /* Lydsektion */
+        .audio-section {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Den Hellige Rosenkrans</h1>
+    <p>En interaktiv guide til bøn</p>
+
+    <div class="container">
+        
+        <div class="prayer-display">
+            <div class="prayer-title" id="prayerTitle">Korstegnet</div>
+            <div class="prayer-text" id="prayerText">I Faderens og Sønnens og Helligåndens navn. Amen.</div>
+        </div>
+
+        <div class="controls">
+            <button id="prevBtn" onclick="prevBead()" disabled>&#8592; Forrige</button>
+            <span id="counter">Perle 1 af X</span>
+            <button id="nextBtn" onclick="nextBead()">Næste &#8594;</button>
+        </div>
+
+        <div class="rosary-beads" id="beadsContainer">
+            </div>
+
+        <div class="audio-section">
+            <p><strong>Lydledsagelse:</strong></p>
+            <audio id="audioPlayer" controls loop>
+                <source src="din-lydfil.mp3" type="audio/mpeg">
+                Din browser understøtter ikke lydelementet.
+            </audio>
+        </div>
+
+    </div>
+
+    <script>
+        // Bønnetekster på dansk
+        const prayerLibrary = {
+            kors: {
+                title: "Korstegnet & Trosbekendelsen",
+                text: "I Faderens og Sønnens og Helligåndens navn. Amen.<br><br>Jeg tror på Gud Fader, den Almægtige, himlens og jordens skaber. Og på Jesus Kristus, hans enbårne Søn, vor Herre..."
+            },
+            fader: {
+                title: "Fader Vor",
+                text: "Fader vor, du som er i himlene! Helliget vorde dit navn, komme dit rige, ske din vilje som i himlen således også på jorden; giv os i dag vort daglige brød, og forlad os vor skyld, som også vi forlader vore skyldnere, og led os ikke i fristelse, men fri os fra det onde. Amen."
+            },
+            maria: {
+                title: "Hil dig, Maria",
+                text: "Hil dig, Maria, fuld af nåde! Herren er med dig! Velsignet er du iblandt kvinder, og velsignet er dit livs frugt, Jesus. Hellige Maria, Guds Moder! Bed for os syndere, nu og i vor dødstime. Amen."
+            },
+            aere: {
+                title: "Ære være Faderen",
+                text: "Ære være Faderen og Sønnen og Helligånden, som det var i begyndelsen, så nu og altid og i al evighed. Amen."
+            }
+        };
+
+        // Opbygning af rosenkransens sekvens
+        let sequence = [];
+        
+        // Indledning (Korsfæstelse og første perler)
+        sequence.push('kors');
+        sequence.push('fader');
+        sequence.push('maria', 'maria', 'maria'); // For Tro, Håb og Kærlighed
+        sequence.push('aere');
+
+        // De 5 dekader (Mysterier)
+        for (let dekade = 1; dekade <= 5; dekade++) {
+            sequence.push('fader'); // Stor perle
+            for (let hil = 0; hil < 10; hil++) {
+                sequence.push('maria'); // Små perler
+            }
+            sequence.push('aere');
+        }
+
+        let currentIndex = 0;
+        const totalBeads = sequence.length;
+
+        const titleEl = document.getElementById('prayerTitle');
+        const textEl = document.getElementById('prayerText');
+        const counterEl = document.getElementById('counter');
+        const beadsContainer = document.getElementById('beadsContainer');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+
+        // Initialiser perlerne visuelt
+        function initBeads() {
+            beadsContainer.innerHTML = '';
+            sequence.forEach((type, index) => {
+                const bead = document.createElement('div');
+                bead.classList.add('bead');
+                
+                // Gør "Fader Vor" perlerne lidt større visuelt
+                if (type === 'fader' || type === 'kors') {
+                    bead.classList.add('our-father');
+                }
+
+                // Klik på en specifik perle
+                bead.onclick = () => jumpToBead(index);
+                beadsContainer.appendChild(bead);
+            });
+            updateUI();
+        }
+
+        // Opdaterer tekster, knapper og aktiv perle
+        function updateUI() {
+            const currentPrayerType = sequence[currentIndex];
+            const prayerData = prayerLibrary[currentPrayerType];
+
+            titleEl.innerHTML = prayerData.title;
+            textEl.innerHTML = prayerData.text;
+            counterEl.innerText = `Skridt ${currentIndex + 1} af ${totalBeads}`;
+
+            // Opdater knap-status
+            prevBtn.disabled = currentIndex === 0;
+            nextBtn.disabled = currentIndex === totalBeads - 1;
+
+            // Opdater perle farver
+            const beads = document.querySelectorAll('.bead');
+            beads.forEach((bead, index) => {
+                if (index === currentIndex) {
+                    bead.classList.add('active');
+                } else {
+                    bead.classList.remove('active');
+                }
+            });
+        }
+
+        function nextBead() {
+            if (currentIndex < totalBeads - 1) {
+                currentIndex++;
+                updateUI();
+            }
+        }
+
+        function prevBead() {
+            if (currentIndex > 0) {
+                currentIndex--;
+                updateUI();
+            }
+        }
+
+        function jumpToBead(index) {
+            currentIndex = index;
+            updateUI();
+        }
+
+        // Start applikationen
+        initBeads();
+    </script>
+</body>
+</html>
