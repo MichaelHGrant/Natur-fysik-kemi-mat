@@ -19,7 +19,6 @@
         h1 { margin-bottom: 0px; color: #e9e9eb; font-size: 24px; }
         #status { font-size: 13px; color: #8a8a93; margin-bottom: 20px; }
         
-        /* Container til den grafiske rosenkrans */
         #svg-container {
             width: 100%;
             max-width: 400px;
@@ -34,24 +33,22 @@
             filter: drop-shadow(0px 10px 15px rgba(0,0,0,0.5));
         }
 
-        /* SVG interaktions-klasser */
-       .bead-node {
+      .bead-node {
             cursor: pointer;
             transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
             transform-box: fill-box;
             transform-origin: center;
         }
-       .bead-node:hover {
+      .bead-node:hover {
             transform: scale(1.15);
         }
-       .active-glow {
+      .active-glow {
             stroke: #ffffff;
             stroke-width: 2.5px;
             filter: drop-shadow(0 0 12px #ffffff) drop-shadow(0 0 5px #a0c4ff);
             transform: scale(1.4);
         }
 
-        /* Tekst og Kontrolpanel */
         #text-display { 
             min-height: 140px; 
             font-size: 18px;
@@ -104,19 +101,19 @@
         <svg viewBox="0 0 400 680" id="rosary-svg">
             <defs>
                 <radialGradient id="blueGlass" cx="35%" cy="35%" r="65%">
-                    <stop offset="0%" stop-color="#8ab4f8" />
-                    <stop offset="30%" stop-color="#1e5cb3" />
-                    <stop offset="100%" stop-color="#071b3b" />
+                    <stop offset="0%" stop-color="#7abaff" />
+                    <stop offset="40%" stop-color="#144d99" />
+                    <stop offset="100%" stop-color="#051530" />
                 </radialGradient>
                 <radialGradient id="goldMetal" cx="30%" cy="30%" r="70%">
-                    <stop offset="0%" stop-color="#fff6d6" />
+                    <stop offset="0%" stop-color="#fff0b3" />
                     <stop offset="40%" stop-color="#d4af37" />
                     <stop offset="100%" stop-color="#7a5500" />
                 </radialGradient>
-                <radialGradient id="medalMetal" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stop-color="#ffd700" />
-                    <stop offset="80%" stop-color="#cda434" />
-                    <stop offset="100%" stop-color="#8a6300" />
+                <radialGradient id="medalMetal" cx="40%" cy="40%" r="60%">
+                    <stop offset="0%" stop-color="#ffe680" />
+                    <stop offset="60%" stop-color="#cca300" />
+                    <stop offset="100%" stop-color="#806600" />
                 </radialGradient>
             </defs>
             <g id="rosary-svg-group"></g>
@@ -131,7 +128,7 @@
     </div>
 
     <script>
-        // --- 1. DATAMODEL & TEKSTER ---
+        // TEKSTER
         const texts = {
             signumCrucis: "I Faderens og Sønnens og Helligåndens navn. Amen.",
             credo: "Jeg tror på Gud, den almægtige Fader, Himlens og jordens Skaber. Jeg tror på Jesus Kristus, Hans enbårne Søn, vor Herre, som er undfanget ved Helligånden og født af Jomfru Maria, har lidt under Pontius Pilatus, blev korsfæstet, døde og blev begravet, nedfór til Dødsriget, opstod på den tredje dag fra de døde, opfór til Himlen, sidder ved Gud, den almægtige Faders højre hånd, hvorfra han skal komme igen for at dømme de levende og de døde. Jeg tror på Helligånden, den hellige katolske Kirke, de helliges samfund, syndernes forladelse, kødets opstandelse og det evige liv. Amen.",
@@ -167,54 +164,50 @@
         const currentMysteries = getTodaysMysteries();
         let playQueue = new Array();
         
-        // --- 2. OPBYGNING AF FSM & KOBING TIL VISUELLE ID'ER ---
-        
-        // Korset
+        // KØREPLAN
         playQueue.push({ target: 'cross', text: texts.signumCrucis });
         playQueue.push({ target: 'cross', text: texts.credo });
         
-        // Halskædens vedhæng
         playQueue.push({ target: 'pendant_gold_1', text: texts.paterNoster });
         for(let i=0; i<3; i++) {
             playQueue.push({ target: 'pendant_blue_' + (i+1), text: texts.aveMaria(introInserts[i]) });
         }
         playQueue.push({ target: 'pendant_gold_2', text: texts.gloriaPatri });
 
-        // De 5 dekader i selve kransen
-        let loopIndex = 1; // Holder styr på de 54 perler i den store cirkel
+        let loopIndex = 1; 
         
         for(let dekade=0; dekade<5; dekade++) {
-            // Første dekades Fadervor bedes ofte ved midterstykket. Resten på de store guldperler.
-            let centerTarget = (dekade === 0)? 'centerpiece' : 'loop_b_' + loopIndex;
+            let centerTarget = 'loop_b_' + loopIndex;
+            if (dekade === 0) {
+                centerTarget = 'centerpiece';
+            }
             
             playQueue.push({ target: centerTarget, text: "Vi mediterer over det " + (dekade+1) + ". mysterium." });
             playQueue.push({ target: centerTarget, text: texts.paterNoster });
             
-            if (dekade > 0) loopIndex++; // Spring guldperlen over, så vi når til de blå
+            if (dekade > 0) {
+                loopIndex++;
+            }
             
-            // 10 Ave Maria
             for(let i=0; i<10; i++) {
                 playQueue.push({ target: 'loop_b_' + loopIndex, text: texts.aveMaria(currentMysteries[dekade]) });
                 loopIndex++;
             }
             
-            // Afslutning på dekaden (Vi bliver visuelt stående på den sidste blå perle)
             let lastSmallBead = 'loop_b_' + (loopIndex - 1);
             playQueue.push({ target: lastSmallBead, text: texts.gloriaPatri });
             playQueue.push({ target: lastSmallBead, text: texts.fatima });
             playQueue.push({ target: lastSmallBead, text: texts.michael });
         }
         
-        // Afsluttende bønner på midterstykket og korset
         playQueue.push({ target: 'centerpiece', text: texts.salveRegina });
         playQueue.push({ target: 'centerpiece', text: texts.memorare });
         playQueue.push({ target: 'centerpiece', text: texts.concluding });
         playQueue.push({ target: 'cross', text: texts.signumCrucis });
 
-        // --- 3. GENERERING AF SVG GRAFIK ---
+        // GRAFIK
         let svgHTML = "";
         
-        // Tegn Guldkæden til selve kransen (cirklen)
         svgHTML += '<path d="M 200 390 ';
         for(let i=1; i<=54; i++) {
             let angleDeg = 90 + (i * 360 / 55);
@@ -223,51 +216,59 @@
             let y = 230 + 130 * Math.sin(angleRad);
             svgHTML += "L " + x + " " + y + " ";
         }
-        svgHTML += 'Z" fill="none" stroke="#a68428" stroke-width="2" />';
+        svgHTML += 'Z" fill="none" stroke="#d4af37" stroke-width="2" />';
         
-        // Tegn Guldkæden til vedhænget (den lige linje ned)
-        svgHTML += '<line x1="200" y1="390" x2="200" y2="590" stroke="#a68428" stroke-width="2" />';
+        svgHTML += '<line x1="200" y1="390" x2="200" y2="590" stroke="#d4af37" stroke-width="2" />';
         
-        // Funktion til at placere en perle
         function drawBead(id, x, y, isLarge, isCenter) {
-            let r = isCenter? 20 : (isLarge? 10 : 6);
-            let fill = isCenter? "url(#medalMetal)" : (isLarge? "url(#goldMetal)" : "url(#blueGlass)");
-            svgHTML += '<circle id="' + id + '" class="bead-node" cx="' + x + '" cy="' + y + '" r="' + r + '" fill="' + fill + '" stroke="#000" stroke-width="0.8" onclick="jumpToNode(\'' + id + '\')" />';
+            let r = 7;
+            let fill = "url(#blueGlass)";
+            
+            if (isLarge === true) {
+                r = 11;
+                fill = "url(#goldMetal)";
+            }
+            
+            if (isCenter === true) {
+                r = 22;
+                fill = "url(#medalMetal)";
+            }
+            
+            svgHTML += '<circle id="' + id + '" class="bead-node" cx="' + x + '" cy="' + y + '" r="' + r + '" fill="' + fill + '" stroke="#000" stroke-width="0.5" onclick="jumpToNode(\'' + id + '\')" />';
         }
 
-        // Tegn perlerne i cirklen (Index 1 til 54)
-        // Hver 11. perle (11, 22, 33, 44) er en stor guldperle
         for(let i=1; i<=54; i++) {
             let angleDeg = 90 + (i * 360 / 55);
             let angleRad = angleDeg * Math.PI / 180;
             let x = 200 + 130 * Math.cos(angleRad);
             let y = 230 + 130 * Math.sin(angleRad);
-            let isLarge = (i === 11 |
-
-| i === 22 |
-| i === 33 |
-| i === 44);
+            
+            let isLarge = false;
+            if (i === 11) isLarge = true;
+            if (i === 22) isLarge = true;
+            if (i === 33) isLarge = true;
+            if (i === 44) isLarge = true;
+            
             drawBead('loop_b_' + i, x, y, isLarge, false);
         }
 
-        // Tegn vedhænget (Pendant) præcis som på billedet
-        drawBead('centerpiece', 200, 390, false, true); // Maria guld-medalje
+        drawBead('centerpiece', 200, 390, false, true); 
         
-        // Tilføj en lille indre gravering på midterstykket for realisme
-        svgHTML += '<ellipse cx="200" cy="390" rx="8" ry="12" fill="none" stroke="#8a6300" stroke-width="1.5" pointer-events="none" />';
+        // Jomfru Maria motiv-effekt på medaljen
+        svgHTML += '<ellipse cx="200" cy="390" rx="8" ry="14" fill="none" stroke="#a38200" stroke-width="1.5" pointer-events="none" />';
+        svgHTML += '<circle cx="200" cy="380" r="3" fill="#a38200" pointer-events="none" />';
         
-        drawBead('pendant_gold_2', 200, 435, true, false);
-        drawBead('pendant_blue_3', 200, 465, false, false);
-        drawBead('pendant_blue_2', 200, 485, false, false);
-        drawBead('pendant_blue_1', 200, 505, false, false);
-        drawBead('pendant_gold_1', 200, 540, true, false);
+        drawBead('pendant_gold_2', 200, 440, true, false);
+        drawBead('pendant_blue_3', 200, 470, false, false);
+        drawBead('pendant_blue_2', 200, 490, false, false);
+        drawBead('pendant_blue_1', 200, 510, false, false);
+        drawBead('pendant_gold_1', 200, 545, true, false);
         
-        // Tegn det store guldkors i bunden
         svgHTML += '<path id="cross" class="bead-node" d="M 194 575 L 206 575 L 206 595 L 225 595 L 225 607 L 206 607 L 206 660 L 194 660 L 194 607 L 175 607 L 175 595 L 194 595 Z" fill="url(#goldMetal)" stroke="#332200" stroke-width="1" onclick="jumpToNode(\'cross\')" />';
 
         document.getElementById('rosary-svg-group').innerHTML = svgHTML;
 
-        // --- 4. KONTROL OG LOGIK ---
+        // LOGIK
         let currentIndex = -1;
         let isPlaying = false;
         let synth = window.speechSynthesis;
@@ -277,9 +278,11 @@
             let voices = synth.getVoices();
             if (voices.length > 0) {
                 for(let i = 0; i < voices.length; i++) {
-                    if(voices[i].lang === 'da-DK' |
-
-| voices[i].lang === 'da_DK') {
+                    let isDanish = false;
+                    if(voices[i].lang === 'da-DK') { isDanish = true; }
+                    if(voices[i].lang === 'da_DK') { isDanish = true; }
+                    
+                    if(isDanish === true) {
                         selectedVoice = voices[i];
                         break;
                     }
@@ -296,7 +299,7 @@
         initVoices(); 
 
         setTimeout(() => {
-            if (document.getElementById('btn-start').disabled) {
+            if (document.getElementById('btn-start').disabled === true) {
                 document.getElementById('btn-start').disabled = false;
                 document.getElementById('btn-pause').disabled = false;
                 document.getElementById('text-display').innerText = "Tryk på 'Start Rosenkrans' for at begynde. (Standardstemme benyttes).";
@@ -333,14 +336,14 @@
             speakCurrent();
         }
 
-        // Håndterer hvis man tapper/klikker direkte på en perle i SVG'en
         function jumpToNode(targetId) {
             let matches = new Array();
             for(let i = 0; i < playQueue.length; i++) {
-                if(playQueue[i].target === targetId) matches.push(i);
+                if(playQueue[i].target === targetId) {
+                    matches.push(i);
+                }
             }
             if(matches.length > 0) {
-                // Find den næste bøn for denne perle (f.eks. ved midterstykket), eller start forfra
                 let nextIndex = undefined;
                 for(let j = 0; j < matches.length; j++) {
                     if(matches[j] > currentIndex) {
@@ -348,11 +351,13 @@
                         break;
                     }
                 }
-                if(nextIndex === undefined) nextIndex = matches;
+                if(nextIndex === undefined) {
+                    nextIndex = matches;
+                }
                 
                 currentIndex = nextIndex;
                 updateUI();
-                if(isPlaying) {
+                if(isPlaying === true) {
                     speakCurrent();
                 } else {
                     document.getElementById('text-display').innerText = playQueue[currentIndex].text;
@@ -365,17 +370,22 @@
             
             let utterance = new SpeechSynthesisUtterance(playQueue[currentIndex].text);
             utterance.lang = 'da-DK'; 
-            if (selectedVoice) {
+            if (selectedVoice!== null) {
                 utterance.voice = selectedVoice;
             }
             utterance.rate = 0.85; 
             utterance.pitch = 0.95; 
             
             utterance.onend = () => {
-                if(isPlaying) playNext();
+                if(isPlaying === true) {
+                    playNext();
+                }
             };
             
-            utterance.onerror = (e) => console.log('Speech error', e);
+            utterance.onerror = (e) => {
+                console.log('Speech error', e);
+            };
+            
             synth.speak(utterance);
         }
 
@@ -383,9 +393,6 @@
             if(currentIndex === -1) {
                 synth.speak(new SpeechSynthesisUtterance(''));
                 currentIndex = 0;
-            } else if (!isPlaying) {
-                // Hvis sat på pause og man trykker start igen, kan man lade den fortsætte
-                // eller skifte manuelt frem. Vi fortsætter bare her.
             }
             
             isPlaying = true;
@@ -394,10 +401,10 @@
         };
 
         document.getElementById('btn-pause').onclick = () => {
-            if(synth.paused) {
+            if(synth.paused === true) {
                 synth.resume();
                 isPlaying = true;
-            } else if(synth.speaking) {
+            } else if(synth.speaking === true) {
                 synth.pause();
                 isPlaying = false;
             } else {
