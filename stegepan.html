@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Termisk Chok Simulator</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #1e1e1e;
+            color: white;
+            margin-top: 50px;
+        }
+        .container {
+            text-align: center;
+            background: #2a2a2a;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            width: 400px;
+        }
+        .pan-container {
+            position: relative;
+            height: 150px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            margin-bottom: 30px;
+        }
+        /* Selve panden */
+        .pan {
+            width: 200px;
+            height: 25px;
+            background: #555;
+            position: relative;
+            transition: background 1s, border-radius 0.5s, transform 0.5s;
+        }
+        /* Pandens håndtag */
+        .handle {
+            position: absolute;
+            width: 120px;
+            height: 12px;
+            background: #333;
+            right: -110px;
+            top: 5px;
+            border-radius: 0 6px 6px 0;
+        }
+        /* Vand-animation */
+        .water {
+            position: absolute;
+            top: 0;
+            width: 100%;
+            height: 100px;
+            background: linear-gradient(to bottom, transparent, rgba(0, 150, 255, 0.8));
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+        
+        /* Tilstande */
+        .hot {
+            background: #ff4500;
+            box-shadow: 0 -10px 30px rgba(255, 69, 0, 0.5);
+        }
+        .warped {
+            /* Deformerer panden permanent */
+            border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+            transform: translateY(-10px);
+            background: #555; /* Køler hurtigt ned, men forbliver bøjet */
+            box-shadow: none;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        input[type="range"] {
+            width: 100%;
+        }
+        button {
+            padding: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            border-radius: 6px;
+            background-color: #008cba;
+            color: white;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background-color: #007399;
+        }
+        button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+        }
+        #status {
+            margin-top: 15px;
+            font-style: italic;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Stegepande Fysik</h2>
+        <div class="pan-container">
+            <div class="water" id="waterEffect"></div>
+            <div class="pan" id="pan">
+                <div class="handle"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <label for="tempSlider">Pande Temperatur: <span id="tempValue">20</span>°C</label>
+            <input type="range" id="tempSlider" min="20" max="300" value="20">
+            
+            <button id="waterBtn">Hæld koldt vand på!</button>
+            <button id="resetBtn" style="background-color: #e74c3c; display: none;">Køb ny pande (Reset)</button>
+        </div>
+
+        <p id="status">Panden er kold og flad.</p>
+    </div>
+
+    <script>
+        const pan = document.getElementById('pan');
+        const tempSlider = document.getElementById('tempSlider');
+        const tempValue = document.getElementById('tempValue');
+        const waterBtn = document.getElementById('waterBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const waterEffect = document.getElementById('waterEffect');
+        const statusText = document.getElementById('status');
+
+        let isWarped = false;
+
+        // Opdater temperatur og farve
+        tempSlider.addEventListener('input', (e) => {
+            if (isWarped) {
+                e.target.value = 20; // Kan ikke varme en ødelagt pande op her
+                return;
+            }
+            
+            const temp = e.target.value;
+            tempValue.textContent = temp;
+
+            // Skift farve mod rød/orange baseret på temperatur
+            if (temp > 150) {
+                pan.classList.add('hot');
+                const intensity = (temp - 150) / 150; 
+                pan.style.backgroundColor = `rgb(255, ${100 - (intensity * 100)}, 0)`;
+                statusText.textContent = "Panden er glohed! Klar til at stege.";
+                statusText.style.color = "#ff4500";
+            } else {
+                pan.classList.remove('hot');
+                pan.style.backgroundColor = '#555';
+                statusText.textContent = "Panden varmes op jævnt.";
+                statusText.style.color = "#aaa";
+            }
+        });
+
+        // Termisk chok logik
+        waterBtn.addEventListener('click', () => {
+            if (isWarped) return;
+
+            const currentTemp = parseInt(tempSlider.value);
+            
+            // Vis vand animation
+            waterEffect.style.opacity = '1';
+            setTimeout(() => { waterEffect.style.opacity = '0'; }, 600);
+
+            // Tjek om temperaturforskellen er stor nok til at overstige flydespændingen
+            if (currentTemp > 180) {
+                // Termisk chok udløst!
+                isWarped = true;
+                pan.classList.add('warped');
+                pan.classList.remove('hot');
+                pan.style.backgroundColor = ''; // Reset inline color
+                
+                tempSlider.value = 20;
+                tempValue.textContent = 20;
+                tempSlider.disabled = true;
+                waterBtn.disabled = true;
+                resetBtn.style.display = 'block';
+
+                statusText.textContent = "CRASH! Termisk chok (σ > Flydespænding). Panden slog sig!";
+                statusText.style.color = "#e74c3c";
+            } else {
+                // Sikker nedkøling
+                tempSlider.value = 20;
+                tempValue.textContent = 20;
+                pan.classList.remove('hot');
+                pan.style.backgroundColor = '#555';
+                statusText.textContent = "Panden blev kølet ned uden problemer. ΔT var for lille til at skade.";
+                statusText.style.color = "#2ecc71";
+            }
+        });
+
+        // Reset
+        resetBtn.addEventListener('click', () => {
+            isWarped = false;
+            pan.classList.remove('warped', 'hot');
+            tempSlider.disabled = false;
+            waterBtn.disabled = false;
+            resetBtn.style.display = 'none';
+            statusText.textContent = "Ny, flad pande klar til brug.";
+            statusText.style.color = "#aaa";
+        });
+    </script>
+</body>
+</html>
