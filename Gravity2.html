@@ -93,7 +93,7 @@
                 height: 50vh; 
                 max-height: 50vh; 
                 padding: 15px;
-                padding-top: 35px; 
+                padding-top: 35px;
                 border-radius: 0;
                 border: none;
                 border-bottom: 2px solid #555;
@@ -160,7 +160,7 @@
         </div>
 
         <div class="tip">
-            ▶ Standardværdierne her sender satellitten ud i et <b>slingshot</b> rundt om Månen!<br>
+            ▶ Standardværdierne her er udregnet til at sende satellitten ud i et <b>slingshot</b> rundt om Månen!<br>
             ▶ Zoom langt ud for at følge banen hele vejen ud i rummet.
         </div>
     </div>
@@ -180,22 +180,25 @@
         const M_MOON = 7.342e22;
         const MU_MOON = G * M_MOON;
 
+        // Planetariske dimensioner
         const R_EARTH = 6371000; 
         const R_MOON = 1737000;
         const D_MOON = 384400000;
 
+        // Skaleringsfaktor for 3D rummet
         const SCALE = 1 / 100000;
 
         const canvasContainer = document.getElementById('canvas-container');
 
         // --- 1. Opsætning af Scene ---
         const scene = new THREE.Scene();
+        
         const camera = new THREE.PerspectiveCamera(45, canvasContainer.clientWidth / canvasContainer.clientHeight, 0.1, D_MOON * SCALE * 5);
         
         if (window.innerWidth <= 600) {
-            camera.position.set(0, R_EARTH * SCALE * 2.0, R_EARTH * SCALE * 8.0);
+            camera.position.set(0, R_EARTH * SCALE * 2.0, R_EARTH * SCALE * 9.0);
         } else {
-            camera.position.set(R_EARTH * SCALE * 2.5, R_EARTH * SCALE * 1.5, R_EARTH * SCALE * 4.0);
+            camera.position.set(R_EARTH * SCALE * 2.5, R_EARTH * SCALE * 1.5, R_EARTH * SCALE * 3.5);
         }
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -211,21 +214,25 @@
         controls.minDistance = R_EARTH * SCALE * 1.1; 
         controls.maxDistance = D_MOON * SCALE * 1.5;
 
+        if (window.innerWidth <= 600) {
+            const offsetY = -window.innerHeight * 0.15; 
+            camera.setViewOffset(window.innerWidth, window.innerHeight, 0, offsetY, window.innerWidth, window.innerHeight);
+        }
+
         // --- 2. Byg Jorden og Hjælpelinjer ---
         const earthGroup = new THREE.Group();
         scene.add(earthGroup);
 
         const earthGeo = new THREE.SphereGeometry(R_EARTH * SCALE, 64, 64);
-        
-        // Brug de officielle og fejlfrie Three.js teksturer fra selve biblioteket
         const textureLoader = new THREE.TextureLoader();
         const earthTex = textureLoader.load('https://unpkg.com/three@0.161.0/examples/textures/planets/earth_atmos_2048.jpg');
-        const earthNormal = textureLoader.load('https://unpkg.com/three@0.161.0/examples/textures/planets/earth_normal_2048.jpg');
+        const earthBump = textureLoader.load('https://unpkg.com/three@0.161.0/examples/textures/planets/earth_topology.png');
         const earthWater = textureLoader.load('https://unpkg.com/three@0.161.0/examples/textures/planets/earth_specular_2048.jpg');
 
         const earthMat = new THREE.MeshPhongMaterial({ 
             map: earthTex,
-            normalMap: earthNormal,
+            bumpMap: earthBump,
+            bumpScale: 0.015,
             specularMap: earthWater,
             specular: new THREE.Color('grey'),
             shininess: 35
@@ -290,7 +297,6 @@
         scene.add(moonOrbitGroup);
 
         const moonGeo = new THREE.SphereGeometry(R_MOON * SCALE, 32, 32);
-        // Hent realistisk Måne-tekstur
         const moonTex = textureLoader.load('https://unpkg.com/three@0.161.0/examples/textures/planets/moon_1024.jpg');
         const moonMat = new THREE.MeshPhongMaterial({ map: moonTex, shininess: 5 });
         const moon = new THREE.Mesh(moonGeo, moonMat);
@@ -395,15 +401,14 @@
             groundTrailGeo.setDrawRange(0, 0);
         }
 
+        // --- N-Body Fysik Integration ---
         function physicsStep(dt) {
             const r = Math.sqrt(state.x**2 + state.y**2 + state.z**2);
 
-            // Sikker if-struktur uden uheldige formateringsbrud
-            if (r <= R_EARTH) {
-                isRunning = false; 
-                return;
-            }
-            if (r >= D_MOON * 3) {
+            // Betingelse rettet og samlet på én linje for at undgå syntax fejl!
+            if (r <= R_EARTH |
+
+| r >= D_MOON * 3) {
                 isRunning = false; 
                 return;
             }
