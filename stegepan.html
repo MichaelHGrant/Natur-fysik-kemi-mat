@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Termisk Chok Simulator v3.1</title>
+    <title>Termisk Chok Simulator v4.0</title>
     
     <script>
     MathJax = {
@@ -13,7 +13,6 @@
       }
     };
     </script>
-    
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     
@@ -25,7 +24,8 @@
             align-items: center;
             background-color: #1e1e1e;
             color: white;
-            margin-top: 50px;
+            margin-top: 20px;
+            margin-bottom: 50px;
         }
         .container {
             text-align: center;
@@ -33,23 +33,25 @@
             padding: 30px;
             border-radius: 12px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            width: 400px;
+            width: 450px;
             position: relative;
         }
         .pan-container {
             position: relative;
-            height: 120px; 
+            height: 140px; 
             display: flex;
             justify-content: center;
             align-items: flex-end;
             margin-bottom: 25px;
+            width: 100%;
         }
+        /* Selve panden (dimensioner styres nu af JS) */
         .pan {
-            width: 200px;
-            height: 12px; 
+            width: 200px; /* Standard (24cm) */
+            height: 10px; /* Standard (5mm) */
             background: #555;
             position: relative;
-            transition: background 1s, border-radius 0.5s, transform 0.5s;
+            transition: background 1s, border-radius 0.5s, transform 0.5s, width 0.3s, height 0.3s;
             border-radius: 2px 2px 0 0; 
         }
         .handle {
@@ -57,42 +59,76 @@
             width: 120px;
             height: 10px; 
             background: #333;
-            right: -115px;
-            top: 2px; 
+            right: -120px;
+            top: 0px; 
             border-radius: 0 5px 5px 0;
+            transition: top 0.3s;
         }
         .water {
             position: absolute;
             top: 0;
             width: 100%;
-            height: 80px;
+            height: 100px;
             background: linear-gradient(to bottom, transparent, rgba(0, 150, 255, 0.8));
             opacity: 0;
             transition: opacity 0.3s;
             pointer-events: none;
+            z-index: 10;
         }
         
         .hot {
-            background: #ff4500;
+            background: #ff4500 !important;
             box-shadow: 0 -8px 25px rgba(255, 69, 0, 0.5);
         }
+        
+        /* Forskellige skade-tilstande */
         .warped {
             border-radius: 50% 50% 0 0 / 100% 100% 0 0;
             transform: translateY(-8px);
-            background: #555; 
+            background: #555 !important; 
+            box-shadow: none;
+        }
+        .cracked {
+            /* Simulerer en revne midt i støbejernet */
+            background: linear-gradient(90deg, #555 48%, #111 49%, #111 51%, #555 52%) !important;
             box-shadow: none;
         }
 
         .controls {
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 12px;
+            text-align: left;
+            background: #1e1e1e;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        .control-group {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .control-group label {
+            font-size: 14px;
+            font-weight: bold;
+            color: #ddd;
+        }
+        .control-group select {
+            padding: 5px;
+            border-radius: 4px;
+            background: #333;
+            color: white;
+            border: 1px solid #555;
+            width: 150px;
         }
         input[type="range"] {
             width: 100%;
+            margin-top: 5px;
         }
+        
         button {
-            padding: 10px;
+            padding: 12px;
             font-size: 16px;
             font-weight: bold;
             cursor: pointer;
@@ -100,21 +136,22 @@
             border-radius: 6px;
             color: white;
             transition: background 0.2s;
+            width: 100%;
         }
         
-        #fysikBtn { background-color: #8e44ad; }
+        #fysikBtn { background-color: #8e44ad; margin-bottom: 15px; }
         #fysikBtn:hover { background-color: #732d91; }
         #waterBtn { background-color: #008cba; }
         #waterBtn:hover { background-color: #007399; }
         #waterBtn:disabled { background-color: #555; cursor: not-allowed; }
-        #resetBtn { background-color: #e74c3c; display: none; }
+        #resetBtn { background-color: #e74c3c; display: none; margin-top: 10px; }
         #resetBtn:hover { background-color: #c0392b; }
         
         #status {
             margin-top: 15px;
             font-style: italic;
             color: #aaa;
-            min-height: 1.2em; 
+            min-height: 2.4em; 
         }
 
         /* POPUP MODAL STYLES */
@@ -135,9 +172,9 @@
             color: #eee;
             padding: 30px;
             border-radius: 12px;
-            max-width: 600px;
+            max-width: 650px;
             width: 90%;
-            max-height: 80vh; 
+            max-height: 85vh; 
             display: flex;
             flex-direction: column;
             position: relative;
@@ -170,15 +207,8 @@
         }
         .close-modal:hover { color: white; }
         
-        .modal-body h3 {
-            margin-top: 0;
-            padding-right: 30px; 
-            color: #8e44ad;
-        }
-        .modal-body h4 {
-            color: #ddd;
-            margin-bottom: 5px;
-        }
+        .modal-body h3 { margin-top: 0; padding-right: 30px; color: #8e44ad; }
+        .modal-body h4 { color: #ddd; margin-bottom: 5px; border-bottom: 1px solid #444; padding-bottom: 5px;}
         .formula {
             background-color: #1e1e1e;
             padding: 10px;
@@ -186,29 +216,60 @@
             margin: 10px 0;
             overflow-x: auto;
         }
+        ul { margin-top: 5px; }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h2>Stegepande Fysik v3.1</h2>
+        <h2>Stegepande Fysik v4.0</h2>
         
-        <button id="fysikBtn" style="margin-bottom: 20px; width: 100%;">Se Fysikken Bag</button>
+        <button id="fysikBtn">Se Fysikken Bag</button>
 
         <div class="pan-container">
             <div class="water" id="waterEffect"></div>
             <div class="pan" id="pan">
-                <div class="handle"></div>
+                <div class="handle" id="handle"></div>
             </div>
         </div>
 
         <div class="controls">
-            <label for="tempSlider">Pande Temperatur: <span id="tempValue">20</span>°C</label>
-            <input type="range" id="tempSlider" min="20" max="300" value="20">
-            
-            <button id="waterBtn">Hæld koldt vand på!</button>
-            <button id="resetBtn">Køb ny pande (Reset)</button>
+            <div class="control-group">
+                <label for="materialSelect">Materiale:</label>
+                <select id="materialSelect">
+                    <option value="aluminium">Aluminium (Bøjer let)</option>
+                    <option value="steel" selected>Rustfrit stål (Standard)</option>
+                    <option value="castiron">Støbejern (Revner ved chok)</option>
+                </select>
+            </div>
+
+            <div>
+                <div class="control-group">
+                    <label for="thicknessSlider">Tykkelse:</label>
+                    <span style="color:#aaa;"><span id="thicknessValue">5</span> mm</span>
+                </div>
+                <input type="range" id="thicknessSlider" min="2" max="10" value="5" step="1">
+            </div>
+
+            <div>
+                <div class="control-group">
+                    <label for="diameterSlider">Diameter:</label>
+                    <span style="color:#aaa;"><span id="diameterValue">24</span> cm</span>
+                </div>
+                <input type="range" id="diameterSlider" min="16" max="32" value="24" step="2">
+            </div>
         </div>
+
+        <div class="controls" style="background: transparent; padding: 0;">
+            <div class="control-group">
+                <label for="tempSlider" style="color: #ff4500;">Opvarmning:</label>
+                <span style="color:#ff4500; font-weight: bold;"><span id="tempValue">20</span>°C</span>
+            </div>
+            <input type="range" id="tempSlider" min="20" max="300" value="20">
+        </div>
+        
+        <button id="waterBtn">Hæld koldt vand på!</button>
+        <button id="resetBtn">Køb ny pande (Reset)</button>
 
         <p id="status">Panden er kold og flad.</p>
     </div>
@@ -219,44 +280,45 @@
             
             <div class="modal-body">
                 <h3>Hvorfor ødelægges varme pander af koldt vand?</h3>
+                <p>Dette fænomen kaldes <strong>termisk chok</strong> (thermal shock). Det sker på grund af ekstremt hurtig og ujævn afkøling, når vandet rammer panden.</p>
                 
-                <p>Dette fænomen kaldes <strong>termisk chok</strong> (thermal shock). Det sker på grund af ekstremt hurtig og ujævn afkøling.</p>
-                
-                <h4>Fysikken</h4>
-                <p>Når du varmer panden op, får varmen metalatomerne til at vibrere hurtigere og kræve mere plads, så metallet udvider sig jævnt. Når du hælder koldt vand på, sker der to ting samtidigt:</p>
+                <h4>Matematikken bag spændingen</h4>
+                <div class="formula">
+                    <p><strong>1. Termisk Længdeudvidelse:</strong> $\Delta L = \alpha \cdot L_0 \cdot \Delta T$</p>
+                    <p><strong>2. Termisk Spænding:</strong> $\sigma = E \cdot \alpha \cdot \Delta T$</p>
+                </div>
+                <p>Når panden køles ujævnt, opstår mekanisk spænding ($\sigma$). Hvis denne overstiger materialets <strong>flydespænding</strong> (den grænse, hvor det deformeres permanent), går panden i stykker.</p>
+
+                <h4>De tre faktorer i denne simulator:</h4>
                 <ul>
-                    <li>Overfladen, der rammes af vandet, køler lynhurtigt ned og trækker sig sammen.</li>
-                    <li>Pandens indre og de tørre dele er stadig glohede og udvidede.</li>
+                    <li><strong>Materialet ($\alpha$ og $E$):</strong> 
+                        <br>- <em>Aluminium</em> har en høj udvidelseskoefficient ($\alpha$) og er blødt. Det udvider sig meget og bøjer ekstremt let.
+                        <br>- <em>Rustfrit stål</em> er stærkt og sejt, og kræver en større temperaturforskel før det giver efter.
+                        <br>- <em>Støbejern</em> er ekstremt stift, men sprødt. I stedet for at slå sig, vil de indre spændinger ofte få det til at <strong>revne</strong> fatalt.
+                    </li>
+                    <li style="margin-top: 10px;"><strong>Tykkelsen (Mekanisk stivhed):</strong> 
+                        <br>En tyk pande har et meget større internt inertimoment. Den "kæmper bedre imod" de termiske spændinger, mens en papirtynd pande næsten ingen modstandskraft har.
+                    </li>
+                    <li style="margin-top: 10px;"><strong>Diameteren ($L_0$):</strong> 
+                        <br>Længden ($L_0$) er afgørende. En bred pande på 32 cm har mere metal, der trækker sig sammen, hvilket skaber en større absolut bevægelse og en voldsommere "vægtstangseffekt" end en lille pande på 16 cm. Jo større, jo mere sårbar!
+                    </li>
                 </ul>
-                <p>Denne ujævne sammentrækning skaber enorme indre spændinger, hvor metallet bogstaveligt talt trækker i sig selv i forskellige retninger.</p>
-
-                <h4>Matematikken</h4>
-                <p>Vi kan beskrive de kræfter, der opstår, med to fundamentale formler:</p>
-                
-                <div class="formula">
-                    <p><strong>1. Termisk Længdeudvidelse:</strong></p>
-                    <p>Når temperaturen ændres, ændres længden ($\Delta L$) af materialet:</p>
-                    <p>$$\Delta L = \alpha \cdot L_0 \cdot \Delta T$$</p>
-                    <p><small>Hvor $\alpha$ er materialets udvidelseskoefficient, $L_0$ er den oprindelige længde, og $\Delta T$ er temperaturændringen.</small></p>
-                </div>
-
-                <div class="formula">
-                    <p><strong>2. Termisk Spænding (Thermal Stress):</strong></p>
-                    <p>Når afkølingen er ujævn, opstår der en mekanisk spænding ($\sigma$):</p>
-                    <p>$$\sigma = E \cdot \alpha \cdot \Delta T$$</p>
-                    <p><small>Hvor $E$ er Youngs modul (elasticitetsmodulet - materialets stivhed), $\alpha$ er udvidelseskoefficienten, og $\Delta T$ er temperaturforskellen mellem overfladen og kernen.</small></p>
-                </div>
-
-                <h4>Konklusion</h4>
-                <p>Metal har en specifik <strong>flydespænding</strong> (yield strength) – grænsen for, hvor meget stress det kan tåle, før det deformeres permanent. Hvis den pludselige temperaturforskel ($\Delta T$) er stor nok, bliver den termiske spænding ($\sigma$) større end flydespændingen. Panden bøjer sig og bliver skæv. For altid.</p>
             </div>
         </div>
     </div>
 
     <script>
         const pan = document.getElementById('pan');
+        const handle = document.getElementById('handle');
         const tempSlider = document.getElementById('tempSlider');
         const tempValue = document.getElementById('tempValue');
+        
+        const materialSelect = document.getElementById('materialSelect');
+        const thicknessSlider = document.getElementById('thicknessSlider');
+        const thicknessValue = document.getElementById('thicknessValue');
+        const diameterSlider = document.getElementById('diameterSlider');
+        const diameterValue = document.getElementById('diameterValue');
+
         const waterBtn = document.getElementById('waterBtn');
         const resetBtn = document.getElementById('resetBtn');
         const waterEffect = document.getElementById('waterEffect');
@@ -266,23 +328,60 @@
         const physicsModal = document.getElementById('physicsModal');
         const closeModal = document.getElementById('closeModal');
 
-        let isWarped = false;
+        let isBroken = false;
 
-        fysikBtn.addEventListener('click', () => {
-            physicsModal.style.display = 'flex';
-        });
-
-        const hideModal = () => {
-            physicsModal.style.display = 'none';
-        };
-
+        // Modal logik
+        fysikBtn.addEventListener('click', () => physicsModal.style.display = 'flex');
+        const hideModal = () => physicsModal.style.display = 'none';
         closeModal.addEventListener('click', hideModal);
         physicsModal.addEventListener('click', (e) => {
             if (e.target === physicsModal) hideModal();
         });
 
+        // Opdaterer pandens visuelle størrelse baseret på sliders
+        function updatePanVisuals() {
+            if (isBroken) return;
+            
+            const dia = parseInt(diameterSlider.value);
+            const thick = parseInt(thicknessSlider.value);
+            
+            // Map diameter (16-32cm) til pixels (140-260px)
+            const pxWidth = 140 + ((dia - 16) / 16) * 120;
+            // Map tykkelse (2-10mm) til pixels (6-22px)
+            const pxHeight = 6 + ((thick - 2) / 8) * 16;
+
+            pan.style.width = `${pxWidth}px`;
+            pan.style.height = `${pxHeight}px`;
+            
+            // Juster håndtag
+            handle.style.top = `${pxHeight / 2 - 5}px`;
+        }
+
+        // Event listeners for de nye inputs
+        materialSelect.addEventListener('change', () => {
+            if(!isBroken) {
+                // Skift basisfarve afhængig af materiale hvis den ikke er varm
+                if(parseInt(tempSlider.value) <= 150) {
+                    if(materialSelect.value === 'castiron') pan.style.backgroundColor = '#222';
+                    else if(materialSelect.value === 'aluminium') pan.style.backgroundColor = '#999';
+                    else pan.style.backgroundColor = '#555';
+                }
+            }
+        });
+        
+        thicknessSlider.addEventListener('input', (e) => {
+            thicknessValue.textContent = e.target.value;
+            updatePanVisuals();
+        });
+
+        diameterSlider.addEventListener('input', (e) => {
+            diameterValue.textContent = e.target.value;
+            updatePanVisuals();
+        });
+
+        // Temperatur logik
         tempSlider.addEventListener('input', (e) => {
-            if (isWarped) {
+            if (isBroken) {
                 e.target.value = 20; 
                 return;
             }
@@ -298,53 +397,117 @@
                 statusText.style.color = "#ff4500";
             } else {
                 pan.classList.remove('hot');
-                pan.style.backgroundColor = '#555';
+                
+                // Tilbage til materiale farve
+                if(materialSelect.value === 'castiron') pan.style.backgroundColor = '#222';
+                else if(materialSelect.value === 'aluminium') pan.style.backgroundColor = '#999';
+                else pan.style.backgroundColor = '#555';
+                
                 statusText.textContent = "Panden varmes op jævnt.";
                 statusText.style.color = "#aaa";
             }
         });
 
+        // Termisk chok logik
         waterBtn.addEventListener('click', () => {
-            if (isWarped) return;
+            if (isBroken) return;
 
             const currentTemp = parseInt(tempSlider.value);
+            const material = materialSelect.value;
+            const thickness = parseInt(thicknessSlider.value);
+            const diameter = parseInt(diameterSlider.value);
             
+            // Vand animation
             waterEffect.style.opacity = '1';
             setTimeout(() => { waterEffect.style.opacity = '0'; }, 600);
 
-            if (currentTemp > 160) {
-                isWarped = true;
-                pan.classList.add('warped');
+            /* Fysisk beregning af kritisk grænse */
+            // Basis grænse (temp difference)
+            let baseLimit = 130; 
+            
+            // Materiale multiplikator
+            let matFactor = 1.0;
+            if (material === 'aluminium') matFactor = 0.5; // Udvider sig meget, meget svag
+            if (material === 'castiron') matFactor = 1.3;  // Modstår bøjning bedre, men revner pludseligt
+            if (material === 'steel') matFactor = 1.0;     // Standard
+            
+            // Tykkelse multiplikator (Tyk = stærk)
+            // Normaliseret til 5mm
+            let thickFactor = thickness / 5.0; 
+
+            // Diameter multiplikator (Bred = svag pga vægtstang/større dL)
+            // Normaliseret til 24cm
+            let diaFactor = 24.0 / diameter; 
+
+            // Beregn den kritiske temperatur der skal til for at ødelægge panden
+            let criticalTemp = 20 + (baseLimit * matFactor * thickFactor * diaFactor);
+
+            if (currentTemp > criticalTemp) {
+                // PANDEN GÅR I STYKKER
+                isBroken = true;
                 pan.classList.remove('hot');
-                pan.style.backgroundColor = ''; 
                 
+                if (material === 'castiron') {
+                    pan.classList.add('cracked');
+                    statusText.textContent = `KNAS! Din tykke støbejernspande tålte ikke spændingen og REVNEDE!`;
+                } else {
+                    pan.classList.add('warped');
+                    const matNavn = material === 'aluminium' ? 'aluminiumspande' : 'stålpanede';
+                    statusText.textContent = `CRASH! Termisk chok (σ > Flydespænding). Din ${matNavn} slog sig!`;
+                }
+                
+                statusText.style.color = "#e74c3c";
+                
+                // Lås kontroller
                 tempSlider.value = 20;
                 tempValue.textContent = 20;
                 tempSlider.disabled = true;
+                thicknessSlider.disabled = true;
+                diameterSlider.disabled = true;
+                materialSelect.disabled = true;
                 waterBtn.disabled = true;
                 resetBtn.style.display = 'block';
 
-                statusText.textContent = "CRASH! Termisk chok (σ > Flydespænding). Panden slog sig!";
-                statusText.style.color = "#e74c3c";
             } else {
+                // Sikker nedkøling
                 tempSlider.value = 20;
                 tempValue.textContent = 20;
                 pan.classList.remove('hot');
-                pan.style.backgroundColor = '#555';
-                statusText.textContent = "Panden blev kølet ned uden problemer. ΔT var for lille.";
+                
+                if(material === 'castiron') pan.style.backgroundColor = '#222';
+                else if(material === 'aluminium') pan.style.backgroundColor = '#999';
+                else pan.style.backgroundColor = '#555';
+                
+                statusText.textContent = `Puh! Panden blev kølet ned sikkert. ΔT var under den kritiske grænse (${Math.round(criticalTemp)}°C).`;
                 statusText.style.color = "#2ecc71";
             }
         });
 
+        // Reset
         resetBtn.addEventListener('click', () => {
-            isWarped = false;
-            pan.classList.remove('warped', 'hot');
+            isBroken = false;
+            pan.classList.remove('warped', 'hot', 'cracked');
+            
+            // Lås op
             tempSlider.disabled = false;
+            thicknessSlider.disabled = false;
+            diameterSlider.disabled = false;
+            materialSelect.disabled = false;
             waterBtn.disabled = false;
             resetBtn.style.display = 'none';
-            statusText.textContent = "Ny, flad pande klar til brug.";
+            
+            // Genstart visuals
+            updatePanVisuals();
+            if(materialSelect.value === 'castiron') pan.style.backgroundColor = '#222';
+            else if(materialSelect.value === 'aluminium') pan.style.backgroundColor = '#999';
+            else pan.style.backgroundColor = '#555';
+
+            statusText.textContent = "Ny pande klar til brug. Pas på med koldt vand!";
             statusText.style.color = "#aaa";
         });
+
+        // Init
+        updatePanVisuals();
     </script>
 </body>
 </html>
