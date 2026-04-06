@@ -25,11 +25,13 @@
         }
         .controls {
             flex: 1;
-            min-width: 320px;
+            min-width: 350px;
             background: #fff;
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            max-height: 80vh;
+            overflow-y: auto;
         }
         .chart-container {
             flex: 2;
@@ -41,7 +43,6 @@
         }
         .slider-group {
             margin-bottom: 12px;
-            border-bottom: 1px solid #eee;
             padding-bottom: 8px;
         }
         label {
@@ -55,51 +56,55 @@
             width: 100%;
             cursor: pointer;
         }
+        .pipe-box {
+            background: #fafafa;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 6px;
+            position: relative;
+        }
         .pipe-title {
             color: #2980b9;
-            margin-top: 15px;
-            margin-bottom: 8px;
+            margin-top: 0;
+            margin-bottom: 10px;
             border-bottom: 2px solid #2980b9;
             padding-bottom: 4px;
             font-size: 1.1em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
+        .btn {
+            background: #2980b9;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+            margin-top: 10px;
+        }
+        .btn:hover { background: #1c5980; }
+        .btn-remove {
+            background: #e74c3c;
+            padding: 4px 8px;
+            font-size: 0.8em;
+            width: auto;
+            margin-top: 0;
+        }
+        .btn-remove:hover { background: #c0392b; }
     </style>
 </head>
 <body>
 
-    <h1>Q4POLE: Akustisk Transmissionstab (3 Elementer)</h1>
+    <h1>Q4POLE: Dynamisk Lyddæmper Design</h1>
     
     <div class="container">
         <div class="controls">
-            <h3 class="pipe-title">Rør 1 (Indgang)</h3>
-            <div class="slider-group">
-                <label>Længde: <span id="l1-val">0.3 m</span></label>
-                <input type="range" id="l1" min="0.1" max="2.0" step="0.05" value="0.3">
-            </div>
-            <div class="slider-group">
-                <label>Radius: <span id="r1-val">0.05 m</span></label>
-                <input type="range" id="r1" min="0.01" max="0.2" step="0.01" value="0.05">
-            </div>
-
-            <h3 class="pipe-title">Rør 2 (Ekspansionskammer)</h3>
-            <div class="slider-group">
-                <label>Længde: <span id="l2-val">0.5 m</span></label>
-                <input type="range" id="l2" min="0.1" max="3.0" step="0.05" value="0.5">
-            </div>
-            <div class="slider-group">
-                <label>Radius: <span id="r2-val">0.20 m</span></label>
-                <input type="range" id="r2" min="0.05" max="0.5" step="0.01" value="0.20">
-            </div>
-
-            <h3 class="pipe-title">Rør 3 (Udgang)</h3>
-            <div class="slider-group">
-                <label>Længde: <span id="l3-val">0.3 m</span></label>
-                <input type="range" id="l3" min="0.1" max="2.0" step="0.05" value="0.3">
-            </div>
-            <div class="slider-group">
-                <label>Radius: <span id="r3-val">0.05 m</span></label>
-                <input type="range" id="r3" min="0.01" max="0.2" step="0.01" value="0.05">
-            </div>
+            <div id="pipes-container"></div>
+            <button class="btn" onclick="addChamber()">+ Tilføj Ekspansionskammer</button>
         </div>
 
         <div class="chart-container">
@@ -120,7 +125,6 @@
         function fnRcm(a, b, c, d) { return a * c - b * d; }
         function fnIcm(a, b, c, d) { return a * d + b * c; }
 
-        // Multiplicer to 4-pols matricer
         function multMatrix(M1, M2) {
             return {
                 ar: fnRcm(M1.ar, M1.ai, M2.ar, M2.ai) + fnRcm(M1.br, M1.bi, M2.cr, M2.ci),
@@ -134,7 +138,6 @@
             };
         }
 
-        // Generer matrix for et enkelt rør-element
         function getPipeMatrix(k, L, Z) {
             return {
                 ar: Math.cos(k * L), ai: 0,
@@ -145,53 +148,122 @@
         }
 
         let tlChart;
+        let pipeCounter = 3;
+
+        // Start-opsætning med 3 elementer
+        let pipes = [
+            { id: 1, l: 0.3, r: 0.05 },
+            { id: 2, l: 0.5, r: 0.20 },
+            { id: 3, l: 0.3, r: 0.05 }
+        ];
+
+        // Generer HTML for sliders dynamisk
+        function renderUI() {
+            const container = document.getElementById('pipes-container');
+            container.innerHTML = '';
+
+            pipes.forEach((pipe, index) => {
+                let title = "";
+                let isRemovable = false;
+
+                if (index === 0) {
+                    title = "Rør 1 (Indgang)";
+                } else if (index === pipes.length - 1) {
+                    title = `Rør ${index + 1} (Udgang)`;
+                } else {
+                    title = `Rør ${index + 1} (Ekspansionskammer)`;
+                    isRemovable = true;
+                }
+
+                const pipeHTML = `
+                    <div class="pipe-box">
+                        <h3 class="pipe-title">
+                            ${title} 
+                            ${isRemovable ? `<button class="btn btn-remove" onclick="removePipe(${pipe.id})">Slet</button>` : ''}
+                        </h3>
+                        <div class="slider-group">
+                            <label>Længde: <span id="l-val-${pipe.id}">${pipe.l.toFixed(2)} m</span></label>
+                            <input type="range" id="l-${pipe.id}" min="0.05" max="3.0" step="0.05" value="${pipe.l}" oninput="updatePipe(${pipe.id}, 'l', this.value)">
+                        </div>
+                        <div class="slider-group">
+                            <label>Radius: <span id="r-val-${pipe.id}">${pipe.r.toFixed(2)} m</span></label>
+                            <input type="range" id="r-${pipe.id}" min="0.01" max="0.5" step="0.01" value="${pipe.r}" oninput="updatePipe(${pipe.id}, 'r', this.value)">
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', pipeHTML);
+            });
+        }
+
+        // Opdater array når slider flyttes
+        window.updatePipe = function(id, prop, value) {
+            const val = parseFloat(value);
+            const pipe = pipes.find(p => p.id === id);
+            if (pipe) {
+                pipe[prop] = val;
+                document.getElementById(`${prop}-val-${id}`).innerText = val.toFixed(2) + ' m';
+                calculateTransmissionLoss();
+            }
+        };
+
+        // Tilføj et nyt kammer (indsættes lige før udgangsrøret)
+        window.addChamber = function() {
+            pipeCounter++;
+            const newChamber = { id: pipeCounter, l: 0.5, r: 0.20 };
+            pipes.splice(pipes.length - 1, 0, newChamber);
+            renderUI();
+            calculateTransmissionLoss();
+        };
+
+        // Fjern et kammer
+        window.removePipe = function(id) {
+            pipes = pipes.filter(p => p.id !== id);
+            renderUI();
+            calculateTransmissionLoss();
+        };
 
         function calculateTransmissionLoss() {
-            // Hent værdier
-            const l1 = parseFloat(document.getElementById('l1').value);
-            const r1 = parseFloat(document.getElementById('r1').value);
-            const l2 = parseFloat(document.getElementById('l2').value);
-            const r2 = parseFloat(document.getElementById('r2').value);
-            const l3 = parseFloat(document.getElementById('l3').value);
-            const r3 = parseFloat(document.getElementById('r3').value);
-
-            // Udregn akustisk impedans for hvert rør
-            const z1 = IMPE / (Math.PI * r1 * r1);
-            const z2 = IMPE / (Math.PI * r2 * r2);
-            const z3 = IMPE / (Math.PI * r3 * r3);
-
             const fMax = 1000; 
-            const nsc = 200; // Øget opløsning for pænere kurver
+            const nsc = 250; 
             const fRes = fMax / nsc; 
 
             let frequencies = [];
             let tlValues = [];
+
+            // Find start- og slut-impedans
+            const rFirst = pipes[0].r;
+            const rLast = pipes[pipes.length - 1].r;
+            const zFirst = IMPE / (Math.PI * rFirst * rFirst);
+            const zLast = IMPE / (Math.PI * rLast * rLast);
 
             for (let j = 1; j <= nsc; j++) {
                 const f = j * fRes;
                 frequencies.push(f.toFixed(1));
                 const k = (2 * Math.PI * f) / CS;
 
-                // Udregn matricer for alle 3 rør
-                let M1 = getPipeMatrix(k, l1, z1);
-                let M2 = getPipeMatrix(k, l2, z2);
-                let M3 = getPipeMatrix(k, l3, z3);
+                let M_tot = null;
 
-                // Kombiner systemet (M_total = M1 * M2 * M3)
-                let M_12 = multMatrix(M1, M2);
-                let M_tot = multMatrix(M_12, M3);
+                // Gang alle rør-matricer sammen dynamisk
+                for (let i = 0; i < pipes.length; i++) {
+                    const z = IMPE / (Math.PI * pipes[i].r * pipes[i].r);
+                    const M_current = getPipeMatrix(k, pipes[i].l, z);
 
-                // Transmissionstab udregning på tværs af systemet (Rør 1 til Rør 3)
-                let rat = r1 / r3;
-                let bie = Math.sqrt(z1 * z3);
+                    if (i === 0) {
+                        M_tot = M_current;
+                    } else {
+                        M_tot = multMatrix(M_tot, M_current);
+                    }
+                }
 
-                let x1 = M_tot.ar * rat + M_tot.br / bie + M_tot.cr * bie + M_tot.dr / rat;
-                let x2 = M_tot.ai * rat + M_tot.bi / bie + M_tot.ci * bie + M_tot.di / rat;
+                // Udregn dæmpning
+                const rat = rFirst / rLast;
+                const bie = Math.sqrt(zFirst * zLast);
 
-                let damp = Math.sqrt(x1 * x1 + x2 * x2) / 2;
-                
-                // Konverter til Decibel (dB)
-                let tl = 20 * Math.log10(Math.max(damp, 1)); 
+                const x1 = M_tot.ar * rat + M_tot.br / bie + M_tot.cr * bie + M_tot.dr / rat;
+                const x2 = M_tot.ai * rat + M_tot.bi / bie + M_tot.ci * bie + M_tot.di / rat;
+
+                const damp = Math.sqrt(x1 * x1 + x2 * x2) / 2;
+                const tl = 20 * Math.log10(Math.max(damp, 1)); 
                 tlValues.push(tl);
             }
 
@@ -212,8 +284,8 @@
                         datasets: [{
                             label: 'Transmissionstab (dB)',
                             data: data,
-                            borderColor: '#e74c3c',
-                            backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                            borderColor: '#2ecc71',
+                            backgroundColor: 'rgba(46, 204, 113, 0.1)',
                             borderWidth: 2,
                             pointRadius: 0,
                             fill: true,
@@ -234,24 +306,15 @@
                             }
                         },
                         animation: {
-                            duration: 100 // Endnu hurtigere animation til smooth sliders
+                            duration: 0 // Slukket animation for super flydende slider-opførsel
                         }
                     }
                 });
             }
         }
 
-        // Lyt på alle sliders og opdater værdier + graf
-        const inputs = ['l1', 'r1', 'l2', 'r2', 'l3', 'r3'];
-        inputs.forEach(id => {
-            const element = document.getElementById(id);
-            element.addEventListener('input', (e) => {
-                document.getElementById(`${id}-val`).innerText = e.target.value + ' m';
-                calculateTransmissionLoss();
-            });
-        });
-
-        // Kør første beregning
+        // Kør opstart
+        renderUI();
         calculateTransmissionLoss();
     </script>
 </body>
