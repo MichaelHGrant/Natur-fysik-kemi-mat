@@ -122,7 +122,6 @@
         }
         .btn-remove:hover { background: #c0392b; }
 
-        /* Modal (Pop-op vindue) styles */
         .modal {
             display: none; 
             position: fixed; 
@@ -160,7 +159,7 @@
 </head>
 <body>
 
-    <h1>Q4POLE: Dynamisk Lyddæmper Design</h1>
+    <h1>Q4POLE: Dynamisk Lyddæmper Design (Op til 8 kHz)</h1>
     
     <div class="header-actions">
         <button class="btn btn-info" onclick="openModal()">&#128214; Læs om fysikken & matematikken</button>
@@ -184,45 +183,18 @@
         <div class="modal-content">
             <span class="close" onclick="closeModal()">&times;</span>
             <h2>Fysikken og Matematikken bag Q4POLE</h2>
-            <p>Dette program er baseret på <strong>Overførselsmatrix-metoden</strong> (Transfer Matrix Method), også kendt som "Four-Pole Parameters" i akustikken. Det er en elegant måde at beregne, hvordan lyd udbreder sig gennem et system af forbundne rør, som f.eks. en biludstødning eller et ventilationssystem.</p>
+            <p>Dette program er baseret på <strong>Overførselsmatrix-metoden</strong> (Transfer Matrix Method), også kendt som "Four-Pole Parameters".</p>
             
-            <h3>1. Lydbølger som et kredsløb</h3>
-            <p>I stedet for at løse komplekse 3D-bølgeligninger, antager vi, at lyden udbreder sig som plane bølger (1D). Vi kan beskrive tilstanden i ethvert snit af røret med to variabler:</p>
+            <h3>Transmissionstab (TL) vs. Indsættelsestab (IL)</h3>
             <ul>
-                <li><strong>p</strong>: Lydtrykket (svarer til spænding i elektronik)</li>
-                <li><strong>v</strong>: Volumenhastigheden af luften (svarer til strømstyrke i elektronik)</li>
+                <li><strong>Transmissionstab (TL):</strong> Beskriver hvor meget af den indkommende lydenergi, der reflekteres tilbage mod kilden internt i lyddæmperen. Det afhænger udelukkende af selve lyddæmperens geometri.</li>
+                <li><strong>Indsættelsestab (IL):</strong> Beskriver den faktiske forskel i støjniveau udenfor systemet <em>før</em> og <em>efter</em> lyddæmperen er blevet sat på. Den tager højde for omgivelsernes og kildens akustiske modstand (impedans).</li>
             </ul>
-
-            <h3>2. Fire-pols Matricen (The Four-Pole Matrix)</h3>
-            <p>For et lige rør med længden <i>L</i>, tværsnitsarealet <i>A</i> og lydens bølgetal <i>k = 2&pi;f/c</i>, kan forholdet mellem indgangen og udgangen beskrives med en 2x2 matrix:</p>
-            
-            <div class="formula-box">
-                [ p<sub>1</sub> ] = [ A&nbsp;&nbsp;&nbsp;B ] * [ p<sub>2</sub> ]<br>
-                [ v<sub>1</sub> ] = [ C&nbsp;&nbsp;&nbsp;D ] * [ v<sub>2</sub> ]
-            </div>
-
-            <p>Hvor de fire "poler" er komplekse tal givet ved Euler's relationer for bølger:</p>
-            <ul>
-                <li><strong>A = D =</strong> cos(kL)</li>
-                <li><strong>B =</strong> j &middot; Z &middot; sin(kL)</li>
-                <li><strong>C =</strong> (j / Z) &middot; sin(kL)</li>
-            </ul>
-            <p>Hvor <strong>Z</strong> er den akustiske impedans (Z = &rho; &middot; c / A), <strong>&rho;</strong> er luftens densitet, <strong>c</strong> er lydens hastighed, og <strong>j</strong> er den imaginære enhed.</p>
-
-            <h3>3. Sammensætning af systemet</h3>
-            <p>Når lyden bevæger sig gennem flere sektioner, kan vi finde det samlede systems egenskaber ved simpelthen at <strong>multiplicere matricerne sammen</strong>:</p>
-            
-            <div class="formula-box">
-                M<sub>total</sub> = M<sub>sektion_1</sub> &times; M<sub>sektion_2</sub> &times; M<sub>sektion_3</sub> ...
-            </div>
-
-            <h3>4. Transmissionstab (TL)</h3>
-            <p>Til sidst udregnes Transmissionstabet i decibel (dB). Det udregnes fra de endelige A, B, C og D parametre i den samlede matrix M<sub>total</sub>, korrigeret for de forskellige rørdiametre ved selve indgangen (kilden) og udgangen (luften udenfor).</p>
+            <p>Hvis kilderøret og afgangsrøret har nøjagtig samme diameter, vil TL og IL være ens i dette simulerede ideelle miljø.</p>
         </div>
     </div>
 
     <script>
-        // Atmosfæriske konstanter
         const TE = 20; 
         const PS = 101300; 
         const GAM = 1.41; 
@@ -230,7 +202,6 @@
         const RHO = GAM * PS / (CS * CS); 
         const IMPE = CS * RHO; 
 
-        // Kompleks multiplikation
         function fnRcm(a, b, c, d) { return a * c - b * d; }
         function fnIcm(a, b, c, d) { return a * d + b * c; }
 
@@ -258,13 +229,12 @@
 
         let tlChart;
 
-        // Start med dobbelt ekspansionskammer (5 sektioner)
         let pipes = [
-            { l: 0.3, r: 0.05 }, // Rør 1
-            { l: 0.5, r: 0.20 }, // Kammer 1
-            { l: 0.3, r: 0.05 }, // Rør 2
-            { l: 0.5, r: 0.20 }, // Kammer 2
-            { l: 0.3, r: 0.05 }  // Rør 3
+            { l: 0.3, r: 0.05 },
+            { l: 0.5, r: 0.20 },
+            { l: 0.3, r: 0.05 },
+            { l: 0.5, r: 0.20 },
+            { l: 0.3, r: 0.05 } 
         ];
 
         function renderUI() {
@@ -272,13 +242,11 @@
             container.innerHTML = '';
 
             pipes.forEach((pipe, index) => {
-                // Dynamisk titel baseret på radiussen (r > 0.1m betragtes her som et "Kammer")
                 let typeName = pipe.r > 0.1 ? "Ekspansionskammer" : "Rør";
                 let title = `Sektion ${index + 1} (${typeName})`;
 
                 const isFirst = index === 0;
                 const isLast = index === pipes.length - 1;
-                // Tillad kun sletning, hvis der er mere end 2 elementer
                 const canDelete = pipes.length > 2;
 
                 const pipeHTML = `
@@ -308,21 +276,12 @@
         window.updatePipe = function(index, prop, value) {
             pipes[index][prop] = parseFloat(value);
             document.getElementById(`${prop}-val-${index}`).innerText = parseFloat(value).toFixed(2) + ' m';
-            
-            // Opdater titlen dynamisk hvis radiussen krydser grænsen for hvad vi kalder "rør" vs "kammer"
-            if (prop === 'r') {
-                renderUI(); 
-            } else {
-                calculateTransmissionLoss();
-            }
+            if (prop === 'r') { renderUI(); } else { calculateTransmissionLoss(); }
         };
 
         window.addSection = function(type) {
-            if (type === 'pipe') {
-                pipes.push({ l: 0.3, r: 0.05 });
-            } else if (type === 'chamber') {
-                pipes.push({ l: 0.5, r: 0.20 });
-            }
+            if (type === 'pipe') pipes.push({ l: 0.3, r: 0.05 });
+            else if (type === 'chamber') pipes.push({ l: 0.5, r: 0.20 });
             renderUI();
             calculateTransmissionLoss();
         };
@@ -350,14 +309,14 @@
         };
 
         function calculateTransmissionLoss() {
-            const fMax = 1000; 
-            const nsc = 250; 
+            const fMax = 8000; // Frekvens øget til 8 kHz
+            const nsc = 1000;  // Opløsning øget til at matche det store frekvensspænd
             const fRes = fMax / nsc; 
 
             let frequencies = [];
             let tlValues = [];
+            let ilValues = [];
 
-            // Impedans for første og sidste element bruges som reference for ind/ud
             const rFirst = pipes[0].r;
             const rLast = pipes[pipes.length - 1].r;
             const zFirst = IMPE / (Math.PI * rFirst * rFirst);
@@ -365,7 +324,7 @@
 
             for (let j = 1; j <= nsc; j++) {
                 const f = j * fRes;
-                frequencies.push(f.toFixed(1));
+                frequencies.push(f.toFixed(0));
                 const k = (2 * Math.PI * f) / CS;
 
                 let M_tot = null;
@@ -374,31 +333,37 @@
                     const z = IMPE / (Math.PI * pipes[i].r * pipes[i].r);
                     const M_current = getPipeMatrix(k, pipes[i].l, z);
 
-                    if (i === 0) {
-                        M_tot = M_current;
-                    } else {
-                        M_tot = multMatrix(M_tot, M_current);
-                    }
+                    if (i === 0) M_tot = M_current;
+                    else M_tot = multMatrix(M_tot, M_current);
                 }
 
+                // 1. Transmissionstab (TL)
                 const rat = rFirst / rLast;
                 const bie = Math.sqrt(zFirst * zLast);
-
-                const x1 = M_tot.ar * rat + M_tot.br / bie + M_tot.cr * bie + M_tot.dr / rat;
-                const x2 = M_tot.ai * rat + M_tot.bi / bie + M_tot.ci * bie + M_tot.di / rat;
-
-                const damp = Math.sqrt(x1 * x1 + x2 * x2) / 2;
-                const tl = 20 * Math.log10(Math.max(damp, 1)); 
+                const x1_tl = M_tot.ar * rat + M_tot.br / bie + M_tot.cr * bie + M_tot.dr / rat;
+                const x2_tl = M_tot.ai * rat + M_tot.bi / bie + M_tot.ci * bie + M_tot.di / rat;
+                const damp_tl = Math.sqrt(x1_tl * x1_tl + x2_tl * x2_tl) / 2;
+                const tl = 20 * Math.log10(Math.max(damp_tl, 1)); 
                 tlValues.push(tl);
+
+                // 2. Indsættelsestab (IL)
+                const Zs = zFirst;
+                const Zrad = zLast;
+                const x1_il = M_tot.ar * Zrad + M_tot.br + Zs * (M_tot.cr * Zrad + M_tot.dr);
+                const x2_il = M_tot.ai * Zrad + M_tot.bi + Zs * (M_tot.ci * Zrad + M_tot.di);
+                const damp_il = Math.sqrt(x1_il * x1_il + x2_il * x2_il) / (Zs + Zrad);
+                const il = 20 * Math.log10(Math.max(damp_il, 1));
+                ilValues.push(il);
             }
 
-            updateChart(frequencies, tlValues);
+            updateChart(frequencies, tlValues, ilValues);
         }
 
-        function updateChart(labels, data) {
+        function updateChart(labels, tlData, ilData) {
             if (tlChart) {
                 tlChart.data.labels = labels;
-                tlChart.data.datasets[0].data = data;
+                tlChart.data.datasets[0].data = tlData;
+                tlChart.data.datasets[1].data = ilData;
                 tlChart.update();
             } else {
                 const ctx = document.getElementById('tlChart').getContext('2d');
@@ -406,16 +371,29 @@
                     type: 'line',
                     data: {
                         labels: labels,
-                        datasets: [{
-                            label: 'Transmissionstab (dB)',
-                            data: data,
-                            borderColor: '#2ecc71',
-                            backgroundColor: 'rgba(46, 204, 113, 0.1)',
-                            borderWidth: 2,
-                            pointRadius: 0,
-                            fill: true,
-                            tension: 0.2
-                        }]
+                        datasets: [
+                            {
+                                label: 'Transmissionstab (TL)',
+                                data: tlData,
+                                borderColor: '#2980b9',
+                                backgroundColor: 'rgba(41, 128, 185, 0.1)',
+                                borderWidth: 2,
+                                pointRadius: 0,
+                                fill: true,
+                                tension: 0.1
+                            },
+                            {
+                                label: 'Indsættelsestab (IL)',
+                                data: ilData,
+                                borderColor: '#e67e22',
+                                backgroundColor: 'transparent',
+                                borderWidth: 2,
+                                borderDash: [5, 5], // Stiplet linje
+                                pointRadius: 0,
+                                fill: false,
+                                tension: 0.1
+                            }
+                        ]
                     },
                     options: {
                         responsive: true,
@@ -423,26 +401,28 @@
                         scales: {
                             x: {
                                 title: { display: true, text: 'Frekvens (Hz)' },
-                                ticks: { maxTicksLimit: 10 }
+                                ticks: { maxTicksLimit: 12 }
                             },
                             y: {
                                 title: { display: true, text: 'Dæmpning (dB)' },
                                 min: 0
                             }
                         },
-                        animation: { duration: 0 }
+                        animation: { duration: 0 },
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        }
                     }
                 });
             }
         }
 
-        // Modal (Pop-op) Logik
         const modal = document.getElementById("mathModal");
         window.openModal = function() { modal.style.display = "block"; }
         window.closeModal = function() { modal.style.display = "none"; }
         window.onclick = function(event) { if (event.target == modal) { modal.style.display = "none"; } }
 
-        // Kør opstart
         renderUI();
         calculateTransmissionLoss();
     </script>
