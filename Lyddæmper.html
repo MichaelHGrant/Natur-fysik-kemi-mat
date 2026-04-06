@@ -67,7 +67,6 @@
             padding: 15px;
             margin-bottom: 15px;
             border-radius: 6px;
-            position: relative;
         }
         .pipe-title {
             color: #2980b9;
@@ -84,6 +83,11 @@
             display: flex;
             gap: 5px;
         }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
         .btn {
             background: #2980b9;
             color: white;
@@ -92,14 +96,14 @@
             border-radius: 4px;
             cursor: pointer;
             font-weight: bold;
-            width: 100%;
-            margin-top: 10px;
+            flex: 1;
+            text-align: center;
         }
         .btn:hover { background: #1c5980; }
         .btn-info {
             background: #8e44ad;
             width: auto;
-            margin-top: 0;
+            flex: none;
         }
         .btn-info:hover { background: #732d91; }
         .btn-small {
@@ -107,8 +111,9 @@
             color: #333;
             padding: 4px 8px;
             font-size: 0.9em;
-            width: auto;
-            margin-top: 0;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
         }
         .btn-small:hover { background: #95a5a6; }
         .btn-remove {
@@ -164,7 +169,10 @@
     <div class="container">
         <div class="controls">
             <div id="pipes-container"></div>
-            <button class="btn" onclick="addChamber()">+ Tilføj Ekspansionskammer</button>
+            <div class="btn-group">
+                <button class="btn" onclick="addSection('pipe')">+ Tilføj Rør</button>
+                <button class="btn" onclick="addSection('chamber')">+ Tilføj Kammer</button>
+            </div>
         </div>
 
         <div class="chart-container">
@@ -186,7 +194,7 @@
             </ul>
 
             <h3>2. Fire-pols Matricen (The Four-Pole Matrix)</h3>
-            <p>For et lige rør med længden <i>L</i>, tværsnitsarealet <i>A</i> og lydens bølgetal <i>k = 2&pi;f/c</i>, kan forholdet mellem indgangen (p<sub>1</sub>, v<sub>1</sub>) og udgangen (p<sub>2</sub>, v<sub>2</sub>) beskrives med en 2x2 matrix:</p>
+            <p>For et lige rør med længden <i>L</i>, tværsnitsarealet <i>A</i> og lydens bølgetal <i>k = 2&pi;f/c</i>, kan forholdet mellem indgangen og udgangen beskrives med en 2x2 matrix:</p>
             
             <div class="formula-box">
                 [ p<sub>1</sub> ] = [ A&nbsp;&nbsp;&nbsp;B ] * [ p<sub>2</sub> ]<br>
@@ -202,16 +210,14 @@
             <p>Hvor <strong>Z</strong> er den akustiske impedans (Z = &rho; &middot; c / A), <strong>&rho;</strong> er luftens densitet, <strong>c</strong> er lydens hastighed, og <strong>j</strong> er den imaginære enhed.</p>
 
             <h3>3. Sammensætning af systemet</h3>
-            <p>Når lyden bevæger sig fra Rør 1 ind i Rør 2, gælder det, at trykket og volumenhastigheden skal være kontinuerlige i samlingen. Derfor kan vi finde det samlede systems egenskaber ved simpelthen at <strong>multiplicere matricerne sammen</strong>:</p>
+            <p>Når lyden bevæger sig gennem flere sektioner, kan vi finde det samlede systems egenskaber ved simpelthen at <strong>multiplicere matricerne sammen</strong>:</p>
             
             <div class="formula-box">
-                M<sub>total</sub> = M<sub>r&oslash;r_1</sub> &times; M<sub>r&oslash;r_2</sub> &times; M<sub>r&oslash;r_3</sub> ...
+                M<sub>total</sub> = M<sub>sektion_1</sub> &times; M<sub>sektion_2</sub> &times; M<sub>sektion_3</sub> ...
             </div>
 
-            <p>Det er her computeren kommer ind i billedet! Kompleks matrix-multiplikation er tungt at lave i hånden, men JavaScript (og QBasic i gamle dage) klarer det på brøkdele af et sekund for hundredevis af frekvenser ad gangen.</p>
-
             <h3>4. Transmissionstab (TL)</h3>
-            <p>Til sidst udregnes Transmissionstabet i decibel (dB). Det beskriver, hvor meget af den indkommende akustiske energi der reflekteres tilbage mod kilden, i stedet for at slippe ud af røret. Det udregnes fra de endelige A, B, C og D parametre i den samlede matrix M<sub>total</sub>, korrigeret for de forskellige rørdiametre ved indgang og udgang.</p>
+            <p>Til sidst udregnes Transmissionstabet i decibel (dB). Det udregnes fra de endelige A, B, C og D parametre i den samlede matrix M<sub>total</sub>, korrigeret for de forskellige rørdiametre ved selve indgangen (kilden) og udgangen (luften udenfor).</p>
         </div>
     </div>
 
@@ -224,7 +230,7 @@
         const RHO = GAM * PS / (CS * CS); 
         const IMPE = CS * RHO; 
 
-        // Hjælpefunktioner til kompleks multiplikation
+        // Kompleks multiplikation
         function fnRcm(a, b, c, d) { return a * c - b * d; }
         function fnIcm(a, b, c, d) { return a * d + b * c; }
 
@@ -252,10 +258,13 @@
 
         let tlChart;
 
+        // Start med dobbelt ekspansionskammer (5 sektioner)
         let pipes = [
-            { l: 0.3, r: 0.05 },
-            { l: 0.5, r: 0.20 },
-            { l: 0.3, r: 0.05 }
+            { l: 0.3, r: 0.05 }, // Rør 1
+            { l: 0.5, r: 0.20 }, // Kammer 1
+            { l: 0.3, r: 0.05 }, // Rør 2
+            { l: 0.5, r: 0.20 }, // Kammer 2
+            { l: 0.3, r: 0.05 }  // Rør 3
         ];
 
         function renderUI() {
@@ -263,13 +272,14 @@
             container.innerHTML = '';
 
             pipes.forEach((pipe, index) => {
-                let title = `Rør ${index + 1}`;
-                if (index === 0) title += " (Indgang)";
-                else if (index === pipes.length - 1) title += " (Udgang)";
-                else title += " (Ekspansion)";
+                // Dynamisk titel baseret på radiussen (r > 0.1m betragtes her som et "Kammer")
+                let typeName = pipe.r > 0.1 ? "Ekspansionskammer" : "Rør";
+                let title = `Sektion ${index + 1} (${typeName})`;
 
                 const isFirst = index === 0;
                 const isLast = index === pipes.length - 1;
+                // Tillad kun sletning, hvis der er mere end 2 elementer
+                const canDelete = pipes.length > 2;
 
                 const pipeHTML = `
                     <div class="pipe-box">
@@ -278,7 +288,7 @@
                             <div class="actions">
                                 <button class="btn-small" onclick="movePipe(${index}, -1)" ${isFirst ? 'disabled style="opacity:0.3;cursor:not-allowed;"' : ''}>&#9650;</button>
                                 <button class="btn-small" onclick="movePipe(${index}, 1)" ${isLast ? 'disabled style="opacity:0.3;cursor:not-allowed;"' : ''}>&#9660;</button>
-                                ${(!isFirst && !isLast) ? `<button class="btn-small btn-remove" onclick="removePipe(${index})">&times; Slet</button>` : ''}
+                                ${canDelete ? `<button class="btn-small btn-remove" onclick="removePipe(${index})">&times;</button>` : ''}
                             </div>
                         </div>
                         <div class="slider-group">
@@ -298,30 +308,39 @@
         window.updatePipe = function(index, prop, value) {
             pipes[index][prop] = parseFloat(value);
             document.getElementById(`${prop}-val-${index}`).innerText = parseFloat(value).toFixed(2) + ' m';
-            calculateTransmissionLoss();
+            
+            // Opdater titlen dynamisk hvis radiussen krydser grænsen for hvad vi kalder "rør" vs "kammer"
+            if (prop === 'r') {
+                renderUI(); 
+            } else {
+                calculateTransmissionLoss();
+            }
         };
 
-        window.addChamber = function() {
-            const newChamber = { l: 0.5, r: 0.20 };
-            pipes.splice(pipes.length - 1, 0, newChamber);
+        window.addSection = function(type) {
+            if (type === 'pipe') {
+                pipes.push({ l: 0.3, r: 0.05 });
+            } else if (type === 'chamber') {
+                pipes.push({ l: 0.5, r: 0.20 });
+            }
             renderUI();
             calculateTransmissionLoss();
         };
 
         window.removePipe = function(index) {
-            pipes.splice(index, 1);
-            renderUI();
-            calculateTransmissionLoss();
+            if (pipes.length > 2) {
+                pipes.splice(index, 1);
+                renderUI();
+                calculateTransmissionLoss();
+            }
         };
 
         window.movePipe = function(index, direction) {
             if (direction === -1 && index > 0) {
-                // Flyt op
                 const temp = pipes[index];
                 pipes[index] = pipes[index - 1];
                 pipes[index - 1] = temp;
             } else if (direction === 1 && index < pipes.length - 1) {
-                // Flyt ned
                 const temp = pipes[index];
                 pipes[index] = pipes[index + 1];
                 pipes[index + 1] = temp;
@@ -338,6 +357,7 @@
             let frequencies = [];
             let tlValues = [];
 
+            // Impedans for første og sidste element bruges som reference for ind/ud
             const rFirst = pipes[0].r;
             const rLast = pipes[pipes.length - 1].r;
             const zFirst = IMPE / (Math.PI * rFirst * rFirst);
@@ -410,9 +430,7 @@
                                 min: 0
                             }
                         },
-                        animation: {
-                            duration: 0 
-                        }
+                        animation: { duration: 0 }
                     }
                 });
             }
@@ -420,17 +438,9 @@
 
         // Modal (Pop-op) Logik
         const modal = document.getElementById("mathModal");
-        window.openModal = function() {
-            modal.style.display = "block";
-        }
-        window.closeModal = function() {
-            modal.style.display = "none";
-        }
-        window.onclick = function(event) {
-            if (event.target == modal) {
-                modal.style.display = "none";
-            }
-        }
+        window.openModal = function() { modal.style.display = "block"; }
+        window.closeModal = function() { modal.style.display = "none"; }
+        window.onclick = function(event) { if (event.target == modal) { modal.style.display = "none"; } }
 
         // Kør opstart
         renderUI();
