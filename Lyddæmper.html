@@ -10,7 +10,7 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f4f4f9;
             color: #333;
-            max-width: 1000px;
+            max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
         }
@@ -25,7 +25,7 @@
         }
         .controls {
             flex: 1;
-            min-width: 300px;
+            min-width: 320px;
             background: #fff;
             padding: 20px;
             border-radius: 8px;
@@ -33,22 +33,23 @@
         }
         .chart-container {
             flex: 2;
-            min-width: 400px;
+            min-width: 500px;
             background: #fff;
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
         .slider-group {
-            margin-bottom: 15px;
+            margin-bottom: 12px;
             border-bottom: 1px solid #eee;
-            padding-bottom: 10px;
+            padding-bottom: 8px;
         }
         label {
             display: flex;
             justify-content: space-between;
+            font-size: 0.9em;
             font-weight: bold;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
         }
         input[type="range"] {
             width: 100%;
@@ -56,36 +57,48 @@
         }
         .pipe-title {
             color: #2980b9;
-            margin-bottom: 10px;
+            margin-top: 15px;
+            margin-bottom: 8px;
             border-bottom: 2px solid #2980b9;
-            padding-bottom: 5px;
+            padding-bottom: 4px;
+            font-size: 1.1em;
         }
     </style>
 </head>
 <body>
 
-    <h1>Q4POLE: Akustisk Transmissionstab</h1>
+    <h1>Q4POLE: Akustisk Transmissionstab (3 Elementer)</h1>
     
     <div class="container">
         <div class="controls">
             <h3 class="pipe-title">Rør 1 (Indgang)</h3>
             <div class="slider-group">
-                <label>Længde: <span id="l1-val">0.5 m</span></label>
-                <input type="range" id="l1" min="0.1" max="5.0" step="0.1" value="0.5">
+                <label>Længde: <span id="l1-val">0.3 m</span></label>
+                <input type="range" id="l1" min="0.1" max="2.0" step="0.05" value="0.3">
             </div>
             <div class="slider-group">
                 <label>Radius: <span id="r1-val">0.05 m</span></label>
-                <input type="range" id="r1" min="0.01" max="0.5" step="0.01" value="0.05">
+                <input type="range" id="r1" min="0.01" max="0.2" step="0.01" value="0.05">
             </div>
 
-            <h3 class="pipe-title">Rør 2 (Ekspansion/Kanal)</h3>
+            <h3 class="pipe-title">Rør 2 (Ekspansionskammer)</h3>
             <div class="slider-group">
-                <label>Længde: <span id="l2-val">1.0 m</span></label>
-                <input type="range" id="l2" min="0.1" max="5.0" step="0.1" value="1.0">
+                <label>Længde: <span id="l2-val">0.5 m</span></label>
+                <input type="range" id="l2" min="0.1" max="3.0" step="0.05" value="0.5">
             </div>
             <div class="slider-group">
-                <label>Radius: <span id="r2-val">0.15 m</span></label>
-                <input type="range" id="r2" min="0.01" max="0.5" step="0.01" value="0.15">
+                <label>Radius: <span id="r2-val">0.20 m</span></label>
+                <input type="range" id="r2" min="0.05" max="0.5" step="0.01" value="0.20">
+            </div>
+
+            <h3 class="pipe-title">Rør 3 (Udgang)</h3>
+            <div class="slider-group">
+                <label>Længde: <span id="l3-val">0.3 m</span></label>
+                <input type="range" id="l3" min="0.1" max="2.0" step="0.05" value="0.3">
+            </div>
+            <div class="slider-group">
+                <label>Radius: <span id="r3-val">0.05 m</span></label>
+                <input type="range" id="r3" min="0.01" max="0.2" step="0.01" value="0.05">
             </div>
         </div>
 
@@ -95,32 +108,61 @@
     </div>
 
     <script>
-        // Fysiske konstanter fra QBasic koden
-        const TE = 20; // Temperatur [cite: 12]
-        const PS = 101300; // Atmosfærisk tryk [cite: 12]
-        const GAM = 1.41; // Ratio of specific heats 
-        const CS = Math.sqrt(GAM * 286.7 * (TE + 273.15)); // Lydens hastighed 
-        const RHO = GAM * PS / (CS * CS); // Densitet 
-        const IMPE = CS * RHO; // Karakteristisk impedans af luft 
+        // Atmosfæriske konstanter
+        const TE = 20; 
+        const PS = 101300; 
+        const GAM = 1.41; 
+        const CS = Math.sqrt(GAM * 286.7 * (TE + 273.15)); 
+        const RHO = GAM * PS / (CS * CS); 
+        const IMPE = CS * RHO; 
 
-        // Kompleks multiplikation [cite: 45]
+        // Hjælpefunktioner til kompleks multiplikation
         function fnRcm(a, b, c, d) { return a * c - b * d; }
         function fnIcm(a, b, c, d) { return a * d + b * c; }
+
+        // Multiplicer to 4-pols matricer
+        function multMatrix(M1, M2) {
+            return {
+                ar: fnRcm(M1.ar, M1.ai, M2.ar, M2.ai) + fnRcm(M1.br, M1.bi, M2.cr, M2.ci),
+                ai: fnIcm(M1.ar, M1.ai, M2.ar, M2.ai) + fnIcm(M1.br, M1.bi, M2.cr, M2.ci),
+                br: fnRcm(M1.ar, M1.ai, M2.br, M2.bi) + fnRcm(M1.br, M1.bi, M2.dr, M2.di),
+                bi: fnIcm(M1.ar, M1.ai, M2.br, M2.bi) + fnIcm(M1.br, M1.bi, M2.dr, M2.di),
+                cr: fnRcm(M1.cr, M1.ci, M2.ar, M2.ai) + fnRcm(M1.dr, M1.di, M2.cr, M2.ci),
+                ci: fnIcm(M1.cr, M1.ci, M2.ar, M2.ai) + fnIcm(M1.dr, M1.di, M2.cr, M2.ci),
+                dr: fnRcm(M1.cr, M1.ci, M2.br, M2.bi) + fnRcm(M1.dr, M1.di, M2.dr, M2.di),
+                di: fnIcm(M1.cr, M1.ci, M2.br, M2.bi) + fnIcm(M1.dr, M1.di, M2.dr, M2.di)
+            };
+        }
+
+        // Generer matrix for et enkelt rør-element
+        function getPipeMatrix(k, L, Z) {
+            return {
+                ar: Math.cos(k * L), ai: 0,
+                br: 0, bi: Z * Math.sin(k * L),
+                cr: 0, ci: (1 / Z) * Math.sin(k * L),
+                dr: Math.cos(k * L), di: 0
+            };
+        }
 
         let tlChart;
 
         function calculateTransmissionLoss() {
+            // Hent værdier
             const l1 = parseFloat(document.getElementById('l1').value);
             const r1 = parseFloat(document.getElementById('r1').value);
             const l2 = parseFloat(document.getElementById('l2').value);
             const r2 = parseFloat(document.getElementById('r2').value);
+            const l3 = parseFloat(document.getElementById('l3').value);
+            const r3 = parseFloat(document.getElementById('r3').value);
 
-            const z1 = IMPE / (Math.PI * r1 * r1); // Akustisk impedans for rør 1 [cite: 34]
-            const z2 = IMPE / (Math.PI * r2 * r2); // Akustisk impedans for rør 2 [cite: 34]
+            // Udregn akustisk impedans for hvert rør
+            const z1 = IMPE / (Math.PI * r1 * r1);
+            const z2 = IMPE / (Math.PI * r2 * r2);
+            const z3 = IMPE / (Math.PI * r3 * r3);
 
-            const fMax = 1000; // Max frekvens [cite: 22]
-            const nsc = 100;   // Antal spektrale komponenter [cite: 21]
-            const fRes = fMax / nsc; // Frekvensopløsning [cite: 23]
+            const fMax = 1000; 
+            const nsc = 200; // Øget opløsning for pænere kurver
+            const fRes = fMax / nsc; 
 
             let frequencies = [];
             let tlValues = [];
@@ -130,41 +172,25 @@
                 frequencies.push(f.toFixed(1));
                 const k = (2 * Math.PI * f) / CS;
 
-                // Fire-pols parametre for rør 1 [cite: 43, 44]
-                let ar1 = Math.cos(k * l1), ai1 = 0;
-                let br1 = 0, bi1 = z1 * Math.sin(k * l1);
-                let cr1 = 0, ci1 = (1 / z1) * Math.sin(k * l1);
-                let dr1 = ar1, di1 = 0;
+                // Udregn matricer for alle 3 rør
+                let M1 = getPipeMatrix(k, l1, z1);
+                let M2 = getPipeMatrix(k, l2, z2);
+                let M3 = getPipeMatrix(k, l3, z3);
 
-                // Fire-pols parametre for rør 2 [cite: 43, 44]
-                let ar2 = Math.cos(k * l2), ai2 = 0;
-                let br2 = 0, bi2 = z2 * Math.sin(k * l2);
-                let cr2 = 0, ci2 = (1 / z2) * Math.sin(k * l2);
-                let dr2 = ar2, di2 = 0;
+                // Kombiner systemet (M_total = M1 * M2 * M3)
+                let M_12 = multMatrix(M1, M2);
+                let M_tot = multMatrix(M_12, M3);
 
-                // Kombineret system via kompleks matrix multiplikation [cite: 49, 50, 51, 52]
-                let ar_tot = fnRcm(ar1, ai1, ar2, ai2) + fnRcm(br1, bi1, cr2, ci2);
-                let ai_tot = fnIcm(ar1, ai1, ar2, ai2) + fnIcm(br1, bi1, cr2, ci2);
+                // Transmissionstab udregning på tværs af systemet (Rør 1 til Rør 3)
+                let rat = r1 / r3;
+                let bie = Math.sqrt(z1 * z3);
 
-                let br_tot = fnRcm(ar1, ai1, br2, bi2) + fnRcm(br1, bi1, dr2, di2);
-                let bi_tot = fnIcm(ar1, ai1, br2, bi2) + fnIcm(br1, bi1, dr2, di2);
-
-                let cr_tot = fnRcm(cr1, ci1, ar2, ai2) + fnRcm(dr1, di1, cr2, ci2);
-                let ci_tot = fnIcm(cr1, ci1, ar2, ai2) + fnIcm(dr1, di1, cr2, ci2);
-
-                let dr_tot = fnRcm(cr1, ci1, br2, bi2) + fnRcm(dr1, di1, dr2, di2);
-                let di_tot = fnIcm(cr1, ci1, br2, bi2) + fnIcm(dr1, di1, dr2, di2);
-
-                // Transmissionstab udregning [cite: 56, 57]
-                let rat = r1 / r2;
-                let bie = Math.sqrt(z1 * z2);
-
-                let x1 = ar_tot * rat + br_tot / bie + cr_tot * bie + dr_tot / rat;
-                let x2 = ai_tot * rat + bi_tot / bie + ci_tot * bie + di_tot / rat;
+                let x1 = M_tot.ar * rat + M_tot.br / bie + M_tot.cr * bie + M_tot.dr / rat;
+                let x2 = M_tot.ai * rat + M_tot.bi / bie + M_tot.ci * bie + M_tot.di / rat;
 
                 let damp = Math.sqrt(x1 * x1 + x2 * x2) / 2;
                 
-                // Omregn til dB: 20 * log10(damp) svarer til 8.685889 * log(e) i QBasic 
+                // Konverter til Decibel (dB)
                 let tl = 20 * Math.log10(Math.max(damp, 1)); 
                 tlValues.push(tl);
             }
@@ -186,16 +212,17 @@
                         datasets: [{
                             label: 'Transmissionstab (dB)',
                             data: data,
-                            borderColor: '#2980b9',
-                            backgroundColor: 'rgba(41, 128, 185, 0.1)',
+                            borderColor: '#e74c3c',
+                            backgroundColor: 'rgba(231, 76, 60, 0.1)',
                             borderWidth: 2,
                             pointRadius: 0,
                             fill: true,
-                            tension: 0.4
+                            tension: 0.2
                         }]
                     },
                     options: {
                         responsive: true,
+                        maintainAspectRatio: false,
                         scales: {
                             x: {
                                 title: { display: true, text: 'Frekvens (Hz)' },
@@ -207,15 +234,15 @@
                             }
                         },
                         animation: {
-                            duration: 200 // Gør grafen hurtig og responsiv ved slider-brug
+                            duration: 100 // Endnu hurtigere animation til smooth sliders
                         }
                     }
                 });
             }
         }
 
-        // Event listeners til sliders
-        const inputs = ['l1', 'r1', 'l2', 'r2'];
+        // Lyt på alle sliders og opdater værdier + graf
+        const inputs = ['l1', 'r1', 'l2', 'r2', 'l3', 'r3'];
         inputs.forEach(id => {
             const element = document.getElementById(id);
             element.addEventListener('input', (e) => {
@@ -224,7 +251,7 @@
             });
         });
 
-        // Initial beregning
+        // Kør første beregning
         calculateTransmissionLoss();
     </script>
 </body>
