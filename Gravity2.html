@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D Newtons Kanon - Måne Slingshot</title>
+    <title>3D Newtons Kanon - Måne Slingshot (Mobil & PC)</title>
     <style>
         body { 
             margin: 0; 
@@ -12,30 +12,34 @@
             background-color: #020205; 
             color: white; 
             display: flex;
-            flex-direction: row; /* Desktop: UI til venstre, 3D til højre */
+            flex-direction: row;
         }
-       .back-link {
+      .back-link {
             position: absolute;
             top: 10px; left: 15px;
             color: #88ff88; text-decoration: none; font-size: 14px; z-index: 20;
             font-weight: bold;
         }
-       .back-link:hover { text-decoration: underline; }
+      .back-link:hover { text-decoration: underline; }
         
         #ui-container { 
-            width: 340px; 
-            height: 100vh;
-            background: rgba(15, 15, 20, 0.95); 
+            position: absolute; 
+            top: 40px; 
+            left: 15px; 
+            background: rgba(15, 15, 20, 0.85); 
             padding: 15px; 
-            padding-top: 40px;
-            border-right: 2px solid #444; 
-            box-shadow: 4px 0px 20px rgba(0,0,0,0.8); 
+            border-radius: 8px; 
+            border: 1px solid #444; 
+            box-shadow: 0px 4px 20px rgba(0,0,0,0.8); 
+            width: 340px; 
+            max-height: calc(100vh - 60px);
             overflow-y: auto;
+            backdrop-filter: blur(5px);
             box-sizing: border-box;
             z-index: 10;
         }
         h2 { margin-top: 0; font-size: 18px; border-bottom: 1px solid #555; padding-bottom: 10px; }
-       .btn-group { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+      .btn-group { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
         button { 
             flex: 1 1 45%; 
             padding: 8px; 
@@ -49,10 +53,10 @@
             touch-action: manipulation;
         }
         button:hover { background: #444455; }
-       .control-group { margin-top: 10px; display: flex; flex-direction: column; gap: 2px;}
-       .label-row { display: flex; justify-content: space-between; font-size: 13px; color: #ddd; }
+      .control-group { margin-top: 10px; display: flex; flex-direction: column; gap: 2px;}
+      .label-row { display: flex; justify-content: space-between; font-size: 13px; color: #ddd; }
         input[type=range] { width: 100%; margin: 0; touch-action: manipulation; }
-       .stats-box { 
+      .stats-box { 
             background: rgba(0, 0, 0, 0.6); 
             border: 1px solid #555; 
             padding: 10px; 
@@ -60,42 +64,49 @@
             margin-top: 15px; 
             font-size: 12px; 
         }
-       .stats-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
-       .val { font-weight: bold; color: #4da6ff; }
-       .tip { font-size: 11px; color: #88ff88; margin-top: 15px; font-style: italic; }
+      .stats-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+      .val { font-weight: bold; color: #4da6ff; }
+      .tip { font-size: 11px; color: #88ff88; margin-top: 15px; font-style: italic; }
         
         #canvas-container {
-            flex: 1; /* 3D lærredet fylder resten af pladsen */
+            position: absolute;
+            top: 0; left: 0;
+            width: 100vw;
             height: 100vh;
-            position: relative;
+            z-index: 1;
             touch-action: none; 
         }
 
-        /* Løsningen fra dit mobil-screenshot: Split skærmen 50/50 på mobilen */
+        /* Mobil Responsivitet */
         @media (max-width: 600px) {
             body {
-                flex-direction: column; /* Mobil: UI i toppen, 3D i bunden */
+                flex-direction: column;
             }
-           .back-link {
-                top: 5px; left: 10px;
+          .back-link {
+                top: 10px; left: 10px;
             }
             #ui-container {
+                position: relative;
                 width: 100%;
+                left: 0;
+                top: 0;
                 height: 50vh; 
                 max-height: 50vh; 
                 padding: 15px;
-                padding-top: 30px; 
-                border-right: none;
+                padding-top: 35px;
+                border-radius: 0;
+                border: none;
                 border-bottom: 2px solid #555;
             }
             #canvas-container {
+                position: relative;
                 width: 100%;
                 height: 50vh;
             }
             h2 { font-size: 16px; margin-bottom: 5px; padding-bottom: 5px; }
-           .control-group { margin-top: 8px; }
+          .control-group { margin-top: 8px; }
             button { padding: 10px; font-size: 14px; } 
-           .tip { font-size: 10px; margin-top: 10px; }
+          .tip { font-size: 10px; margin-top: 10px; }
         }
     </style>
     <script type="importmap">
@@ -149,7 +160,7 @@
         </div>
 
         <div class="tip">
-            ▶ Standardværdierne her sender satellitten ud i et <b>slingshot</b> rundt om Månen!<br>
+            ▶ Standardværdierne her er udregnet til at sende satellitten ud i et <b>slingshot</b> rundt om Månen!<br>
             ▶ Zoom langt ud for at følge banen hele vejen ud i rummet.
         </div>
     </div>
@@ -169,23 +180,25 @@
         const M_MOON = 7.342e22;
         const MU_MOON = G * M_MOON;
 
+        // Planetariske dimensioner
         const R_EARTH = 6371000; 
         const R_MOON = 1737000;
         const D_MOON = 384400000;
 
+        // Skaleringsfaktor for 3D rummet
         const SCALE = 1 / 100000;
 
         const canvasContainer = document.getElementById('canvas-container');
 
         // --- 1. Opsætning af Scene ---
         const scene = new THREE.Scene();
+        
         const camera = new THREE.PerspectiveCamera(45, canvasContainer.clientWidth / canvasContainer.clientHeight, 0.1, D_MOON * SCALE * 5);
         
-        // Perfekt centrering uden offsets, da CSS'en nu har delt skærmen op
         if (window.innerWidth <= 600) {
-            camera.position.set(0, R_EARTH * SCALE * 2.0, R_EARTH * SCALE * 8.0);
+            camera.position.set(0, R_EARTH * SCALE * 2.0, R_EARTH * SCALE * 9.0);
         } else {
-            camera.position.set(R_EARTH * SCALE * 2.5, R_EARTH * SCALE * 1.5, R_EARTH * SCALE * 4.0);
+            camera.position.set(R_EARTH * SCALE * 2.5, R_EARTH * SCALE * 1.5, R_EARTH * SCALE * 3.5);
         }
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -200,6 +213,11 @@
         controls.enablePan = false; 
         controls.minDistance = R_EARTH * SCALE * 1.1; 
         controls.maxDistance = D_MOON * SCALE * 1.5;
+
+        if (window.innerWidth <= 600) {
+            const offsetY = -window.innerHeight * 0.15; 
+            camera.setViewOffset(window.innerWidth, window.innerHeight, 0, offsetY, window.innerWidth, window.innerHeight);
+        }
 
         // --- 2. Byg Jorden og Hjælpelinjer ---
         const earthGroup = new THREE.Group();
@@ -289,7 +307,7 @@
         moonPath.rotation.x = Math.PI / 2;
         scene.add(moonPath);
 
-        // --- 6. Lys og stjerner ---
+        // --- 6. Lys ---
         scene.add(new THREE.AmbientLight(0xffffff, 0.15)); 
         const dirLight = new THREE.DirectionalLight(0xffeedd, 2.5); 
         dirLight.position.set(100, 20, 50); 
@@ -381,17 +399,17 @@
             groundTrailGeo.setDrawRange(0, 0);
         }
 
-        // --- Fysik: Sikker og stabil logik uden formateringsfejl ---
+        // --- N-Body Fysik Integration ---
         function physicsStep(dt) {
             const r = Math.sqrt(state.x**2 + state.y**2 + state.z**2);
 
-            // Tjek 1: Er vi krashet ned i jorden?
+            // Tjek 1: Krashet på Jorden?
             if (r <= R_EARTH) {
                 isRunning = false; 
                 return;
             }
 
-            // Tjek 2: Er vi fløjet alt for langt væk (ud af systemet)?
+            // Tjek 2: For langt væk?
             if (r >= D_MOON * 3) {
                 isRunning = false; 
                 return;
@@ -403,7 +421,7 @@
             let ay = a_earth_mag * state.y;
             let az = a_earth_mag * state.z;
 
-            // Beregn Månens tyngdekraft
+            // Find Månens eksakte position til dette millisekund
             const moonAngularVelocity = (2 * Math.PI) / 2358720;
             const moonAngle = moonAngularVelocity * timeElapsed;
             const moonX = D_MOON * Math.cos(moonAngle);
@@ -415,12 +433,13 @@
             const dz = state.z - moonZ;
             const r_moon = Math.sqrt(dx*dx + dy*dy + dz*dz);
 
-            // Tjek 3: Er vi krashet ned i Månen?
+            // Tjek 3: Krashet på Månen?
             if (r_moon <= R_MOON) {
                 isRunning = false;
                 return;
             }
 
+            // Beregn Månens træk i satellitten
             const a_moon_mag = -MU_MOON / (r_moon * r_moon * r_moon);
             ax += a_moon_mag * dx;
             ay += a_moon_mag * dy;
@@ -470,7 +489,6 @@
                 
                 satellite.position.set(state.x * SCALE, state.y * SCALE, state.z * SCALE);
 
-                // Opdater sporene (rullende hukommelse, så den aldrig stopper)
                 let currentIndex;
                 if (trailIndex >= maxTrailPoints) {
                     for (let j = 0; j < (maxTrailPoints - 1) * 3; j++) {
@@ -529,6 +547,12 @@
 
         window.addEventListener('resize', () => {
             camera.aspect = canvasContainer.clientWidth / canvasContainer.clientHeight;
+            if (window.innerWidth <= 600) {
+                const offsetY = -window.innerHeight * 0.15; 
+                camera.setViewOffset(window.innerWidth, window.innerHeight, 0, offsetY, window.innerWidth, window.innerHeight);
+            } else {
+                camera.clearViewOffset();
+            }
             camera.updateProjectionMatrix();
             renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
         });
