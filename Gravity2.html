@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D Newtons Kanon - Måne Slingshot (Mobil & PC)</title>
+    <title>3D Newtons Kanon - Måne Slingshot</title>
     <style>
         body { 
             margin: 0; 
-            overflow: hidden; /* Forhindrer uønsket scroll af hele siden */
+            overflow: hidden; 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             background-color: #020205; 
             color: white; 
             display: flex;
-            flex-direction: row;
+            flex-direction: row; /* Desktop: UI til venstre, 3D til højre */
         }
        .back-link {
             position: absolute;
@@ -23,18 +23,14 @@
        .back-link:hover { text-decoration: underline; }
         
         #ui-container { 
-            position: absolute; 
-            top: 40px; 
-            left: 15px; 
-            background: rgba(15, 15, 20, 0.85); 
-            padding: 15px; 
-            border-radius: 8px; 
-            border: 1px solid #444; 
-            box-shadow: 0px 4px 20px rgba(0,0,0,0.8); 
             width: 340px; 
-            max-height: calc(100vh - 60px);
+            height: 100vh;
+            background: rgba(15, 15, 20, 0.95); 
+            padding: 15px; 
+            padding-top: 40px;
+            border-right: 2px solid #444; 
+            box-shadow: 4px 0px 20px rgba(0,0,0,0.8); 
             overflow-y: auto;
-            backdrop-filter: blur(5px);
             box-sizing: border-box;
             z-index: 10;
         }
@@ -69,37 +65,30 @@
        .tip { font-size: 11px; color: #88ff88; margin-top: 15px; font-style: italic; }
         
         #canvas-container {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100vw;
+            flex: 1; /* 3D lærredet fylder resten af pladsen */
             height: 100vh;
-            z-index: 1;
-            touch-action: none; /* Tillader 3D rotation på mobil uden at scrolle siden */
+            position: relative;
+            touch-action: none; 
         }
 
-        /* Mobil Responsivitet - Split skærmen op */
+        /* Løsningen fra dit mobil-screenshot: Split skærmen 50/50 på mobilen */
         @media (max-width: 600px) {
             body {
-                flex-direction: column;
+                flex-direction: column; /* Mobil: UI i toppen, 3D i bunden */
             }
            .back-link {
-                top: 10px; left: 10px;
+                top: 5px; left: 10px;
             }
             #ui-container {
-                position: relative;
                 width: 100%;
-                left: 0;
-                top: 0;
                 height: 50vh; 
                 max-height: 50vh; 
                 padding: 15px;
-                padding-top: 35px; /* Plads til back-link */
-                border-radius: 0;
-                border: none;
+                padding-top: 30px; 
+                border-right: none;
                 border-bottom: 2px solid #555;
             }
             #canvas-container {
-                position: relative;
                 width: 100%;
                 height: 50vh;
             }
@@ -160,7 +149,7 @@
         </div>
 
         <div class="tip">
-            ▶ Standardværdierne her er udregnet til at sende satellitten ud i et <b>slingshot</b> rundt om Månen!<br>
+            ▶ Standardværdierne her sender satellitten ud i et <b>slingshot</b> rundt om Månen!<br>
             ▶ Zoom langt ud for at følge banen hele vejen ud i rummet.
         </div>
     </div>
@@ -180,25 +169,23 @@
         const M_MOON = 7.342e22;
         const MU_MOON = G * M_MOON;
 
-        // Planetariske dimensioner
         const R_EARTH = 6371000; 
         const R_MOON = 1737000;
         const D_MOON = 384400000;
 
-        // Skaleringsfaktor for 3D rummet
         const SCALE = 1 / 100000;
 
         const canvasContainer = document.getElementById('canvas-container');
 
         // --- 1. Opsætning af Scene ---
         const scene = new THREE.Scene();
-        
         const camera = new THREE.PerspectiveCamera(45, canvasContainer.clientWidth / canvasContainer.clientHeight, 0.1, D_MOON * SCALE * 5);
         
+        // Perfekt centrering uden offsets, da CSS'en nu har delt skærmen op
         if (window.innerWidth <= 600) {
-            camera.position.set(0, R_EARTH * SCALE * 2.0, R_EARTH * SCALE * 9.0);
+            camera.position.set(0, R_EARTH * SCALE * 2.0, R_EARTH * SCALE * 8.0);
         } else {
-            camera.position.set(R_EARTH * SCALE * 2.5, R_EARTH * SCALE * 1.5, R_EARTH * SCALE * 3.5);
+            camera.position.set(R_EARTH * SCALE * 2.5, R_EARTH * SCALE * 1.5, R_EARTH * SCALE * 4.0);
         }
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -212,20 +199,13 @@
         controls.enableDamping = true;
         controls.enablePan = false; 
         controls.minDistance = R_EARTH * SCALE * 1.1; 
-        // Tillad brugeren at zoome helt ud forbi månen
         controls.maxDistance = D_MOON * SCALE * 1.5;
-
-        if (window.innerWidth <= 600) {
-            const offsetY = -window.innerHeight * 0.15; 
-            camera.setViewOffset(window.innerWidth, window.innerHeight, 0, offsetY, window.innerWidth, window.innerHeight);
-        }
 
         // --- 2. Byg Jorden og Hjælpelinjer ---
         const earthGroup = new THREE.Group();
         scene.add(earthGroup);
 
         const earthGeo = new THREE.SphereGeometry(R_EARTH * SCALE, 64, 64);
-        
         const textureLoader = new THREE.TextureLoader();
         const earthTex = textureLoader.load('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg');
         const earthBump = textureLoader.load('https://unpkg.com/three-globe/example/img/earth-topology.png');
@@ -275,7 +255,7 @@
         scene.add(satellite);
 
         // --- 4. Byg Sporene ---
-        const maxTrailPoints = 15000; // Forøget voldsomt for at kunne tegne den enorme slingshot-bane
+        const maxTrailPoints = 15000; 
         
         const trailGeo = new THREE.BufferGeometry();
         const trailPositions = new Float32Array(maxTrailPoints * 3);
@@ -309,7 +289,7 @@
         moonPath.rotation.x = Math.PI / 2;
         scene.add(moonPath);
 
-        // --- 6. Lys ---
+        // --- 6. Lys og stjerner ---
         scene.add(new THREE.AmbientLight(0xffffff, 0.15)); 
         const dirLight = new THREE.DirectionalLight(0xffeedd, 2.5); 
         dirLight.position.set(100, 20, 50); 
@@ -330,11 +310,10 @@
         let isRunning = false;
         let isSlowMotion = false;
         let timeElapsed = 0;
-        let globalTime = 0; // Holder styr på tiden for Jorden/Månens rotation
+        let globalTime = 0; 
         let state = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0 };
 
         function updateAnalyticalOrbits() {
-            // Analytiske data gælder primært for 2-body orbits, under et slingshot vil de variere voldsomt
             const r_mag = Math.sqrt(state.x**2 + state.y**2 + state.z**2);
             const v_mag_sq = state.vx**2 + state.vy**2 + state.vz**2;
             const energy = (v_mag_sq / 2) - (MU_EARTH / r_mag);
@@ -366,7 +345,6 @@
             timeElapsed = 0;
             globalTime = 0;
             
-            // Jorden vender Greenwich mod Z=0 fra start
             earthGroup.rotation.y = -Math.PI / 2; 
             moonOrbitGroup.rotation.y = 0;
             moon.rotation.y = 0;
@@ -403,14 +381,18 @@
             groundTrailGeo.setDrawRange(0, 0);
         }
 
-        // --- N-Body Fysik Integration (Beregner Jordens OG Månens træk i satellitten) ---
+        // --- Fysik: Sikker og stabil logik uden formateringsfejl ---
         function physicsStep(dt) {
             const r = Math.sqrt(state.x**2 + state.y**2 + state.z**2);
 
-            // Tjek om vi er krashet ned i Jorden (eller smidt ud af systemet) - RETTET LINJESKIFT HER
-            if (r <= R_EARTH |
+            // Tjek 1: Er vi krashet ned i jorden?
+            if (r <= R_EARTH) {
+                isRunning = false; 
+                return;
+            }
 
-| r >= D_MOON * 3) {
+            // Tjek 2: Er vi fløjet alt for langt væk (ud af systemet)?
+            if (r >= D_MOON * 3) {
                 isRunning = false; 
                 return;
             }
@@ -421,20 +403,19 @@
             let ay = a_earth_mag * state.y;
             let az = a_earth_mag * state.z;
 
-            // Find Månens eksakte position til dette millisekund
+            // Beregn Månens tyngdekraft
             const moonAngularVelocity = (2 * Math.PI) / 2358720;
             const moonAngle = moonAngularVelocity * timeElapsed;
             const moonX = D_MOON * Math.cos(moonAngle);
             const moonY = 0;
             const moonZ = D_MOON * -Math.sin(moonAngle);
 
-            // Beregn Månens træk i satellitten
             const dx = state.x - moonX;
             const dy = state.y - moonY;
             const dz = state.z - moonZ;
             const r_moon = Math.sqrt(dx*dx + dy*dy + dz*dz);
 
-            // Krashet ind i månen?
+            // Tjek 3: Er vi krashet ned i Månen?
             if (r_moon <= R_MOON) {
                 isRunning = false;
                 return;
@@ -445,7 +426,7 @@
             ay += a_moon_mag * dy;
             az += a_moon_mag * dz;
 
-            // Opdater hastighed og position (Semi-implicit Euler)
+            // Opdater hastighed og position
             state.vx += ax * dt;
             state.vy += ay * dt;
             state.vz += az * dt;
@@ -463,7 +444,6 @@
             clouds.rotation.y += 0.0003;
 
             if (isRunning) {
-                // Vi skruer lidt op for dt så turen til Månen (som tager flere dage) ikke tager en time at se på skærmen
                 const subSteps = isSlowMotion? 5 : 200; 
                 const dt = 30; 
                 
@@ -475,13 +455,14 @@
                 const stepTimeElapsed = subSteps * dt;
                 globalTime += stepTimeElapsed;
 
-                // Absolut positionering af rotation baseret på total simulationstid
+                // Opdater Jordens rotation
                 const earthAngularVelocity = (2 * Math.PI) / 86400;
                 earthGroup.rotation.y = (earthAngularVelocity * timeElapsed) - (Math.PI / 2);
 
+                // Opdater Månens rotation
                 const moonAngularVelocity = (2 * Math.PI) / 2358720;
                 moonOrbitGroup.rotation.y = moonAngularVelocity * timeElapsed;
-                moon.rotation.y = moonAngularVelocity * timeElapsed; // Tidal locking
+                moon.rotation.y = moonAngularVelocity * timeElapsed; 
 
                 document.getElementById('txtTime').innerText = Math.round(timeElapsed);
                 const currentR = Math.sqrt(state.x**2 + state.y**2 + state.z**2);
@@ -489,9 +470,9 @@
                 
                 satellite.position.set(state.x * SCALE, state.y * SCALE, state.z * SCALE);
 
+                // Opdater sporene (rullende hukommelse, så den aldrig stopper)
                 let currentIndex;
                 if (trailIndex >= maxTrailPoints) {
-                    // Slet ældste punkt i halen (rykker arrayet 1 plads tilbage)
                     for (let j = 0; j < (maxTrailPoints - 1) * 3; j++) {
                         trailPositions[j] = trailPositions[j + 3];
                         groundTrailPositions[j] = groundTrailPositions[j + 3];
@@ -502,14 +483,12 @@
                     trailIndex++;
                 }
 
-                // Tilføj punkt for det røde spor i rummet
                 trailPositions[currentIndex * 3] = state.x * SCALE;
                 trailPositions[currentIndex * 3 + 1] = state.y * SCALE;
                 trailPositions[currentIndex * 3 + 2] = state.z * SCALE;
                 trailGeo.attributes.position.needsUpdate = true;
                 trailGeo.setDrawRange(0, trailIndex);
 
-                // Tilføj punkt for ground track på Jorden
                 const satWorldPos = new THREE.Vector3(state.x * SCALE, state.y * SCALE, state.z * SCALE);
                 const groundPos = satWorldPos.clone().normalize().multiplyScalar(R_EARTH * SCALE * 1.002);
                 earthGroup.worldToLocal(groundPos);
@@ -550,12 +529,6 @@
 
         window.addEventListener('resize', () => {
             camera.aspect = canvasContainer.clientWidth / canvasContainer.clientHeight;
-            if (window.innerWidth <= 600) {
-                const offsetY = -window.innerHeight * 0.15; 
-                camera.setViewOffset(window.innerWidth, window.innerHeight, 0, offsetY, window.innerWidth, window.innerHeight);
-            } else {
-                camera.clearViewOffset();
-            }
             camera.updateProjectionMatrix();
             renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
         });
