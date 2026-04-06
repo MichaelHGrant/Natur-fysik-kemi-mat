@@ -138,13 +138,13 @@
         </div>
 
         <div class="control-group">
-            <div class="label-row"><span>Længdegrad (Lon):</span> <span class="val"><span id="valLon">-135</span>°</span></div>
-            <input type="range" id="sldLon" min="-180" max="180" step="1" value="-135">
+            <div class="label-row"><span>Længdegrad (Lon):</span> <span class="val"><span id="valLon">-15</span>°</span></div>
+            <input type="range" id="sldLon" min="-180" max="180" step="1" value="-15">
         </div>
 
         <div class="control-group">
-            <div class="label-row"><span>Hastighed:</span> <span class="val"><span id="valSpeed">10285</span> m/s</span></div>
-            <input type="range" id="sldSpeed" min="0" max="12000" step="1" value="10285">
+            <div class="label-row"><span>Hastighed:</span> <span class="val"><span id="valSpeed">10350</span> m/s</span></div>
+            <input type="range" id="sldSpeed" min="0" max="12000" step="5" value="10350">
         </div>
 
         <div class="control-group">
@@ -183,6 +183,9 @@
         const R_MOON = 1737000;
         const D_MOON = 384400000;
 
+        // Udregn det fælles tyngdepunkt (Barycenter) for systemet
+        const R_EARTH_BARY = D_MOON * M_MOON / (M_EARTH + M_MOON);
+        const R_MOON_BARY = D_MOON * M_EARTH / (M_EARTH + M_MOON);
         const MOON_ANGULAR_VELOCITY = Math.sqrt(G * (M_EARTH + M_MOON) / Math.pow(D_MOON, 3));
 
         const SCALE = 1 / 100000;
@@ -193,7 +196,6 @@
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(45, canvasContainer.clientWidth / canvasContainer.clientHeight, 0.1, D_MOON * SCALE * 5);
         
-        // Perfekt centrering til mobil
         if (window.innerWidth <= 600) {
             camera.position.set(0, R_EARTH * SCALE * 4.0, R_EARTH * SCALE * 15.0);
         } else {
@@ -209,9 +211,14 @@
 
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
-        controls.enablePan = false; // Forhindrer at Jorden rykkes ud af center ved et uheld
+        controls.enablePan = false; 
         controls.minDistance = R_EARTH * SCALE * 1.1; 
         controls.maxDistance = D_MOON * SCALE * 1.5;
+
+        if (window.innerWidth <= 600) {
+            const offsetY = -window.innerHeight * 0.15; 
+            camera.setViewOffset(window.innerWidth, window.innerHeight, 0, offsetY, window.innerWidth, window.innerHeight);
+        }
 
         // --- 2. Byg Jorden og Hjælpelinjer ---
         const earthGroup = new THREE.Group();
@@ -325,8 +332,8 @@
         let timeElapsed = 0;
         
         let state = {
-            ex: 0, ey: 0, ez: 0, evx: 0, evy: 0, evz: 0,
-            mx: 0, my: 0, mz: 0, mvx: 0, mvy: 0, mvz: 0,
+            ex: 0, ey: 0, ez: 0, evx: 0, evy: 0, evz: 0, 
+            mx: 0, my: 0, mz: 0, mvx: 0, mvy: 0, mvz: 0, 
             sx: 0, sy: 0, sz: 0, svx: 0, svy: 0, svz: 0  
         };
 
@@ -344,58 +351,29 @@
             const rel_sx = state.sx - state.ex;
             const rel_sy = state.sy - state.ey;
             const rel_sz = state.sz - state.ez;
-            const rel_svx = state.svx - state.evx;
-            const rel_svy = state.svy - state.evy;
-            const rel_svz = state.svz - state.evz;
-
+            
             const r_mag = Math.sqrt(rel_sx**2 + rel_sy**2 + rel_sz**2);
-            const v_mag_sq = rel_svx**2 + rel_svy**2 + rel_svz**2;
-            const energy = (v_mag_sq / 2) - (MU_EARTH / r_mag);
-            
-            const hx = rel_sy * rel_svz - rel_sz * rel_svy;
-            const hy = rel_sz * rel_svx - rel_sx * rel_svz;
-            const hz = rel_sx * rel_svy - rel_sy * rel_svx;
-            const h_sq = hx**2 + hy**2 + hz**2;
-            
-            if (energy >= 0) {
-                document.getElementById('txtApogee').innerText = "Escape (∞)";
-                document.getElementById('txtPerigee').innerText = (r_mag / 1000).toFixed(1); 
-                return;
-            }
-
-            const a = -MU_EARTH / (2 * energy);
-            const eccSq = 1 + (2 * energy * h_sq) / (MU_EARTH * MU_EARTH);
-            const ecc = Math.sqrt(Math.max(0, eccSq));
-            
-            const apogee_km = (a * (1 + ecc)) / 1000;
-            const perigee_km = (a * (1 - ecc)) / 1000;
-
-            document.getElementById('txtApogee').innerText = apogee_km.toFixed(1);
-            document.getElementById('txtPerigee').innerText = perigee_km.toFixed(1);
+            document.getElementById('txtPerigee').innerText = (r_mag / 1000).toFixed(1); 
+            document.getElementById('txtApogee').innerText = "Slingshot / N-Body";
         }
 
         function resetSim() {
             isRunning = false;
             timeElapsed = 0;
+            
             earthGroup.rotation.y = -Math.PI / 2; 
             document.getElementById('txtTime').innerText = "0";
 
-            const r_earth_bary = D_MOON * M_MOON / (M_EARTH + M_MOON);
-            const r_moon_bary = D_MOON * M_EARTH / (M_EARTH + M_MOON);
+            const earthStart = getEarthPos(0);
+            state.ex = earthStart.x; state.ey = earthStart.y; state.ez = earthStart.z;
+            
+            const moonStart = getMoonPos(0);
+            state.mx = moonStart.x; state.my = moonStart.y; state.mz = moonStart.z;
 
-            state.ex = -r_earth_bary;
-            state.ey = 0;
-            state.ez = 0;
+            // Jordens starthastighed
             state.evx = 0;
             state.evy = 0;
-            state.evz = -MOON_ANGULAR_VELOCITY * r_earth_bary;
-
-            state.mx = r_moon_bary;
-            state.my = 0;
-            state.mz = 0;
-            state.mvx = 0;
-            state.mvy = 0;
-            state.mvz = MOON_ANGULAR_VELOCITY * r_moon_bary;
+            state.evz = R_EARTH_BARY * MOON_ANGULAR_VELOCITY;
 
             const lat = parseFloat(document.getElementById('sldLat').value);
             const lon = parseFloat(document.getElementById('sldLon').value);
@@ -406,13 +384,14 @@
             const theta = lon * Math.PI / 180;
             const r_start = R_EARTH + (heightKm * 1000);
 
+            // Satellitten affyres relativt til Jordens position
             state.sx = state.ex + r_start * Math.sin(phi) * Math.sin(theta);
             state.sy = state.ey + r_start * Math.cos(phi);
             state.sz = state.ez + r_start * Math.sin(phi) * Math.cos(theta);
 
-            state.svx = state.evx + speed * Math.cos(theta);
+            state.svx = state.evx - speed * Math.cos(theta);
             state.svy = state.evy + 0;
-            state.svz = state.evz + -speed * Math.sin(theta);
+            state.svz = state.evz + speed * Math.sin(theta);
 
             earthGroup.position.set(state.ex * SCALE, state.ey * SCALE, state.ez * SCALE);
             moon.position.set(state.mx * SCALE, state.my * SCALE, state.mz * SCALE);
@@ -448,11 +427,23 @@
             const dz_ms = state.mz - state.sz;
             const r_ms = Math.sqrt(dx_ms**2 + dy_ms**2 + dz_ms**2);
 
-            // Sikre kollisionstjek uden linjeskift i if-betingelser
-            if (r_es <= R_EARTH) { isRunning = false; return; }
-            if (r_ms <= R_MOON) { isRunning = false; return; }
-            if (r_es >= D_MOON * 4) { isRunning = false; return; }
+            // Sikre if-sætninger der eliminerer den tidligere syntax fejl
+            if (r_es <= R_EARTH) {
+                isRunning = false; 
+                return;
+            }
+            
+            if (r_es >= D_MOON * 4) {
+                isRunning = false; 
+                return;
+            }
+            
+            if (r_ms <= R_MOON) {
+                isRunning = false;
+                return;
+            }
 
+            // Beregn tyngdekraften på Satellitten fra begge legemer
             const a_e = G * M_EARTH / (r_es * r_es);
             const a_m = G * M_MOON / (r_ms * r_ms);
 
@@ -460,6 +451,7 @@
             const a_sy = a_e * (dy_es / r_es) + a_m * (dy_ms / r_ms);
             const a_sz = a_e * (dz_es / r_es) + a_m * (dz_ms / r_ms);
 
+            // Opdater satellittens hastighed og position
             state.svx += a_sx * dt;
             state.svy += a_sy * dt;
             state.svz += a_sz * dt;
@@ -477,20 +469,23 @@
             clouds.rotation.y += 0.0003;
 
             if (isRunning) {
-                const subSteps = isSlowMotion? 5 : 250; 
-                const dt = 30; 
+                const subSteps = isSlowMotion? 15 : 400; 
+                const dt = 10; 
                 
                 for (let i = 0; i < subSteps; i++) {
                     if (!isRunning) break;
                     physicsStep(dt);
                 }
 
+                // Opdater Jordens rotation om egen akse
                 const earthAngularVelocity = (2 * Math.PI) / 86400;
                 earthGroup.rotation.y = (earthAngularVelocity * timeElapsed) - (Math.PI / 2);
 
+                // Få Månen til altid at pege mod Jorden (Tidal locking)
                 moon.rotation.y = Math.atan2(state.ex - state.mx, state.ez - state.mz);
 
                 document.getElementById('txtTime').innerText = Math.round(timeElapsed);
+                
                 const currentR = Math.sqrt((state.sx-state.ex)**2 + (state.sy-state.ey)**2 + (state.sz-state.ez)**2);
                 document.getElementById('txtDist').innerText = (currentR / 1000).toFixed(1);
                 
@@ -516,18 +511,22 @@
                 trailPositions[currentIndex * 3 + 1] = state.sy * SCALE;
                 trailPositions[currentIndex * 3 + 2] = state.sz * SCALE;
                 trailGeo.attributes.position.needsUpdate = true;
-                trailGeo.setDrawRange(0, trailIndex);
+                trailGeo.setDrawRange(0, trailIndex + 1);
 
+                // Ground track beregnes relativt til Jordens position
                 const satWorldPos = new THREE.Vector3(state.sx * SCALE, state.sy * SCALE, state.sz * SCALE);
-                const groundPos = satWorldPos.clone().sub(earthGroup.position).normalize().multiplyScalar(R_EARTH * SCALE * 1.002);
+                const earthPos = new THREE.Vector3(state.ex * SCALE, state.ey * SCALE, state.ez * SCALE);
                 
-                earthGroup.worldToLocal(groundPos.clone().add(earthGroup.position));
+                const dir = satWorldPos.clone().sub(earthPos).normalize();
+                const worldSurfacePoint = earthPos.clone().add(dir.multiplyScalar(R_EARTH * SCALE * 1.002));
                 
-                groundTrailPositions[currentIndex * 3] = groundPos.x;
-                groundTrailPositions[currentIndex * 3 + 1] = groundPos.y;
-                groundTrailPositions[currentIndex * 3 + 2] = groundPos.z;
+                earthGroup.worldToLocal(worldSurfacePoint);
+                
+                groundTrailPositions[currentIndex * 3] = worldSurfacePoint.x;
+                groundTrailPositions[currentIndex * 3 + 1] = worldSurfacePoint.y;
+                groundTrailPositions[currentIndex * 3 + 2] = worldSurfacePoint.z;
                 groundTrailGeo.attributes.position.needsUpdate = true;
-                groundTrailGeo.setDrawRange(0, trailIndex);
+                groundTrailGeo.setDrawRange(0, trailIndex + 1);
             }
 
             controls.update(); 
@@ -545,14 +544,14 @@
             this.style.background = isSlowMotion? "#883333" : "#2a2a35";
         };
 
-        // APOLLO OTTETAL KNAPPEN
+        // APOLLO OTTETAL KNAPPEN:
         document.getElementById('btnApollo').onclick = () => {
             document.getElementById('sldLat').value = 0;
             document.getElementById('valLat').innerText = "0";
-            document.getElementById('sldLon').value = -135;
-            document.getElementById('valLon').innerText = "-135";
-            document.getElementById('sldSpeed').value = 10285;
-            document.getElementById('valSpeed').innerText = "10285";
+            document.getElementById('sldLon').value = -15;
+            document.getElementById('valLon').innerText = "-15";
+            document.getElementById('sldSpeed').value = 10350;
+            document.getElementById('valSpeed').innerText = "10350";
             document.getElementById('sldHeight').value = 1000;
             document.getElementById('valHeight').innerText = "1000";
             resetSim();
@@ -573,6 +572,12 @@
 
         window.addEventListener('resize', () => {
             camera.aspect = canvasContainer.clientWidth / canvasContainer.clientHeight;
+            if (window.innerWidth <= 600) {
+                const offsetY = -window.innerHeight * 0.15; 
+                camera.setViewOffset(window.innerWidth, window.innerHeight, 0, offsetY, window.innerWidth, window.innerHeight);
+            } else {
+                camera.clearViewOffset();
+            }
             camera.updateProjectionMatrix();
             renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
         });
