@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D Newtons Kanon - Ægte Apollo Slingshot</title>
+    <title>3D Newtons Kanon - Apollo Ottetal</title>
     <style>
         body { 
             margin: 0; 
@@ -80,7 +80,7 @@
             touch-action: none; 
         }
 
-        /* Mobil Responsivitet - Split skærmen op */
+        /* Mobil Responsivitet */
         @media (max-width: 600px) {
             body { flex-direction: column; }
          .back-link { top: 10px; left: 10px; }
@@ -138,13 +138,13 @@
         </div>
 
         <div class="control-group">
-            <div class="label-row"><span>Længdegrad (Lon):</span> <span class="val"><span id="valLon">-15</span>°</span></div>
-            <input type="range" id="sldLon" min="-180" max="180" step="1" value="-15">
+            <div class="label-row"><span>Længdegrad (Lon):</span> <span class="val"><span id="valLon">25</span>°</span></div>
+            <input type="range" id="sldLon" min="-180" max="180" step="1" value="25">
         </div>
 
         <div class="control-group">
-            <div class="label-row"><span>Hastighed:</span> <span class="val"><span id="valSpeed">10350</span> m/s</span></div>
-            <input type="range" id="sldSpeed" min="0" max="12000" step="5" value="10350">
+            <div class="label-row"><span>Hastighed:</span> <span class="val"><span id="valSpeed">10320</span> m/s</span></div>
+            <input type="range" id="sldSpeed" min="0" max="12000" step="10" value="10320">
         </div>
 
         <div class="control-group">
@@ -160,7 +160,7 @@
         </div>
 
         <div class="tip">
-            ▶ <b>Apollo (Ottetal):</b> Skyd foran Månen og lad tyngdekraften bremse dig ned, så du falder hjem mod Jorden i et 8-tal!<br>
+            ▶ <b>Apollo (Ottetal):</b> Skydes foran Månen, så Månens tyngdekraft bremser satellitten og kaster den retur til Jorden i et 8-tal!<br>
             ▶ Zoom langt ud for at se det.
         </div>
     </div>
@@ -197,7 +197,7 @@
         const camera = new THREE.PerspectiveCamera(45, canvasContainer.clientWidth / canvasContainer.clientHeight, 0.1, D_MOON * SCALE * 5);
         
         if (window.innerWidth <= 600) {
-            camera.position.set(0, R_EARTH * SCALE * 4.0, R_EARTH * SCALE * 15.0);
+            camera.position.set(0, R_EARTH * SCALE * 2.0, R_EARTH * SCALE * 12.0);
         } else {
             camera.position.set(R_EARTH * SCALE * 2.5, R_EARTH * SCALE * 1.5, R_EARTH * SCALE * 4.0);
         }
@@ -268,6 +268,13 @@
         meridian.rotation.y = Math.PI / 2;
         earthGroup.add(meridian);
 
+        // Ring der viser Jordens vuggende bane om Barycenteret
+        const earthPathGeo = new THREE.RingGeometry(R_EARTH_BARY * SCALE - 0.2, R_EARTH_BARY * SCALE + 0.2, 64);
+        const earthPathMat = new THREE.MeshBasicMaterial({ color: 0x444488, side: THREE.DoubleSide, transparent: true, opacity: 0.5 });
+        const earthPath = new THREE.Mesh(earthPathGeo, earthPathMat);
+        earthPath.rotation.x = Math.PI / 2;
+        scene.add(earthPath);
+
         // --- 3. Byg Satellitten ---
         const satGeo = new THREE.SphereGeometry(3.0, 16, 16);
         const satMat = new THREE.MeshBasicMaterial({ color: 0xff3333 });
@@ -294,16 +301,14 @@
         let trailIndex = 0;
 
         // --- 5. Byg Månen ---
-        const moonOrbitGroup = new THREE.Group();
-        scene.add(moonOrbitGroup);
-
         const moonGeo = new THREE.SphereGeometry(R_MOON * SCALE, 32, 32);
         const moonTex = textureLoader.load('https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/textures/planets/moon_1024.jpg');
         const moonMat = new THREE.MeshPhongMaterial({ map: moonTex, shininess: 5 });
         const moon = new THREE.Mesh(moonGeo, moonMat);
         scene.add(moon); 
 
-        const moonPathGeo = new THREE.RingGeometry(D_MOON * SCALE - 5, D_MOON * SCALE + 5, 256);
+        // Ringen tegnes nu korrekt med Månens barycenter-radius
+        const moonPathGeo = new THREE.RingGeometry(R_MOON_BARY * SCALE - 2, R_MOON_BARY * SCALE + 2, 256);
         const moonPathMat = new THREE.MeshBasicMaterial({ color: 0x555555, side: THREE.DoubleSide, transparent: true, opacity: 0.3 });
         const moonPath = new THREE.Mesh(moonPathGeo, moonPathMat);
         moonPath.rotation.x = Math.PI / 2;
@@ -332,8 +337,8 @@
         let timeElapsed = 0;
         
         let state = {
-            ex: 0, ey: 0, ez: 0, evx: 0, evy: 0, evz: 0, 
-            mx: 0, my: 0, mz: 0, mvx: 0, mvy: 0, mvz: 0, 
+            ex: 0, ey: 0, ez: 0, 
+            mx: 0, my: 0, mz: 0, 
             sx: 0, sy: 0, sz: 0, svx: 0, svy: 0, svz: 0  
         };
 
@@ -351,7 +356,6 @@
             const rel_sx = state.sx - state.ex;
             const rel_sy = state.sy - state.ey;
             const rel_sz = state.sz - state.ez;
-            
             const r_mag = Math.sqrt(rel_sx**2 + rel_sy**2 + rel_sz**2);
             document.getElementById('txtPerigee').innerText = (r_mag / 1000).toFixed(1); 
             document.getElementById('txtApogee').innerText = "Slingshot / N-Body";
@@ -371,9 +375,9 @@
             state.mx = moonStart.x; state.my = moonStart.y; state.mz = moonStart.z;
 
             // Jordens starthastighed
-            state.evx = 0;
-            state.evy = 0;
-            state.evz = R_EARTH_BARY * MOON_ANGULAR_VELOCITY;
+            const evx = 0;
+            const evy = 0;
+            const evz = R_EARTH_BARY * MOON_ANGULAR_VELOCITY;
 
             const lat = parseFloat(document.getElementById('sldLat').value);
             const lon = parseFloat(document.getElementById('sldLon').value);
@@ -384,14 +388,14 @@
             const theta = lon * Math.PI / 180;
             const r_start = R_EARTH + (heightKm * 1000);
 
-            // Satellitten affyres relativt til Jordens position
+            // Satellitten affyres relativt til Jordens position og hastighed
             state.sx = state.ex + r_start * Math.sin(phi) * Math.sin(theta);
             state.sy = state.ey + r_start * Math.cos(phi);
             state.sz = state.ez + r_start * Math.sin(phi) * Math.cos(theta);
 
-            state.svx = state.evx - speed * Math.cos(theta);
-            state.svy = state.evy + 0;
-            state.svz = state.evz + speed * Math.sin(theta);
+            state.svx = evx + speed * Math.cos(theta);
+            state.svy = evy + 0;
+            state.svz = evz - speed * Math.sin(theta);
 
             earthGroup.position.set(state.ex * SCALE, state.ey * SCALE, state.ez * SCALE);
             moon.position.set(state.mx * SCALE, state.my * SCALE, state.mz * SCALE);
@@ -412,46 +416,56 @@
 
         // --- ÆGTE N-Body Fysik Integration ---
         function physicsStep(dt) {
+            // Planeterne ligger fast på deres beregnede, stabile baner omkring barycenteret
             const nextEarth = getEarthPos(timeElapsed);
             const nextMoon = getMoonPos(timeElapsed);
             state.ex = nextEarth.x; state.ey = nextEarth.y; state.ez = nextEarth.z;
             state.mx = nextMoon.x; state.my = nextMoon.y; state.mz = nextMoon.z;
 
+            // Afstand til Jord
             const dx_es = state.ex - state.sx;
             const dy_es = state.ey - state.sy;
             const dz_es = state.ez - state.sz;
             const r_es = Math.sqrt(dx_es**2 + dy_es**2 + dz_es**2);
 
+            // Afstand til Måne
             const dx_ms = state.mx - state.sx;
             const dy_ms = state.my - state.sy;
             const dz_ms = state.mz - state.sz;
             const r_ms = Math.sqrt(dx_ms**2 + dy_ms**2 + dz_ms**2);
 
-            // Sikre if-sætninger der eliminerer den tidligere syntax fejl
+            // Tjekkene holdes adskilt for at undgå enhver form for syntaksfejl
             if (r_es <= R_EARTH) {
                 isRunning = false; 
                 return;
             }
-            
+            if (r_ms <= R_MOON) {
+                isRunning = false; 
+                return;
+            }
             if (r_es >= D_MOON * 4) {
                 isRunning = false; 
                 return;
             }
-            
-            if (r_ms <= R_MOON) {
-                isRunning = false;
-                return;
-            }
 
-            // Beregn tyngdekraften på Satellitten fra begge legemer
+            // Beregn tyngdekraften på Satellitten fra Jorden
             const a_e = G * M_EARTH / (r_es * r_es);
+            const a_sx_e = a_e * (dx_es / r_es);
+            const a_sy_e = a_e * (dy_es / r_es);
+            const a_sz_e = a_e * (dz_es / r_es);
+
+            // Beregn tyngdekraften på Satellitten fra Månen
             const a_m = G * M_MOON / (r_ms * r_ms);
+            const a_sx_m = a_m * (dx_ms / r_ms);
+            const a_sy_m = a_m * (dy_ms / r_ms);
+            const a_sz_m = a_m * (dz_ms / r_ms);
 
-            const a_sx = a_e * (dx_es / r_es) + a_m * (dx_ms / r_ms);
-            const a_sy = a_e * (dy_es / r_es) + a_m * (dy_ms / r_ms);
-            const a_sz = a_e * (dz_es / r_es) + a_m * (dz_ms / r_ms);
+            // Samlet acceleration
+            const a_sx = a_sx_e + a_sx_m;
+            const a_sy = a_sy_e + a_sy_m;
+            const a_sz = a_sz_e + a_sz_m;
 
-            // Opdater satellittens hastighed og position
+            // Opdater satellittens hastighed og position (Semi-implicit Euler integration)
             state.svx += a_sx * dt;
             state.svy += a_sy * dt;
             state.svz += a_sz * dt;
@@ -469,7 +483,7 @@
             clouds.rotation.y += 0.0003;
 
             if (isRunning) {
-                const subSteps = isSlowMotion? 15 : 400; 
+                const subSteps = isSlowMotion? 10 : 350; 
                 const dt = 10; 
                 
                 for (let i = 0; i < subSteps; i++) {
@@ -481,7 +495,7 @@
                 const earthAngularVelocity = (2 * Math.PI) / 86400;
                 earthGroup.rotation.y = (earthAngularVelocity * timeElapsed) - (Math.PI / 2);
 
-                // Få Månen til altid at pege mod Jorden (Tidal locking)
+                // Få Månen til at kigge mod Jorden
                 moon.rotation.y = Math.atan2(state.ex - state.mx, state.ez - state.mz);
 
                 document.getElementById('txtTime').innerText = Math.round(timeElapsed);
@@ -493,8 +507,10 @@
                 moon.position.set(state.mx * SCALE, state.my * SCALE, state.mz * SCALE);
                 satellite.position.set(state.sx * SCALE, state.sy * SCALE, state.sz * SCALE);
 
+                // Sørg for at kameraet følger den vuggende Jord
                 controls.target.set(state.ex * SCALE, state.ey * SCALE, state.ez * SCALE);
 
+                // Rullende memory array til sporene (forhindrer at stien pludselig forsvinder)
                 let currentIndex;
                 if (trailIndex >= maxTrailPoints) {
                     for (let j = 0; j < (maxTrailPoints - 1) * 3; j++) {
@@ -507,13 +523,14 @@
                     trailIndex++;
                 }
 
+                // Sporet i rummet (rødt)
                 trailPositions[currentIndex * 3] = state.sx * SCALE;
                 trailPositions[currentIndex * 3 + 1] = state.sy * SCALE;
                 trailPositions[currentIndex * 3 + 2] = state.sz * SCALE;
                 trailGeo.attributes.position.needsUpdate = true;
-                trailGeo.setDrawRange(0, trailIndex + 1);
+                trailGeo.setDrawRange(0, trailIndex);
 
-                // Ground track beregnes relativt til Jordens position
+                // Ground track på Jordens overflade (lyseblåt)
                 const satWorldPos = new THREE.Vector3(state.sx * SCALE, state.sy * SCALE, state.sz * SCALE);
                 const earthPos = new THREE.Vector3(state.ex * SCALE, state.ey * SCALE, state.ez * SCALE);
                 
@@ -526,7 +543,7 @@
                 groundTrailPositions[currentIndex * 3 + 1] = worldSurfacePoint.y;
                 groundTrailPositions[currentIndex * 3 + 2] = worldSurfacePoint.z;
                 groundTrailGeo.attributes.position.needsUpdate = true;
-                groundTrailGeo.setDrawRange(0, trailIndex + 1);
+                groundTrailGeo.setDrawRange(0, trailIndex);
             }
 
             controls.update(); 
@@ -544,14 +561,14 @@
             this.style.background = isSlowMotion? "#883333" : "#2a2a35";
         };
 
-        // APOLLO OTTETAL KNAPPEN:
+        // APOLLO OTTETAL KNAPPEN: Sender dig FORAN månen!
         document.getElementById('btnApollo').onclick = () => {
             document.getElementById('sldLat').value = 0;
             document.getElementById('valLat').innerText = "0";
-            document.getElementById('sldLon').value = -15;
-            document.getElementById('valLon').innerText = "-15";
-            document.getElementById('sldSpeed').value = 10350;
-            document.getElementById('valSpeed').innerText = "10350";
+            document.getElementById('sldLon').value = 25;
+            document.getElementById('valLon').innerText = "25";
+            document.getElementById('sldSpeed').value = 10320;
+            document.getElementById('valSpeed').innerText = "10320";
             document.getElementById('sldHeight').value = 1000;
             document.getElementById('valHeight').innerText = "1000";
             resetSim();
