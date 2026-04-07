@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D Newtons Kanon - Ægte Apollo Slingshot</title>
+    <title>3D Newtons Kanon - Apollo & Artemis Slingshot</title>
     <style>
         body { 
             margin: 0; 
@@ -14,13 +14,13 @@
             display: flex;
             flex-direction: row;
         }
-     .back-link {
+    .back-link {
             position: absolute;
             top: 10px; left: 15px;
             color: #88ff88; text-decoration: none; font-size: 14px; z-index: 20;
             font-weight: bold;
         }
-     .back-link:hover { text-decoration: underline; }
+    .back-link:hover { text-decoration: underline; }
         
         #ui-container { 
             position: absolute; 
@@ -39,7 +39,7 @@
             z-index: 10;
         }
         h2 { margin-top: 0; font-size: 18px; border-bottom: 1px solid #555; padding-bottom: 10px; }
-     .btn-group { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+    .btn-group { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
         button { 
             flex: 1 1 45%; 
             padding: 8px; 
@@ -53,13 +53,15 @@
             touch-action: manipulation;
         }
         button:hover { background: #444455; }
-     .btn-highlight { background: #b35900; }
-     .btn-highlight:hover { background: #d96600; }
+    .btn-highlight { background: #b35900; }
+    .btn-highlight:hover { background: #d96600; }
+    .btn-artemis { background: #0055aa; }
+    .btn-artemis:hover { background: #0077ff; }
 
-     .control-group { margin-top: 10px; display: flex; flex-direction: column; gap: 2px;}
-     .label-row { display: flex; justify-content: space-between; font-size: 13px; color: #ddd; }
+    .control-group { margin-top: 10px; display: flex; flex-direction: column; gap: 2px;}
+    .label-row { display: flex; justify-content: space-between; font-size: 13px; color: #ddd; }
         input[type=range] { width: 100%; margin: 0; touch-action: manipulation; }
-     .stats-box { 
+    .stats-box { 
             background: rgba(0, 0, 0, 0.6); 
             border: 1px solid #555; 
             padding: 10px; 
@@ -67,9 +69,9 @@
             margin-top: 15px; 
             font-size: 12px; 
         }
-     .stats-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
-     .val { font-weight: bold; color: #4da6ff; }
-     .tip { font-size: 11px; color: #88ff88; margin-top: 15px; font-style: italic; line-height: 1.4; }
+    .stats-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+    .val { font-weight: bold; color: #4da6ff; }
+    .tip { font-size: 11px; color: #88ff88; margin-top: 15px; font-style: italic; line-height: 1.4; }
         
         #canvas-container {
             position: absolute;
@@ -80,10 +82,9 @@
             touch-action: none; 
         }
 
-        /* Mobil Responsivitet */
         @media (max-width: 600px) {
             body { flex-direction: column; }
-         .back-link { top: 10px; left: 10px; }
+        .back-link { top: 10px; left: 10px; }
             #ui-container {
                 position: relative;
                 width: 100%;
@@ -103,9 +104,9 @@
                 height: 50vh;
             }
             h2 { font-size: 16px; margin-bottom: 5px; padding-bottom: 5px; }
-         .control-group { margin-top: 8px; }
+        .control-group { margin-top: 8px; }
             button { padding: 10px; font-size: 14px; } 
-         .tip { font-size: 10px; margin-top: 10px; }
+        .tip { font-size: 10px; margin-top: 10px; }
         }
     </style>
     <script type="importmap">
@@ -129,7 +130,11 @@
             <button id="btnStop">Stop</button>
             <button id="btnReset">Reset</button>
             <button id="btnSlow">Slowmo: OFF</button>
+        </div>
+        
+        <div class="btn-group">
             <button id="btnApollo" class="btn-highlight" style="flex: 1 1 100%;">Apollo (Ottetal)</button>
+            <button id="btnArtemis" class="btn-artemis" style="flex: 1 1 100%;">Artemis II Slingshot</button>
         </div>
 
         <div class="control-group">
@@ -159,7 +164,7 @@
         </div>
 
         <div class="tip">
-            🔴 <b>Rød streg:</b> Rute i rummet (Fjerner spirograf-fejl!)<br>
+            🔴 <b>Rød streg:</b> Rute i rummet (Inertial)<br>
             🟣 <b>Lilla streg:</b> Rute ift. Månen (Viser Ottetallet)<br>
             🔵 <b>Blå streg:</b> Rute over jordoverfladen
         </div>
@@ -212,7 +217,7 @@
 
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
-        controls.enablePan = false; // Låser kameraet fast til Jorden
+        controls.enablePan = false; 
         controls.minDistance = R_EARTH * SCALE * 1.1; 
         controls.maxDistance = D_MOON * SCALE * 1.5;
 
@@ -224,104 +229,100 @@
         const textureLoader = new THREE.TextureLoader();
 
         // --- 2. Byg Systemets Kerne ---
-        // Jord-Inertial-Systemet (Sikrer at det røde spor tegnes ift. Jorden, så spirograf-fejl undgås)
         const earthInertialFrame = new THREE.Group();
         scene.add(earthInertialFrame);
 
-        // Måne-Roterende-Systemet (Karrusellen der drejer med Månen, viser ottetallet i lilla)
         const earthMoonFrame = new THREE.Group();
         scene.add(earthMoonFrame);
 
         // --- Byg Jorden ---
-        const earth = new THREE.Mesh(
-            new THREE.SphereGeometry(R_EARTH * SCALE, 64, 64),
-            new THREE.MeshPhongMaterial({ 
-                map: textureLoader.load('https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/textures/planets/earth_atmos_2048.jpg'),
-                normalMap: textureLoader.load('https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/textures/planets/earth_normal_2048.jpg'),
-                specularMap: textureLoader.load('https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/textures/planets/earth_specular_2048.jpg'),
-                specular: new THREE.Color('grey'),
-                shininess: 35
-            })
-        );
+        const earthCenter = new THREE.Group();
+        earthInertialFrame.add(earthCenter);
+        earthMoonFrame.add(earthCenter);
+
+        const earthGeo = new THREE.SphereGeometry(R_EARTH * SCALE, 64, 64);
+        const earthTex = textureLoader.load('https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/textures/planets/earth_atmos_2048.jpg');
+        const earthBump = textureLoader.load('https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/textures/planets/earth_normal_2048.jpg');
+        const earthWater = textureLoader.load('https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/textures/planets/earth_specular_2048.jpg');
+
+        const earthMat = new THREE.MeshPhongMaterial({ 
+            map: earthTex,
+            normalMap: earthBump,
+            specularMap: earthWater,
+            specular: new THREE.Color('grey'),
+            shininess: 35
+        });
+        
+        const earth = new THREE.Mesh(earthGeo, earthMat);
         earth.rotation.y = -Math.PI / 2;
-        earthInertialFrame.add(earth);
+        earthCenter.add(earth);
 
-        const clouds = new THREE.Mesh(
-            new THREE.SphereGeometry(R_EARTH * SCALE * 1.006, 64, 64),
-            new THREE.MeshPhongMaterial({
-                map: textureLoader.load('https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/textures/planets/earth_clouds_1024.png'),
-                transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide
-            })
-        );
-        earthInertialFrame.add(clouds); 
+        const cloudTex = textureLoader.load('https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/textures/planets/earth_clouds_1024.png');
+        const cloudGeo = new THREE.SphereGeometry(R_EARTH * SCALE * 1.006, 64, 64);
+        const cloudMat = new THREE.MeshPhongMaterial({
+            map: cloudTex,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            side: THREE.DoubleSide
+        });
+        const clouds = new THREE.Mesh(cloudGeo, cloudMat);
+        earthCenter.add(clouds); 
 
-        const equator = new THREE.Mesh(
-            new THREE.RingGeometry(R_EARTH * SCALE + 0.1, R_EARTH * SCALE + 0.15, 64),
-            new THREE.MeshBasicMaterial({ color: 0xffff00, side: THREE.DoubleSide, transparent: true, opacity: 0.4 })
-        );
+        const equatorGeo = new THREE.RingGeometry(R_EARTH * SCALE + 0.1, R_EARTH * SCALE + 0.15, 64);
+        const equatorMat = new THREE.MeshBasicMaterial({ color: 0xffff00, side: THREE.DoubleSide, transparent: true, opacity: 0.4 });
+        const equator = new THREE.Mesh(equatorGeo, equatorMat);
         equator.rotation.x = Math.PI / 2;
-        earthInertialFrame.add(equator);
+        earthCenter.add(equator);
 
-        const meridian = new THREE.Mesh(
-            new THREE.RingGeometry(R_EARTH * SCALE + 0.1, R_EARTH * SCALE + 0.15, 64),
-            new THREE.MeshBasicMaterial({ color: 0x00ff00, side: THREE.DoubleSide, transparent: true, opacity: 0.4 })
-        );
-        meridian.rotation.y = Math.PI / 2;
-        earthInertialFrame.add(meridian);
+        // --- Byg Månen ---
+        const moonCenter = new THREE.Group();
+        moonCenter.position.set(0, 0, R_MOON_BARY * SCALE); 
+        earthMoonFrame.add(moonCenter);
 
-        // Ring der viser Jordens vuggende bane om Barycenteret
-        const earthPath = new THREE.Mesh(
-            new THREE.RingGeometry(R_EARTH_BARY * SCALE - 0.2, R_EARTH_BARY * SCALE + 0.2, 64),
-            new THREE.MeshBasicMaterial({ color: 0x444488, side: THREE.DoubleSide, transparent: true, opacity: 0.5 })
-        );
-        earthPath.rotation.x = Math.PI / 2;
-        scene.add(earthPath);
+        const moonGeo = new THREE.SphereGeometry(R_MOON * SCALE, 32, 32);
+        const moonTex = textureLoader.load('https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/textures/planets/moon_1024.jpg');
+        const moonMat = new THREE.MeshPhongMaterial({ map: moonTex, shininess: 5 });
+        const moon = new THREE.Mesh(moonGeo, moonMat);
+        moonCenter.add(moon); 
+
+        const moonPathGeo = new THREE.RingGeometry(R_MOON_BARY * SCALE - 5, R_MOON_BARY * SCALE + 5, 256);
+        const moonPathMat = new THREE.MeshBasicMaterial({ color: 0x555555, side: THREE.DoubleSide, transparent: true, opacity: 0.3 });
+        const moonPath = new THREE.Mesh(moonPathGeo, moonPathMat);
+        moonPath.rotation.x = Math.PI / 2;
+        scene.add(moonPath);
 
         // --- 3. Byg Satellitten og Spor ---
-        const satellite = new THREE.Mesh(
-            new THREE.SphereGeometry(3.0, 16, 16),
-            new THREE.MeshBasicMaterial({ color: 0xff3333 })
-        );
+        const satGeo = new THREE.SphereGeometry(3.0, 16, 16);
+        const satMat = new THREE.MeshBasicMaterial({ color: 0xff3333 });
+        const satellite = new THREE.Mesh(satGeo, satMat);
         scene.add(satellite);
 
-        // Spor 1: Verdensrummet (Rød) - Tegnes i Jordens Inertial system for at fjerne Spirograf!
         const trailGeo = new THREE.BufferGeometry();
         const trailPositions = new Float32Array(maxTrailPoints * 3);
         trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPositions, 3));
-        const trail = new THREE.Line(trailGeo, new THREE.LineBasicMaterial({ color: 0xff3333, linewidth: 2, transparent: true, opacity: 0.8 }));
+        const trailMat = new THREE.LineBasicMaterial({ color: 0xff3333, linewidth: 2, transparent: true, opacity: 0.8 });
+        const trail = new THREE.Line(trailGeo, trailMat);
         earthInertialFrame.add(trail);
 
-        // Spor 2: Ottetallet ift. Månen (Lilla)
         const rotatingTrailGeo = new THREE.BufferGeometry();
         const rotatingTrailPositions = new Float32Array(maxTrailPoints * 3);
         rotatingTrailGeo.setAttribute('position', new THREE.BufferAttribute(rotatingTrailPositions, 3));
-        const rotatingTrail = new THREE.Line(rotatingTrailGeo, new THREE.LineBasicMaterial({ color: 0xda70d6, linewidth: 2, transparent: true, opacity: 0.9 }));
+        const rotatingTrailMat = new THREE.LineBasicMaterial({ color: 0xda70d6, linewidth: 2, transparent: true, opacity: 0.9 });
+        const rotatingTrail = new THREE.Line(rotatingTrailGeo, rotatingTrailMat);
         earthMoonFrame.add(rotatingTrail);
 
-        // Spor 3: Ground track på Jorden (Lyseblå)
         const groundTrailGeo = new THREE.BufferGeometry();
         const groundTrailPositions = new Float32Array(maxTrailPoints * 3);
         groundTrailGeo.setAttribute('position', new THREE.BufferAttribute(groundTrailPositions, 3));
-        const groundTrail = new THREE.Line(groundTrailGeo, new THREE.LineBasicMaterial({ color: 0x00ffff, linewidth: 2, transparent: true, opacity: 0.8 }));
+        const groundTrailMat = new THREE.LineBasicMaterial({ color: 0x00ffff, linewidth: 2, transparent: true, opacity: 0.8 });
+        const groundTrail = new THREE.Line(groundTrailGeo, groundTrailMat);
         earth.add(groundTrail); 
 
         let trailIndex = 0;
 
-        // --- 4. Byg Månen ---
-        const moon = new THREE.Mesh(
-            new THREE.SphereGeometry(R_MOON * SCALE, 32, 32),
-            new THREE.MeshPhongMaterial({ map: textureLoader.load('https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/textures/planets/moon_1024.jpg'), shininess: 5 })
-        );
-        scene.add(moon); 
-
-        const moonPath = new THREE.Mesh(
-            new THREE.RingGeometry(R_MOON_BARY * SCALE - 5, R_MOON_BARY * SCALE + 5, 256),
-            new THREE.MeshBasicMaterial({ color: 0x555555, side: THREE.DoubleSide, transparent: true, opacity: 0.3 })
-        );
-        moonPath.rotation.x = Math.PI / 2;
-        scene.add(moonPath);
-
-        // --- 5. Lys og Stjerner ---
+        // --- 4. Lys ---
         scene.add(new THREE.AmbientLight(0xffffff, 0.15)); 
         const dirLight = new THREE.DirectionalLight(0xffeedd, 2.5); 
         dirLight.position.set(100, 20, 50); 
@@ -334,9 +335,11 @@
             starPos[i] = (Math.random() - 0.5) * (D_MOON * SCALE * 4);
         }
         starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
-        scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({color: 0xffffff, size: 2.0})));
+        const starMat = new THREE.PointsMaterial({color: 0xffffff, size: 2.0});
+        const stars = new THREE.Points(starGeo, starMat);
+        scene.add(stars);
 
-        // --- 6. Fysikmotor State ---
+        // --- 5. Fysikmotor State ---
         let isRunning = false;
         let isSlowMotion = false;
         let timeElapsed = 0;
@@ -372,7 +375,6 @@
             const moonStart = getMoonPos(0);
             state.mx = moonStart.x; state.my = moonStart.y; state.mz = moonStart.z;
 
-            // Jordens starthastighed i kredsløbet
             state.evx = -R_EARTH_BARY * MOON_ANGULAR_VELOCITY;
             state.evy = 0;
             state.evz = 0;
@@ -386,20 +388,16 @@
             const theta = lon * Math.PI / 180;
             const r_start = R_EARTH + (heightKm * 1000);
 
-            // Affyr satellitten relativt til Jordens position
             state.sx = state.ex + r_start * Math.sin(phi) * Math.sin(theta);
             state.sy = state.ey + r_start * Math.cos(phi);
             state.sz = state.ez + r_start * Math.sin(phi) * Math.cos(theta);
 
-            // Farten lægges oven i Jordens hastighed
             state.svx = state.evx + speed * Math.cos(theta);
             state.svy = state.evy + 0;
             state.svz = state.evz - speed * Math.sin(theta);
 
             earthInertialFrame.position.set(state.ex * SCALE, state.ey * SCALE, state.ez * SCALE);
-            moon.position.set(state.mx * SCALE, state.my * SCALE, state.mz * SCALE);
             satellite.position.set(state.sx * SCALE, state.sy * SCALE, state.sz * SCALE);
-            
             document.getElementById('txtDist').innerText = (r_start / 1000).toFixed(1);
 
             trailIndex = 0;
@@ -413,69 +411,56 @@
             groundTrailGeo.setDrawRange(0, 0);
         }
 
-        // --- HØJ-PRÆCISIONS RK4 FYSIK ---
-        // Løser problemet med det falske spirograf-mønster (Numerical Precession)
-        function getAccelerations(sx, sy, sz, t) {
-            const ePos = getEarthPos(t);
-            const mPos = getMoonPos(t);
+        // --- STABIL SYMPLECTIC EULER N-BODY FYSIK ---
+        function physicsStep(dt) {
+            const nextEarth = getEarthPos(timeElapsed);
+            const nextMoon = getMoonPos(timeElapsed);
+            state.ex = nextEarth.x; state.ey = nextEarth.y; state.ez = nextEarth.z;
+            state.mx = nextMoon.x; state.my = nextMoon.y; state.mz = nextMoon.z;
 
-            const dx_es = ePos.x - sx;
-            const dy_es = ePos.y - sy;
-            const dz_es = ePos.z - sz;
+            const dx_es = state.ex - state.sx;
+            const dy_es = state.ey - state.sy;
+            const dz_es = state.ez - state.sz;
             const r_es = Math.sqrt(dx_es**2 + dy_es**2 + dz_es**2);
 
-            const dx_ms = mPos.x - sx;
-            const dy_ms = mPos.y - sy;
-            const dz_ms = mPos.z - sz;
+            const dx_ms = state.mx - state.sx;
+            const dy_ms = state.my - state.sy;
+            const dz_ms = state.mz - state.sz;
             const r_ms = Math.sqrt(dx_ms**2 + dy_ms**2 + dz_ms**2);
 
-            let ax = 0, ay = 0, az = 0;
-
-            if (r_es > R_EARTH && r_ms > R_MOON && r_es < D_MOON * 4) {
-                const a_e = MU_EARTH / (r_es * r_es * r_es);
-                const a_m = MU_MOON / (r_ms * r_ms * r_ms);
-                ax = a_e * dx_es + a_m * dx_ms;
-                ay = a_e * dy_es + a_m * dy_ms;
-                az = a_e * dz_es + a_m * dz_ms;
+            if (r_es <= R_EARTH) {
+                isRunning = false;
+                document.getElementById('txtApogee').innerText = "Krashet på Jorden!";
+                return;
             }
-            return { ax, ay, az, r_es, r_ms };
-        }
+            if (r_ms <= R_MOON) {
+                isRunning = false;
+                document.getElementById('txtApogee').innerText = "Krashet på Månen!";
+                return;
+            }
+            if (r_es >= D_MOON * 4) {
+                isRunning = false;
+                document.getElementById('txtApogee').innerText = "Fløjet væk for evigt!";
+                return;
+            }
 
-        function physicsStep(dt) {
-            const t = timeElapsed;
+            const a_e = G * M_EARTH / (r_es * r_es * r_es);
+            const a_m = G * M_MOON / (r_ms * r_ms * r_ms);
 
-            const a1 = getAccelerations(state.sx, state.sy, state.sz, t);
-            if (a1.r_es <= R_EARTH) { isRunning = false; document.getElementById('txtApogee').innerText = "Krashet på Jorden!"; return; }
-            if (a1.r_ms <= R_MOON) { isRunning = false; document.getElementById('txtApogee').innerText = "Krashet på Månen!"; return; }
-            if (a1.r_es >= D_MOON * 4) { isRunning = false; document.getElementById('txtApogee').innerText = "Fløjet væk for evigt!"; return; }
+            const a_sx = a_e * (dx_es / r_es) + a_m * (dx_ms / r_ms);
+            const a_sy = a_e * (dy_es / r_es) + a_m * (dy_ms / r_ms);
+            const a_sz = a_e * (dz_es / r_es) + a_m * (dz_ms / r_ms);
 
-            const k1vx = a1.ax * dt, k1vy = a1.ay * dt, k1vz = a1.az * dt;
-            const k1x = state.svx * dt, k1y = state.svy * dt, k1z = state.svz * dt;
+            // Symplectic Euler: Hastighed opdateres FØR position! Holder banen stabil!
+            state.svx += a_sx * dt;
+            state.svy += a_sy * dt;
+            state.svz += a_sz * dt;
 
-            const a2 = getAccelerations(state.sx + k1x/2, state.sy + k1y/2, state.sz + k1z/2, t + dt/2);
-            const k2vx = a2.ax * dt, k2vy = a2.ay * dt, k2vz = a2.az * dt;
-            const k2x = (state.svx + k1vx/2) * dt, k2y = (state.svy + k1vy/2) * dt, k2z = (state.svz + k1vz/2) * dt;
-
-            const a3 = getAccelerations(state.sx + k2x/2, state.sy + k2y/2, state.sz + k2z/2, t + dt/2);
-            const k3vx = a3.ax * dt, k3vy = a3.ay * dt, k3vz = a3.az * dt;
-            const k3x = (state.svx + k2vx/2) * dt, k3y = (state.svy + k2vy/2) * dt, k3z = (state.svz + k2vz/2) * dt;
-
-            const a4 = getAccelerations(state.sx + k3x, state.sy + k3y, state.sz + k3z, t + dt);
-            const k4vx = a4.ax * dt, k4vy = a4.ay * dt, k4vz = a4.az * dt;
-            const k4x = (state.svx + k3vx) * dt, k4y = (state.svy + k3vy) * dt, k4z = (state.svz + k3vz) * dt;
-
-            state.svx += (k1vx + 2*k2vx + 2*k3vx + k4vx) / 6;
-            state.svy += (k1vy + 2*k2vy + 2*k3vy + k4vy) / 6;
-            state.svz += (k1vz + 2*k2vz + 2*k3vz + k4vz) / 6;
-
-            state.sx += (k1x + 2*k2x + 2*k3x + k4x) / 6;
-            state.sy += (k1y + 2*k2y + 2*k3y + k4y) / 6;
-            state.sz += (k1z + 2*k2z + 2*k3z + k4z) / 6;
+            state.sx += state.svx * dt;
+            state.sy += state.svy * dt;
+            state.sz += state.svz * dt;
             
             timeElapsed += dt;
-
-            const nextEarth = getEarthPos(timeElapsed);
-            state.ex = nextEarth.x; state.ey = nextEarth.y; state.ez = nextEarth.z;
         }
 
         function animate() {
@@ -484,35 +469,30 @@
             clouds.rotation.y += 0.0003;
 
             if (isRunning) {
-                const subSteps = isSlowMotion? 10 : 200; 
-                const dt = 15; 
+                const subSteps = isSlowMotion? 10 : 600; 
+                const dt = 5; 
                 
                 for (let i = 0; i < subSteps; i++) {
                     if (!isRunning) break;
                     physicsStep(dt);
                 }
 
-                // Drej "karrusellen", så Månen holdes på plads i det lilla spor
                 earthMoonFrame.rotation.y = MOON_ANGULAR_VELOCITY * timeElapsed;
 
-                // Opdater Jordens rotation om sin egen akse (1 døgn)
                 const earthAngularVelocity = (2 * Math.PI) / 86400;
-                earth.rotation.y = (earthAngularVelocity * timeElapsed) - (Math.PI / 2);
+                earth.rotation.y = (earthAngularVelocity * timeElapsed);
 
                 document.getElementById('txtTime').innerText = Math.round(timeElapsed);
                 const currentR = Math.sqrt((state.sx-state.ex)**2 + (state.sy-state.ey)**2 + (state.sz-state.ez)**2);
                 document.getElementById('txtDist').innerText = (currentR / 1000).toFixed(1);
                 
-                satellite.position.set(state.sx * SCALE, state.sy * SCALE, state.sz * SCALE);
-                
-                const nextMoon = getMoonPos(timeElapsed);
-                moon.position.set(nextMoon.x * SCALE, nextMoon.y * SCALE, nextMoon.z * SCALE);
+                satellite.position.set(state.sx * SCALE, state.sy * SCALE, state.z * SCALE);
                 earthInertialFrame.position.set(state.ex * SCALE, state.ey * SCALE, state.ez * SCALE);
 
-                // Kameraet følger den vuggende Jord præcist!
-                controls.target.set(state.ex * SCALE, state.ey * SCALE, state.ez * SCALE);
+                const earthWorld = new THREE.Vector3();
+                earthCenter.getWorldPosition(earthWorld);
+                controls.target.copy(earthWorld);
 
-                // Rullende memory array til sporene
                 let currentIndex;
                 if (trailIndex >= maxTrailPoints) {
                     for (let j = 0; j < (maxTrailPoints - 1) * 3; j++) {
@@ -526,7 +506,6 @@
                     trailIndex++;
                 }
 
-                // Rødt Spor: Verdensrummet (Tegnes fra Jordens centrum, så spirograf-fejlen forsvinder!)
                 trailPositions[currentIndex * 3] = (state.sx - state.ex) * SCALE;
                 trailPositions[currentIndex * 3 + 1] = (state.sy - state.ey) * SCALE;
                 trailPositions[currentIndex * 3 + 2] = (state.sz - state.ez) * SCALE;
@@ -535,7 +514,6 @@
 
                 const satWorldPos = new THREE.Vector3(state.sx * SCALE, state.sy * SCALE, state.sz * SCALE);
 
-                // Lilla Spor: Co-rotating frame (Viser ottetallet!)
                 const satRotatingPos = satWorldPos.clone();
                 earthMoonFrame.worldToLocal(satRotatingPos);
                 rotatingTrailPositions[currentIndex * 3] = satRotatingPos.x;
@@ -544,10 +522,8 @@
                 rotatingTrailGeo.attributes.position.needsUpdate = true;
                 rotatingTrailGeo.setDrawRange(0, trailIndex);
 
-                // Blå Spor: Ground track (Påvirkes af jordens døgnrotation)
-                const earthWorldPos = new THREE.Vector3(state.ex * SCALE, state.ey * SCALE, state.ez * SCALE);
-                const satEarthRel = satWorldPos.clone().sub(earthWorldPos).normalize().multiplyScalar(R_EARTH * SCALE * 1.002);
-                earth.worldToLocal(satEarthRel.clone().add(earthWorldPos)); 
+                const satEarthRel = satWorldPos.clone().sub(earthWorld).normalize().multiplyScalar(R_EARTH * SCALE * 1.002);
+                earth.worldToLocal(satEarthRel.clone().add(earthWorld)); 
                 
                 groundTrailPositions[currentIndex * 3] = satEarthRel.x;
                 groundTrailPositions[currentIndex * 3 + 1] = satEarthRel.y;
@@ -581,6 +557,20 @@
             document.getElementById('valSpeed').innerText = "10350";
             document.getElementById('sldHeight').value = 1000;
             document.getElementById('valHeight').innerText = "1000";
+            resetSim();
+            isRunning = true;
+        };
+
+        // ARTEMIS II SLINGSHOT KNAPPEN
+        document.getElementById('btnArtemis').onclick = () => {
+            document.getElementById('sldLat').value = 28; // Canaveral Latitude
+            document.getElementById('valLat').innerText = "28";
+            document.getElementById('sldLon').value = -60;
+            document.getElementById('valLon').innerText = "-60";
+            document.getElementById('sldSpeed').value = 10400;
+            document.getElementById('valSpeed').innerText = "10400";
+            document.getElementById('sldHeight').value = 400; // Low Earth Parking Orbit
+            document.getElementById('valHeight').innerText = "400";
             resetSim();
             isRunning = true;
         };
