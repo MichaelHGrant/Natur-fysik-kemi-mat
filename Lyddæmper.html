@@ -3,25 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Q4POLE - Akustisk Transmissionstab med 3D</title>
+    <title>Q4POLE - Fysisk Korrekt 3D Bølge-Diffraktion</title>
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f9; color: #333; max-width: 1300px; margin: 0 auto; padding: 20px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f9; color: #333; max-width: 1400px; margin: 0 auto; padding: 20px; }
         h1 { text-align: center; color: #2c3e50; }
         .header-actions { display: flex; justify-content: center; gap: 15px; margin-bottom: 20px; }
         
         .container { display: flex; flex-wrap: wrap; gap: 20px; }
         .controls { flex: 1; min-width: 350px; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-height: 85vh; overflow-y: auto; }
         
-        /* Højre kolonne til Graf og 3D */
         .visual-container { flex: 2; display: flex; flex-direction: column; gap: 20px; min-width: 500px; }
-        .chart-container { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); height: 400px; }
-        .canvas-3d-container { background: #1a1a2e; padding: 0; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); height: 400px; overflow: hidden; position: relative; }
-        .canvas-3d-title { position: absolute; top: 10px; left: 15px; color: #fff; font-weight: bold; z-index: 10; background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 4px; pointer-events: none;}
+        .chart-container { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); height: 350px; }
+        .canvas-3d-container { background: #0b0c10; padding: 0; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); height: 450px; overflow: hidden; position: relative; }
+        .canvas-3d-title { position: absolute; top: 10px; left: 15px; color: #66fcf1; font-weight: bold; z-index: 10; background: rgba(0,0,0,0.6); padding: 8px 12px; border-radius: 4px; pointer-events: none; font-family: monospace; border: 1px solid #45a29e;}
         
         .slider-group { margin-bottom: 12px; padding-bottom: 8px; }
         label { display: flex; justify-content: space-between; font-size: 0.9em; font-weight: bold; margin-bottom: 4px; }
@@ -49,11 +48,7 @@
 </head>
 <body>
 
-    <h1>Q4POLE: Dynamisk Lyddæmper Design med 3D-Visualisering</h1>
-    
-    <div class="header-actions">
-        <button class="btn btn-info" onclick="alert('Du kan bruge musen i den sorte 3D-boks!\n\nVenstreklik + træk: Roter kamera\nScrollhjul: Zoom ind/ud\nHøjreklik + træk: Flyt kamera (Pan)')">&#128214; Hvordan styrer jeg 3D-modellen?</button>
-    </div>
+    <h1>Q4POLE: Akustisk Diffraktion i 3D</h1>
 
     <div class="container">
         <div class="controls">
@@ -61,8 +56,8 @@
                 <h3 class="pipe-title">Systemindstillinger</h3>
                 <label>Afslutning (Udgang):</label>
                 <select id="termination" onchange="calculateTransmissionLoss()">
-                    <option value="open">Åbent rør mod fri luft (Giver spikes / resonans)</option>
-                    <option value="anechoic">Ekko-fri afslutning (Giver bløde pukler)</option>
+                    <option value="open">Åbent rør (Spikes i IL graf)</option>
+                    <option value="anechoic">Ekko-fri (Pukler i IL graf)</option>
                 </select>
             </div>
 
@@ -71,7 +66,7 @@
             <div class="btn-group">
                 <button class="btn" onclick="addSection('pipe')">+ Tilføj Rør</button>
                 <button class="btn" onclick="addSection('chamber')">+ Tilføj Kammer</button>
-                <button class="btn btn-res" onclick="addSection('resonator')">+ Tilføj Sidegren Resonator</button>
+                <button class="btn btn-res" onclick="addSection('resonator')">+ Tilføj Resonator</button>
             </div>
         </div>
 
@@ -81,7 +76,7 @@
             </div>
             
             <div class="canvas-3d-container" id="canvas-3d">
-                <div class="canvas-3d-title">3D Live Visualisering (Rotér med musen)</div>
+                <div class="canvas-3d-title">LIVE DIFFRAKTION (Dobbelt-klik for Fullscreen)</div>
             </div>
         </div>
     </div>
@@ -109,113 +104,158 @@
         }
 
         function getMatrix(type, k, L, Z) {
-            if (type === 'pipe') {
-                return { ar: Math.cos(k*L), ai: 0, br: 0, bi: Z*Math.sin(k*L), cr: 0, ci: (1/Z)*Math.sin(k*L), dr: Math.cos(k*L), di: 0 };
-            } else if (type === 'resonator') {
-                return { ar: 1, ai: 0, br: 0, bi: 0, cr: 0, ci: (1/Z)*Math.tan(k*L), dr: 1, di: 0 };
-            }
+            if (type === 'pipe') return { ar: Math.cos(k*L), ai: 0, br: 0, bi: Z*Math.sin(k*L), cr: 0, ci: (1/Z)*Math.sin(k*L), dr: Math.cos(k*L), di: 0 };
+            else if (type === 'resonator') return { ar: 1, ai: 0, br: 0, bi: 0, cr: 0, ci: (1/Z)*Math.tan(k*L), dr: 1, di: 0 };
         }
 
         let tlChart;
         let pipes = [
             { type: 'pipe', l: 0.3, r: 0.05 },
-            { type: 'pipe', l: 0.5, r: 0.20 },
+            { type: 'pipe', l: 0.6, r: 0.20 },
             { type: 'pipe', l: 0.3, r: 0.05 }
         ];
 
-        // === 3D VARIABLER (Three.js) ===
+        // === 3D SYSTEM (Three.js Partikler) ===
         let scene, camera, renderer, controls;
         let mufflerGroup = new THREE.Group();
-        let soundWave; // Vores animerede "puls"
-        let totalMufflerLength = 0;
+        
         let startZPos = 0;
+        let totalMufflerLength = 0;
 
-        // === INITIALISER 3D MILJØ ===
+        // Bølge front partikel variabler
+        let waveSystem;
+        const numWaves = 4; // Antal pulser (frekvens visualisering)
+        const particlesPerWave = 1200;
+        const waveSpacing = 0.15; // Afstand mellem bølgefronter
+        let waveStates = [];
+        let baseParticles = []; // Gemmer normaliseret polar-koordinater
+
         function init3D() {
             const container = document.getElementById('canvas-3d');
             scene = new THREE.Scene();
-            scene.fog = new THREE.FogExp2(0x1a1a2e, 0.1);
+            scene.fog = new THREE.FogExp2(0x0b0c10, 0.15);
 
             camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
-            camera.position.set(2, 1, 3); // Standard startvinkel
+            camera.position.set(2, 1.5, 2.5);
 
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
             renderer.setSize(container.clientWidth, container.clientHeight);
             renderer.setPixelRatio(window.devicePixelRatio);
             container.appendChild(renderer.domElement);
 
-            // Lys
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            // Lys til glasset
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
             scene.add(ambientLight);
             const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
             dirLight.position.set(5, 10, 5);
             scene.add(dirLight);
             
-            // Hjælpe-grid i bunden
-            const gridHelper = new THREE.GridHelper(10, 20, 0x444444, 0x222222);
-            gridHelper.position.y = -0.5;
+            // Grid
+            const gridHelper = new THREE.GridHelper(10, 30, 0x1f2833, 0x111111);
+            gridHelper.position.y = -0.6;
             scene.add(gridHelper);
 
             scene.add(mufflerGroup);
 
-            // Vores lydbølge-animation (En glødende kugle)
-            const waveGeo = new THREE.SphereGeometry(0.04, 32, 32);
-            const waveMat = new THREE.MeshBasicMaterial({ color: 0x00d2ff, transparent: true, opacity: 0.8 });
-            soundWave = new THREE.Mesh(waveGeo, waveMat);
-            scene.add(soundWave);
+            // Opret bølge partikler (Diffraktions-systemet)
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(numWaves * particlesPerWave * 3);
+            
+            for(let w = 0; w < numWaves; w++) {
+                waveStates.push({ z: 0, currentRadius: 0.05, curvature: 0, lastPipeRadius: 0.05 });
+                for(let i = 0; i < particlesPerWave; i++) {
+                    // Fordel partikler i en cirkel (tættere mod kanten for pænere diffraktions-bue)
+                    const r = Math.sqrt(Math.random()); 
+                    const theta = Math.random() * Math.PI * 2;
+                    baseParticles.push({ r: r, theta: theta });
+                }
+            }
 
-            // Kamera-styring med musen
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            
+            // Glødende cyan materiale til lydbølgen
+            const material = new THREE.PointsMaterial({ 
+                color: 0x66fcf1, 
+                size: 0.015, 
+                transparent: true, 
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending 
+            });
+            
+            waveSystem = new THREE.Points(geometry, material);
+            scene.add(waveSystem);
+
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.05;
 
-            // Håndter vindues-størrelse
             window.addEventListener('resize', () => {
                 camera.aspect = container.clientWidth / container.clientHeight;
                 camera.updateProjectionMatrix();
                 renderer.setSize(container.clientWidth, container.clientHeight);
             });
 
+            // Gør 3D canvas fullscreen ved doubleclick
+            container.addEventListener('dblclick', () => {
+                if (!document.fullscreenElement) container.requestFullscreen();
+                else document.exitFullscreen();
+            });
+
             animate3D();
         }
 
-        // === BYG/OPDATER 3D MODELLEN ===
+        // Hjælpefunktion: Find radius af lyddæmperen ved en bestemt Z-koordinat
+        function getPipeRadiusAt(z) {
+            let currentZ = startZPos;
+            for (let i = 0; i < pipes.length; i++) {
+                const pipe = pipes[i];
+                if (pipe.type === 'pipe') {
+                    if (z >= currentZ && z <= currentZ + pipe.l) {
+                        return pipe.r;
+                    }
+                    currentZ += pipe.l;
+                }
+            }
+            return pipes[pipes.length-1].r; // Default hvis den er på vej ud
+        }
+
         function update3DModel() {
             if (!scene) return;
+            while(mufflerGroup.children.length > 0) mufflerGroup.remove(mufflerGroup.children[0]); 
 
-            // Fjern alle gamle rør fra gruppen
-            while(mufflerGroup.children.length > 0){ 
-                mufflerGroup.remove(mufflerGroup.children[0]); 
-            }
-
-            // Materialer (Glas-agtigt)
+            // Glas materiale
             const pipeMaterial = new THREE.MeshPhysicalMaterial({ 
-                color: 0x88ccff, transparent: true, opacity: 0.35, 
+                color: 0xc5c6c7, transparent: true, opacity: 0.2, 
                 roughness: 0.1, transmission: 0.9, thickness: 0.1, side: THREE.DoubleSide 
             });
             const resMaterial = new THREE.MeshPhysicalMaterial({ 
-                color: 0xffaa00, transparent: true, opacity: 0.6, 
+                color: 0xf39c12, transparent: true, opacity: 0.4, 
                 roughness: 0.3, transmission: 0.5, side: THREE.DoubleSide 
             });
 
-            // Find den totale længde for at centrere modellen i skærmen
             totalMufflerLength = pipes.filter(p => p.type === 'pipe').reduce((acc, curr) => acc + curr.l, 0);
             let currentZ = -totalMufflerLength / 2;
-            startZPos = currentZ; // Gem startpunktet til animationen
+            startZPos = currentZ; 
             let lastPipeRadius = 0.05;
+
+            // Reset bølgerne
+            for(let w = 0; w < numWaves; w++) {
+                waveStates[w].z = startZPos - w * waveSpacing;
+                waveStates[w].currentRadius = pipes[0].r;
+                waveStates[w].curvature = 0;
+                waveStates[w].lastPipeRadius = pipes[0].r;
+            }
 
             pipes.forEach(pipe => {
                 if (pipe.type === 'pipe') {
-                    // Opret et hovedrør langs Z-aksen
-                    const geo = new THREE.CylinderGeometry(pipe.r, pipe.r, pipe.l, 32);
+                    const geo = new THREE.CylinderGeometry(pipe.r, pipe.r, pipe.l, 40);
                     const mesh = new THREE.Mesh(geo, pipeMaterial);
-                    mesh.rotation.x = Math.PI / 2; // Læg den ned ad Z-aksen
+                    mesh.rotation.x = Math.PI / 2; 
                     mesh.position.z = currentZ + pipe.l / 2;
                     mufflerGroup.add(mesh);
                     
-                    // Tilføj en lille ring for at vise samlinger/svejsninger tydeligere
-                    const ringGeo = new THREE.TorusGeometry(pipe.r, 0.005, 16, 64);
-                    const ringMat = new THREE.MeshBasicMaterial({color: 0xaaaaaa});
+                    const ringGeo = new THREE.TorusGeometry(pipe.r, 0.003, 16, 64);
+                    const ringMat = new THREE.MeshBasicMaterial({color: 0x45a29e});
                     const ringMesh = new THREE.Mesh(ringGeo, ringMat);
                     ringMesh.position.z = currentZ;
                     mufflerGroup.add(ringMesh);
@@ -223,16 +263,13 @@
                     currentZ += pipe.l;
                     lastPipeRadius = pipe.r;
                 } else if (pipe.type === 'resonator') {
-                    // Opret et sidegren-rør (vinkelret på y-aksen)
                     const geo = new THREE.CylinderGeometry(pipe.r, pipe.r, pipe.l, 32);
                     const mesh = new THREE.Mesh(geo, resMaterial);
-                    // Placer den så den starter ved kanten af forrige rør og stikker opad
                     mesh.position.y = lastPipeRadius + pipe.l / 2;
-                    mesh.position.z = currentZ; // Sidder fast i samlingen (kan også ændres til midt på)
+                    mesh.position.z = currentZ; 
                     
-                    // En sort "prop" i toppen af resonatoren (da den er lukket)
                     const capGeo = new THREE.CylinderGeometry(pipe.r, pipe.r, 0.01, 32);
-                    const capMat = new THREE.MeshBasicMaterial({color: 0x222222});
+                    const capMat = new THREE.MeshBasicMaterial({color: 0x1f2833});
                     const capMesh = new THREE.Mesh(capGeo, capMat);
                     capMesh.position.y = lastPipeRadius + pipe.l;
                     capMesh.position.z = currentZ;
@@ -242,32 +279,95 @@
                 }
             });
 
-            // Juster kamerates afstand lidt baseret på lyddæmperens længde
-            camera.position.z = Math.max(3, totalMufflerLength * 1.5);
+            camera.position.z = Math.max(2.5, totalMufflerLength * 1.2);
+            camera.position.x = Math.max(1.5, totalMufflerLength * 0.8);
         }
 
-        // === 3D ANIMATIONS LOOP ===
+        // === FYSISK ANIMATION AF DIFFRAKTION ===
         function animate3D() {
             requestAnimationFrame(animate3D);
-            controls.update(); // Nødvendig for damping/inertia på musen
+            controls.update(); 
 
-            // Flyt lydbølgen (slow motion)
-            if (soundWave && totalMufflerLength > 0) {
-                soundWave.position.z += 0.008; // Hastighed
+            if (waveSystem && totalMufflerLength > 0) {
+                const positions = waveSystem.geometry.attributes.position.array;
+                const endZ = startZPos + totalMufflerLength;
+                let pIndex = 0;
 
-                // Få bolden til at "pumpe" / pulse som lydtryk
-                const pulse = 1 + 0.5 * Math.sin(Date.now() * 0.01);
-                soundWave.scale.setScalar(pulse);
+                for (let w = 0; w < numWaves; w++) {
+                    let state = waveStates[w];
+                    
+                    // Bevæg bølgen langsomt frem (Slow Motion)
+                    state.z += 0.008; 
 
-                // Reset position når den når enden
-                if (soundWave.position.z > -startZPos) {
-                    soundWave.position.z = startZPos;
+                    // Hvis bølgen er nået ud, reset til start
+                    if (state.z > endZ + 0.2) {
+                        state.z = startZPos - waveSpacing;
+                        state.currentRadius = pipes[0].r;
+                        state.curvature = 0;
+                        state.lastPipeRadius = pipes[0].r;
+                    }
+
+                    // Tjek rørets rigtige radius ved denne Z-position
+                    const targetPipeRadius = getPipeRadiusAt(state.z);
+
+                    // FYSIK LOGIK: Diffraktion og Plane bølger
+                    if (targetPipeRadius > state.lastPipeRadius) {
+                        // Udvidelse (Diffraktion). Bølgen spreder sig ud i kammeret.
+                        state.currentRadius += 0.015; // Lydens spredningshastighed til siden
+                        if (state.currentRadius > targetPipeRadius) state.currentRadius = targetPipeRadius;
+                        
+                        // Bøjningen opstår (kanten halter bagud)
+                        // Bøjningen er proportionel med forskellen på radierne
+                        state.curvature = (state.currentRadius - state.lastPipeRadius) * 1.5; 
+                    } 
+                    else if (targetPipeRadius < state.lastPipeRadius) {
+                        // Indsnævring. Yderkanten af bølgen rammer væggen og klippes væk.
+                        state.currentRadius = targetPipeRadius; 
+                        state.curvature = 0; // Transmiteret bølge er plan igen
+                    } 
+                    else {
+                        // Inde i et lige rør
+                        // Højere-ordens bølger (bøjningen) dør langsomt ud og bliver til en planbølge
+                        state.curvature *= 0.94; 
+                    }
+
+                    state.lastPipeRadius = targetPipeRadius;
+
+                    // Opdater position for hver partikel i denne bølgefront
+                    for (let i = 0; i < particlesPerWave; i++) {
+                        const bd = baseParticles[w * particlesPerWave + i];
+                        
+                        // Fysisk radius (klipper partikler uden for røret)
+                        const r_actual = bd.r * state.currentRadius;
+                        
+                        // X og Y koordinater (Cirkel)
+                        const x = r_actual * Math.cos(bd.theta);
+                        const y = r_actual * Math.sin(bd.theta);
+
+                        // Diffraktionens bøjning: Hvis curvature er > 0, trækkes partikler med stort r bagud i Z-retningen
+                        // Vi skaber en parabel form: z_lag = k * r^2
+                        // Dette simulerer meget overbevisende en sfærisk bølgespredning fra kanten
+                        let z_lag = 0;
+                        if (state.curvature > 0) {
+                            // Kun den del der udvides ud over det forrige rør bøjes tilbage
+                            const innerRadius = targetPipeRadius - (state.currentRadius - state.lastPipeRadius);
+                            if (r_actual > innerRadius) {
+                                const normalizedCurveDist = (r_actual - innerRadius) / (targetPipeRadius - innerRadius);
+                                z_lag = state.curvature * Math.pow(normalizedCurveDist, 2);
+                            }
+                        }
+
+                        positions[pIndex++] = x;
+                        positions[pIndex++] = y;
+                        positions[pIndex++] = state.z - z_lag;
+                    }
                 }
+                
+                waveSystem.geometry.attributes.position.needsUpdate = true;
             }
 
             renderer.render(scene, camera);
         }
-
 
         // === UI OG HTML GENERERING ===
         function renderUI() {
@@ -275,19 +375,11 @@
             container.innerHTML = '';
 
             pipes.forEach((element, index) => {
-                let typeName = "";
-                let boxClass = "pipe-box";
-                let titleClass = "pipe-title";
-                
-                if (element.type === 'resonator') {
-                    typeName = "Sidegren Resonator (Blindt rør)";
-                    boxClass += " resonator-box";
-                    titleClass += " resonator-title";
-                } else {
-                    typeName = element.r > 0.1 ? "Ekspansionskammer" : "Rør";
-                }
-                
+                let typeName = element.type === 'resonator' ? "Sidegren Resonator" : (element.r > 0.1 ? "Ekspansionskammer" : "Rør");
+                let boxClass = "pipe-box" + (element.type === 'resonator' ? " resonator-box" : "");
+                let titleClass = "pipe-title" + (element.type === 'resonator' ? " resonator-title" : "");
                 let title = `Element ${index + 1} (${typeName})`;
+
                 const isFirst = index === 0;
                 const isLast = index === pipes.length - 1;
                 const canDelete = pipes.length > 2;
@@ -297,8 +389,8 @@
                         <div class="${titleClass}">
                             <strong>${title}</strong>
                             <div class="actions">
-                                <button class="btn-small" onclick="movePipe(${index}, -1)" ${isFirst ? 'disabled style="opacity:0.3;cursor:not-allowed;"' : ''}>&#9650;</button>
-                                <button class="btn-small" onclick="movePipe(${index}, 1)" ${isLast ? 'disabled style="opacity:0.3;cursor:not-allowed;"' : ''}>&#9660;</button>
+                                <button class="btn-small" onclick="movePipe(${index}, -1)" ${isFirst ? 'disabled style="opacity:0.3;"' : ''}>&#9650;</button>
+                                <button class="btn-small" onclick="movePipe(${index}, 1)" ${isLast ? 'disabled style="opacity:0.3;"' : ''}>&#9660;</button>
                                 ${canDelete ? `<button class="btn-small btn-remove" onclick="removePipe(${index})">&times;</button>` : ''}
                             </div>
                         </div>
@@ -319,7 +411,7 @@
         window.updatePipe = function(index, prop, value) {
             pipes[index][prop] = parseFloat(value);
             document.getElementById(`${prop}-val-${index}`).innerText = parseFloat(value).toFixed(2) + ' m';
-            if (prop === 'r' && pipes[index].type !== 'resonator') { renderUI(); }
+            if (prop === 'r' && pipes[index].type !== 'resonator') renderUI(); 
             calculateTransmissionLoss();
         };
 
@@ -327,8 +419,7 @@
             if (kind === 'pipe') pipes.splice(pipes.length - 1, 0, { type: 'pipe', l: 0.3, r: 0.05 });
             else if (kind === 'chamber') pipes.splice(pipes.length - 1, 0, { type: 'pipe', l: 0.5, r: 0.20 });
             else if (kind === 'resonator') pipes.splice(pipes.length - 1, 0, { type: 'resonator', l: 0.15, r: 0.03 });
-            renderUI();
-            calculateTransmissionLoss();
+            renderUI(); calculateTransmissionLoss();
         };
 
         window.removePipe = function(index) {
@@ -336,65 +427,49 @@
         };
 
         window.movePipe = function(index, direction) {
-            if (direction === -1 && index > 0) {
-                const temp = pipes[index]; pipes[index] = pipes[index - 1]; pipes[index - 1] = temp;
-            } else if (direction === 1 && index < pipes.length - 1) {
-                const temp = pipes[index]; pipes[index] = pipes[index + 1]; pipes[index + 1] = temp;
-            }
-            renderUI();
-            calculateTransmissionLoss();
+            if (direction === -1 && index > 0) { const t = pipes[index]; pipes[index] = pipes[index - 1]; pipes[index - 1] = t; } 
+            else if (direction === 1 && index < pipes.length - 1) { const t = pipes[index]; pipes[index] = pipes[index + 1]; pipes[index + 1] = t; }
+            renderUI(); calculateTransmissionLoss();
         };
 
-        // === BEREGNING AF AKUSTIK ===
+        // === BEREGNING AF AKUSTIK GRAF ===
         function calculateTransmissionLoss() {
-            // OPDATER 3D MODELLEN SAMTIDIG
-            update3DModel();
+            update3DModel(); // Synkroniser altid 3D grafiken
 
             const terminationType = document.getElementById('termination').value;
-            const fMax = 8000; 
-            const nsc = 1500;  
-            const fRes = fMax / nsc; 
-
-            let frequencies = [];
-            let tlValues = [];
-            let ilValues = [];
+            const fMax = 8000; const nsc = 1500; const fRes = fMax / nsc; 
+            let frequencies = []; let tlValues = []; let ilValues = [];
 
             const inputPipe = pipes.find(p => p.type === 'pipe');
             const outputPipe = [...pipes].reverse().find(p => p.type === 'pipe');
-            
             const rFirst = inputPipe ? inputPipe.r : 0.05;
             const rLast = outputPipe ? outputPipe.r : 0.05;
             const zFirst = IMPE / (Math.PI * rFirst * rFirst);
             const zLast = IMPE / (Math.PI * rLast * rLast);
 
             for (let j = 1; j <= nsc; j++) {
-                const f = j * fRes;
-                frequencies.push(f.toFixed(0));
-                const k = (2 * Math.PI * f) / CS;
-                let M_tot = null;
+                const f = j * fRes; frequencies.push(f.toFixed(0));
+                const k = (2 * Math.PI * f) / CS; let M_tot = null;
 
                 for (let i = 0; i < pipes.length; i++) {
                     const z = IMPE / (Math.PI * pipes[i].r * pipes[i].r);
                     let L_eff = pipes[i].l;
-                    if (i === pipes.length - 1 && pipes[i].type === 'pipe' && terminationType === 'open') { L_eff += 0.61 * pipes[i].r; }
+                    if (i === pipes.length - 1 && pipes[i].type === 'pipe' && terminationType === 'open') L_eff += 0.61 * pipes[i].r; 
                     const M_current = getMatrix(pipes[i].type, k, L_eff, z);
                     if (!M_tot) M_tot = M_current; else M_tot = multMatrix(M_tot, M_current);
                 }
 
-                const rat = rFirst / rLast;
-                const bie = Math.sqrt(zFirst * zLast);
+                const rat = rFirst / rLast; const bie = Math.sqrt(zFirst * zLast);
                 const x1_tl = M_tot.ar * rat + M_tot.br / bie + M_tot.cr * bie + M_tot.dr / rat;
                 const x2_tl = M_tot.ai * rat + M_tot.bi / bie + M_tot.ci * bie + M_tot.di / rat;
                 const damp_tl = Math.sqrt(x1_tl * x1_tl + x2_tl * x2_tl) / 2;
                 
-                let tl = 20 * Math.log10(Math.max(damp_tl, 1)); 
-                if (tl > 80) tl = 80;
-                tlValues.push(tl);
+                let tl = 20 * Math.log10(Math.max(damp_tl, 1)); if (tl > 80) tl = 80; tlValues.push(tl);
 
                 let Zrad = zLast; 
                 if (terminationType === 'open') {
                     const ka = k * rLast; let REFL = 0;
-                    if (ka <= 1.0) { REFL = -(1 + (ka*ka*ka*ka)/6 * (1.01 - Math.log(ka))) * Math.exp(-ka*ka/2); } 
+                    if (ka <= 1.0) REFL = -(1 + (ka*ka*ka*ka)/6 * (1.01 - Math.log(ka))) * Math.exp(-ka*ka/2);
                     else { const Q_const = 3 / 32; REFL = -Math.sqrt(Math.PI * ka) * (1 + Q_const / (ka * ka)) * Math.exp(-ka); }
                     Zrad = zLast * (1 + REFL) / (1 - REFL);
                 }
@@ -403,32 +478,16 @@
                 const x1_il = M_tot.ar * Zrad + M_tot.br + Zs * (M_tot.cr * Zrad + M_tot.dr);
                 const x2_il = M_tot.ai * Zrad + M_tot.bi + Zs * (M_tot.ci * Zrad + M_tot.di);
                 const damp_il = Math.sqrt(x1_il * x1_il + x2_il * x2_il) / (Zs + Zrad);
-                let il = 20 * Math.log10(Math.max(damp_il, 1));
-                if (il > 80) il = 80;
-                ilValues.push(il);
+                let il = 20 * Math.log10(Math.max(damp_il, 1)); if (il > 80) il = 80; ilValues.push(il);
             }
             updateChart(frequencies, tlValues, ilValues);
         }
 
         function updateChart(labels, tlData, ilData) {
-            if (tlChart) {
-                tlChart.data.labels = labels;
-                tlChart.data.datasets[0].data = tlData;
-                tlChart.data.datasets[1].data = ilData;
-                tlChart.update();
-            } else {
+            if (tlChart) { tlChart.data.labels = labels; tlChart.data.datasets[0].data = tlData; tlChart.data.datasets[1].data = ilData; tlChart.update(); } 
+            else {
                 const ctx = document.getElementById('tlChart').getContext('2d');
-                tlChart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [
-                            { label: 'Transmissionstab (TL)', data: tlData, borderColor: '#2980b9', backgroundColor: 'rgba(41, 128, 185, 0.1)', borderWidth: 2, pointRadius: 0, fill: true, tension: 0.05 },
-                            { label: 'Indsættelsestab (IL)', data: ilData, borderColor: '#e67e22', backgroundColor: 'transparent', borderWidth: 2, borderDash: [5, 5], pointRadius: 0, fill: false, tension: 0.05 }
-                        ]
-                    },
-                    options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: { display: true, text: 'Frekvens (Hz)' }, ticks: { maxTicksLimit: 12 } }, y: { title: { display: true, text: 'Dæmpning (dB)' }, min: 0, max: 70 } }, animation: { duration: 0 }, interaction: { mode: 'index', intersect: false, } }
-                });
+                tlChart = new Chart(ctx, { type: 'line', data: { labels: labels, datasets: [ { label: 'Transmissionstab (TL)', data: tlData, borderColor: '#2980b9', backgroundColor: 'rgba(41, 128, 185, 0.1)', borderWidth: 2, pointRadius: 0, fill: true, tension: 0.05 }, { label: 'Indsættelsestab (IL)', data: ilData, borderColor: '#e67e22', backgroundColor: 'transparent', borderWidth: 2, borderDash: [5, 5], pointRadius: 0, fill: false, tension: 0.05 } ] }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: { display: true, text: 'Frekvens (Hz)' }, ticks: { maxTicksLimit: 12 } }, y: { title: { display: true, text: 'Dæmpning (dB)' }, min: 0, max: 70 } }, animation: { duration: 0 }, interaction: { mode: 'index', intersect: false, } } });
             }
         }
 
