@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>3D Newtons Kanon - Apollo & Artemis Slingshot</title>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: #020205; 
+            color: white; 
+            display: flex;
+            flex-direction: row;
+        }
+     .back-link {
+            position: absolute;
+            top: 10px; left: 15px;
+            color: #88ff88; text-decoration: none; font-size: 14px; z-index: 20;
+            font-weight: bold;
+        }
+     .back-link:hover { text-decoration: underline; }
+        
+        #ui-container { 
+            position: absolute; 
+            top: 40px; 
+            left: 15px; 
+            background: rgba(15, 15, 20, 0.85); 
+            padding: 15px; 
+            border-radius: 8px; 
+            border: 1px solid #444; 
+            box-shadow: 0px 4px 20px rgba(0,0,0,0.8); 
+            width: 340px; 
+            max-height: calc(100vh - 60px);
+            overflow-y: auto;
+            backdrop-filter: blur(5px);
+            box-sizing: border-box;
+            z-index: 10;
+        }
+        h2 { margin-top: 0; font-size: 18px; border-bottom: 1px solid #555; padding-bottom: 10px; }
+     .btn-group { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+        button { 
+            flex: 1 1 45%; 
+            padding: 8px; 
+            cursor: pointer; 
+            background: #2a2a35; 
+            color: white; 
+            border: 1px solid #555; 
+            border-radius: 4px; 
+            font-weight: bold; 
+            transition: background 0.2s;
+            touch-action: manipulation;
+        }
+        button:hover { background: #444455; }
+     .btn-highlight { background: #b35900; }
+     .btn-highlight:hover { background: #d96600; }
+     .btn-artemis { background: #0055aa; }
+     .btn-artemis:hover { background: #0077ff; }
+
+     .control-group { margin-top: 10px; display: flex; flex-direction: column; gap: 2px;}
+     .label-row { display: flex; justify-content: space-between; font-size: 13px; color: #ddd; }
+        input[type=range] { width: 100%; margin: 0; touch-action: manipulation; }
+        
+     .stats-box { 
+            background: rgba(0, 0, 0, 0.6); 
+            border: 1px solid #555; 
+            padding: 10px; 
+            border-radius: 4px; 
+            margin-top: 15px; 
+            font-size: 12px; 
+        }
+     .stats-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+     .val { font-weight: bold; color: #4da6ff; }
+     .tip { font-size: 11px; color: #88ff88; margin-top: 15px; font-style: italic; line-height: 1.4; }
+        
+        #canvas-container {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+            touch-action: none; 
+        }
+
+        /* Mobil Responsivitet - Split skærmen op 50/50 */
+        @media (max-width: 600px) {
+            body { flex-direction: column; }
+         .back-link { top: 10px; left: 10px; }
+            #ui-container {
+                position: relative;
+                width: 100%;
+                left: 0;
+                top: 0;
+                height: 50vh; 
+                max-height: 50vh; 
+                padding: 15px;
+                padding-top: 35px; 
+                border-radius: 0;
+                border: none;
+                border-bottom: 2px solid #555;
+            }
+            #canvas-container {
+                position: relative;
+                width: 100%;
+                height: 50vh;
+            }
+            h2 { font-size: 16px; margin-bottom: 5px; padding-bottom: 5px; }
+         .control-group { margin-top: 8px; }
+            button { padding: 10px; font-size: 14px; } 
+         .tip { font-size: 10px; margin-top: 10px; }
+        }
+    </style>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.161.0/examples/jsm/"
+        }
+      }
+    </script>
+</head>
+<body>
+
+    <a href="index.html" class="back-link">← Tilbage til forsiden</a>  
+    
+    <div id="ui-container">
+        <h2>3D Newtons Kanon</h2>
+        
+        <div class="btn-group">
+            <button id="btnStart">Start</button>
+            <button id="btnStop">Stop</button>
+            <button id="btnReset">Reset</button>
+            <button id="btnSlow">Slowmo: OFF</button>
+        </div>
+        
+        <div class="btn-group">
+            <button id="btnApollo" class="btn-highlight">Apollo TLI</button>
+            <button id="btnArtemis" class="btn-artemis">Artemis II TLI</button>
+        </div>
+
+        <div class="control-group">
+            <div class="label-row"><span>Breddegrad (Lat):</span> <span class="val"><span id="valLat">0</span>°</span></div>
+            <input type="range" id="sldLat" min="-90" max="90" step="1" value="0">
+        </div>
+
+        <div class="control-group">
+            <div class="label-row"><span>Længdegrad (Lon):</span> <span class="val"><span id="valLon">0</span>°</span></div>
+            <input type="range" id="sldLon" min="-180" max="180" step="1" value="0">
+        </div>
+
+        <div class="control-group">
+            <div class="label-row"><span>Hastighed:</span> <span class="val"><span id="valSpeed">7200</span> m/s</span></div>
+            <input type="range" id="sldSpeed" min="0" max="12000" step="10" value="7200">
+        </div>
+
+        <div class="control-group">
+            <div class="label-row"><span>Højde:</span> <span class="val"><span id="valHeight">1000</span> km</span></div>
+            <input type="range" id="sldHeight" min="0" max="20000" step="100" value="1000">
+        </div>
+
+        <div class="stats-box">
+            <div class="stats-row"><span>Tid:</span> <span class="val"><span id="txtTime">0</span> s</span></div>
+            <div class="stats-row"><span>Afstand til centrum:</span> <span class="val"><span id="txtDist">7371.0</span> km</span></div>
+            <div class="stats-row"><span>Apogee (Max):</span> <span class="val"><span id="txtApogee">7371.0</span> km</span></div>
+            <div class="stats-row"><span>Perigee (Min):</span> <span class="val"><span id="txtPerigee">7371.0</span> km</span></div>
+        </div>
+
+        <div class="tip">
+            ▶ Jorden er låst i centrum. Tryk på Mission-knapperne for at se satellitten flyve ud til Månen!
+        </div>
+    </div>
+    
+    <div id="canvas-container"></div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // Præcise fysiske konstanter
+        const G = 6.6738e-11;
+        const M_EARTH = 5.97219e24;
+        const MU_EARTH = G * M_EARTH;
+        
+        const M_MOON = 7.342e22;
+        const MU_MOON = G * M_MOON;
+
+        const R_EARTH = 6371000; 
+        const R_MOON = 1737000;
+        const D_MOON = 384400000;
+
+        // Månens omløbshastighed omkring Jorden
+        const MOON_ANGULAR_VELOCITY = Math.sqrt(G * (M_EARTH + M_MOON) / Math.pow(D_MOON, 3));
+
+        const SCALE = 1 / 100000;
+        const maxTrailPoints = 15000; 
+
+        const canvasContainer = document.getElementById('canvas-container');
+
+        // --- 1. Opsætning af Scene ---
+        const scene = new THREE.Scene();
+        // Sikrer at Månen ikke forsvinder når man zoomer ud ved at sætte 'far plane' enormt højt (1000)
+        const camera = new THREE.PerspectiveCamera(45, canvasContainer.clientWidth / canvasContainer.clientHeight, 0.1, 1000);
+        
+        if (window.innerWidth <= 600) {
+            camera.position.set(0, R_EARTH * SCALE * 2.0, R_EARTH * SCALE * 8.5);
+        } else {
+            camera.position.set(R_EARTH * SCALE * 2.5, R_EARTH * SCALE * 1.5, R_EARTH * SCALE * 3.5);
+        }
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); 
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        canvasContainer.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.enablePan = false; // Låser Jorden urokkeligt fast i centrum
+        controls.minDistance = R_EARTH * SCALE * 1.1; 
+        controls.maxDistance = D_MOON * SCALE * 5.0; // Tillader zoom helt ud til månen og forbi
+
+        if (window.innerWidth <= 600) {
+            const offsetY = -window.innerHeight * 0.15; 
+            camera.setViewOffset(window.innerWidth, window.innerHeight, 0, offsetY, window.innerWidth, window.innerHeight);
+        }
+
+        const textureLoader = new THREE.TextureLoader();
+
+        // --- 2. Byg Jorden (Låst til 0,0,0) ---
+        const earthGroup = new THREE.Group();
+        scene.add(earthGroup);
+
+        const earthGeo = new THREE.SphereGeometry(R_EARTH * SCALE, 64, 64);
+        
+        const earthTex = textureLoader.load('https://cdn.jsdelivr.net/gh/mrdoob/three.js@r161/examples/textures/planets/earth_atmos_2048.jpg');
+        const earthBump = textureLoader.load('https://cdn.jsdelivr.net/gh/mrdoob/three.js@r161/examples/textures/planets/earth_normal_2048.jpg');
+        const earthWater = textureLoader.load('https://cdn.jsdelivr.net/gh/mrdoob/three.js@r161/examples/textures/planets/earth_specular_2048.jpg');
+
+        const earthMat = new THREE.MeshPhongMaterial({ 
+            map: earthTex,
+            normalMap: earthBump,
+            specularMap: earthWater,
+            specular: new THREE.Color('grey'),
+            shininess: 35
+        });
+        
+        const earth = new THREE.Mesh(earthGeo, earthMat);
+        earth.rotation.y = -Math.PI / 2;
+        earthGroup.add(earth);
+
+        const cloudTex = textureLoader.load('https://cdn.jsdelivr.net/gh/mrdoob/three.js@r161/examples/textures/planets/earth_clouds_1024.png');
+        const cloudGeo = new THREE.SphereGeometry(R_EARTH * SCALE * 1.006, 64, 64);
+        const cloudMat = new THREE.MeshPhongMaterial({
+            map: cloudTex,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            side: THREE.DoubleSide
+        });
+        const clouds = new THREE.Mesh(cloudGeo, cloudMat);
+        earth.add(clouds); 
+
+        const equatorGeo = new THREE.RingGeometry(R_EARTH * SCALE + 0.1, R_EARTH * SCALE + 0.15, 64);
+        const equatorMat = new THREE.MeshBasicMaterial({ color: 0xffff00, side: THREE.DoubleSide, transparent: true, opacity: 0.4 });
+        const equator = new THREE.Mesh(equatorGeo, equatorMat);
+        equator.rotation.x = Math.PI / 2;
+        earthGroup.add(equator);
+
+        // --- 3. Byg Månen ---
+        const moonGeo = new THREE.SphereGeometry(R_MOON * SCALE, 32, 32);
+        const moonTex = textureLoader.load('https://cdn.jsdelivr.net/gh/mrdoob/three.js@r161/examples/textures/planets/moon_1024.jpg');
+        const moonMat = new THREE.MeshPhongMaterial({ map: moonTex, shininess: 5 });
+        const moon = new THREE.Mesh(moonGeo, moonMat);
+        scene.add(moon); 
+
+        const moonPathGeo = new THREE.RingGeometry(D_MOON * SCALE - 5, D_MOON * SCALE + 5, 256);
+        const moonPathMat = new THREE.MeshBasicMaterial({ color: 0x555555, side: THREE.DoubleSide, transparent: true, opacity: 0.3 });
+        const moonPath = new THREE.Mesh(moonPathGeo, moonPathMat);
+        moonPath.rotation.x = Math.PI / 2;
+        scene.add(moonPath);
+
+        // --- 4. Byg Satellitten ---
+        const satGeo = new THREE.SphereGeometry(2.0, 16, 16);
+        const satMat = new THREE.MeshBasicMaterial({ color: 0xff3333 });
+        const satellite = new THREE.Mesh(satGeo, satMat);
+        scene.add(satellite);
+
+        // Spor 1: Verdensrummet (Rød)
+        const trailGeo = new THREE.BufferGeometry();
+        const trailPositions = new Float32Array(maxTrailPoints * 3);
+        trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPositions, 3));
+        const trailMat = new THREE.LineBasicMaterial({ color: 0xff3333, linewidth: 2, transparent: true, opacity: 0.8 });
+        const trail = new THREE.Line(trailGeo, trailMat);
+        scene.add(trail);
+
+        // Spor 2: Ground track på Jorden (Lyseblå)
+        const groundTrailGeo = new THREE.BufferGeometry();
+        const groundTrailPositions = new Float32Array(maxTrailPoints * 3);
+        groundTrailGeo.setAttribute('position', new THREE.BufferAttribute(groundTrailPositions, 3));
+        const groundTrailMat = new THREE.LineBasicMaterial({ color: 0x00ffff, linewidth: 2, transparent: true, opacity: 0.9 });
+        const groundTrail = new THREE.Line(groundTrailGeo, groundTrailMat);
+        earth.add(groundTrail); // Tilføjet til earth, så det roterer med planeten
+
+        let trailIndex = 0;
+
+        // --- 5. Lys ---
+        scene.add(new THREE.AmbientLight(0xffffff, 0.15)); 
+        const dirLight = new THREE.DirectionalLight(0xffeedd, 2.5); 
+        dirLight.position.set(100, 20, 50); 
+        scene.add(dirLight);
+
+        const starGeo = new THREE.BufferGeometry();
+        const starCount = 3000;
+        const starPos = new Float32Array(starCount * 3);
+        for(let i=0; i < starCount*3; i++) {
+            starPos[i] = (Math.random() - 0.5) * (D_MOON * SCALE * 4);
+        }
+        starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+        const starMat = new THREE.PointsMaterial({color: 0xffffff, size: 2.0});
+        const stars = new THREE.Points(starGeo, starMat);
+        scene.add(stars);
+
+        // --- 6. Fysikmotor State ---
+        let isRunning = false;
+        let isSlowMotion = false;
+        let timeElapsed = 0;
+        let state = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0 };
+
+        function updateAnalyticalOrbits() {
+            const r_mag = Math.sqrt(state.x**2 + state.y**2 + state.z**2);
+            const v_mag_sq = state.vx**2 + state.vy**2 + state.vz**2;
+            const energy = (v_mag_sq / 2) - (MU_EARTH / r_mag);
+            
+            const hx = state.y * state.vz - state.z * state.vy;
+            const hy = state.z * state.vx - state.x * state.vz;
+            const hz = state.x * state.vy - state.y * state.vx;
+            const h_sq = hx**2 + hy**2 + hz**2;
+            
+            if (energy >= 0) {
+                document.getElementById('txtApogee').innerText = "Escape (∞)";
+                document.getElementById('txtPerigee').innerText = (r_mag / 1000).toFixed(1); 
+                return;
+            }
+
+            const a = -MU_EARTH / (2 * energy);
+            const eccSq = 1 + (2 * energy * h_sq) / (MU_EARTH * MU_EARTH);
+            const ecc = Math.sqrt(Math.max(0, eccSq));
+            
+            const apogee_km = (a * (1 + ecc)) / 1000;
+            const perigee_km = (a * (1 - ecc)) / 1000;
+
+            document.getElementById('txtApogee').innerText = apogee_km.toFixed(1);
+            document.getElementById('txtPerigee').innerText = perigee_km.toFixed(1);
+        }
+
+        function resetSim() {
+            isRunning = false;
+            timeElapsed = 0;
+            earth.rotation.y = -Math.PI / 2; 
+            document.getElementById('txtTime').innerText = "0";
+
+            const lat = parseFloat(document.getElementById('sldLat').value);
+            const lon = parseFloat(document.getElementById('sldLon').value);
+            const speed = parseFloat(document.getElementById('sldSpeed').value);
+            const heightKm = parseFloat(document.getElementById('sldHeight').value);
+
+            const phi = (90 - lat) * Math.PI / 180;
+            const theta = lon * Math.PI / 180;
+            const r_start = R_EARTH + (heightKm * 1000);
+
+            state.x = r_start * Math.sin(phi) * Math.sin(theta);
+            state.y = r_start * Math.cos(phi);
+            state.z = r_start * Math.sin(phi) * Math.cos(theta);
+
+            state.vx = speed * Math.cos(theta);
+            state.vy = 0;
+            state.vz = -speed * Math.sin(theta);
+
+            satellite.position.set(state.x * SCALE, state.y * SCALE, state.z * SCALE);
+            
+            // Sæt Månens visuelle startposition
+            moon.position.set(D_MOON * SCALE, 0, 0);
+
+            document.getElementById('txtDist').innerText = (r_start / 1000).toFixed(1);
+
+            updateAnalyticalOrbits();
+
+            trailIndex = 0;
+            for(let i=0; i < maxTrailPoints*3; i++) {
+                trailPositions[i] = 0;
+                groundTrailPositions[i] = 0;
+            }
+            trailGeo.setDrawRange(0, 0);
+            groundTrailGeo.setDrawRange(0, 0);
+        }
+
+        // --- STABIL FYSIK: Jordcentreret Inertial System med Måne ---
+        function physicsStep(dt) {
+            const r_e = Math.sqrt(state.x**2 + state.y**2 + state.z**2);
+
+            // Crash conditions fordelt ud for at undgå | tegn
+            if (r_e <= R_EARTH) {
+                isRunning = false; 
+                return;
+            }
+            if (r_e >= D_MOON * 4) {
+                isRunning = false; 
+                return;
+            }
+
+            // Beregn Månens aktuelle position (Cirkulært omløb)
+            const moonAngle = MOON_ANGULAR_VELOCITY * timeElapsed;
+            const moonX = D_MOON * Math.cos(moonAngle);
+            const moonY = 0;
+            const moonZ = -D_MOON * Math.sin(moonAngle);
+
+            const dx_m = state.x - moonX;
+            const dy_m = state.y - moonY;
+            const dz_m = state.z - moonZ;
+            const r_m = Math.sqrt(dx_m**2 + dy_m**2 + dz_m**2);
+
+            if (r_m <= R_MOON) {
+                isRunning = false;
+                return;
+            }
+
+            // Tyngdekraft fra Jorden
+            const a_earth_mag = -MU_EARTH / (r_e * r_e * r_e);
+            let ax = a_earth_mag * state.x;
+            let ay = a_earth_mag * state.y;
+            let az = a_earth_mag * state.z;
+
+            // Tyngdekraft fra Månen (Direkte på satellitten)
+            const a_moon_mag = -MU_MOON / (r_m * r_m * r_m);
+            ax += a_moon_mag * dx_m;
+            ay += a_moon_mag * dy_m;
+            az += a_moon_mag * dz_m;
+
+            // Fiktiv kraft (Da Jorden i virkeligheden falder mod Månen, trækkes dette fra, så Jorden forbliver i centrum 0,0,0)
+            const a_indirect_mag = MU_MOON / (D_MOON * D_MOON * D_MOON);
+            ax -= a_indirect_mag * moonX;
+            ay -= a_indirect_mag * moonY;
+            az -= a_indirect_mag * moonZ;
+
+            // Symplectic Euler: Hastighed FØRST, så position. (Giver stabil bane uden spirograf-fejl!)
+            state.vx += ax * dt;
+            state.vy += ay * dt;
+            state.vz += az * dt;
+
+            state.x += state.vx * dt;
+            state.y += state.vy * dt;
+            state.z += state.vz * dt;
+            
+            timeElapsed += dt;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            clouds.rotation.y += 0.0003;
+
+            if (isRunning) {
+                const subSteps = isSlowMotion? 10 : 350; 
+                const dt = 10; 
+                
+                for (let i = 0; i < subSteps; i++) {
+                    if (!isRunning) break;
+                    physicsStep(dt);
+                }
+
+                // Opdater Jordens rotation om sin egen akse (1 døgn)
+                const earthAngularVelocity = (2 * Math.PI) / 86400;
+                earth.rotation.y = (earthAngularVelocity * timeElapsed) - (Math.PI / 2);
+
+                // Opdater Månens visuelle position, så den altid matcher fysikken
+                const moonAngle = MOON_ANGULAR_VELOCITY * timeElapsed;
+                moon.position.set(D_MOON * Math.cos(moonAngle) * SCALE, 0, -D_MOON * Math.sin(moonAngle) * SCALE);
+                moon.rotation.y = moonAngle; // Får den til at pege samme side mod Jorden (Tidal locking)
+
+                document.getElementById('txtTime').innerText = Math.round(timeElapsed);
+                const currentR = Math.sqrt(state.x**2 + state.y**2 + state.z**2);
+                document.getElementById('txtDist').innerText = (currentR / 1000).toFixed(1);
+                
+                satellite.position.set(state.x * SCALE, state.y * SCALE, state.z * SCALE);
+
+                let currentIndex = trailIndex;
+                if (trailIndex >= maxTrailPoints) {
+                    for (let j = 0; j < (maxTrailPoints - 1) * 3; j++) {
+                        trailPositions[j] = trailPositions[j + 3];
+                        groundTrailPositions[j] = groundTrailPositions[j + 3];
+                    }
+                    currentIndex = maxTrailPoints - 1;
+                } else {
+                    trailIndex++;
+                }
+
+                // Rødt Spor: Verdensrummet
+                trailPositions[currentIndex * 3] = state.x * SCALE;
+                trailPositions[currentIndex * 3 + 1] = state.y * SCALE;
+                trailPositions[currentIndex * 3 + 2] = state.z * SCALE;
+                trailGeo.attributes.position.needsUpdate = true;
+                trailGeo.setDrawRange(0, trailIndex);
+
+                // Blå Spor: Ground track (Tegnes hen over jordens roterende overflade)
+                const satWorldPos = new THREE.Vector3(state.x * SCALE, state.y * SCALE, state.z * SCALE);
+                const groundPos = satWorldPos.clone().normalize().multiplyScalar(R_EARTH * SCALE * 1.002);
+                earth.worldToLocal(groundPos);
+                
+                groundTrailPositions[currentIndex * 3] = groundPos.x;
+                groundTrailPositions[currentIndex * 3 + 1] = groundPos.y;
+                groundTrailPositions[currentIndex * 3 + 2] = groundPos.z;
+                groundTrailGeo.attributes.position.needsUpdate = true;
+                groundTrailGeo.setDrawRange(0, trailIndex);
+            }
+
+            controls.update(); 
+            renderer.render(scene, camera);
+        }
+
+        // --- UI Events ---
+        document.getElementById('btnStart').onclick = () => { isRunning = true; };
+        document.getElementById('btnStop').onclick = () => { isRunning = false; };
+        document.getElementById('btnReset').onclick = resetSim;
+        
+        document.getElementById('btnSlow').onclick = function() {
+            isSlowMotion =!isSlowMotion;
+            this.innerText = isSlowMotion? "Slowmo: ON" : "Slowmo: OFF";
+            this.style.background = isSlowMotion? "#883333" : "#2a2a35";
+        };
+
+        // APOLLO KNAPPEN
+        document.getElementById('btnApollo').onclick = () => {
+            document.getElementById('sldLat').value = 0;
+            document.getElementById('valLat').innerText = "0";
+            document.getElementById('sldLon').value = -50;
+            document.getElementById('valLon').innerText = "-50";
+            document.getElementById('sldSpeed').value = 10300;
+            document.getElementById('valSpeed').innerText = "10300";
+            document.getElementById('sldHeight').value = 1000;
+            document.getElementById('valHeight').innerText = "1000";
+            resetSim();
+            isRunning = true;
+        };
+
+        // ARTEMIS II KNAPPEN
+        document.getElementById('btnArtemis').onclick = () => {
+            document.getElementById('sldLat').value = 28; 
+            document.getElementById('valLat').innerText = "28";
+            document.getElementById('sldLon').value = -80; 
+            document.getElementById('valLon').innerText = "-80";
+            document.getElementById('sldSpeed').value = 10740;
+            document.getElementById('valSpeed').innerText = "10740";
+            document.getElementById('sldHeight').value = 400; 
+            document.getElementById('valHeight').innerText = "400";
+            resetSim();
+            isRunning = true;
+        };
+
+        const connectSlider = (sliderId, valId) => {
+            document.getElementById(sliderId).addEventListener('input', (e) => {
+                document.getElementById(valId).innerText = e.target.value;
+                if(!isRunning) resetSim();
+            });
+        };
+
+        connectSlider('sldLat', 'valLat');
+        connectSlider('sldLon', 'valLon');
+        connectSlider('sldSpeed', 'valSpeed');
+        connectSlider('sldHeight', 'valHeight');
+
+        window.addEventListener('resize', () => {
+            camera.aspect = canvasContainer.clientWidth / canvasContainer.clientHeight;
+            if (window.innerWidth <= 600) {
+                const offsetY = -window.innerHeight * 0.15; 
+                camera.setViewOffset(window.innerWidth, window.innerHeight, 0, offsetY, window.innerWidth, window.innerHeight);
+            } else {
+                camera.clearViewOffset();
+            }
+            camera.updateProjectionMatrix();
+            renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
+        });
+
+        resetSim();
+        animate();
+
+    </script>
+</body>
+</html>
