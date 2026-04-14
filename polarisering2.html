@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interaktiv Fotoelasticitet</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+            margin: 0;
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        p {
+            max-width: 650px;
+            text-align: center;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+
+        .simulation-container {
+            position: relative;
+            width: 320px;
+            height: 320px;
+            margin: 40px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 50%;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+            border: 10px solid #34495e;
+            overflow: hidden;
+            background-image: repeating-linear-gradient(45deg, #ddd 25%, transparent 25%, transparent 75%, #ddd 75%, #ddd), repeating-linear-gradient(45deg, #ddd 25%, #fff 25%, #fff 75%, #ddd 75%, #ddd);
+            background-position: 0 0, 10px 10px;
+            background-size: 20px 20px;
+        }
+
+        /* Filter basis-styling, nu med en ramme som briller */
+        .filter {
+            position: absolute;
+            width: 95%;
+            height: 95%;
+            border-radius: 50%;
+            mix-blend-mode: multiply; /* Vigtigt for at simulerer filtrering */
+            transition: transform 0.05s ease-out;
+            box-sizing: border-box;
+            border: 6px solid #1a252f;
+        }
+
+        /* Filter 1 ligger stille */
+        #filter1 {
+            z-index: 1;
+            background-color: rgba(100, 150, 200, 0.4); 
+            background-image: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.2) 3px, rgba(0,0,0,0.2) 4px);
+        }
+
+        /* Dette er plastikfolien med det "indbyggede" interference mønster */
+        #stressedPlastic {
+            position: absolute;
+            width: 90%;
+            height: 90%;
+            border-radius: 50%;
+            z-index: 2;
+            /* Startfarverne her er et mønster af interferencefarver */
+            background-image: radial-gradient(circle at center, #0ff, #f0f, #ff0, #0f0, #00f, #f00, transparent);
+            filter: hue-rotate(0deg) contrast(150%) brightness(120%);
+            opacity: 0.9;
+        }
+
+        /* Filter 2 kan roteres */
+        #filter2 {
+            z-index: 3;
+            background-color: rgba(100, 150, 200, 0.4); 
+            background-image: repeating-linear-gradient(90deg, transparent, transparent 3px, rgba(0,0,0,0.2) 3px, rgba(0,0,0,0.2) 4px);
+        }
+
+        .controls {
+            background: #fff;
+            padding: 25px 40px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            text-align: center;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            margin: 20px 0;
+            cursor: pointer;
+        }
+
+        .angle-display {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #e74c3c;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Krydspolarisering og Farveskift</h1>
+    <p>Træk i skyderen for at rotere det øverste filter. Plastikfolien imellem filtrene har indbyggede spændinger, der skaber et mønster af "polarisationsfarver". Når du drejer filteret, "vælger" du, hvilke farver der skal vises, hvilket giver det karakteristiske farveskift.</p>
+
+    <div class="simulation-container">
+        <div id="filter1" class="filter"></div>
+        <div id="stressedPlastic"></div>
+        <div id="filter2" class="filter"></div>
+    </div>
+
+    <div class="controls">
+        <label for="angleSlider">Vinkel på øverste filter:</label>
+        <input type="range" id="angleSlider" min="0" max="360" value="0">
+        <div class="angle-display"><span id="angleValue">0</span>° grader</div>
+    </div>
+
+    <script>
+        const slider = document.getElementById('angleSlider');
+        const filter2 = document.getElementById('filter2');
+        const stressedPlastic = document.getElementById('stressedPlastic');
+        const angleValueDisplay = document.getElementById('angleValue');
+
+        // Lyt efter ændringer på skyderen
+        slider.addEventListener('input', (event) => {
+            const angleInDegrees = parseInt(event.target.value);
+            
+            // Opdater tekst og roter det øverste filter visuelt
+            angleValueDisplay.textContent = angleInDegrees;
+            filter2.style.transform = `rotate(${angleInDegrees}deg)`;
+
+            // --- JavaScript Trick til at simulere farveskift ---
+            
+            // For at simulere den komplekse farveændring (blålig -> rødlig), 
+            // bruger vi 'hue-rotate' filteret i CSS. Dette er en forenkling,
+            // men det giver et visuelt resultat, der minder meget om virkeligheden.
+            // Vi vil have farverne til at cykle gennem spektret, når vi drejer.
+            const hueRotateValue = angleInDegrees * 1.5; // Gør farveskiftet lidt hurtigere
+
+            // Vi anvender også en mørkere effekt, når filtrene nærmer sig 90/270 grader,
+            // for at simulere den grundlæggende mørklægning.
+            const normalizedAngle = Math.abs(angleInDegrees % 180 - 90);
+            const brightnessValue = 100 + (normalizedAngle / 90) * 30; // Lysstyrken falder tæt på 90
+
+            stressedPlastic.style.filter = `hue-rotate(${hueRotateValue}deg) contrast(150%) brightness(${brightnessValue}%)`;
+        });
+    </script>
+
+</body>
+</html>
