@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interaktiv Polarisering</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+            margin: 0;
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+        }
+
+        p {
+            max-width: 600px;
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        .simulation-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            margin: 40px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-image: repeating-linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc), repeating-linear-gradient(45deg, #ccc 25%, #eee 25%, #eee 75%, #ccc 75%, #ccc);
+            background-position: 0 0, 10px 10px;
+            background-size: 20px 20px;
+            border-radius: 50%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            border: 8px solid #34495e;
+        }
+
+        /* Filter basis-styling */
+        .filter {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            /* Skaber en visuel illusion af et polarisationsgitter */
+            background-image: repeating-linear-gradient(0deg, transparent, transparent 4px, rgba(0,0,0,0.15) 4px, rgba(0,0,0,0.15) 5px);
+            background-color: rgba(100, 150, 200, 0.4); 
+            mix-blend-mode: multiply;
+            transition: transform 0.1s ease-out;
+        }
+
+        /* Filter 1 ligger stille */
+        #filter1 {
+            z-index: 1;
+        }
+
+        /* Filter 2 kan roteres */
+        #filter2 {
+            z-index: 2;
+        }
+
+        /* Det sorte lag der simulerer blokeringen af lys (Malus' lov) */
+        #darkness {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background-color: #000;
+            z-index: 3;
+            opacity: 0; /* Starter gennemsigtig */
+            pointer-events: none;
+        }
+
+        .controls {
+            background: #fff;
+            padding: 20px 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: center;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            margin: 15px 0;
+        }
+
+        .angle-display {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #e74c3c;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Krydspolarisering Demo</h1>
+    <p>Træk i skyderen for at rotere det øverste filter. Læg mærke til, at lyset blokeres fuldstændigt (det bliver sort), når filtret rammer præcis 90 grader eller 270 grader i forhold til det nederste filter.</p>
+
+    <div class="simulation-container">
+        <div id="filter1" class="filter"></div>
+        <div id="filter2" class="filter"></div>
+        <div id="darkness"></div>
+    </div>
+
+    <div class="controls">
+        <label for="angleSlider">Vinkel på øverste filter:</label>
+        <input type="range" id="angleSlider" min="0" max="360" value="0">
+        <div class="angle-display"><span id="angleValue">0</span>° grader</div>
+    </div>
+
+    <script>
+        const slider = document.getElementById('angleSlider');
+        const filter2 = document.getElementById('filter2');
+        const darkness = document.getElementById('darkness');
+        const angleValueDisplay = document.getElementById('angleValue');
+
+        // Lyt efter ændringer på skyderen
+        slider.addEventListener('input', (event) => {
+            const angleInDegrees = event.target.value;
+            
+            // Opdater tekst og roter det øverste filter visuelt
+            angleValueDisplay.textContent = angleInDegrees;
+            filter2.style.transform = `rotate(${angleInDegrees}deg)`;
+
+            // Beregn lysintensiteten vha. Malus' Lov: I = I_0 * cos^2(theta)
+            // Vi konverterer grader til radianer til brug i Math.cos()
+            const angleInRadians = angleInDegrees * (Math.PI / 180);
+            const lightIntensity = Math.pow(Math.cos(angleInRadians), 2);
+
+            // Mørket (opacity) er det omvendte af lysintensiteten
+            // Når intensiteten er 1 (100% lys), er darkness opacity 0.
+            // Når intensiteten er 0 (0% lys ved 90 grader), er darkness opacity 1.
+            darkness.style.opacity = 1 - lightIntensity;
+        });
+    </script>
+
+</body>
+</html>
