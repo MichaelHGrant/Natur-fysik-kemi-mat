@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uniform Polarisations-Interferens</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+            margin: 0;
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        p {
+            max-width: 650px;
+            text-align: center;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+
+        .simulation-container {
+            position: relative;
+            width: 320px;
+            height: 320px;
+            margin: 40px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 50%;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+            border: 10px solid #34495e;
+            overflow: hidden;
+            /* Simulerer en hvid baggrundslyskilde */
+            background-color: #fff; 
+        }
+
+        .layer {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+        }
+
+        /* Filter 1 (fast) */
+        #filter1 {
+            z-index: 1;
+            background-image: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.1) 3px, rgba(0,0,0,0.1) 4px);
+        }
+
+        /* Det synlige resultat af lyset gennem bølgepladen og filtrene */
+        #waveplateResult {
+            z-index: 2;
+            transition: background-color 0.1s ease-out;
+            /* Starter med en blålig farve */
+            background-color: rgba(30, 100, 180, 0.8);
+            mix-blend-mode: multiply;
+        }
+
+        /* Filter 2 (roterende gitter-effekt for at vise rotationen) */
+        #filter2 {
+            z-index: 3;
+            background-image: repeating-linear-gradient(90deg, transparent, transparent 3px, rgba(0,0,0,0.15) 3px, rgba(0,0,0,0.15) 4px);
+            transition: transform 0.1s ease-out;
+        }
+
+        .controls {
+            background: #fff;
+            padding: 25px 40px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            text-align: center;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            margin: 20px 0;
+            cursor: pointer;
+        }
+
+        .angle-display {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #2980b9;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Ensartet Polymerfilm (Bølgeplade)</h1>
+    <p>Når plastikkens molekyler er ensartet orienteret fra fabrikken, fungerer den som en optisk bølgeplade. Den skaber et uniformt farveskift mellem komplementærfarver, når det øverste polarisationsfilter drejes.</p>
+
+    <div class="simulation-container">
+        <div id="filter1" class="layer"></div>
+        <div id="waveplateResult" class="layer"></div>
+        <div id="filter2" class="layer"></div>
+    </div>
+
+    <div class="controls">
+        <label for="angleSlider">Vinkel på øverste filter:</label>
+        <input type="range" id="angleSlider" min="0" max="180" value="0">
+        <div class="angle-display"><span id="angleValue">0</span>° grader</div>
+    </div>
+
+    <script>
+        const slider = document.getElementById('angleSlider');
+        const filter2 = document.getElementById('filter2');
+        const waveplateResult = document.getElementById('waveplateResult');
+        const angleValueDisplay = document.getElementById('angleValue');
+
+        // RGB værdier for de to primære tilstande (Blålig og Rødlig)
+        // Tilstand 1: Parallelle filtre (f.eks. 0 grader) = Blålig
+        const color1 = { r: 40, g: 120, b: 200 }; 
+        // Tilstand 2: Krydsede filtre (f.eks. 90 grader) = Rødlig/Orange
+        const color2 = { r: 210, g: 80, b: 40 };
+
+        slider.addEventListener('input', (event) => {
+            const angleInDegrees = parseInt(event.target.value);
+            angleValueDisplay.textContent = angleInDegrees;
+            
+            // Roter gittermønsteret visuelt
+            filter2.style.transform = `rotate(${angleInDegrees}deg)`;
+
+            // Beregn blandingsforholdet (0 til 1) baseret på vinklen vha. en sinus-kurve.
+            // Ved 0 grader er mixRatio 0 (Color 1). Ved 90 grader er mixRatio 1 (Color 2).
+            const angleInRadians = angleInDegrees * (Math.PI / 180);
+            const mixRatio = Math.pow(Math.sin(angleInRadians), 2);
+
+            // Udregn den nye interpolerede RGB farve
+            const r = Math.round(color1.r + (color2.r - color1.r) * mixRatio);
+            const g = Math.round(color1.g + (color2.g - color1.g) * mixRatio);
+            const b = Math.round(color1.b + (color2.b - color1.b) * mixRatio);
+
+            // Opdater baggrundsfarven for at vise det uniforme farveskift
+            waveplateResult.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.85)`;
+            
+            // Opdater tekstfarven dynamisk for sjov
+            angleValueDisplay.style.color = `rgb(${r}, ${g}, ${b})`;
+        });
+    </script>
+
+</body>
+</html>
+ 
