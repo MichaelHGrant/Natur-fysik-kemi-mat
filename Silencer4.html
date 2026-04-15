@@ -2,7 +2,7 @@
 <html lang="da">
 <head>
     <meta charset="UTF-8">
-    <title>DTU Lyddæmper Simulator - 100% HP BASIC Port</title>
+    <title>DTU Lyddæmper Simulator - Ægte HP BASIC Port</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
@@ -26,7 +26,7 @@
         .btn-toggle:hover { background: #9b59b6; }
         
         .chart-container { position: relative; height: 500px; width: 100%; margin-top: 20px; }
-        pre { background: #1e1e1e; color: #4af626; padding: 15px; border-radius: 5px; overflow-y: auto; height: 150px; font-family: 'Courier New', Courier, monospace; font-size: 12px; margin-top: 20px; }
+        pre { background: #1e1e1e; color: #4af626; padding: 15px; border-radius: 5px; overflow-y: auto; height: 120px; font-family: 'Courier New', Courier, monospace; font-size: 12px; margin-top: 20px; }
         .warning { font-size: 12px; color: #e74c3c; margin-top: 2px; }
     </style>
 </head>
@@ -64,11 +64,11 @@
         <canvas id="resultChart"></canvas>
     </div>
 
-    <pre id="output">SYSTEM READY. FORTEGN RETTET. VENTER PÅ RUN...</pre>
+    <pre id="output">SYSTEM READY. Formel for P^2 rettet til Linje 9270...</pre>
 </div>
 
 <script>
-// Pålidelig udlæsning af danske kommatal
+// Pålidelig udlæsning af kommatal
 function parseDanishNumber(id) {
     let str = document.getElementById(id).value.trim();
     str = str.replace(',', '.');
@@ -191,13 +191,13 @@ function runMath() {
                 Zr = 1 + 0.04885 * Math.exp(0.754 * logA);
                 Zi = -0.087 * Math.exp(0.7307 * logA);
                 Gamr = K * 0.189 * Math.exp(0.6185 * logA);
-                Gami = K * (1 + 0.0978 * Math.exp(-0.6929 * logA)); // Negativ eksponent!
+                Gami = K * (1 + 0.0978 * Math.exp(-0.6929 * logA));
             } else {
                 let term = new Complex(-1.4664, 0.2115 * Af);
                 let sqrtTerm = term.sqrt();
                 Gamr = K * sqrtTerm.r;
                 Gami = K * sqrtTerm.i;
-                let numerator = new Complex(Af / (2 * Math.PI), 1.4035);
+                let numerator = new Complex(Af / (2 * Math.PI), 1.4033); // Fra line 8050
                 let Z_val = numerator.div(sqrtTerm);
                 Zr = Z_val.r;
                 Zi = Z_val.i;
@@ -206,21 +206,20 @@ function runMath() {
             let Z_c = new Complex(Zr, Zi);
             let Gam_c = new Complex(Gamr, Gami);
             
-            // --- DET KRITISKE PUNKT! ---
-            // Fra din Line 9300: CALL Cdiv(0, -Rho*C*K, E1, E2, M1, M2)
-            // Her skal leddet være NEGATIVT! 
+            // Line 9230: M = -j * Rho * C * K / (Z * Gam)
             let num = new Complex(0, -K * RHO * C_val); 
             let den = Z_c.mult(Gam_c);
             let M = num.div(den); 
             
-            let hl_complex = Gam_c.scale(L1); 
-            let kl_complex = new Complex(K * L1, 0);
-            let p2 = hl_complex.mult(hl_complex).sub(kl_complex.mult(kl_complex));
+            // LINE 9270: P3 = -(D1 + (K*K))*L1*L1  <-- DETTE VAR FEJLEN FØR!
+            let Gam_sq = Gam_c.mult(Gam_c);
+            let p2 = new Complex( -(Gam_sq.r + K * K) * L1 * L1, -Gam_sq.i * L1 * L1 );
+            
             return { p2: p2, M: M };
         };
 
-        // --- 1. SPORING AF (0,0) MED REN NEWTON-RAPHSON ---
-        print("Solving (0,0) Mode (Pure Newton-Raphson)...");
+        // --- 1. SPORING AF (0,0) MED NEWTON-RAPHSON (Forlæns) ---
+        print("Solving (0,0) Mode (Newton-Raphson)...");
         let w_00 = new Complex(0.1, 0.1); 
         let lastLastW_00 = new Complex(0.1, 0.1);
         
@@ -228,7 +227,6 @@ function runMath() {
             let f = freqs[J];
             let params = getParams(f);
             
-            // Linear ekstrapolering af gæt (som i linje 10700-10710)
             let guess = (J === 0) ? new Complex(0.1, 0.1) : 
                         (J === 1 ? w_00 : w_00.add(w_00.sub(lastLastW_00)));
                         
@@ -250,20 +248,19 @@ function runMath() {
                 
                 if (isNaN(step.r) || isNaN(step.i)) break;
 
-                // Ingen kunstig limiter = renest mulige fysik
-                w = w.sub(step);
+                let mag = Math.sqrt(step.r*step.r + step.i*step.i);
+                if (mag > 0.2) step = step.scale(0.2 / mag);
                 
-                if (Math.abs(step.r) < 1e-6 && Math.abs(step.i) < 1e-6) {
-                    conv = true; break;
-                }
+                w = w.sub(step);
+                if (mag < 1e-6) { conv = true; break; }
             }
 
             lastLastW_00 = w_00;
-            w_00 = w; // Accepter roden
+            w_00 = w; 
             globalPlot00.push({x: f, y: calcAttenuation(w_00, f)});
         }
 
-        // --- 2. SPORING AF (0,2) MED FIXED-POINT ITERATION (Baglæns for stabilitet) ---
+        // --- 2. SPORING AF (0,2) MED FIXED-POINT ITERATION (Baglæns) ---
         print("Solving (0,2) Mode (Fixed-Point Complex Arctan)...");
         let w_02 = new Complex(Math.PI, 0.5); 
         let tempPlot02 = [];
@@ -278,15 +275,11 @@ function runMath() {
                 let sq = w.mult(w).add(params.p2).sqrt();
                 let M_term = params.M.mult(sq).mult(sq.scale(b).tan());
                 
-                // Y = - (M * sq * tan) / w
                 let Y = (new Complex(0,0).sub(M_term)).div(w); 
-                
-                // w_new = arctan(Y) + PI  (HP Basic logik for anden dal)
                 let w_new = Y.atan().add(new Complex(Math.PI, 0));
 
                 let diff_r = Math.abs(w_new.r - w.r);
                 let diff_i = Math.abs(w_new.i - w.i);
-                
                 w = w_new;
 
                 if (diff_r < 1e-6 && diff_i < 1e-6) {
@@ -294,15 +287,15 @@ function runMath() {
                 }
             }
 
-            w_02 = w; // Accepter roden
+            w_02 = w; 
             let atten = calcAttenuation(w_02, f);
-            if (atten < 15) { // Skjul de lodrette asymptoter visuelt
+            if (atten < 15) { 
                 tempPlot02.push({x: f, y: atten});
             }
         }
         globalPlot02 = tempPlot02.reverse();
 
-        // Målingens Envelope (Knækket)
+        // Målingens Envelope
         let dict02 = {};
         globalPlot02.forEach(p => dict02[p.x] = p.y);
         
@@ -317,7 +310,7 @@ function runMath() {
             }
         });
 
-        print("SUCCESS! Det negative M-fortegn genskabte den rigtige matematik.");
+        print("SUCCESS! P^2 rettelsen har bragt stabilitet tilbage.");
         renderCurrentChart();
 
     } catch (e) {
