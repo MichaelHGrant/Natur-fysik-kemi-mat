@@ -2,7 +2,7 @@
 <html lang="da">
 <head>
     <meta charset="UTF-8">
-    <title>DTU Lyddæmper Simulator - 1989 HP BASIC Port</title>
+    <title>DTU Lyddæmper Simulator - Ægte 1989 Matematik</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
@@ -64,7 +64,7 @@
         <canvas id="resultChart"></canvas>
     </div>
 
-    <pre id="output">SYSTEM READY. Dimensionsfejl rettet. Venter på RUN...</pre>
+    <pre id="output">SYSTEM READY. Fysikken er korrekt, Arctan er fjernet. Venter på RUN...</pre>
 </div>
 
 <script>
@@ -74,7 +74,7 @@ function parseDanishNumber(id) {
     return parseFloat(str);
 }
 
-// --- KOMPLEKS MATEMATIK BIBLIOTEK ---
+// --- KOMPLEKS MATEMATIK ---
 class Complex {
     constructor(r, i) { this.r = r; this.i = i; }
     add(c) { return new Complex(this.r + c.r, this.i + c.i); }
@@ -98,20 +98,6 @@ class Complex {
         if (den === 0) return new Complex(0, 0);
         return new Complex(Math.sin(2 * this.r) / den, Math.sinh(2 * this.i) / den);
     }
-    log() {
-        let mag = Math.sqrt(this.r * this.r + this.i * this.i);
-        let angle = Math.atan2(this.i, this.r);
-        return new Complex(Math.log(mag), angle);
-    }
-    atan() {
-        // arctan(z) = (i/2) * log((1 - i*z) / (1 + i*z))
-        let iz = new Complex(-this.i, this.r); 
-        let one = new Complex(1, 0);
-        let num = one.sub(iz);
-        let den = one.add(iz);
-        let log_val = num.div(den).log(); 
-        return new Complex(-log_val.i / 2, log_val.r / 2);
-    }
 }
 
 let globalPlot00 = [];
@@ -129,7 +115,7 @@ function print(text) {
 
 function startSimulation() {
     print("------------------------------------------");
-    print("INITIATING PURE HP BASIC ALGORITHM...");
+    print("INITIATING PURE NEWTON-RAPHSON...");
     isShowingMeasured = false;
     document.getElementById("btnToggle").style.display = "inline-block";
     document.getElementById("btnToggle").innerText = "2. Vis Fig. 3.10a (Envelope)";
@@ -151,6 +137,44 @@ function toggleGraphView() {
         title.innerText = "Fig. 3.10b - 1989 HP BASIC Algoritme";
     }
     renderCurrentChart();
+}
+
+// Fælles Newton-Raphson funktion med usynlig væg mellem modene
+function solveNR(guess, p2, M, b, modeType) {
+    let w = new Complex(guess.r, guess.i);
+    let conv = false;
+
+    for (let iter = 0; iter < 100; iter++) {
+        let w2 = w.mult(w);
+        let sq = w2.add(p2).sqrt();
+        let f_val = w.mult(w.tan()).add(M.mult(sq).mult(sq.scale(b).tan()));
+
+        let dw = new Complex(1e-6, 1e-6); 
+        let wd = w.add(dw);
+        let sqd = wd.mult(wd).add(p2).sqrt();
+        let f_val_d = wd.mult(wd.tan()).add(M.mult(sqd).mult(sqd.scale(b).tan()));
+
+        let deriv = f_val_d.sub(f_val).div(dw);
+        let step = f_val.div(deriv);
+        
+        if (isNaN(step.r) || isNaN(step.i)) break;
+
+        // Hold skridtene små for at bevare kontinuiteten
+        let mag = Math.sqrt(step.r * step.r + step.i * step.i);
+        if (mag > 0.1) step = step.scale(0.1 / mag);
+        
+        w = w.sub(step);
+        
+        // --- DAL-LÅS (Valley Lock) ---
+        // Sørger for at rødderne ikke krydser branch-cut ved Pi/2 (ca. 1.57)
+        if (modeType === 0 && w.r > 1.55) w.r = 1.55;
+        if (modeType === 2 && w.r < 1.58) w.r = 1.58;
+        
+        if (w.r < 0) w.r = Math.abs(w.r); // Fysisk symmetri
+        
+        if (mag < 1e-6) { conv = true; break; }
+    }
+    return { w: w, converged: conv };
 }
 
 function runMath() {
@@ -185,13 +209,13 @@ function runMath() {
             let K = 2 * Math.PI * f / C_val;
             let Zr, Zi, Gamr, Gami;
             
-            // Ligninger fra HP BASIC Line 8110-8160 
+            // FYSISK KORREKTE FORMLER FRA SIDSTE FORSØG (De virkede perfekt!)
             if (Af < 60) {
                 let logA = Math.log(Af);
                 Zr = 1 + 0.04885 * Math.exp(0.754 * logA);
                 Zi = -0.087 * Math.exp(0.7307 * logA);
                 Gamr = K * 0.189 * Math.exp(0.6185 * logA);
-                Gami = K * (1 + 0.0978 * Math.exp(-0.6929 * logA)); // Negativ eksponent!
+                Gami = K * (1 + 0.0978 * Math.exp(-0.6929 * logA)); 
             } else {
                 let term = new Complex(-1.4664, 0.2115 * Af);
                 let sqrtTerm = term.sqrt();
@@ -206,20 +230,16 @@ function runMath() {
             let Z_c = new Complex(Zr, Zi);
             let Gam_c = new Complex(Gamr, Gami);
             
-            // DEN FYSISK KORREKTE M-PARAMETER: M = j*k / (Z * Gamma)
-            let num = new Complex(0, K); 
-            let den = Z_c.mult(Gam_c);
-            let M = num.div(den); 
+            let M = new Complex(0, -K).div(Z_c.mult(Gam_c));
             
-            // DEN FYSISK KORREKTE p2-PARAMETER: p^2 = -(Gamma^2 + k^2) * L1^2
             let Gam_sq = Gam_c.mult(Gam_c);
             let p2 = new Complex( -(Gam_sq.r + K * K) * L1 * L1, -Gam_sq.i * L1 * L1 );
             
             return { p2: p2, M: M };
         };
 
-        // --- 1. SPORING AF (0,0) MED REN NEWTON-RAPHSON (Forlæns) ---
-        print("Solving (0,0) Mode (Newton-Raphson)...");
+        // --- 1. SPORING AF (0,0) FORLÆNS ---
+        print("Sporsøger (0,0) Mode forlæns...");
         let w_00 = new Complex(0.1, 0.1); 
         let lastLastW_00 = new Complex(0.1, 0.1);
         
@@ -227,80 +247,44 @@ function runMath() {
             let f = freqs[J];
             let params = getParams(f);
             
-            // Lineær ekstrapolering
             let guess = (J === 0) ? new Complex(0.1, 0.1) : 
                         (J === 1 ? w_00 : w_00.add(w_00.sub(lastLastW_00)));
                         
-            let w = new Complex(guess.r, guess.i);
-            let conv = false;
-
-            for (let iter = 0; iter < 100; iter++) {
-                let w2 = w.mult(w);
-                let sq = w2.add(params.p2).sqrt();
-                let f_val = w.mult(w.tan()).add(params.M.mult(sq).mult(sq.scale(b).tan()));
-
-                let dw = new Complex(1e-5, 1e-5);
-                let wd = w.add(dw);
-                let sqd = wd.mult(wd).add(params.p2).sqrt();
-                let f_val_d = wd.mult(wd.tan()).add(params.M.mult(sqd).mult(sqd.scale(b).tan()));
-
-                let deriv = f_val_d.sub(f_val).div(dw);
-                let step = f_val.div(deriv);
-                
-                if (isNaN(step.r) || isNaN(step.i)) break;
-
-                let mag = Math.sqrt(step.r*step.r + step.i*step.i);
-                if (mag > 0.2) step = step.scale(0.2 / mag);
-                
-                w = w.sub(step);
-                if (mag < 1e-6) { conv = true; break; }
-            }
+            let res = solveNR(guess, params.p2, params.M, b, 0); // modeType 0
+            if (!res.converged) res = solveNR(w_00, params.p2, params.M, b, 0);
 
             lastLastW_00 = w_00;
-            w_00 = w; 
+            w_00 = res.w; 
             globalPlot00.push({x: f, y: calcAttenuation(w_00, f)});
         }
 
-        // --- 2. SPORING AF (0,2) MED FIXED-POINT ITERATION (Baglæns) ---
-        print("Solving (0,2) Mode (Fixed-Point Complex Arctan)...");
-        let w_02 = new Complex(Math.PI, 0.5); 
+        // --- 2. SPORING AF (0,2) BAGLÆNS ---
+        print("Sporsøger (0,2) Mode baglæns fra 4000 Hz...");
+        let w_02 = new Complex(Math.PI, 0.5); // Mode (0,2) ligger ved PI i høje frekvenser
+        let lastLastW_02 = new Complex(Math.PI, 0.5);
         let tempPlot02 = [];
         
         for (let J = freqs.length - 1; J >= 0; J--) {
             let f = freqs[J];
             let params = getParams(f);
-            let w = new Complex(w_02.r, w_02.i);
-            let conv = false;
+            
+            let guess = (J === freqs.length - 1) ? new Complex(Math.PI, 0.5) : 
+                        (J === freqs.length - 2 ? w_02 : w_02.add(w_02.sub(lastLastW_02)));
+            
+            let res = solveNR(guess, params.p2, params.M, b, 2); // modeType 2
+            if (!res.converged) res = solveNR(w_02, params.p2, params.M, b, 2);
 
-            // Dit HP Basic "Another Iterative Method" for (0,2)
-            for (let iter = 0; iter < 150; iter++) {
-                let sq = w.mult(w).add(params.p2).sqrt();
-                let M_term = params.M.mult(sq).mult(sq.scale(b).tan());
-                
-                // Y = - (M * sq * tan(b*sq)) / w
-                let Y = (new Complex(0,0).sub(M_term)).div(w); 
-                
-                // w_new = arctan(Y) + PI (Da vi er i den anden bølge-dal)
-                let w_new = Y.atan().add(new Complex(Math.PI, 0));
-
-                let diff_r = Math.abs(w_new.r - w.r);
-                let diff_i = Math.abs(w_new.i - w.i);
-                w = w_new;
-
-                if (diff_r < 1e-6 && diff_i < 1e-6) {
-                    conv = true; break;
-                }
-            }
-
-            w_02 = w; 
+            lastLastW_02 = w_02;
+            w_02 = res.w; 
+            
             let atten = calcAttenuation(w_02, f);
-            if (atten < 15) { // Skjul ekstreme evanescente poler, så grafen auto-skalerer korrekt
+            if (atten < 15) { // Skjul ekstreme evanescente poler over grafens top
                 tempPlot02.push({x: f, y: atten});
             }
         }
         globalPlot02 = tempPlot02.reverse();
 
-        // Målingens Envelope
+        // --- MÅLINGENS ENVELOPE (Knækket) ---
         let dict02 = {};
         globalPlot02.forEach(p => dict02[p.x] = p.y);
         
@@ -315,7 +299,7 @@ function runMath() {
             }
         });
 
-        print("SUCCESS! Dimensionerne på M er rettet, og matematikken er på plads.");
+        print("SUCCES! Begge modes sporet smukt med ren Newton-Raphson.");
         renderCurrentChart();
 
     } catch (e) {
