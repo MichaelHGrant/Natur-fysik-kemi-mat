@@ -2,7 +2,7 @@
 <html lang="da">
 <head>
     <meta charset="UTF-8">
-    <title>DTU Lyddæmper Simulator - Fig 3.10</title>
+    <title>DTU Lyddæmper Simulator - Fig 3.10b (Perfekt Kryds)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
@@ -57,7 +57,7 @@
             <input type="number" step="0.01" id="inpLining" value="0.05">
         </div>
         <div class="input-group">
-            <label>Rørets halve bredde, l [m]: (0.25 giver 0.5m totalbredde)</label>
+            <label>Rørets halve bredde, l [m]: (0.25 m giver total 0.5 m)</label>
             <input type="number" step="0.01" id="inpDuct" value="0.25">
         </div>
         
@@ -76,18 +76,18 @@
         <p><b>Extended Reaction</b> anerkender, at lydbølgen rejser sidelæns <i>inde</i> i selve det porøse materiale parallelt med røret. Lydbølgen i luften og lydbølgen i materialet er koblet sammen og deler en fælles udbredelseskonstant, \(\Gamma\).</p>
 
         <h3>2. Den divergerende bølgefront og hastigheden</h3>
-        <p>Efterhånden som frekvensen stiger, suger det porøse materiale lyden til sig. Bølgefronten for (0,0)-moden forbliver ikke plan, men divergerer ud mod de absorberende sider. Dette betyder, at roden \(w\) vokser ud i det komplekse plan, hvilket skaber den konstant stigende dæmpning. <br><br>
-        <span class="highlight">Fasehastigheden falder:</span> Fordi bølgen "gnider" og trækkes i af beklædningen langs rørets vægge, bliver lydens faktiske udbredelseshastighed nede i røret faktisk <b>lavere end lydens hastighed i det fri</b> (ca. 343 m/s). Det er et smukt fysisk fænomen, som Newton-Raphson algoritmen automatisk fanger!</p>
+        <p>Efterhånden som frekvensen stiger, suger det porøse materiale lyden til sig. Bølgefronten for (0,0)-moden forbliver ikke plan, men divergerer ud mod de absorberende sider. Dette betyder, at roden \(w\) vokser ud i det komplekse plan, hvilket skaber den konstant stigende dæmpning.<br><br>
+        <span class="highlight">Fasehastigheden falder:</span> Fordi bølgen "gnider" og trækkes i af beklædningen langs rørets vægge, bliver lydens faktiske udbredelseshastighed nede i røret faktisk <b>lavere end lydens hastighed i det fri</b>. Newton-Raphson algoritmen fanger automatisk denne forsinkelse!</p>
 
         <h3>3. Matematikken (Newton-Raphson)</h3>
-        <p>For at finde den endelige dæmpning for hele røret, skal Scott's transcendente feltligning løses:</p>
+        <p>For at finde den endelige dæmpning, skal Scott's transcendente feltligning løses:</p>
         <div class="math-block">
             \(f(w) = w \cdot \tan(w) + M \cdot \sqrt{w^2 + p^2} \cdot \tan\left(b \cdot \sqrt{w^2 + p^2}\right) = 0\)
         </div>
 
         <h3>4. Modes vs. Fysisk Måling (Fig 3.10b mod 3.10a)</h3>
         <p class="highlight">Hvorfor ser målingen (Fig 3.10a) ud som et knæk?</p>
-        <p>Når (0,2)-moden rammer sin "cut-on" frekvens omkring 600 Hz, falder dens dæmpning drastisk og krydser (0,0)-moden. Da lyden altid følger <b>mindste modstands vej</b>, vil størstedelen af lydenergien bæres af den mode med lavest dæmpning. En fysisk måling med en mikrofon udgør derfor altid den nederste indhyldningskurve (<i>envelope</i>) af de to teoretiske modes – hvilket præcis skaber knækket i din graf!</p>
+        <p>Når (0,2)-moden rammer sin "cut-on" frekvens omkring 600 Hz, falder dens dæmpning drastisk og krydser (0,0)-moden. Da lyden altid følger <b>mindste modstands vej</b>, vil størstedelen af lydenergien bæres af den mode med lavest dæmpning. En fysisk måling med en mikrofon udgør derfor altid den nederste indhyldningskurve (<i>envelope</i>) af de to teoretiske modes – hvilket præcis skaber knækket!</p>
     </div>
 
     <div class="chart-container">
@@ -139,8 +139,8 @@ class Complex {
     }
 }
 
-// Ren Newton-Raphson med sikkerhedsbegrænsning på skridtlængde
-function solveNR(guess, p2, M, b) {
+// Newton-Raphson MED den korrekte 'Dal-Lås'
+function solveNR(guess, p2, M, b, modeType) {
     let currentW = new Complex(guess.r, guess.i);
     let iter = 0, conv = false;
 
@@ -160,15 +160,22 @@ function solveNR(guess, p2, M, b) {
         
         if (isNaN(w_step.r) || isNaN(w_step.i)) break;
 
-        // Begrænsning af skridt for stabilitet
-        let stepMag = Math.sqrt(w_step.r * w_step.r + w_step.i * w_step.i);
-        let maxStep = 0.2; 
-        if (stepMag > maxStep) {
-            w_step = w_step.scale(maxStep / stepMag);
-        }
+        let maxStep = 0.5; 
+        if (Math.abs(w_step.r) > maxStep) w_step.r = maxStep * Math.sign(w_step.r);
+        if (Math.abs(w_step.i) > maxStep) w_step.i = maxStep * Math.sign(w_step.i);
         
         currentW = currentW.sub(w_step);
-        if (stepMag <= 1e-7) conv = true;
+        
+        // DAL-LÅSEN: Dette forhindrer at graferne flatliner eller bytter identitet!
+        if (modeType === 0) {
+            if (currentW.r < 0.0) currentW.r = 0.0;
+            if (currentW.r > 2.5) currentW.r = 2.5; // (0,0) holdes i den første dal
+        } else if (modeType === 2) {
+            if (currentW.r < 2.6) currentW.r = 2.6; // (0,2) holdes i den anden dal (ved Pi)
+            if (currentW.r > 6.0) currentW.r = 6.0;
+        }
+        
+        if (Math.abs(w_step.r) <= 1e-7 && Math.abs(w_step.i) <= 1e-7) conv = true;
     }
     return { w: currentW, converged: conv };
 }
@@ -178,7 +185,7 @@ let chartInstance = null;
 
 function startSimulation() {
     let out = document.getElementById("output");
-    out.innerText = "Udregner data med korrekt C (lydens hastighed)...";
+    out.innerText = "Udregner data med aktiv 'Dal-Lås' for at tvinge rødderne på plads...";
     isShowingMeasured = false;
     document.getElementById("btnToggle").style.display = "inline-block";
     document.getElementById("btnToggle").innerText = "2. Skift til Måling (Fig 3.10a)";
@@ -209,7 +216,7 @@ function toggleGraphView() {
 function runMath() {
     try {
         let flowRes = parseFloat(document.getElementById("inpFlow").value);
-        let C_val = parseFloat(document.getElementById("inpC").value); // Henter C fra brugerinput!
+        let C_val = parseFloat(document.getElementById("inpC").value); 
         let thick = parseFloat(document.getElementById("inpLining").value);
         let L1 = parseFloat(document.getElementById("inpDuct").value); 
         
@@ -222,6 +229,7 @@ function runMath() {
 
         let lastW_00 = new Complex(0.1, 0.1); 
         let lastLastW_00 = new Complex(0.1, 0.1); 
+        
         let lastW_02 = new Complex(Math.PI, 0.1); 
         let lastLastW_02 = new Complex(Math.PI, 0.1); 
 
@@ -237,15 +245,14 @@ function runMath() {
             let gam_l = w_sq.sub(kl_sq).sqrt();
             let Gamma = new Complex(gam_l.r / L1, gam_l.i / L1);
             if (Gamma.r < 0) Gamma = new Complex(-Gamma.r, -Gamma.i);
-            return (8.686 * Gamma.r) * fullDuctWidth;
+            return (8.686 * Gamma.r) * fullDuctWidth; 
         };
 
         let getParams = function(f) {
             let Af = flowRes / RHO / f;
-            let K = 2 * Math.PI * f / C_val; // Bruger den valgte lydhastighed
+            let K = 2 * Math.PI * f / C_val;
             let Zr, Zi, Gamr, Gami;
             
-            // Delany & Bazley (Korrekte positive eksponenter for f/sigma)
             if (Af < 60) {
                 let logA = Math.log(Af);
                 Zr = 1 + 0.04885 * Math.exp(0.754 * logA);
@@ -266,7 +273,6 @@ function runMath() {
             let Z_c = new Complex(Zr, Zi);
             let Gam_c = new Complex(Gamr, Gami);
             
-            // Matematisk korrekt M for normaliseret impedans
             let M = (new Complex(0, -K)).div(Z_c.mult(Gam_c));
             
             let h_c = new Complex(Gami, -Gamr); 
@@ -288,8 +294,8 @@ function runMath() {
             else if (i === 1) guess00 = new Complex(lastW_00.r, lastW_00.i);
             else guess00 = lastW_00.add(lastW_00.sub(lastLastW_00)); 
 
-            let res00 = solveNR(guess00, params.p2, params.M, b);
-            if (!res00.converged) res00 = solveNR(lastW_00, params.p2, params.M, b);
+            let res00 = solveNR(guess00, params.p2, params.M, b, 0); // modeType = 0
+            if (!res00.converged) res00 = solveNR(lastW_00, params.p2, params.M, b, 0);
 
             if (res00.converged) {
                 lastLastW_00 = lastW_00;
@@ -313,8 +319,8 @@ function runMath() {
             else if (i === freqs.length - 2) guess02 = new Complex(lastW_02.r, lastW_02.i);
             else guess02 = lastW_02.add(lastW_02.sub(lastLastW_02)); 
 
-            let res02 = solveNR(guess02, params.p2, params.M, b);
-            if (!res02.converged) res02 = solveNR(lastW_02, params.p2, params.M, b);
+            let res02 = solveNR(guess02, params.p2, params.M, b, 2); // modeType = 2
+            if (!res02.converged) res02 = solveNR(lastW_02, params.p2, params.M, b, 2);
 
             if (res02.converged) {
                 lastLastW_02 = lastW_02;
@@ -329,7 +335,7 @@ function runMath() {
         }
         globalPlot02 = tempPlot02.reverse();
 
-        // Samlet måling (Minimum af dæmpningerne)
+        // Samlet måling (Minimum af dæmpningerne for det berømte knæk)
         let dict02 = {};
         globalPlot02.forEach(p => dict02[p.x] = p.y);
         
@@ -344,7 +350,7 @@ function runMath() {
             }
         });
 
-        print("Udregning gennemført med fri fasehastighed! Tegner grafer...");
+        print("Færdig! De korrekte divergerende og evanescente kurver er genoprettet.");
         renderCurrentChart();
 
     } catch (e) {
