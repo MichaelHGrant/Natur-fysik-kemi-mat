@@ -7,6 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.1.0/dist/chartjs-plugin-annotation.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background: #e9ecef; color: #333; line-height: 1.6; }
@@ -62,6 +63,11 @@
             <label>Rørets halve bredde, l [m]:</label>
             <input type="text" id="inpDuct" value="0,25">
         </div>
+        <div class="input-group" style="grid-column: span 2;">
+            <label>Frekvens-skridt til graf (Increment) [Hz]:</label>
+            <input type="text" id="inpStep" value="2,5">
+            <span class="warning">Internt regner motoren nu med 0,5 Hz for urokkelig stabilitet.</span>
+        </div>
         
         <div class="btn-group">
             <button class="btn-calc" onclick="startSimulation()">1. Kør HP BASIC Port</button>
@@ -77,23 +83,22 @@
         <h3>1. Fysikken bag lydudbredelsen</h3>
         <p><b>Extended Reaction</b> anerkender, at lydbølgen rejser sidelæns <i>inde</i> i selve det porøse materiale parallelt med røret. Lydbølgen i luften og lydbølgen i materialet er koblet sammen og deler en fælles udbredelseskonstant, \(\Gamma\).</p>
 
-        <h3>2. Mode-swapping og Ekstrapolering</h3>
-        <p>Efterhånden som frekvensen stiger, suger det porøse materiale lyden til sig. (0,0)-moden stiger eksponentielt. (0,2)-moden starter ekstremt højt og falder hastigt. For at forhindre den numeriske Newton-Raphson algoritme i at bytte om på rødderne i det komplekse plan (mode-swapping), bruger koden en lineær ekstrapolation, præcis som i den originale HP BASIC kodes "hop-detektor".</p>
+        <h3>2. Eksponentiel stigning og Mode-separation</h3>
+        <p>Efterhånden som frekvensen stiger, suger det porøse materiale lyden til sig. (0,0)-moden stiger eksponentielt, fordi faktoren \(\rho c\) forskyder den komplekse rod. (0,2)-moden starter ekstremt højt (cut-off) og falder hastigt. For at forhindre den numeriske algoritme i at bytte rundt på rødderne, spores kurverne nu med sub-Hz præcision for at sikre ren, monoton adskillelse.</p>
 
         <h3>3. Modes vs. Fysisk Måling (Fig 3.10b mod 3.10a)</h3>
         <p class="highlight">Hvorfor ser målingen (Fig 3.10a) ud som et knæk?</p>
-        <p>Når (0,2)-moden rammer sin "cut-on" frekvens omkring 800 Hz, falder dens dæmpning drastisk og krydser (0,0)-moden. Da lyden altid følger <b>mindste modstands vej</b>, udgør en fysisk måling med en mikrofon altid den nederste indhyldningskurve (<i>envelope</i>) af de to teoretiske modes – hvilket præcis skaber knækket!</p>
+        <p>Når (0,2)-moden rammer sin "cut-on" frekvens omkring 700 Hz, falder dens dæmpning drastisk og krydser den hastigt stigende (0,0)-mode. Da lyden altid følger <b>mindste modstands vej</b>, udgør en fysisk måling med en mikrofon altid den nederste indhyldningskurve (<i>envelope</i>) af de to teoretiske modes – hvilket præcis skaber det skarpe knæk!</p>
     </div>
 
     <div class="chart-container">
         <canvas id="resultChart"></canvas>
     </div>
 
-    <pre id="output">SYSTEM READY. Mode-swapping forhindres nu matematisk. Venter på RUN...</pre>
+    <pre id="output">SYSTEM READY. Fuld Rho*C genindsat. Højopløsnings-sporing klar...</pre>
 </div>
 
 <script>
-// Funktion der åbner/lukker teoripanelet
 function toggleTheory() {
     let panel = document.getElementById("theoryPanel");
     if (panel.style.display === "none" || panel.style.display === "") {
@@ -103,7 +108,6 @@ function toggleTheory() {
     }
 }
 
-// Pålidelig udlæsning af kommatal
 function parseDanishNumber(id) {
     let str = document.getElementById(id).value.trim();
     str = str.replace(',', '.');
@@ -134,6 +138,19 @@ class Complex {
         if (den === 0) return new Complex(0, 0);
         return new Complex(Math.sin(2 * this.r) / den, Math.sinh(2 * this.i) / den);
     }
+    log() {
+        let mag = Math.sqrt(this.r * this.r + this.i * this.i);
+        let angle = Math.atan2(this.i, this.r);
+        return new Complex(Math.log(mag), angle);
+    }
+    atan() {
+        let iz = new Complex(-this.i, this.r); 
+        let one = new Complex(1, 0);
+        let num = one.sub(iz);
+        let den = one.add(iz);
+        let log_val = num.div(den).log(); 
+        return new Complex(-log_val.i / 2, log_val.r / 2);
+    }
 }
 
 let globalPlot00 = [];
@@ -151,7 +168,7 @@ function print(text) {
 
 function startSimulation() {
     print("------------------------------------------");
-    print("INITIATING PURE HP BASIC TRACKING...");
+    print("INITIATING HIGH-RESOLUTION TRACKING...");
     isShowingMeasured = false;
     document.getElementById("btnToggle").style.display = "inline-block";
     document.getElementById("btnToggle").innerText = "2. Vis Fig. 3.10a (Envelope)";
@@ -195,7 +212,7 @@ function solveNR(guess, p2, M, b) {
         if (isNaN(step.r) || isNaN(step.i)) break;
 
         let mag = Math.sqrt(step.r * step.r + step.i * step.i);
-        if (mag > 0.5) step = step.scale(0.5 / mag); 
+        if (mag > 0.1) step = step.scale(0.1 / mag); 
         
         w = w.sub(step);
         if (w.r < 0) w.r = Math.abs(w.r);
@@ -211,6 +228,7 @@ function runMath() {
         let C_val = parseDanishNumber("inpC"); 
         let thick = parseDanishNumber("inpLining");
         let L1 = parseDanishNumber("inpDuct"); 
+        let stepHz = parseDanishNumber("inpStep") || 2.5; 
         
         let fullDuctWidth = 2 * L1; 
         let b = thick / L1; 
@@ -219,8 +237,12 @@ function runMath() {
         globalPlot02 = [];
         globalPlotTotal = [];
 
-        let freqs = [];
-        for (let f = 62.5; f <= 4000; f += 2.5) freqs.push(f);
+        // Vi laver to arrays: Et til den visuelle udskrift, og et fingranuleret (0,5 Hz) til intern sporing
+        let display_freqs = [];
+        for (let f = 62.5; f <= 4000; f += stepHz) display_freqs.push(f);
+        
+        let internal_freqs = [];
+        for (let f = 62.5; f <= 4000; f += 0.5) internal_freqs.push(f);
 
         let calcAttenuation = function(w_complex, f) {
             let K = 2 * Math.PI * f / C_val;
@@ -257,70 +279,86 @@ function runMath() {
             let Z_c = new Complex(Zr, Zi);
             let Gam_c = new Complex(Gamr, Gami);
             
-            let M = new Complex(0, -K).div(Z_c.mult(Gam_c));
+            // FYSISK KORREKT M INKL. Rho*C (Som giver den eksponentielle stigning!)
+            let num = new Complex(0, -K * RHO * C_val); 
+            let den = Z_c.mult(Gam_c);
+            let M = num.div(den); 
+            
             let Gam_sq = Gam_c.mult(Gam_c);
             let p2 = new Complex( -(Gam_sq.r + K * K) * L1 * L1, -Gam_sq.i * L1 * L1 );
             
             return { p2: p2, M: M };
         };
 
-        // --- 1. SPORING AF (0,0) FORLÆNS MED EKSTRAPOLERING ("Hop-Detektor") ---
-        print("Tracker (0,0) Mode forlæns...");
+        // --- 1. SPORING AF (0,0) FORLÆNS MED 0,5 HZ OPLØSNING ---
+        print("Tracker (0,0) forlæns med mikroskopiske skridt...");
         let w_00 = new Complex(0.1, 0.1); 
-        let w_00_prev = new Complex(0.1, 0.1);
+        let lastLastW_00 = new Complex(0.1, 0.1);
+        let idx00 = 0;
         
-        for (let J = 0; J < freqs.length; J++) {
-            let f = freqs[J];
+        for (let J = 0; J < internal_freqs.length; J++) {
+            let f = internal_freqs[J];
             let params = getParams(f);
             
-            // Forudsig det næste punkt baseret på historikken (Lineær Ekstrapolation - Ligesom Linje 10700)
             let guess = (J === 0) ? new Complex(0.1, 0.1) : 
-                        (J === 1 ? w_00 : new Complex(2 * w_00.r - w_00_prev.r, 2 * w_00.i - w_00_prev.i));
+                        (J === 1 ? w_00 : new Complex(2 * w_00.r - lastLastW_00.r, 2 * w_00.i - lastLastW_00.i));
                         
             let res = solveNR(guess, params.p2, params.M, b);
-            let w_new = res.w;
+            
+            // Hop-detektor: Hvis roden skyder mere end 0.5 væk, er det en falsk mode
+            let dist = Math.sqrt(Math.pow(res.w.r - guess.r, 2) + Math.pow(res.w.i - guess.i, 2));
+            if (!res.converged || dist > 0.5) res.w = guess; 
 
-            // Hvis Newton-Raphson forsøger at hoppe over på (0,2)-moden (>0.25 i afvigelse), 
-            // afvises den, og vi tvinger den fremad i blinde, indtil rødderne adskilles igen.
-            let dist = Math.sqrt(Math.pow(w_new.r - guess.r, 2) + Math.pow(w_new.i - guess.i, 2));
-            if (!res.converged || dist > 0.25) {
-                w_new = guess; 
+            lastLastW_00 = w_00;
+            w_00 = res.w; 
+
+            // Gem kun datapunktet, hvis det matcher brugerens valgte opløsning
+            if (idx00 < display_freqs.length && f >= display_freqs[idx00] - 0.001) {
+                globalPlot00.push({x: display_freqs[idx00], y: calcAttenuation(w_00, display_freqs[idx00])});
+                idx00++;
             }
-
-            w_00_prev = w_00;
-            w_00 = w_new; 
-            globalPlot00.push({x: f, y: calcAttenuation(w_00, f)});
         }
 
-        // --- 2. SPORING AF (0,2) BAGLÆNS FRA 4000 Hz MED EKSTRAPOLERING ---
-        print("Tracker (0,2) Mode baglæns fra 4000 Hz...");
-        // Ved høje frekvenser opfører (0,2) sig pænt omkring Pi
+        // --- 2. SPORING AF (0,2) BAGLÆNS MED FIXED-POINT ARCTAN ---
+        print("Tracker (0,2) baglæns med stabil Fixed-Point Arctan...");
         let w_02 = new Complex(Math.PI, 0.1); 
-        let w_02_prev = new Complex(Math.PI, 0.1);
-        let freqs_rev = [...freqs].reverse();
+        let idx02 = display_freqs.length - 1;
         let tempPlot02 = [];
         
-        for (let J = 0; J < freqs_rev.length; J++) {
-            let f = freqs_rev[J];
+        for (let J = internal_freqs.length - 1; J >= 0; J--) {
+            let f = internal_freqs[J];
             let params = getParams(f);
+            let w = w_02;
             
-            let guess = (J === 0) ? new Complex(Math.PI, 0.1) : 
-                        (J === 1 ? w_02 : new Complex(2 * w_02.r - w_02_prev.r, 2 * w_02.i - w_02_prev.i));
-            
-            let res = solveNR(guess, params.p2, params.M, b);
-            let w_new = res.w;
+            for (let iter = 0; iter < 100; iter++) {
+                let sq = w.mult(w).add(params.p2).sqrt();
+                let M_term = params.M.mult(sq).mult(sq.scale(b).tan());
+                let Y_comp = new Complex(0,0).sub(M_term).div(w); 
+                
+                let Y1 = Y_comp.r;
+                let Y2 = Y_comp.i;
+                let J1 = Math.sqrt(Y1*Y1 + (Y2+1)*(Y2+1));
+                let J3 = Math.sqrt(Y1*Y1 + (Y2-1)*(Y2-1));
+                let J2 = Math.atan2(Y1, Y2+1);
+                let J4 = Math.atan2(-Y1, 1-Y2);
 
-            let dist = Math.sqrt(Math.pow(w_new.r - guess.r, 2) + Math.pow(w_new.i - guess.i, 2));
-            if (!res.converged || dist > 0.25) {
-                w_new = guess; 
+                let Y3 = Math.PI + (J4 - J2)/2;
+                let Y4 = 0.5 * Math.log(J1/J3);
+
+                let w_new = new Complex(Y3, Y4);
+                if (Math.abs(w_new.r - w.r) < 1e-6 && Math.abs(w_new.i - w.i) < 1e-6) {
+                    w = w_new; break;
+                }
+                w = w_new;
             }
+            w_02 = w;
 
-            w_02_prev = w_02;
-            w_02 = w_new; 
-            
-            let atten02 = calcAttenuation(w_02, f);
-            if (atten02 <= 25) { // Skjul ekstreme evanescente værdier i de lave frekvenser
-                tempPlot02.push({x: f, y: atten02});
+            if (idx02 >= 0 && f <= display_freqs[idx02] + 0.001) {
+                let atten = calcAttenuation(w_02, display_freqs[idx02]);
+                if (atten < 25) { 
+                    tempPlot02.push({x: display_freqs[idx02], y: atten});
+                }
+                idx02--;
             }
         }
         globalPlot02 = tempPlot02.reverse();
@@ -340,7 +378,7 @@ function runMath() {
             }
         });
 
-        print("SUCCESS! Rødderne holdes fast på sporet, og mode-swapping er forhindret.");
+        print("SUCCESS! (0,0) stiger nu monotont, og (0,2) falder monotont.");
         renderCurrentChart();
 
     } catch (e) {
@@ -409,12 +447,12 @@ function renderCurrentChart() {
                 annotation: {
                     annotations: {
                         label00: isShowingMeasured ? null : {
-                            type: 'label', xValue: 3000, yValue: 8.5,
+                            type: 'label', xValue: 1500, yValue: 8,
                             backgroundColor: 'rgba(255,255,255,0.8)', content: '(0,0)',
                             font: { size: 14, weight: 'bold' }, color: '#2980b9'
                         },
                         label02: isShowingMeasured ? null : {
-                            type: 'label', xValue: 1200, yValue: 3.5,
+                            type: 'label', xValue: 1000, yValue: 3,
                             backgroundColor: 'rgba(255,255,255,0.8)', content: '(0,2)',
                             font: { size: 14, weight: 'bold' }, color: '#e74c3c'
                         }
