@@ -2,7 +2,7 @@
 <html lang="da">
 <head>
     <meta charset="UTF-8">
-    <title>DTU Lyddæmper Simulator - Fig 3.10b (Baglæns Sporing)</title>
+    <title>DTU Lyddæmper Simulator - Fig 3.10b (Perfekt Numerisk)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
@@ -62,7 +62,7 @@
         </div>
         
         <div class="btn-group">
-            <button class="btn-calc" onclick="startSimulation()">1. Beregn Data (Baglæns sporing)</button>
+            <button class="btn-calc" onclick="startSimulation()">1. Beregn Data Numerisk</button>
             <button id="btnToggle" class="btn-toggle" onclick="toggleGraphView()">2. Skift til Måling (Fig 3.10a)</button>
             <button class="btn-info" onclick="toggleTheory()">Forklar Fysikken & Matematikken</button>
         </div>
@@ -76,25 +76,24 @@
         <p><b>Extended Reaction</b> anerkender, at lydbølgen rejser sidelæns <i>inde</i> i selve det porøse materiale parallelt med røret. Lydbølgen i luften og lydbølgen i materialet er koblet sammen og deler en fælles udbredelseskonstant, \(\Gamma\).</p>
 
         <h3>2. Den divergerende bølgefront og hastigheden</h3>
-        <p>Efterhånden som frekvensen stiger, suger det porøse materiale lyden til sig. Bølgefronten for (0,0)-moden forbliver ikke plan, men divergerer ud mod de absorberende sider. Dette betyder, at roden \(w\) vokser ud i det komplekse plan, hvilket skaber den konstant stigende dæmpning. <br><br>
-        <span class="highlight">Fasehastigheden falder:</span> Fordi bølgen "gnider" og trækkes i af beklædningen langs rørets vægge, bliver lydens faktiske udbredelseshastighed nede i røret faktisk <b>lavere end lydens hastighed i det fri</b>. Newton-Raphson algoritmen fanger automatisk denne forsinkelse!</p>
+        <p>Efterhånden som frekvensen stiger, suger det porøse materiale lyden til sig. Bølgefronten for (0,0)-moden forbliver ikke plan, men divergerer ud mod de absorberende sider. Dette betyder, at roden \(w\) vokser ud i det komplekse plan, hvilket skaber den konstant stigende dæmpning. Newton-Raphson fanger automatisk, at fasehastigheden nede i røret falder og bliver <b>lavere end lydens hastighed i det fri</b>.</p>
 
         <h3>3. Matematikken (Newton-Raphson)</h3>
-        <p>For at finde den endelige dæmpning for hele røret, skal Scott's transcendente feltligning løses:</p>
+        <p>Da løsninger kun findes numerisk og ikke analytisk, skal Scott's transcendente feltligning løses iterativt:</p>
         <div class="math-block">
             \(f(w) = w \cdot \tan(w) + M \cdot \sqrt{w^2 + p^2} \cdot \tan\left(b \cdot \sqrt{w^2 + p^2}\right) = 0\)
         </div>
 
         <h3>4. Modes vs. Fysisk Måling (Fig 3.10b mod 3.10a)</h3>
         <p class="highlight">Hvorfor ser målingen (Fig 3.10a) ud som et knæk?</p>
-        <p>Når (0,2)-moden rammer sin "cut-on" frekvens omkring 600 Hz, falder dens dæmpning drastisk og krydser (0,0)-moden. Da lyden altid følger <b>mindste modstands vej</b>, vil størstedelen af lydenergien bæres af den mode med lavest dæmpning. En fysisk måling med en mikrofon udgør derfor altid den nederste indhyldningskurve (<i>envelope</i>) af de to teoretiske modes – hvilket præcis skaber knækket i din graf!</p>
+        <p>Når (0,2)-moden rammer sin "cut-on" frekvens omkring 600-700 Hz, falder dens dæmpning drastisk og krydser (0,0)-moden fra at have været "evanescent" (ikke-udbredende) med ekstremt høj dæmpning. Da lyden altid følger <b>mindste modstands vej</b>, udgør en fysisk måling med en mikrofon altid den nederste indhyldningskurve (<i>envelope</i>) af de to teoretiske modes – hvilket skaber knækket!</p>
     </div>
 
     <div class="chart-container">
         <canvas id="resultChart"></canvas>
     </div>
 
-    <pre id="output">System klar til baglæns kompleks rod-sporing...</pre>
+    <pre id="output">System klar. Tryk "Beregn Data Numerisk" for at starte iterationerne...</pre>
 </div>
 
 <script>
@@ -139,45 +138,48 @@ class Complex {
     }
 }
 
-// Numerisk stabil Newton-Raphson uden forstyrrende begrænsninger.
-// Vi kontrollerer udelukkende skridtlængden for at sikre glidende konvergens.
-function solveNR(guess, p2, M, b) {
-    let w = new Complex(guess.r, guess.i);
-    let conv = false;
+// Numerisk sikker Newton-Raphson iterering
+function solveNR(guess, p2, M, b, modeType) {
+    let currentW = new Complex(guess.r, guess.i);
+    let iter = 0, conv = false;
 
-    for (let iter = 0; iter < 100; iter++) {
-        let w2 = w.mult(w);
-        let arg = w2.add(p2);
-        let sq = arg.sqrt();
+    while (iter < 200 && !conv) {
+        iter++;
+        let w2 = currentW.mult(currentW);
+        let sqrt_w2_p2 = (w2.add(p2)).sqrt();
+        let fw = currentW.mult(currentW.tan()).add(M.mult(sqrt_w2_p2).mult((sqrt_w2_p2.scale(b)).tan()));
+
+        let delta = new Complex(1e-6, 1e-6);
+        let w_d = currentW.add(delta);
+        let sqrt_w2_p2_d = (w_d.mult(w_d).add(p2)).sqrt();
+        let fw_d = w_d.mult(w_d.tan()).add(M.mult(sqrt_w2_p2_d).mult((sqrt_w2_p2_d.scale(b)).tan()));
+
+        let f_prime = fw_d.sub(fw).div(delta);
+        let w_step = fw.div(f_prime);
         
-        let f1 = w.mult(w.tan());
-        let f2 = M.mult(sq).mult( sq.scale(b).tan() );
-        let f_val = f1.add(f2);
+        if (isNaN(w_step.r) || isNaN(w_step.i)) break;
 
-        if (Math.abs(f_val.r) < 1e-6 && Math.abs(f_val.i) < 1e-6) {
-            conv = true; break;
+        // Stabilitets-begrænser på trinet
+        let stepMag = Math.sqrt(w_step.r * w_step.r + w_step.i * w_step.i);
+        let maxStep = 0.1; 
+        if (stepMag > maxStep) {
+            w_step = w_step.scale(maxStep / stepMag);
+        }
+        
+        currentW = currentW.sub(w_step);
+        
+        // Mode-Lås: Tvinger roden til at blive i den rigtige dal (valley)
+        if (modeType === 0) {
+            if (currentW.r < 0.0) currentW.r = 0.0;
+            if (currentW.r > 1.6) currentW.r = 1.6;
+        } else if (modeType === 2) {
+            if (currentW.r < 1.6) currentW.r = 1.6;
+            if (currentW.r > 4.8) currentW.r = 4.8;
         }
 
-        let dw = new Complex(1e-5, 1e-5);
-        let wd = w.add(dw);
-        let w2d = wd.mult(wd);
-        let sqd = w2d.add(p2).sqrt();
-        let f1d = wd.mult(wd.tan());
-        let f2d = M.mult(sqd).mult( sqd.scale(b).tan() );
-        let f_val_d = f1d.add(f2d);
-
-        let deriv = f_val_d.sub(f_val).div(dw);
-        let step = f_val.div(deriv);
-
-        // Undgå at springe til forkerte dale ved at limitere skridtet
-        let mag = Math.sqrt(step.r*step.r + step.i*step.i);
-        if (mag > 0.5) {
-            step = step.scale(0.5/mag);
-        }
-
-        w = w.sub(step);
+        if (stepMag <= 1e-7) conv = true;
     }
-    return { w: w, conv: conv };
+    return { w: currentW, converged: conv };
 }
 
 const RHO = 1.205; 
@@ -185,7 +187,7 @@ let chartInstance = null;
 
 function startSimulation() {
     let out = document.getElementById("output");
-    out.innerText = "Initialiserer baglæns sporing fra 4000 Hz til 62.5 Hz...\n";
+    out.innerText = "Beregner modes forlæns (fra 62.5 Hz) uden kunstige filtre...";
     isShowingMeasured = false;
     document.getElementById("btnToggle").style.display = "inline-block";
     document.getElementById("btnToggle").innerText = "2. Skift til Måling (Fig 3.10a)";
@@ -204,9 +206,11 @@ function toggleGraphView() {
     if (isShowingMeasured) {
         btn.innerText = "Skift tilbage til Modes (Fig 3.10b)";
         title.innerText = "Reproduktion af Fig. 3.10a (Fysisk Måling)";
+        print("Viser den samlede envelope (mindste dæmpnings vej).");
     } else {
         btn.innerText = "2. Skift til Måling (Fig 3.10a)";
         title.innerText = "Reproduktion af Fig. 3.10b (Teoretiske Modes)";
+        print("Viser de matematiske modes i det komplekse plan.");
     }
     renderCurrentChart();
 }
@@ -221,14 +225,20 @@ function runMath() {
         let fullDuctWidth = 2 * L1; 
         let b = thick / L1; 
 
-        let data00 = [];
-        let data02 = [];
+        globalPlot00 = [];
+        globalPlot02 = [];
         globalPlotTotal = [];
 
-        // Vi gætter ud fra de stabile høje frekvenser, hvor rødderne er forudsigelige.
-        // Mode 00 nærmer sig Pi/2 (~1.57), Mode 02 nærmer sig 3*Pi/2 (~4.71)
-        let w_00 = new Complex(1.5, 0.1); 
-        let w_02 = new Complex(4.5, 0.1); 
+        let lastW_00 = new Complex(0.01, 0.01); 
+        let lastLastW_00 = new Complex(0.01, 0.01); 
+        
+        let lastW_02 = new Complex(Math.PI, 0.01); 
+        let lastLastW_02 = new Complex(Math.PI, 0.01); 
+
+        let freqs = [];
+        for (let f = 62.5; f <= 4000; f += 2.5) {
+            freqs.push(f);
+        }
 
         let calcAttenuation = function(w_complex, f) {
             let K = 2 * Math.PI * f / C_val;
@@ -245,7 +255,7 @@ function runMath() {
             let K = 2 * Math.PI * f / C_val;
             let Zr, Zi, Gamr, Gami;
             
-            // Overgang imellem Mechel og Delany & Bazley som i HP Basic koden
+            // Delany & Bazley overgang
             if (Af < 60) {
                 let logA = Math.log(Af);
                 Zr = 1 + 0.04885 * Math.exp(0.754 * logA);
@@ -265,7 +275,9 @@ function runMath() {
 
             let Z_c = new Complex(Zr, Zi);
             let Gam_c = new Complex(Gamr, Gami);
+            
             let M = (new Complex(0, -K)).div(Z_c.mult(Gam_c));
+            
             let h_c = new Complex(Gami, -Gamr); 
             let hl_complex = h_c.scale(L1); 
             let kl_complex = new Complex(K * L1, 0);
@@ -273,43 +285,46 @@ function runMath() {
             return { p2: p2, M: M };
         };
 
-        // TRACKING BAGLÆNS FRA 4000 Hz til 62.5 Hz (Fingranuleret 1 Hz ad gangen)
-        for (let f = 4000; f >= 62.5; f -= 1) {
+        // KØR BEGGE MODES FORLÆNS FRA 62.5 HZ (MED ALLE DATA PUSHET)
+        for (let i = 0; i < freqs.length; i++) {
+            let f = freqs[i];
             let params = getParams(f);
             
-            // Mode (0,0)
-            let res00 = solveNR(w_00, params.p2, params.M, b);
-            if (res00.conv) {
-                w_00 = res00.w;
-                data00.push({x: f, y: calcAttenuation(w_00, f)});
-            } else {
-                // Selvom iteratoren giver op, pusher vi den sidste stabile værdi 
-                // for at undgå huller, hvorefter den typisk fanger sporet igen.
-                data00.push({x: f, y: calcAttenuation(w_00, f)});
-            }
+            // LØS MODE (0,0)
+            let guess00;
+            if (i === 0) guess00 = new Complex(0.1, 0.1);
+            else if (i === 1) guess00 = new Complex(lastW_00.r, lastW_00.i);
+            else guess00 = lastW_00.add(lastW_00.sub(lastLastW_00)); 
 
-            // Mode (0,2)
-            let res02 = solveNR(w_02, params.p2, params.M, b);
-            if (res02.conv) {
-                w_02 = res02.w;
-                let atten = calcAttenuation(w_02, f);
-                // Forhindrer at grafen "pustes op" af de evanescente uendeligheder 
-                if (atten <= 25) { 
-                    data02.push({x: f, y: atten});
-                }
-            } else {
-                let atten = calcAttenuation(w_02, f);
-                if (atten <= 25) {
-                    data02.push({x: f, y: atten});
-                }
+            let res00 = solveNR(guess00, params.p2, params.M, b, 0);
+            if (!res00.converged) res00 = solveNR(lastW_00, params.p2, params.M, b, 0);
+
+            if (res00.converged) {
+                lastLastW_00 = lastW_00;
+                lastW_00 = res00.w;
             }
+            // PUSH ALTID, selvom den ikke konvergerer perfekt (bedste gæt)
+            globalPlot00.push({x: f, y: calcAttenuation(lastW_00, f)});
+
+            // LØS MODE (0,2)
+            let guess02;
+            if (i === 0) guess02 = new Complex(Math.PI, 0.5);
+            else if (i === 1) guess02 = new Complex(lastW_02.r, lastW_02.i);
+            else guess02 = lastW_02.add(lastW_02.sub(lastLastW_02)); 
+
+            let res02 = solveNR(guess02, params.p2, params.M, b, 2);
+            if (!res02.converged) res02 = solveNR(lastW_02, params.p2, params.M, b, 2);
+
+            if (res02.converged) {
+                lastLastW_02 = lastW_02;
+                lastW_02 = res02.w;
+            }
+            
+            // PUSH ALTID, også de ekstreme værdier (Chart.js klipper selv toppen ved Y=10)
+            globalPlot02.push({x: f, y: calcAttenuation(lastW_02, f)});
         }
 
-        // Vend arrays om, så de stiger fra venstre mod højre til graftegneren
-        globalPlot00 = data00.reverse();
-        globalPlot02 = data02.reverse();
-
-        // Konstruer målingens envelope (Fig 3.10a)
+        // Konstruer målingens envelope
         let dict02 = {};
         globalPlot02.forEach(p => dict02[p.x] = p.y);
         
@@ -324,11 +339,11 @@ function runMath() {
             }
         });
 
-        print("Rødder fulgt succesfuldt fra 4000 Hz. Tegner grafen...");
+        print("Numerisk solving afsluttet. Ingen data smidt væk.");
         renderCurrentChart();
 
     } catch (e) {
-        print(`[FEJL]: ${e.message}`);
+        print(`[FEJL I MATEMATIKKEN]: ${e.message}`);
     }
 }
 
@@ -379,7 +394,7 @@ function renderCurrentChart() {
         });
 
         let labelY00 = globalPlot00.find(p => p.x >= 3000)?.y || 0;
-        let labelY02 = globalPlot02.find(p => p.x >= 1200)?.y || 0;
+        let labelY02 = globalPlot02.find(p => p.x >= 800)?.y || 0;
         
         annotations.label00 = {
             type: 'label', xValue: 3000, yValue: labelY00 - 0.6,
@@ -387,7 +402,7 @@ function renderCurrentChart() {
             font: { size: 14, weight: 'bold' }, color: '#2980b9'
         };
         annotations.label02 = {
-            type: 'label', xValue: 1200, yValue: (labelY02 > 9 ? 8.5 : labelY02 + 0.6),
+            type: 'label', xValue: 800, yValue: (labelY02 > 9 ? 8.5 : labelY02 + 0.6),
             backgroundColor: 'rgba(255, 255, 255, 0.8)', content: '(0,2)',
             font: { size: 14, weight: 'bold' }, color: '#e74c3c'
         };
