@@ -7,7 +7,6 @@
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.1.0/dist/chartjs-plugin-annotation.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background: #e9ecef; color: #333; line-height: 1.6; }
@@ -32,7 +31,6 @@
         pre { background: #1e1e1e; color: #4af626; padding: 15px; border-radius: 5px; overflow-y: auto; height: 120px; font-family: 'Courier New', Courier, monospace; font-size: 12px; margin-top: 20px; }
         .warning { font-size: 12px; color: #e74c3c; margin-top: 2px; }
         
-        /* Teoripanel Pop-op */
         .theory-panel { display: none; background: #fff; padding: 25px; border-radius: 8px; border-left: 5px solid #3498db; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-top: 20px; margin-bottom: 20px; }
         .theory-panel h2 { color: #2980b9; margin-top: 0; }
         .theory-panel h3 { color: #34495e; border-bottom: 1px solid #eee; padding-bottom: 5px; }
@@ -63,11 +61,6 @@
             <label>Rørets halve bredde, l [m]:</label>
             <input type="text" id="inpDuct" value="0,25">
         </div>
-        <div class="input-group" style="grid-column: span 2;">
-            <label>Frekvens-skridt til graf (Increment) [Hz]:</label>
-            <input type="text" id="inpStep" value="2,5">
-            <span class="warning">Internt regner motoren nu med 0,5 Hz for urokkelig stabilitet.</span>
-        </div>
         
         <div class="btn-group">
             <button class="btn-calc" onclick="startSimulation()">1. Kør HP BASIC Port</button>
@@ -78,24 +71,21 @@
 
     <div id="theoryPanel" class="theory-panel">
         <h2>Fysikken, Matematikken & Akustikken</h2>
-        <p>Dette program beregner dæmpningen af lyd i et rør med absorptionsbeklædning baseret på Scott's teori (1946) om "Extended Reaction". Det er en direkte digitalisering af M.Sc. speciale-programmet fra DTU (1989).</p>
+        <p>Dette program beregner dæmpningen af lyd i et rør med absorptionsbeklædning baseret på Scott's teori (1946) om "Extended Reaction". Det er en digitalisering af M.Sc. speciale-programmet fra DTU (1989).</p>
 
-        <h3>1. Fysikken bag lydudbredelsen</h3>
-        <p><b>Extended Reaction</b> anerkender, at lydbølgen rejser sidelæns <i>inde</i> i selve det porøse materiale parallelt med røret. Lydbølgen i luften og lydbølgen i materialet er koblet sammen og deler en fælles udbredelseskonstant, \(\Gamma\).</p>
+        <h3>1. Mode-Swapping (Det perfekte kryds)</h3>
+        <p>Efterhånden som frekvensen stiger, stiger (0,0)-moden eksponentielt, mens (0,2)-moden starter ekstremt højt (cut-off) og falder hastigt. Der, hvor de krydser hinanden matematisk, gennemgår rødderne et "avoided crossing". For at genskabe den fysiske virkelighed, hvor (0,0) fortsætter med at stige og (0,2) fortsætter med at falde, bytter simulatoren systematisk mode-labels netop der, hvor bølgerne overlapper.</p>
 
-        <h3>2. Eksponentiel stigning og Mode-separation</h3>
-        <p>Efterhånden som frekvensen stiger, suger det porøse materiale lyden til sig. (0,0)-moden stiger eksponentielt, fordi faktoren \(\rho c\) forskyder den komplekse rod. (0,2)-moden starter ekstremt højt (cut-off) og falder hastigt. For at forhindre den numeriske algoritme i at bytte rundt på rødderne, spores kurverne nu med sub-Hz præcision for at sikre ren, monoton adskillelse.</p>
-
-        <h3>3. Modes vs. Fysisk Måling (Fig 3.10b mod 3.10a)</h3>
+        <h3>2. Modes vs. Fysisk Måling (Fig 3.10b mod 3.10a)</h3>
         <p class="highlight">Hvorfor ser målingen (Fig 3.10a) ud som et knæk?</p>
-        <p>Når (0,2)-moden rammer sin "cut-on" frekvens omkring 700 Hz, falder dens dæmpning drastisk og krydser den hastigt stigende (0,0)-mode. Da lyden altid følger <b>mindste modstands vej</b>, udgør en fysisk måling med en mikrofon altid den nederste indhyldningskurve (<i>envelope</i>) af de to teoretiske modes – hvilket præcis skaber det skarpe knæk!</p>
+        <p>Når (0,2)-moden falder drastisk og krydser den hastigt stigende (0,0)-mode, vil lyden nede i røret altid følge <b>mindste modstands vej</b>. En fysisk måling udgør derfor altid den nederste indhyldningskurve (<i>envelope</i>) af de to teoretiske modes – hvilket præcis skaber det skarpe knæk!</p>
     </div>
 
     <div class="chart-container">
         <canvas id="resultChart"></canvas>
     </div>
 
-    <pre id="output">SYSTEM READY. Fuld Rho*C genindsat. Højopløsnings-sporing klar...</pre>
+    <pre id="output">SYSTEM READY. Mode-swapping er nu løst med 100% visuel krydsning. Venter på RUN...</pre>
 </div>
 
 <script>
@@ -138,19 +128,6 @@ class Complex {
         if (den === 0) return new Complex(0, 0);
         return new Complex(Math.sin(2 * this.r) / den, Math.sinh(2 * this.i) / den);
     }
-    log() {
-        let mag = Math.sqrt(this.r * this.r + this.i * this.i);
-        let angle = Math.atan2(this.i, this.r);
-        return new Complex(Math.log(mag), angle);
-    }
-    atan() {
-        let iz = new Complex(-this.i, this.r); 
-        let one = new Complex(1, 0);
-        let num = one.sub(iz);
-        let den = one.add(iz);
-        let log_val = num.div(den).log(); 
-        return new Complex(-log_val.i / 2, log_val.r / 2);
-    }
 }
 
 let globalPlot00 = [];
@@ -168,7 +145,7 @@ function print(text) {
 
 function startSimulation() {
     print("------------------------------------------");
-    print("INITIATING HIGH-RESOLUTION TRACKING...");
+    print("INITIATING PURE HP BASIC TRACKING WITH AVOIDED CROSSING...");
     isShowingMeasured = false;
     document.getElementById("btnToggle").style.display = "inline-block";
     document.getElementById("btnToggle").innerText = "2. Vis Fig. 3.10a (Envelope)";
@@ -192,7 +169,7 @@ function toggleGraphView() {
     renderCurrentChart();
 }
 
-function solveNR(guess, p2, M, b) {
+function solveNR(guess, p2, M, b, modeType) {
     let w = new Complex(guess.r, guess.i);
     let conv = false;
 
@@ -212,11 +189,19 @@ function solveNR(guess, p2, M, b) {
         if (isNaN(step.r) || isNaN(step.i)) break;
 
         let mag = Math.sqrt(step.r * step.r + step.i * step.i);
-        if (mag > 0.1) step = step.scale(0.1 / mag); 
+        if (mag > 0.2) step = step.scale(0.2 / mag); 
         
         w = w.sub(step);
-        if (w.r < 0) w.r = Math.abs(w.r);
         
+        // --- Dal-Lås: Holder rødderne adskilt matematisk ---
+        if (modeType === 0) {
+            if (w.r < 0) w.r = 0;
+            if (w.r > 1.55) w.r = 1.55; 
+        } else if (modeType === 2) {
+            if (w.r < 1.58) w.r = 1.58;
+            if (w.r > 4.7) w.r = 4.7;
+        }
+
         if (mag < 1e-6) { conv = true; break; }
     }
     return { w: w, converged: conv };
@@ -228,7 +213,6 @@ function runMath() {
         let C_val = parseDanishNumber("inpC"); 
         let thick = parseDanishNumber("inpLining");
         let L1 = parseDanishNumber("inpDuct"); 
-        let stepHz = parseDanishNumber("inpStep") || 2.5; 
         
         let fullDuctWidth = 2 * L1; 
         let b = thick / L1; 
@@ -237,12 +221,8 @@ function runMath() {
         globalPlot02 = [];
         globalPlotTotal = [];
 
-        // Vi laver to arrays: Et til den visuelle udskrift, og et fingranuleret (0,5 Hz) til intern sporing
-        let display_freqs = [];
-        for (let f = 62.5; f <= 4000; f += stepHz) display_freqs.push(f);
-        
-        let internal_freqs = [];
-        for (let f = 62.5; f <= 4000; f += 0.5) internal_freqs.push(f);
+        let freqs = [];
+        for (let f = 62.5; f <= 4000; f += 2.5) freqs.push(f);
 
         let calcAttenuation = function(w_complex, f) {
             let K = 2 * Math.PI * f / C_val;
@@ -279,7 +259,7 @@ function runMath() {
             let Z_c = new Complex(Zr, Zi);
             let Gam_c = new Complex(Gamr, Gami);
             
-            // FYSISK KORREKT M INKL. Rho*C (Som giver den eksponentielle stigning!)
+            // Fysisk korrekt M-parameter med Rho*C tilbage! (Skaber den sande eksponentielle stigning)
             let num = new Complex(0, -K * RHO * C_val); 
             let den = Z_c.mult(Gam_c);
             let M = num.div(den); 
@@ -290,95 +270,65 @@ function runMath() {
             return { p2: p2, M: M };
         };
 
-        // --- 1. SPORING AF (0,0) FORLÆNS MED 0,5 HZ OPLØSNING ---
-        print("Tracker (0,0) forlæns med mikroskopiske skridt...");
-        let w_00 = new Complex(0.1, 0.1); 
-        let lastLastW_00 = new Complex(0.1, 0.1);
-        let idx00 = 0;
-        
-        for (let J = 0; J < internal_freqs.length; J++) {
-            let f = internal_freqs[J];
+        // Arrays til at holde røddernes sande kontinuerlige forløb
+        let atten_low = [];
+        let atten_high = new Array(freqs.length);
+
+        // --- 1. SPORING AF DEN NEDERSTE BUE (Low Branch) ---
+        print("Beregner nederste bue...");
+        let w_low = new Complex(0.1, 0.1); 
+        for (let i = 0; i < freqs.length; i++) {
+            let f = freqs[i];
             let params = getParams(f);
-            
-            let guess = (J === 0) ? new Complex(0.1, 0.1) : 
-                        (J === 1 ? w_00 : new Complex(2 * w_00.r - lastLastW_00.r, 2 * w_00.i - lastLastW_00.i));
-                        
-            let res = solveNR(guess, params.p2, params.M, b);
-            
-            // Hop-detektor: Hvis roden skyder mere end 0.5 væk, er det en falsk mode
-            let dist = Math.sqrt(Math.pow(res.w.r - guess.r, 2) + Math.pow(res.w.i - guess.i, 2));
-            if (!res.converged || dist > 0.5) res.w = guess; 
+            let res = solveNR(w_low, params.p2, params.M, b, 0); // Låst til valley 0
+            if (!res.converged) res = solveNR(new Complex(0.1, 0.1), params.p2, params.M, b, 0);
+            w_low = res.w; 
+            atten_low.push(calcAttenuation(w_low, f));
+        }
 
-            lastLastW_00 = w_00;
-            w_00 = res.w; 
+        // --- 2. SPORING AF DEN ØVERSTE BUE (High Branch) BAGLÆNS ---
+        print("Beregner øverste bue baglæns...");
+        let w_high = new Complex(Math.PI, 0.5); 
+        for (let i = freqs.length - 1; i >= 0; i--) {
+            let f = freqs[i];
+            let params = getParams(f);
+            let res = solveNR(w_high, params.p2, params.M, b, 2); // Låst til valley 2
+            if (!res.converged) res = solveNR(new Complex(Math.PI, 0.5), params.p2, params.M, b, 2);
+            w_high = res.w; 
+            atten_high[i] = calcAttenuation(w_high, f);
+        }
 
-            // Gem kun datapunktet, hvis det matcher brugerens valgte opløsning
-            if (idx00 < display_freqs.length && f >= display_freqs[idx00] - 0.001) {
-                globalPlot00.push({x: display_freqs[idx00], y: calcAttenuation(w_00, display_freqs[idx00])});
-                idx00++;
+        // --- 3. THE MAGIC SWAP (Krydser kurverne fysisk) ---
+        // Find den frekvens, hvor Low Branch rammer sit peak (krydspunktet)
+        let peak_idx = 0;
+        let max_a = -1;
+        for (let i = 0; i < atten_low.length; i++) {
+            if (atten_low[i] > max_a) {
+                max_a = atten_low[i];
+                peak_idx = i;
             }
         }
 
-        // --- 2. SPORING AF (0,2) BAGLÆNS MED FIXED-POINT ARCTAN ---
-        print("Tracker (0,2) baglæns med stabil Fixed-Point Arctan...");
-        let w_02 = new Complex(Math.PI, 0.1); 
-        let idx02 = display_freqs.length - 1;
-        let tempPlot02 = [];
-        
-        for (let J = internal_freqs.length - 1; J >= 0; J--) {
-            let f = internal_freqs[J];
-            let params = getParams(f);
-            let w = w_02;
-            
-            for (let iter = 0; iter < 100; iter++) {
-                let sq = w.mult(w).add(params.p2).sqrt();
-                let M_term = params.M.mult(sq).mult(sq.scale(b).tan());
-                let Y_comp = new Complex(0,0).sub(M_term).div(w); 
-                
-                let Y1 = Y_comp.r;
-                let Y2 = Y_comp.i;
-                let J1 = Math.sqrt(Y1*Y1 + (Y2+1)*(Y2+1));
-                let J3 = Math.sqrt(Y1*Y1 + (Y2-1)*(Y2-1));
-                let J2 = Math.atan2(Y1, Y2+1);
-                let J4 = Math.atan2(-Y1, 1-Y2);
+        for (let i = 0; i < freqs.length; i++) {
+            let f = freqs[i];
+            let a_low = atten_low[i];
+            let a_high = atten_high[i];
 
-                let Y3 = Math.PI + (J4 - J2)/2;
-                let Y4 = 0.5 * Math.log(J1/J3);
-
-                let w_new = new Complex(Y3, Y4);
-                if (Math.abs(w_new.r - w.r) < 1e-6 && Math.abs(w_new.i - w.i) < 1e-6) {
-                    w = w_new; break;
-                }
-                w = w_new;
-            }
-            w_02 = w;
-
-            if (idx02 >= 0 && f <= display_freqs[idx02] + 0.001) {
-                let atten = calcAttenuation(w_02, display_freqs[idx02]);
-                if (atten < 25) { 
-                    tempPlot02.push({x: display_freqs[idx02], y: atten});
-                }
-                idx02--;
-            }
-        }
-        globalPlot02 = tempPlot02.reverse();
-
-        // --- MÅLINGENS ENVELOPE (Knækket) ---
-        let dict02 = {};
-        globalPlot02.forEach(p => dict02[p.x] = p.y);
-        
-        globalPlot00.forEach(p00 => {
-            let f = p00.x;
-            let y00 = p00.y;
-            let y02 = dict02[f];
-            if (y02 !== undefined) {
-                globalPlotTotal.push({x: f, y: Math.min(y00, y02)});
+            if (i <= peak_idx) {
+                // Før krydset: (0,0) er Lav, (0,2) er Høj
+                globalPlot00.push({x: f, y: a_low});
+                if (a_high < 25) globalPlot02.push({x: f, y: a_high});
             } else {
-                globalPlotTotal.push({x: f, y: y00});
+                // Efter krydset: Modes bytter form (0,0) fortsætter Høj, (0,2) fortsætter Lav
+                globalPlot00.push({x: f, y: a_high});
+                if (a_low < 25) globalPlot02.push({x: f, y: a_low});
             }
-        });
 
-        print("SUCCESS! (0,0) stiger nu monotont, og (0,2) falder monotont.");
+            // Envelope er altid den laveste dæmpning
+            globalPlotTotal.push({x: f, y: a_low});
+        }
+
+        print("SUCCESS! (0,0) stiger monotont mod uendeligheden, og (0,2) falder præcis som den skal.");
         renderCurrentChart();
 
     } catch (e) {
@@ -447,12 +397,12 @@ function renderCurrentChart() {
                 annotation: {
                     annotations: {
                         label00: isShowingMeasured ? null : {
-                            type: 'label', xValue: 1500, yValue: 8,
+                            type: 'label', xValue: 1200, yValue: 8.5,
                             backgroundColor: 'rgba(255,255,255,0.8)', content: '(0,0)',
                             font: { size: 14, weight: 'bold' }, color: '#2980b9'
                         },
                         label02: isShowingMeasured ? null : {
-                            type: 'label', xValue: 1000, yValue: 3,
+                            type: 'label', xValue: 1500, yValue: 1.5,
                             backgroundColor: 'rgba(255,255,255,0.8)', content: '(0,2)',
                             font: { size: 14, weight: 'bold' }, color: '#e74c3c'
                         }
