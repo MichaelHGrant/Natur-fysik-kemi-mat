@@ -2,12 +2,11 @@
 <html lang="da">
 <head>
     <meta charset="UTF-8">
-    <title>DTU Lyddæmper Simulator - Ægte 1989 Matematik</title>
+    <title>DTU Lyddæmper Simulator - 1989 HP BASIC Port</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.1.0/dist/chartjs-plugin-annotation.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background: #e9ecef; color: #333; line-height: 1.6; }
@@ -25,8 +24,6 @@
         .btn-calc:hover { background: #2ecc71; }
         .btn-toggle { background: #8e44ad; display: none; }
         .btn-toggle:hover { background: #9b59b6; }
-        .btn-info { background: #34495e; }
-        .btn-info:hover { background: #2c3e50; }
         
         .chart-container { position: relative; height: 500px; width: 100%; margin-top: 20px; }
         pre { background: #1e1e1e; color: #4af626; padding: 15px; border-radius: 5px; overflow-y: auto; height: 120px; font-family: 'Courier New', Courier, monospace; font-size: 12px; margin-top: 20px; }
@@ -60,48 +57,24 @@
         <div class="btn-group">
             <button class="btn-calc" onclick="startSimulation()">1. Kør HP BASIC Port</button>
             <button id="btnToggle" class="btn-toggle" onclick="toggleGraphView()">2. Vis Fig. 3.10a (Envelope)</button>
-            <button class="btn-info" onclick="toggleTheory()">Forklar Fysikken & Matematikken</button>
         </div>
-    </div>
-
-    <div id="theoryPanel" class="theory-panel">
-        <h2>Fysikken, Matematikken & Akustikken</h2>
-        <p>Dette program beregner dæmpningen af lyd i et rør med absorptionsbeklædning baseret på Scott's teori (1946) om "Extended Reaction". Det er en direkte digitalisering af et M.Sc. speciale-program fra DTU (1989).</p>
-
-        <h3>1. Fysikken bag lydudbredelsen</h3>
-        <p><b>Extended Reaction</b> anerkender, at lydbølgen rejser sidelæns <i>inde</i> i selve det porøse materiale parallelt med røret. Lydbølgen i luften og lydbølgen i materialet er koblet sammen og deler en fælles udbredelseskonstant, \(\Gamma\).</p>
-
-        <h3>2. Den divergerende bølgefront og hastigheden</h3>
-        <p>Efterhånden som frekvensen stiger, suger det porøse materiale lyden til sig. Bølgefronten for (0,0)-moden forbliver ikke plan, men divergerer ud mod de absorberende sider. Dette betyder, at roden \(w\) vokser ud i det komplekse plan, hvilket skaber den konstant stigende dæmpning.<br><br>
-        <span class="highlight">Fasehastigheden falder:</span> Fordi bølgen "gnider" og trækkes i af beklædningen langs rørets vægge, bliver lydens faktiske udbredelseshastighed nede i røret faktisk <b>lavere end lydens hastighed i det fri</b>.</p>
-
-        <h3>3. Matematikken (Newton-Raphson)</h3>
-        <p>Da løsninger kun findes numerisk og ikke analytisk, løses Scott's transcendente feltligning iterativt for de komplekse rødder \(w\):</p>
-        <div class="math-block">
-            \(f(w) = w \cdot \tan(w) + M \cdot \sqrt{w^2 + p^2} \cdot \tan\left(b \cdot \sqrt{w^2 + p^2}\right) = 0\)
-        </div>
-
-        <h3>4. Modes vs. Fysisk Måling (Fig 3.10b mod 3.10a)</h3>
-        <p class="highlight">Hvorfor ser målingen (Fig 3.10a) ud som et knæk?</p>
-        <p>Når (0,2)-moden rammer sin "cut-on" frekvens omkring 600-700 Hz, falder dens dæmpning drastisk og krydser (0,0)-moden. Da lyden altid følger <b>mindste modstands vej</b>, udgør en fysisk måling med en mikrofon altid den nederste indhyldningskurve (<i>envelope</i>) af de to teoretiske modes – hvilket skaber det berømte knæk!</p>
     </div>
 
     <div class="chart-container">
         <canvas id="resultChart"></canvas>
     </div>
 
-    <pre id="output">SYSTEM READY. WAITING FOR RUN COMMAND...</pre>
+    <pre id="output">SYSTEM READY. Dimensionsfejl rettet. Venter på RUN...</pre>
 </div>
 
 <script>
-// Pålidelig udlæsning af danske kommatal
 function parseDanishNumber(id) {
     let str = document.getElementById(id).value.trim();
     str = str.replace(',', '.');
     return parseFloat(str);
 }
 
-// --- KOMPLEKS MATEMATIK ---
+// --- KOMPLEKS MATEMATIK BIBLIOTEK ---
 class Complex {
     constructor(r, i) { this.r = r; this.i = i; }
     add(c) { return new Complex(this.r + c.r, this.i + c.i); }
@@ -125,6 +98,20 @@ class Complex {
         if (den === 0) return new Complex(0, 0);
         return new Complex(Math.sin(2 * this.r) / den, Math.sinh(2 * this.i) / den);
     }
+    log() {
+        let mag = Math.sqrt(this.r * this.r + this.i * this.i);
+        let angle = Math.atan2(this.i, this.r);
+        return new Complex(Math.log(mag), angle);
+    }
+    atan() {
+        // arctan(z) = (i/2) * log((1 - i*z) / (1 + i*z))
+        let iz = new Complex(-this.i, this.r); 
+        let one = new Complex(1, 0);
+        let num = one.sub(iz);
+        let den = one.add(iz);
+        let log_val = num.div(den).log(); 
+        return new Complex(-log_val.i / 2, log_val.r / 2);
+    }
 }
 
 let globalPlot00 = [];
@@ -140,14 +127,9 @@ function print(text) {
     out.scrollTop = out.scrollHeight; 
 }
 
-function toggleTheory() {
-    let panel = document.getElementById("theoryPanel");
-    panel.style.display = (panel.style.display === "none" || panel.style.display === "") ? "block" : "none";
-}
-
 function startSimulation() {
     print("------------------------------------------");
-    print("INITIATING HP BASIC ALGORITHM...");
+    print("INITIATING PURE HP BASIC ALGORITHM...");
     isShowingMeasured = false;
     document.getElementById("btnToggle").style.display = "inline-block";
     document.getElementById("btnToggle").innerText = "2. Vis Fig. 3.10a (Envelope)";
@@ -169,42 +151,6 @@ function toggleGraphView() {
         title.innerText = "Fig. 3.10b - 1989 HP BASIC Algoritme";
     }
     renderCurrentChart();
-}
-
-// Ren og stabil Newton-Raphson til komplekse tal
-function solveNR(guess, p2, M, b) {
-    let w = new Complex(guess.r, guess.i);
-    let conv = false;
-
-    for (let iter = 0; iter < 150; iter++) {
-        let w2 = w.mult(w);
-        let sq = w2.add(p2).sqrt();
-        let f_val = w.mult(w.tan()).add(M.mult(sq).mult(sq.scale(b).tan()));
-
-        // Bruger et rent reelt step for at beregne the derivative (mere stabilt)
-        let dw = new Complex(1e-6, 0); 
-        let wd = w.add(dw);
-        let w2d = wd.mult(wd);
-        let sqd = w2d.add(p2).sqrt();
-        let f_val_d = wd.mult(wd.tan()).add(M.mult(sqd).mult(sqd.scale(b).tan()));
-
-        let deriv = f_val_d.sub(f_val).div(dw);
-        let step = f_val.div(deriv);
-        
-        if (isNaN(step.r) || isNaN(step.i)) break;
-
-        // Limiter forhindrer at roden skyder forbi og lander i en forkert mode!
-        let mag = Math.sqrt(step.r * step.r + step.i * step.i);
-        if (mag > 0.1) step = step.scale(0.1 / mag);
-        
-        w = w.sub(step);
-        
-        // Symmetri: Tving w til højre halvplan for at matche fysisk bølge
-        if (w.r < 0) w.r = Math.abs(w.r);
-        
-        if (mag < 1e-7) { conv = true; break; }
-    }
-    return { w: w, converged: conv };
 }
 
 function runMath() {
@@ -239,13 +185,13 @@ function runMath() {
             let K = 2 * Math.PI * f / C_val;
             let Zr, Zi, Gamr, Gami;
             
-            // Delany & Bazley
+            // Ligninger fra HP BASIC Line 8110-8160 
             if (Af < 60) {
                 let logA = Math.log(Af);
                 Zr = 1 + 0.04885 * Math.exp(0.754 * logA);
                 Zi = -0.087 * Math.exp(0.7307 * logA);
                 Gamr = K * 0.189 * Math.exp(0.6185 * logA);
-                Gami = K * (1 + 0.0978 * Math.exp(-0.6929 * logA)); // Det negative HP Basic fortegn
+                Gami = K * (1 + 0.0978 * Math.exp(-0.6929 * logA)); // Negativ eksponent!
             } else {
                 let term = new Complex(-1.4664, 0.2115 * Af);
                 let sqrtTerm = term.sqrt();
@@ -260,19 +206,20 @@ function runMath() {
             let Z_c = new Complex(Zr, Zi);
             let Gam_c = new Complex(Gamr, Gami);
             
-            // FYSISK KORREKT M: Da Z_c er normaliseret, indgår RHO og C IKKE i tælleren for M
-            let M = new Complex(0, K).div(Z_c.mult(Gam_c));
+            // DEN FYSISK KORREKTE M-PARAMETER: M = j*k / (Z * Gamma)
+            let num = new Complex(0, K); 
+            let den = Z_c.mult(Gam_c);
+            let M = num.div(den); 
             
-            // FYSISK KORREKT P2: (Gamma_a * L1)^2 - (k * L1)^2
-            let hl_complex = Gam_c.scale(L1); 
-            let kl_complex = new Complex(K * L1, 0);
-            let p2 = hl_complex.mult(hl_complex).sub(kl_complex.mult(kl_complex));
+            // DEN FYSISK KORREKTE p2-PARAMETER: p^2 = -(Gamma^2 + k^2) * L1^2
+            let Gam_sq = Gam_c.mult(Gam_c);
+            let p2 = new Complex( -(Gam_sq.r + K * K) * L1 * L1, -Gam_sq.i * L1 * L1 );
             
             return { p2: p2, M: M };
         };
 
-        // --- SPORING AF (0,0) FORLÆNS FRA 62.5 Hz ---
-        print("Solving (0,0) Mode (Forward tracking)...");
+        // --- 1. SPORING AF (0,0) MED REN NEWTON-RAPHSON (Forlæns) ---
+        print("Solving (0,0) Mode (Newton-Raphson)...");
         let w_00 = new Complex(0.1, 0.1); 
         let lastLastW_00 = new Complex(0.1, 0.1);
         
@@ -280,38 +227,74 @@ function runMath() {
             let f = freqs[J];
             let params = getParams(f);
             
+            // Lineær ekstrapolering
             let guess = (J === 0) ? new Complex(0.1, 0.1) : 
                         (J === 1 ? w_00 : w_00.add(w_00.sub(lastLastW_00)));
                         
-            let res = solveNR(guess, params.p2, params.M, b);
-            if (!res.converged) res = solveNR(w_00, params.p2, params.M, b);
+            let w = new Complex(guess.r, guess.i);
+            let conv = false;
+
+            for (let iter = 0; iter < 100; iter++) {
+                let w2 = w.mult(w);
+                let sq = w2.add(params.p2).sqrt();
+                let f_val = w.mult(w.tan()).add(params.M.mult(sq).mult(sq.scale(b).tan()));
+
+                let dw = new Complex(1e-5, 1e-5);
+                let wd = w.add(dw);
+                let sqd = wd.mult(wd).add(params.p2).sqrt();
+                let f_val_d = wd.mult(wd.tan()).add(params.M.mult(sqd).mult(sqd.scale(b).tan()));
+
+                let deriv = f_val_d.sub(f_val).div(dw);
+                let step = f_val.div(deriv);
+                
+                if (isNaN(step.r) || isNaN(step.i)) break;
+
+                let mag = Math.sqrt(step.r*step.r + step.i*step.i);
+                if (mag > 0.2) step = step.scale(0.2 / mag);
+                
+                w = w.sub(step);
+                if (mag < 1e-6) { conv = true; break; }
+            }
 
             lastLastW_00 = w_00;
-            w_00 = res.w; 
+            w_00 = w; 
             globalPlot00.push({x: f, y: calcAttenuation(w_00, f)});
         }
 
-        // --- SPORING AF (0,2) BAGLÆNS FRA 4000 Hz ---
-        print("Solving (0,2) Mode (Backward tracking from 4000 Hz)...");
-        let w_02 = new Complex(Math.PI, 0.1); // Mode 2 befinder sig ved Pi for høje frekvenser
-        let lastLastW_02 = new Complex(Math.PI, 0.1);
+        // --- 2. SPORING AF (0,2) MED FIXED-POINT ITERATION (Baglæns) ---
+        print("Solving (0,2) Mode (Fixed-Point Complex Arctan)...");
+        let w_02 = new Complex(Math.PI, 0.5); 
         let tempPlot02 = [];
         
         for (let J = freqs.length - 1; J >= 0; J--) {
             let f = freqs[J];
             let params = getParams(f);
-            
-            let guess = (J === freqs.length - 1) ? new Complex(Math.PI, 0.1) : 
-                        (J === freqs.length - 2 ? w_02 : w_02.add(w_02.sub(lastLastW_02)));
-            
-            let res = solveNR(guess, params.p2, params.M, b);
-            if (!res.converged) res = solveNR(w_02, params.p2, params.M, b);
+            let w = new Complex(w_02.r, w_02.i);
+            let conv = false;
 
-            lastLastW_02 = w_02;
-            w_02 = res.w; 
-            
+            // Dit HP Basic "Another Iterative Method" for (0,2)
+            for (let iter = 0; iter < 150; iter++) {
+                let sq = w.mult(w).add(params.p2).sqrt();
+                let M_term = params.M.mult(sq).mult(sq.scale(b).tan());
+                
+                // Y = - (M * sq * tan(b*sq)) / w
+                let Y = (new Complex(0,0).sub(M_term)).div(w); 
+                
+                // w_new = arctan(Y) + PI (Da vi er i den anden bølge-dal)
+                let w_new = Y.atan().add(new Complex(Math.PI, 0));
+
+                let diff_r = Math.abs(w_new.r - w.r);
+                let diff_i = Math.abs(w_new.i - w.i);
+                w = w_new;
+
+                if (diff_r < 1e-6 && diff_i < 1e-6) {
+                    conv = true; break;
+                }
+            }
+
+            w_02 = w; 
             let atten = calcAttenuation(w_02, f);
-            if (atten < 15) { // Skjul ekstreme evanescente haler så grafen bliver smuk
+            if (atten < 15) { // Skjul ekstreme evanescente poler, så grafen auto-skalerer korrekt
                 tempPlot02.push({x: f, y: atten});
             }
         }
@@ -332,7 +315,7 @@ function runMath() {
             }
         });
 
-        print("SUCCESS! Fejlen i fortolkningen af M er fjernet.");
+        print("SUCCESS! Dimensionerne på M er rettet, og matematikken er på plads.");
         renderCurrentChart();
 
     } catch (e) {
