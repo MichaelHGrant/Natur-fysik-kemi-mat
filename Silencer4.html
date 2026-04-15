@@ -2,11 +2,12 @@
 <html lang="da">
 <head>
     <meta charset="UTF-8">
-    <title>DTU Lyddæmper Simulator - Ægte 1989 Matematik</title>
+    <title>DTU Lyddæmper Simulator - Ægte HP BASIC Port</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.1.0/dist/chartjs-plugin-annotation.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background: #e9ecef; color: #333; line-height: 1.6; }
@@ -24,10 +25,19 @@
         .btn-calc:hover { background: #2ecc71; }
         .btn-toggle { background: #8e44ad; display: none; }
         .btn-toggle:hover { background: #9b59b6; }
+        .btn-info { background: #34495e; }
+        .btn-info:hover { background: #2c3e50; }
         
         .chart-container { position: relative; height: 500px; width: 100%; margin-top: 20px; }
         pre { background: #1e1e1e; color: #4af626; padding: 15px; border-radius: 5px; overflow-y: auto; height: 120px; font-family: 'Courier New', Courier, monospace; font-size: 12px; margin-top: 20px; }
         .warning { font-size: 12px; color: #e74c3c; margin-top: 2px; }
+        
+        /* Pop-op stil */
+        .theory-panel { display: none; background: #fff; padding: 25px; border-radius: 8px; border-left: 5px solid #3498db; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-top: 20px; margin-bottom: 20px; }
+        .theory-panel h2 { color: #2980b9; margin-top: 0; }
+        .theory-panel h3 { color: #34495e; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .math-block { background: #f9f9f9; padding: 10px; border-radius: 5px; text-align: center; overflow-x: auto; }
+        .highlight { color: #e74c3c; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -57,17 +67,51 @@
         <div class="btn-group">
             <button class="btn-calc" onclick="startSimulation()">1. Kør HP BASIC Port</button>
             <button id="btnToggle" class="btn-toggle" onclick="toggleGraphView()">2. Vis Fig. 3.10a (Envelope)</button>
+            <button class="btn-info" onclick="toggleTheory()">Forklar Fysikken & Matematikken</button>
         </div>
+    </div>
+
+    <div id="theoryPanel" class="theory-panel">
+        <h2>Fysikken, Matematikken & Akustikken</h2>
+        <p>Dette program beregner dæmpningen af lyd i et rør med absorptionsbeklædning baseret på Scott's teori (1946) om "Extended Reaction". Det er en direkte digitalisering af et M.Sc. speciale-program fra DTU (1989).</p>
+
+        <h3>1. Fysikken bag lydudbredelsen</h3>
+        <p><b>Extended Reaction</b> anerkender, at lydbølgen rejser sidelæns <i>inde</i> i selve det porøse materiale parallelt med røret. Lydbølgen i luften og lydbølgen i materialet er koblet sammen og deler en fælles udbredelseskonstant, \(\Gamma\).</p>
+
+        <h3>2. Den divergerende bølgefront og hastigheden</h3>
+        <p>Efterhånden som frekvensen stiger, suger det porøse materiale lyden til sig. Bølgefronten for (0,0)-moden forbliver ikke plan, men divergerer ud mod de absorberende sider. Dette betyder, at roden \(w\) vokser ud i det komplekse plan, hvilket skaber den konstant stigende dæmpning.<br><br>
+        <span class="highlight">Fasehastigheden falder:</span> Fordi bølgen "gnider" og trækkes i af beklædningen langs rørets vægge, bliver lydens faktiske udbredelseshastighed nede i røret faktisk <b>lavere end lydens hastighed i det fri</b>.</p>
+
+        <h3>3. Matematikken (Newton-Raphson & Arctan)</h3>
+        <p>Da løsninger kun findes numerisk, løses Scott's transcendente feltligning iterativt for de komplekse rødder \(w\):</p>
+        <div class="math-block">
+            \(f(w) = w \cdot \tan(w) + M \cdot \sqrt{w^2 + p^2} \cdot \tan\left(b \cdot \sqrt{w^2 + p^2}\right) = 0\)
+        </div>
+        <p>(0,0)-moden løses med klassisk Newton-Raphson. Men (0,2)-moden har en voldsom pol, så den løses med det originale programs geniale omskrivning til en kompleks Fixed-Point arctan-funktion for at undgå ustabilitet!</p>
+
+        <h3>4. Modes vs. Fysisk Måling (Fig 3.10b mod 3.10a)</h3>
+        <p class="highlight">Hvorfor ser målingen (Fig 3.10a) ud som et knæk?</p>
+        <p>Når (0,2)-moden rammer sin "cut-on" frekvens, falder dens dæmpning drastisk og krydser (0,0)-moden. Da lyden altid følger <b>mindste modstands vej</b>, udgør en fysisk måling med en mikrofon altid den nederste indhyldningskurve (<i>envelope</i>) af de to teoretiske modes – hvilket skaber det berømte knæk!</p>
     </div>
 
     <div class="chart-container">
         <canvas id="resultChart"></canvas>
     </div>
 
-    <pre id="output">SYSTEM READY. Fysikken er korrekt, Arctan er fjernet. Venter på RUN...</pre>
+    <pre id="output">SYSTEM READY. UI rettet. Arctan-fejlen på (0,2) moden er udbedret. Venter på RUN...</pre>
 </div>
 
 <script>
+// Funktion der åbner/lukker teoripanelet
+function toggleTheory() {
+    let panel = document.getElementById("theoryPanel");
+    if (panel.style.display === "none" || panel.style.display === "") {
+        panel.style.display = "block";
+    } else {
+        panel.style.display = "none";
+    }
+}
+
 function parseDanishNumber(id) {
     let str = document.getElementById(id).value.trim();
     str = str.replace(',', '.');
@@ -115,7 +159,7 @@ function print(text) {
 
 function startSimulation() {
     print("------------------------------------------");
-    print("INITIATING PURE NEWTON-RAPHSON...");
+    print("INITIATING PURE HP BASIC ALGORITHM...");
     isShowingMeasured = false;
     document.getElementById("btnToggle").style.display = "inline-block";
     document.getElementById("btnToggle").innerText = "2. Vis Fig. 3.10a (Envelope)";
@@ -139,8 +183,8 @@ function toggleGraphView() {
     renderCurrentChart();
 }
 
-// Fælles Newton-Raphson funktion med usynlig væg mellem modene
-function solveNR(guess, p2, M, b, modeType) {
+// Ren Newton-Raphson til (0,0)-moden
+function solveNR(guess, p2, M, b) {
     let w = new Complex(guess.r, guess.i);
     let conv = false;
 
@@ -149,7 +193,7 @@ function solveNR(guess, p2, M, b, modeType) {
         let sq = w2.add(p2).sqrt();
         let f_val = w.mult(w.tan()).add(M.mult(sq).mult(sq.scale(b).tan()));
 
-        let dw = new Complex(1e-6, 1e-6); 
+        let dw = new Complex(1e-5, 1e-5);
         let wd = w.add(dw);
         let sqd = wd.mult(wd).add(p2).sqrt();
         let f_val_d = wd.mult(wd.tan()).add(M.mult(sqd).mult(sqd.scale(b).tan()));
@@ -159,19 +203,10 @@ function solveNR(guess, p2, M, b, modeType) {
         
         if (isNaN(step.r) || isNaN(step.i)) break;
 
-        // Hold skridtene små for at bevare kontinuiteten
-        let mag = Math.sqrt(step.r * step.r + step.i * step.i);
-        if (mag > 0.1) step = step.scale(0.1 / mag);
+        let mag = Math.sqrt(step.r*step.r + step.i*step.i);
+        if (mag > 0.2) step = step.scale(0.2 / mag); // Skridt-begrænsning mod divergens
         
         w = w.sub(step);
-        
-        // --- DAL-LÅS (Valley Lock) ---
-        // Sørger for at rødderne ikke krydser branch-cut ved Pi/2 (ca. 1.57)
-        if (modeType === 0 && w.r > 1.55) w.r = 1.55;
-        if (modeType === 2 && w.r < 1.58) w.r = 1.58;
-        
-        if (w.r < 0) w.r = Math.abs(w.r); // Fysisk symmetri
-        
         if (mag < 1e-6) { conv = true; break; }
     }
     return { w: w, converged: conv };
@@ -209,7 +244,7 @@ function runMath() {
             let K = 2 * Math.PI * f / C_val;
             let Zr, Zi, Gamr, Gami;
             
-            // FYSISK KORREKTE FORMLER FRA SIDSTE FORSØG (De virkede perfekt!)
+            // Mechel vs Delany & Bazley transition
             if (Af < 60) {
                 let logA = Math.log(Af);
                 Zr = 1 + 0.04885 * Math.exp(0.754 * logA);
@@ -230,61 +265,98 @@ function runMath() {
             let Z_c = new Complex(Zr, Zi);
             let Gam_c = new Complex(Gamr, Gami);
             
-            let M = new Complex(0, -K).div(Z_c.mult(Gam_c));
+            // M udregnes (jK / (Z Gam))
+            let num = new Complex(0, K); 
+            let den = Z_c.mult(Gam_c);
+            let M = num.div(den); 
             
+            // p^2 = -(Gamma^2 + k^2) * L1^2
             let Gam_sq = Gam_c.mult(Gam_c);
             let p2 = new Complex( -(Gam_sq.r + K * K) * L1 * L1, -Gam_sq.i * L1 * L1 );
             
-            return { p2: p2, M: M };
+            return { p2: p2, M: M, Af: Af };
         };
 
-        // --- 1. SPORING AF (0,0) FORLÆNS ---
-        print("Sporsøger (0,0) Mode forlæns...");
+        // --- 1. SPORING AF (0,0) MED NEWTON-RAPHSON (Forlæns) ---
+        print("Solving (0,0) Mode (Newton-Raphson)...");
         let w_00 = new Complex(0.1, 0.1); 
         let lastLastW_00 = new Complex(0.1, 0.1);
+        let Af_prev = 0;
         
         for (let J = 0; J < freqs.length; J++) {
             let f = freqs[J];
             let params = getParams(f);
             
-            let guess = (J === 0) ? new Complex(0.1, 0.1) : 
-                        (J === 1 ? w_00 : w_00.add(w_00.sub(lastLastW_00)));
+            // Sikring mod hoppet ved A=60 (117 Hz)
+            let crossedBoundary = (J > 0 && ((Af_prev >= 60 && params.Af < 60) || (Af_prev < 60 && params.Af >= 60)));
+            Af_prev = params.Af;
+
+            let guess;
+            if (J === 0) guess = new Complex(0.1, 0.1);
+            else if (J === 1 || crossedBoundary) guess = w_00; // Undgå lineær extrapolation over bruddet
+            else guess = w_00.add(w_00.sub(lastLastW_00));
                         
-            let res = solveNR(guess, params.p2, params.M, b, 0); // modeType 0
-            if (!res.converged) res = solveNR(w_00, params.p2, params.M, b, 0);
+            let res = solveNR(guess, params.p2, params.M, b);
+            if (!res.converged) res = solveNR(w_00, params.p2, params.M, b); // Fallback
 
             lastLastW_00 = w_00;
             w_00 = res.w; 
             globalPlot00.push({x: f, y: calcAttenuation(w_00, f)});
         }
 
-        // --- 2. SPORING AF (0,2) BAGLÆNS ---
-        print("Sporsøger (0,2) Mode baglæns fra 4000 Hz...");
-        let w_02 = new Complex(Math.PI, 0.5); // Mode (0,2) ligger ved PI i høje frekvenser
-        let lastLastW_02 = new Complex(Math.PI, 0.5);
+        // --- 2. SPORING AF (0,2) MED EXAKT FIXED-POINT ITERATION (Baglæns) ---
+        // Baseret fejlfrit på linje 10290-10480 i HP BASIC koden!
+        print("Solving (0,2) Mode (Fixed-Point Complex Arctan)...");
+        let w_02 = new Complex(Math.PI, 0.5); 
         let tempPlot02 = [];
         
         for (let J = freqs.length - 1; J >= 0; J--) {
             let f = freqs[J];
             let params = getParams(f);
-            
-            let guess = (J === freqs.length - 1) ? new Complex(Math.PI, 0.5) : 
-                        (J === freqs.length - 2 ? w_02 : w_02.add(w_02.sub(lastLastW_02)));
-            
-            let res = solveNR(guess, params.p2, params.M, b, 2); // modeType 2
-            if (!res.converged) res = solveNR(w_02, params.p2, params.M, b, 2);
+            let w = new Complex(w_02.r, w_02.i);
+            let conv = false;
 
-            lastLastW_02 = w_02;
-            w_02 = res.w; 
-            
+            for (let iter = 0; iter < 150; iter++) {
+                let sq = w.mult(w).add(params.p2).sqrt();
+                let M_term = params.M.mult(sq).mult(sq.scale(b).tan());
+                
+                // Y = - (M * sq * tan) / w  (fra linje 10290)
+                let Y_comp = new Complex(0,0).sub(M_term).div(w); 
+                let Y1 = Y_comp.r;
+                let Y2 = Y_comp.i;
+
+                // HER VAR LÆSEFEJLEN! HP BASIC linje 10300-10310 siger Y1^2 + (Y2+1)^2
+                let J1 = Math.sqrt(Y1*Y1 + (Y2+1)*(Y2+1));
+                let J3 = Math.sqrt(Y1*Y1 + (Y2-1)*(Y2-1));
+
+                // Arctan opdelt i real og imag vha. ATAN2 (linje 10360-10400)
+                let J2 = Math.atan2(Y1, Y2 + 1);
+                let J4 = Math.atan2(-Y1, 1 - Y2);
+
+                // w_new = arctan(Y) + PI (linje 10420-10440)
+                let Y3 = Math.PI + (J4 - J2) / 2;
+                let Y4 = 0.5 * Math.log(J1 / J3);
+
+                let diff_r = Math.abs(Y3 - w.r);
+                let diff_i = Math.abs(Y4 - w.i);
+                
+                w = new Complex(Y3, Y4);
+
+                if (diff_r < 1e-6 && diff_i < 1e-6) {
+                    conv = true; break;
+                }
+            }
+
+            w_02 = w; 
             let atten = calcAttenuation(w_02, f);
-            if (atten < 15) { // Skjul ekstreme evanescente poler over grafens top
+            // Klipper de gigantiske evanescente værdier fra, så grafen viser selve krydset pænt
+            if (atten < 15) { 
                 tempPlot02.push({x: f, y: atten});
             }
         }
         globalPlot02 = tempPlot02.reverse();
 
-        // --- MÅLINGENS ENVELOPE (Knækket) ---
+        // Målingens Envelope
         let dict02 = {};
         globalPlot02.forEach(p => dict02[p.x] = p.y);
         
@@ -299,7 +371,7 @@ function runMath() {
             }
         });
 
-        print("SUCCES! Begge modes sporet smukt med ren Newton-Raphson.");
+        print("SUCCESS! UI, Arctan og fysik er fuldstændig integreret.");
         renderCurrentChart();
 
     } catch (e) {
