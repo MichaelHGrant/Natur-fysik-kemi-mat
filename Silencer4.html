@@ -2,19 +2,15 @@
 <html lang="da">
 <head>
     <meta charset="UTF-8">
-    <title>DTU Lyddæmper Simulator - Original HP BASIC Matematik</title>
+    <title>DTU Lyddæmper Simulator - HP BASIC Port</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.1.0/dist/chartjs-plugin-annotation.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background: #e9ecef; color: #333; line-height: 1.6; }
+        body { font-family: 'Courier New', Courier, monospace; padding: 20px; background: #e9ecef; color: #333; }
         .container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+        h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; font-family: 'Segoe UI', Tahoma, sans-serif;}
         
-        .control-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #dee2e6; }
+        .control-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #dee2e6; font-family: 'Segoe UI', Tahoma, sans-serif;}
         .input-group { display: flex; flex-direction: column; }
         label { font-weight: bold; margin-bottom: 5px; font-size: 14px; }
         input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
@@ -24,105 +20,49 @@
         .btn-calc { background: #27ae60; }
         .btn-calc:hover { background: #2ecc71; }
         .btn-toggle { background: #8e44ad; display: none; }
-        .btn-toggle:hover { background: #9b59b6; }
-        .btn-info { background: #34495e; }
-        .btn-info:hover { background: #2c3e50; }
         
         .chart-container { position: relative; height: 500px; width: 100%; margin-top: 20px; }
-        pre { background: #1e1e1e; color: #4af626; padding: 15px; border-radius: 5px; overflow-y: auto; height: 120px; font-family: 'Courier New', Courier, monospace; font-size: 12px; margin-top: 20px; }
-        
-        .theory-panel { display: none; background: #fff; padding: 25px; border-radius: 8px; border-left: 5px solid #3498db; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-top: 20px; margin-bottom: 20px; }
-        .theory-panel h2 { color: #2980b9; margin-top: 0; }
-        .theory-panel h3 { color: #34495e; border-bottom: 1px solid #eee; padding-bottom: 5px; }
-        .math-block { background: #f9f9f9; padding: 10px; border-radius: 5px; text-align: center; overflow-x: auto; }
-        .highlight { color: #e74c3c; font-weight: bold; }
-        .warning { font-size: 12px; color: #e74c3c; margin-top: 2px; }
+        pre { background: #1e1e1e; color: #4af626; padding: 15px; border-radius: 5px; overflow-y: auto; height: 150px; font-size: 12px; margin-top: 20px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1 id="mainTitle">Reproduktion af Fig. 3.10b (HP BASIC Matematik)</h1>
+    <h1 id="mainTitle">Fig. 3.10b - Drevet af 1989 HP BASIC</h1>
     
     <div class="control-panel">
         <div class="input-group">
-            <label>Strømningsmodstand (Flow res.) [N·s/m4]:</label>
+            <label>Flow resistivity (Sigma) [N·s/m4]:</label>
             <input type="text" id="inpFlow" value="8500">
-            <span class="warning">Skriv uden tusindtals-punktum (fx 8500)</span>
         </div>
         <div class="input-group">
-            <label>Lydens hastighed i fri luft, c [m/s]:</label>
+            <label>Speed of Sound, C [m/s]:</label>
             <input type="text" id="inpC" value="344,246">
         </div>
         <div class="input-group">
-            <label>Beklædningstykkelse, d [m]:</label>
+            <label>Lining thickness, d [m]:</label>
             <input type="text" id="inpLining" value="0,05">
         </div>
         <div class="input-group">
-            <label>Rørets halve bredde, l [m]:</label>
+            <label>Duct half-width, L1 [m]:</label>
             <input type="text" id="inpDuct" value="0,25">
         </div>
         
         <div class="btn-group">
-            <button class="btn-calc" onclick="startSimulation()">1. Beregn Data (Original Matematik)</button>
-            <button id="btnToggle" class="btn-toggle" onclick="toggleGraphView()">2. Skift til Måling (Fig 3.10a)</button>
-            <button class="btn-info" onclick="toggleTheory()">Forklar Fysikken & Matematikken</button>
+            <button class="btn-calc" onclick="startSimulation()">RUN HP BASIC PORT</button>
+            <button id="btnToggle" class="btn-toggle" onclick="toggleGraphView()">Show Fig. 3.10a (Envelope)</button>
         </div>
-    </div>
-
-    <div id="theoryPanel" class="theory-panel">
-        <h2>Fysikken, Matematikken & Akustikken</h2>
-        <p>Dette program beregner dæmpningen af lyd i et rør med absorptionsbeklædning baseret på Scott's teori (1946) om "Extended Reaction". Det er baseret præcist på den originale HP BASIC kode fra M.Sc. specialet (DTU, 1989).</p>
-
-        <h3>1. Fysikken bag lydudbredelsen</h3>
-        <p><b>Extended Reaction</b> anerkender, at lydbølgen rejser sidelæns <i>inde</i> i selve det porøse materiale parallelt med røret. Lydbølgen i luften og lydbølgen i materialet er koblet sammen og deler en fælles udbredelseskonstant, \(\Gamma\).</p>
-
-        <h3>2. Den divergerende bølgefront og hastigheden</h3>
-        <p>Efterhånden som frekvensen stiger, suger det porøse materiale lyden til sig. Bølgefronten for (0,0)-moden forbliver ikke plan, men divergerer ud mod de absorberende sider. Dette betyder, at roden \(w\) vokser ud i det komplekse plan, hvilket skaber den konstant stigende dæmpning.<br><br>
-        <span class="highlight">Fasehastigheden falder:</span> Fordi bølgen "gnider" og trækkes i af beklædningen langs rørets vægge, bliver lydens faktiske udbredelseshastighed nede i røret faktisk <b>lavere end lydens hastighed i det fri</b>.</p>
-
-        <h3>3. Matematikken (Newton-Raphson)</h3>
-        <p>Da løsninger kun findes numerisk, løses Scott's transcendente feltligning iterativt med komplekse tal:</p>
-        <div class="math-block">
-            \(f(w) = w \cdot \tan(w) + M \cdot \sqrt{w^2 + p^2} \cdot \tan\left(b \cdot \sqrt{w^2 + p^2}\right) = 0\)
-        </div>
-
-        <h3>4. Modes vs. Fysisk Måling (Fig 3.10b mod 3.10a)</h3>
-        <p class="highlight">Hvorfor ser målingen (Fig 3.10a) ud som et knæk?</p>
-        <p>Når (0,2)-moden rammer sin "cut-on" frekvens, falder dens dæmpning drastisk og krydser (0,0)-moden. Da lyden altid følger <b>mindste modstands vej</b>, udgør en fysisk måling med en mikrofon altid den nederste indhyldningskurve (<i>envelope</i>) af de to teoretiske modes – hvilket skaber knækket!</p>
     </div>
 
     <div class="chart-container">
         <canvas id="resultChart"></canvas>
     </div>
 
-    <pre id="output">System klar. HP BASIC algoritme indlæst...</pre>
+    <pre id="output">SYSTEM READY. WAITING FOR RUN COMMAND...</pre>
 </div>
 
 <script>
-// Funktion der konverterer input (Tillader dansk komma som decimal)
-function parseDanishNumber(id) {
-    let str = document.getElementById(id).value.trim();
-    str = str.replace(',', '.');
-    return parseFloat(str);
-}
-
-let globalPlot00 = [];
-let globalPlot02 = [];
-let globalPlotTotal = [];
-let isShowingMeasured = false; 
-
-function toggleTheory() {
-    let panel = document.getElementById("theoryPanel");
-    panel.style.display = (panel.style.display === "none" || panel.style.display === "") ? "block" : "none";
-}
-
-function print(text) {
-    let out = document.getElementById("output");
-    out.innerText += "\n" + text;
-    out.scrollTop = out.scrollHeight; 
-}
-
+// --- KOMPLEKS MATEMATIK BIBLIOTEK (Svarer til HP BASICs indbyggede C-funktioner) ---
 class Complex {
     constructor(r, i) { this.r = r; this.i = i; }
     add(c) { return new Complex(this.r + c.r, this.i + c.i); }
@@ -146,73 +86,61 @@ class Complex {
         if (den === 0) return new Complex(0, 0);
         return new Complex(Math.sin(2 * this.r) / den, Math.sinh(2 * this.i) / den);
     }
+    // Speciel Arctan for den komplekse iteration (Linje 10370-10400)
+    log() {
+        let mag = Math.sqrt(this.r * this.r + this.i * this.i);
+        let angle = Math.atan2(this.i, this.r);
+        return new Complex(Math.log(mag), angle);
+    }
 }
 
-// Klassisk, rå Newton-Raphson som i det oprindelige program. Ingen falske "locks".
-function solveNR(guess, p2, M, b) {
-    let w = new Complex(guess.r, guess.i);
-    let conv = false;
+function parseDanishNumber(id) {
+    let str = document.getElementById(id).value.trim().replace(',', '.');
+    return parseFloat(str);
+}
 
-    for (let iter = 0; iter < 100; iter++) {
-        let w2 = w.mult(w);
-        let sq = w2.add(p2).sqrt();
-        let f_val = w.mult(w.tan()).add(M.mult(sq).mult(sq.scale(b).tan()));
+let globalPlot00 = [];
+let globalPlot02 = [];
+let globalPlotTotal = [];
+let isShowingMeasured = false; 
 
-        let dw = new Complex(1e-5, 1e-5);
-        let wd = w.add(dw);
-        let sqd = wd.mult(wd).add(p2).sqrt();
-        let f_val_d = wd.mult(wd.tan()).add(M.mult(sqd).mult(sqd.scale(b).tan()));
-
-        let deriv = f_val_d.sub(f_val).div(dw);
-        let step = f_val.div(deriv);
-        
-        if (isNaN(step.r) || isNaN(step.i)) break;
-
-        // Mild skridtbegrænsning for ikke at skyde helt forbi (som Muller's metode forhindrer naturligt)
-        let mag = Math.sqrt(step.r * step.r + step.i * step.i);
-        if (mag > 0.2) step = step.scale(0.2 / mag);
-        
-        w = w.sub(step);
-        
-        if (mag < 1e-6) { conv = true; break; }
-    }
-    return { w: w, converged: conv };
+function print(text) {
+    let out = document.getElementById("output");
+    out.innerText += "\n" + text;
+    out.scrollTop = out.scrollHeight; 
 }
 
 const RHO = 1.205; 
 let chartInstance = null; 
 
 function startSimulation() {
-    let out = document.getElementById("output");
-    out.innerText = "Læser originale HP BASIC ligninger og starter iterering...";
+    print("Executing HP BASIC routines...");
     isShowingMeasured = false;
     document.getElementById("btnToggle").style.display = "inline-block";
-    document.getElementById("btnToggle").innerText = "2. Skift til Måling (Fig 3.10a)";
-    document.getElementById("mainTitle").innerText = "Reproduktion af Fig. 3.10b (HP BASIC Matematik)";
-    
+    document.getElementById("btnToggle").innerText = "Show Fig. 3.10a (Envelope)";
+    document.getElementById("mainTitle").innerText = "Reproduktion af Fig. 3.10b (HP BASIC)";
     setTimeout(runMath, 50);
 }
 
 function toggleGraphView() {
     if (globalPlot00.length === 0) return; 
-    
     isShowingMeasured = !isShowingMeasured;
     let btn = document.getElementById("btnToggle");
     let title = document.getElementById("mainTitle");
 
     if (isShowingMeasured) {
-        btn.innerText = "Skift tilbage til Modes (Fig 3.10b)";
-        title.innerText = "Reproduktion af Fig. 3.10a (Fysisk Måling)";
+        btn.innerText = "Show Fig. 3.10b (Modes)";
+        title.innerText = "Reproduktion af Fig. 3.10a (Envelope)";
     } else {
-        btn.innerText = "2. Skift til Måling (Fig 3.10a)";
-        title.innerText = "Reproduktion af Fig. 3.10b (HP BASIC Matematik)";
+        btn.innerText = "Show Fig. 3.10a (Envelope)";
+        title.innerText = "Reproduktion af Fig. 3.10b (HP BASIC)";
     }
     renderCurrentChart();
 }
 
 function runMath() {
     try {
-        let flowRes = parseDanishNumber("inpFlow");
+        let FlowRes = parseDanishNumber("inpFlow");
         let C_val = parseDanishNumber("inpC"); 
         let thick = parseDanishNumber("inpLining");
         let L1 = parseDanishNumber("inpDuct"); 
@@ -224,113 +152,181 @@ function runMath() {
         globalPlot02 = [];
         globalPlotTotal = [];
 
-        let lastW_00 = new Complex(0.1, 0.1); 
-        let lastLastW_00 = new Complex(0.1, 0.1); 
-
-        // Start (0,2) nær Pi for høje frekvenser
-        let lastW_02 = new Complex(Math.PI, 0.1); 
-        let lastLastW_02 = new Complex(Math.PI, 0.1); 
-
         let freqs = [];
-        for (let f = 62.5; f <= 4000; f += 2.5) {
-            freqs.push(f);
-        }
+        for (let f = 62.5; f <= 4000; f += 2.5) freqs.push(f);
 
-        let calcAttenuation = function(w_complex, f) {
-            let K = 2 * Math.PI * f / C_val;
-            let w_sq = w_complex.mult(w_complex);
-            let kl_sq = new Complex(K * L1, 0).mult(new Complex(K * L1, 0));
-            let gam_l = w_sq.sub(kl_sq).sqrt();
-            let Gamma = new Complex(gam_l.r / L1, gam_l.i / L1);
-            if (Gamma.r < 0) Gamma = new Complex(-Gamma.r, -Gamma.i);
-            return (8.686 * Gamma.r) * fullDuctWidth;
-        };
-
-        // EXAKT KOPI AF ORIGINAL HP BASIC MATEMATIK
-        let getParams = function(f) {
-            let Af = flowRes / RHO / f;
-            let K = 2 * Math.PI * f / C_val;
+        // --- SUB Material (Linje 7920 - 8280) ---
+        let getMaterialParams = function(f) {
+            let Af = FlowRes / RHO / f;
+            let Kf = 2 * Math.PI * f / C_val;
             let Zr, Zi, Gamr, Gami;
             
             if (Af < 60) {
                 let logA = Math.log(Af);
                 Zr = 1 + 0.04885 * Math.exp(0.754 * logA);
                 Zi = -0.087 * Math.exp(0.7307 * logA);
-                Gamr = K * 0.189 * Math.exp(0.6185 * logA);
-                Gami = K * (1 + 0.0978 * Math.exp(-0.6929 * logA)); // NEGATIV EKSPONENT GENINDSAT
+                Gamr = Kf * 0.189 * Math.exp(0.6185 * logA);
+                Gami = Kf * (1 + 0.0978 * Math.exp(-0.6929 * logA)); [span_2](start_span)// Som i linje 8160[span_2](end_span)
             } else {
                 let term = new Complex(-1.4664, 0.2115 * Af);
                 let sqrtTerm = term.sqrt();
-                Gamr = K * sqrtTerm.r;
-                Gami = K * sqrtTerm.i;
+                Gamr = Kf * sqrtTerm.r;
+                Gami = Kf * sqrtTerm.i;
                 let numerator = new Complex(Af / (2 * Math.PI), 1.4035);
                 let Z_val = numerator.div(sqrtTerm);
                 Zr = Z_val.r;
                 Zi = Z_val.i;
             }
-
-            let Z_c = new Complex(Zr, Zi);
-            let Gam_c = new Complex(Gamr, Gami);
-            
-            // RHO * C * K faktoren genindsat i tælleren for M - PRÆCIS som i HP BASIC!
-            let M = (new Complex(0, -RHO * C_val * K)).div(Z_c.mult(Gam_c));
-            
-            let hl_complex = Gam_c.scale(L1); 
-            let kl_complex = new Complex(K * L1, 0);
-            let p2 = hl_complex.mult(hl_complex).sub(kl_complex.mult(kl_complex));
-            return { p2: p2, M: M };
+            return { Zr: Zr, Zi: Zi, Gamr: Gamr, Gami: Gami, Kf: Kf };
         };
 
-        // FORLÆNS SPORING FOR (0,0)
-        for (let i = 0; i < freqs.length; i++) {
-            let f = freqs[i];
-            let params = getParams(f);
+        // --- SUB Extended (Linje 8870) Forlæns kørsel ---
+        let Wre = []; let Wim = []; // Historik for sporing
+        
+        print("Solving for K4=0 (Newton-Raphson)...");
+        let w_current = new Complex(0.1, 0.1); 
+        
+        for (let J = 0; J < freqs.length; J++) {
+            let f = freqs[J];
+            let mat = getMaterialParams(f);
             
-            let guess00;
-            if (i === 0) guess00 = new Complex(0.1, 0.1);
-            else if (i === 1) guess00 = new Complex(lastW_00.r, lastW_00.i);
-            else guess00 = lastW_00.add(lastW_00.sub(lastLastW_00)); 
+            let Z_c = new Complex(mat.Zr, mat.Zi);
+            let Gam_c = new Complex(mat.Gamr, mat.Gami);
+            
+            [span_3](start_span)// M udregnes (Linje 9250-9300)[span_3](end_span)
+            // jK rho C / (Z Gam)
+            let num = new Complex(0, mat.Kf * RHO * C_val);
+            let den = Z_c.mult(Gam_c);
+            let M = num.div(den); 
+            
+            let hl_complex = Gam_c.scale(L1); 
+            let kl_complex = new Complex(mat.Kf * L1, 0);
+            let p2 = hl_complex.mult(hl_complex).sub(kl_complex.mult(kl_complex)); // p^2
 
-            let res00 = solveNR(guess00, params.p2, params.M, b);
-            if (!res00.converged) res00 = solveNR(lastW_00, params.p2, params.M, b);
+            let conv = false;
+            let w = new Complex(w_current.r, w_current.i);
+            
+            [span_4](start_span)[span_5](start_span)// Newton Raphson Loop (Linje 9330 - 10020)[span_4](end_span)[span_5](end_span)
+            for (let T = 1; T <= 100; T++) {
+                let w2 = w.mult(w);
+                let sq = w2.add(p2).sqrt(); // X1, X2
+                let tan_term = sq.scale(b).tan(); // X3, X4
+                
+                let f1 = w.mult(w.tan());
+                let f2 = M.mult(sq).mult(tan_term); // X7, X8
+                let f_val = f1.add(f2); // F1, F2
 
-            if (res00.converged) {
-                lastLastW_00 = lastW_00;
-                lastW_00 = res00.w;
-                globalPlot00.push({x: f, y: calcAttenuation(res00.w, f)});
+                let dw = new Complex(1e-5, 1e-5);
+                let wd = w.add(dw);
+                let w2d = wd.mult(wd);
+                let sqd = w2d.add(p2).sqrt();
+                let f1d = wd.mult(wd.tan());
+                let f2d = M.mult(sqd).mult(sqd.scale(b).tan());
+                let f_val_d = f1d.add(f2d);
+
+                let deriv = f_val_d.sub(f_val).div(dw); // F3, F4
+                let step = f_val.div(deriv); // F5, F6
+                
+                if (isNaN(step.r) || isNaN(step.i)) break;
+
+                // Afviger en anelse fra din kode her: Bruger en "smooth" limiter for stabilitet
+                let mag = Math.sqrt(step.r * step.r + step.i * step.i);
+                if (mag > 0.2) step = step.scale(0.2 / mag);
+                
+                w = w.sub(step);
+                
+                if (Math.abs(step.r) < 1e-6 && Math.abs(step.i) < 1e-6) {
+                    conv = true; break;
+                }
+            }
+
+            [span_6](start_span)// Fejlkontrol (Linje 10070 - 10190)[span_6](end_span)
+            if (conv) {
+                Wre.push(w.r); Wim.push(w.i);
+                w_current = w;
+                
+                let w_sq = w.mult(w);
+                let kl_sq = new Complex(mat.Kf * L1, 0).mult(new Complex(mat.Kf * L1, 0));
+                let gam_l = w_sq.sub(kl_sq).sqrt();
+                let Gamma = new Complex(gam_l.r / L1, gam_l.i / L1);
+                if (Gamma.r < 0) Gamma = new Complex(-Gamma.r, -Gamma.i);
+                globalPlot00.push({x: f, y: (8.686 * Gamma.r) * fullDuctWidth});
             } else {
-                lastLastW_00 = lastW_00;
+                // Ekstrapolerer hvis NR fejler
+                if (Wre.length >= 2) {
+                    let last_r = Wre[Wre.length-1]; let last_i = Wim[Wim.length-1];
+                    w_current = new Complex(last_r, last_i);
+                }
             }
         }
 
-        // BAGLÆNS SPORING FOR (0,2) (Starter fra 4000 Hz hvor moden er udbredende og w er tæt på Pi)
+        [span_7](start_span)// --- SUB Extended (Linje 10290 - 10480)[span_7](end_span) Fixed Point iteration for K4=1 ---
+        print("Solving for K4=1 (Fixed-Point Iteration)...");
+        let w_02 = new Complex(Math.PI, 0.5); // Startgæt for (0,2)
+        
         let tempPlot02 = [];
-        for (let i = freqs.length - 1; i >= 0; i--) {
-            let f = freqs[i];
-            let params = getParams(f);
+        for (let J = freqs.length - 1; J >= 0; J--) { // Regner baglæns for stabilitet
+            let f = freqs[J];
+            let mat = getMaterialParams(f);
             
-            let guess02;
-            if (i === freqs.length - 1) guess02 = new Complex(Math.PI, 0.1);
-            else if (i === freqs.length - 2) guess02 = new Complex(lastW_02.r, lastW_02.i);
-            else guess02 = lastW_02.add(lastW_02.sub(lastLastW_02)); 
+            let Z_c = new Complex(mat.Zr, mat.Zi);
+            let Gam_c = new Complex(mat.Gamr, mat.Gami);
+            
+            let num = new Complex(0, mat.Kf * RHO * C_val);
+            let den = Z_c.mult(Gam_c);
+            let M = num.div(den); 
+            
+            let hl_complex = Gam_c.scale(L1); 
+            let kl_complex = new Complex(mat.Kf * L1, 0);
+            let p2 = hl_complex.mult(hl_complex).sub(kl_complex.mult(kl_complex)); 
 
-            let res02 = solveNR(guess02, params.p2, params.M, b);
-            if (!res02.converged) res02 = solveNR(lastW_02, params.p2, params.M, b);
+            let conv = false;
+            let w = new Complex(w_02.r, w_02.i);
 
-            if (res02.converged) {
-                lastLastW_02 = lastW_02;
-                lastW_02 = res02.w;
-                let atten = calcAttenuation(res02.w, f);
-                if (atten < 20) { // Klip off-chart evanescente haler af, så grafen auto-skalerer smukt
+            // Din "Another Iterative Method" fra HP Basic
+            for (let T = 1; T <= 150; T++) {
+                let w2 = w.mult(w);
+                let sq = w2.add(p2).sqrt(); 
+                let M_term = M.mult(sq).mult(sq.scale(b).tan()); // -X7, -X8 (M*sqrt*tan(b*sqrt))
+                
+                // Y1, Y2 = -M_term / w
+                let Y_complex = (new Complex(0,0).sub(M_term)).div(w); 
+                
+                // Formel for w ud fra j/2 * log( (1-Y) / (1+Y) )
+                let one_minus_Y = new Complex(1, 0).sub(Y_complex);
+                let one_plus_Y = new Complex(1, 0).add(Y_complex);
+                let log_term = one_minus_Y.div(one_plus_Y).log();
+                
+                // Gang med j/2
+                let w_new = new Complex(-log_term.i / 2, log_term.r / 2);
+
+                let diff_r = Math.abs(w_new.r - w.r);
+                let diff_i = Math.abs(w_new.i - w.i);
+                
+                w = w_new;
+
+                if (diff_r < 1e-6 && diff_i < 1e-6) {
+                    conv = true; break;
+                }
+            }
+
+            if (conv) {
+                w_02 = w;
+                let w_sq = w.mult(w);
+                let kl_sq = new Complex(mat.Kf * L1, 0).mult(new Complex(mat.Kf * L1, 0));
+                let gam_l = w_sq.sub(kl_sq).sqrt();
+                let Gamma = new Complex(gam_l.r / L1, gam_l.i / L1);
+                if (Gamma.r < 0) Gamma = new Complex(-Gamma.r, -Gamma.i);
+                
+                let atten = (8.686 * Gamma.r) * fullDuctWidth;
+                if (atten < 20) { // Klip off-chart evanescente haler
                     tempPlot02.push({x: f, y: atten});
                 }
-            } else {
-                lastLastW_02 = lastW_02;
             }
         }
         globalPlot02 = tempPlot02.reverse();
 
-        // SAMLET MÅLING (Envelope for Fig 3.10a)
+        // Målingens envelope
         let dict02 = {};
         globalPlot02.forEach(p => dict02[p.x] = p.y);
         
@@ -345,11 +341,11 @@ function runMath() {
             }
         });
 
-        print("Løsninger fundet ved hjælp af de rene HP BASIC formler!");
+        print("DONE. HP BASIC logic executed.");
         renderCurrentChart();
 
     } catch (e) {
-        print(`[MATEMATISK FEJL]: ${e.message}`);
+        print(`[ERROR]: ${e.message}`);
     }
 }
 
@@ -358,7 +354,6 @@ function renderCurrentChart() {
     if (chartInstance) { chartInstance.destroy(); }
     
     let datasets = [];
-    let annotations = {};
 
     if (isShowingMeasured) {
         datasets.push({
@@ -371,14 +366,6 @@ function renderCurrentChart() {
             backgroundColor: 'rgba(52, 73, 94, 0.1)',
             tension: 0.1
         });
-        
-        let labelYTotal = globalPlotTotal.find(p => p.x >= 1000)?.y || 0;
-        annotations.labelTotal = {
-            type: 'label', xValue: 1000, yValue: labelYTotal + 1,
-            backgroundColor: 'rgba(255, 255, 255, 0.8)', content: 'Målt Envelope',
-            font: { size: 14, weight: 'bold' }, color: '#2c3e50'
-        };
-
     } else {
         datasets.push({
             label: '(0,0) Mode',
@@ -398,20 +385,6 @@ function renderCurrentChart() {
             fill: false,
             tension: 0.1
         });
-
-        let labelY00 = globalPlot00.find(p => p.x >= 2000)?.y || 0;
-        let labelY02 = globalPlot02.find(p => p.x >= 1200)?.y || 0;
-        
-        annotations.label00 = {
-            type: 'label', xValue: 2000, yValue: labelY00 - 0.6,
-            backgroundColor: 'rgba(255, 255, 255, 0.8)', content: '(0,0)',
-            font: { size: 14, weight: 'bold' }, color: '#2980b9'
-        };
-        annotations.label02 = {
-            type: 'label', xValue: 1200, yValue: (labelY02 > 9 ? 8.5 : labelY02 + 0.6),
-            backgroundColor: 'rgba(255, 255, 255, 0.8)', content: '(0,2)',
-            font: { size: 14, weight: 'bold' }, color: '#e74c3c'
-        };
     }
 
     chartInstance = new Chart(ctx, {
@@ -434,8 +407,7 @@ function renderCurrentChart() {
                 }
             },
             plugins: {
-                zoom: { pan: { enabled: true, mode: 'xy' }, zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' } },
-                annotation: { annotations: annotations }
+                zoom: { pan: { enabled: true, mode: 'xy' }, zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' } }
             }
         }
     });
