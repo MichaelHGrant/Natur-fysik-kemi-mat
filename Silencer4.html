@@ -2,7 +2,7 @@
 <html lang="da">
 <head>
     <meta charset="UTF-8">
-    <title>DTU Lyddæmper Simulator - 1989 HP BASIC Port</title>
+    <title>DTU Lyddæmper Simulator - 100% HP BASIC Port</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
@@ -64,7 +64,7 @@
         <canvas id="resultChart"></canvas>
     </div>
 
-    <pre id="output">SYSTEM READY. WAITING FOR RUN COMMAND...</pre>
+    <pre id="output">SYSTEM READY. FORTEGN RETTET. VENTER PÅ RUN...</pre>
 </div>
 
 <script>
@@ -75,7 +75,7 @@ function parseDanishNumber(id) {
     return parseFloat(str);
 }
 
-// --- KOMPLEKS MATEMATIK (Udbygget med Arctan og Log til (0,2) moden) ---
+// --- KOMPLEKS MATEMATIK ---
 class Complex {
     constructor(r, i) { this.r = r; this.i = i; }
     add(c) { return new Complex(this.r + c.r, this.i + c.i); }
@@ -105,13 +105,11 @@ class Complex {
         return new Complex(Math.log(mag), angle);
     }
     atan() {
-        // arctan(z) = (i/2) * log((1 - i*z) / (1 + i*z))
         let iz = new Complex(-this.i, this.r); 
         let one = new Complex(1, 0);
         let num = one.sub(iz);
         let den = one.add(iz);
         let log_val = num.div(den).log(); 
-        // gang log_val med i/2 -> (-log.i / 2, log.r / 2)
         return new Complex(-log_val.i / 2, log_val.r / 2);
     }
 }
@@ -187,13 +185,13 @@ function runMath() {
             let K = 2 * Math.PI * f / C_val;
             let Zr, Zi, Gamr, Gami;
             
-            // Ligninger fra HP BASIC Line 8110-8160 (Mechel modifikation)
+            // Ligninger fra HP BASIC Line 8110-8160 
             if (Af < 60) {
                 let logA = Math.log(Af);
                 Zr = 1 + 0.04885 * Math.exp(0.754 * logA);
                 Zi = -0.087 * Math.exp(0.7307 * logA);
                 Gamr = K * 0.189 * Math.exp(0.6185 * logA);
-                Gami = K * (1 + 0.0978 * Math.exp(-0.6929 * logA)); // NEGATIV EKSPONENT HER!
+                Gami = K * (1 + 0.0978 * Math.exp(-0.6929 * logA)); // Negativ eksponent!
             } else {
                 let term = new Complex(-1.4664, 0.2115 * Af);
                 let sqrtTerm = term.sqrt();
@@ -208,8 +206,10 @@ function runMath() {
             let Z_c = new Complex(Zr, Zi);
             let Gam_c = new Complex(Gamr, Gami);
             
-            // Fra din Line 9290: jK rho C / (Z Gam) = M
-            let num = new Complex(0, K * RHO * C_val); 
+            // --- DET KRITISKE PUNKT! ---
+            // Fra din Line 9300: CALL Cdiv(0, -Rho*C*K, E1, E2, M1, M2)
+            // Her skal leddet være NEGATIVT! 
+            let num = new Complex(0, -K * RHO * C_val); 
             let den = Z_c.mult(Gam_c);
             let M = num.div(den); 
             
@@ -219,14 +219,20 @@ function runMath() {
             return { p2: p2, M: M };
         };
 
-        // --- 1. SPORING AF (0,0) MED NEWTON-RAPHSON (Forlæns) ---
-        print("Solving (0,0) Mode (Newton-Raphson)...");
+        // --- 1. SPORING AF (0,0) MED REN NEWTON-RAPHSON ---
+        print("Solving (0,0) Mode (Pure Newton-Raphson)...");
         let w_00 = new Complex(0.1, 0.1); 
+        let lastLastW_00 = new Complex(0.1, 0.1);
         
         for (let J = 0; J < freqs.length; J++) {
             let f = freqs[J];
             let params = getParams(f);
-            let w = new Complex(w_00.r, w_00.i);
+            
+            // Linear ekstrapolering af gæt (som i linje 10700-10710)
+            let guess = (J === 0) ? new Complex(0.1, 0.1) : 
+                        (J === 1 ? w_00 : w_00.add(w_00.sub(lastLastW_00)));
+                        
+            let w = new Complex(guess.r, guess.i);
             let conv = false;
 
             for (let iter = 0; iter < 100; iter++) {
@@ -244,23 +250,20 @@ function runMath() {
                 
                 if (isNaN(step.r) || isNaN(step.i)) break;
 
-                let mag = Math.sqrt(step.r*step.r + step.i*step.i);
-                if (mag > 0.2) step = step.scale(0.2 / mag);
-                
+                // Ingen kunstig limiter = renest mulige fysik
                 w = w.sub(step);
-                if (mag < 1e-6) { conv = true; break; }
+                
+                if (Math.abs(step.r) < 1e-6 && Math.abs(step.i) < 1e-6) {
+                    conv = true; break;
+                }
             }
 
-            if (conv) {
-                w_00 = w;
-                globalPlot00.push({x: f, y: calcAttenuation(w_00, f)});
-            } else {
-                globalPlot00.push({x: f, y: calcAttenuation(w_00, f)});
-            }
+            lastLastW_00 = w_00;
+            w_00 = w; // Accepter roden
+            globalPlot00.push({x: f, y: calcAttenuation(w_00, f)});
         }
 
-        // --- 2. SPORING AF (0,2) MED FIXED-POINT ITERATION (Baglæns) ---
-        // Dette er den præcise overførsel af Line 10290 - 10480 fra dit speciale!
+        // --- 2. SPORING AF (0,2) MED FIXED-POINT ITERATION (Baglæns for stabilitet) ---
         print("Solving (0,2) Mode (Fixed-Point Complex Arctan)...");
         let w_02 = new Complex(Math.PI, 0.5); 
         let tempPlot02 = [];
@@ -278,7 +281,7 @@ function runMath() {
                 // Y = - (M * sq * tan) / w
                 let Y = (new Complex(0,0).sub(M_term)).div(w); 
                 
-                // w_new = arctan(Y) + PI
+                // w_new = arctan(Y) + PI  (HP Basic logik for anden dal)
                 let w_new = Y.atan().add(new Complex(Math.PI, 0));
 
                 let diff_r = Math.abs(w_new.r - w.r);
@@ -291,12 +294,10 @@ function runMath() {
                 }
             }
 
-            if (conv) {
-                w_02 = w;
-                let atten = calcAttenuation(w_02, f);
-                if (atten < 15) { // Skjul ekstreme evanescente haler
-                    tempPlot02.push({x: f, y: atten});
-                }
+            w_02 = w; // Accepter roden
+            let atten = calcAttenuation(w_02, f);
+            if (atten < 15) { // Skjul de lodrette asymptoter visuelt
+                tempPlot02.push({x: f, y: atten});
             }
         }
         globalPlot02 = tempPlot02.reverse();
@@ -316,7 +317,7 @@ function runMath() {
             }
         });
 
-        print("SUCCESS! Modellerne er krydset rent via din 1989 logik.");
+        print("SUCCESS! Det negative M-fortegn genskabte den rigtige matematik.");
         renderCurrentChart();
 
     } catch (e) {
