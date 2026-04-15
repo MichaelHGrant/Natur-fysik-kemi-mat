@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polarisering & Dobbeltbrydning Laboratorium</title>
+    <style>
+        :root {
+            --primary: #2980b9;
+            --secondary: #2c3e50;
+            --bg: #f0f2f5;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+        }
+
+        h1 {
+            color: var(--secondary);
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        /* --- UI Controls --- */
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        button {
+            background-color: white;
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            padding: 10px 20px;
+            font-size: 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+
+        button:hover {
+            background-color: #e8f4fc;
+        }
+
+        button.active {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        #infoBtn {
+            background-color: var(--secondary);
+            border-color: var(--secondary);
+            color: white;
+        }
+
+        #infoBtn:hover {
+            background-color: #1a252f;
+        }
+
+        /* --- Fysik Info Panel --- */
+        #physicsInfo {
+            display: none;
+            background: white;
+            max-width: 600px;
+            padding: 20px 30px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            border-left: 5px solid var(--primary);
+            line-height: 1.6;
+        }
+
+        #physicsInfo h3 {
+            margin-top: 0;
+            color: var(--primary);
+        }
+
+        /* --- Simulation Area --- */
+        .simulation-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            margin: 20px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 50%;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+            border: 10px solid #34495e;
+            overflow: hidden;
+            background-color: #fff;
+            /* Lyskilde mønster */
+            background-image: repeating-linear-gradient(45deg, #eee 25%, transparent 25%, transparent 75%, #eee 75%, #eee), repeating-linear-gradient(45deg, #eee 25%, #fff 25%, #fff 75%, #eee 75%, #eee);
+            background-position: 0 0, 10px 10px;
+            background-size: 20px 20px;
+        }
+
+        .layer {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+        }
+
+        /* Nederste filter */
+        #filter1 {
+            z-index: 1;
+            background-color: rgba(100, 150, 200, 0.2);
+            background-image: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.15) 3px, rgba(0,0,0,0.15) 4px);
+        }
+
+        /* Materialet imellem filtrene (Mørke / Spændt plast / Folie) */
+        #middleLayer {
+            z-index: 2;
+            width: 95%;
+            height: 95%;
+            mix-blend-mode: multiply;
+        }
+
+        /* Øverste roterende filter */
+        #filter2 {
+            z-index: 3;
+            background-color: rgba(100, 150, 200, 0.2);
+            background-image: repeating-linear-gradient(90deg, transparent, transparent 3px, rgba(0,0,0,0.15) 3px, rgba(0,0,0,0.15) 4px);
+            transition: transform 0.05s linear;
+        }
+
+        /* --- Skyder --- */
+        .controls {
+            background: #fff;
+            padding: 20px 40px;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            text-align: center;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            margin: 15px 0;
+            cursor: pointer;
+        }
+
+        .angle-display {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Polariserings-laboratoriet</h1>
+
+    <div class="toolbar">
+        <button id="btnMode1" class="mode-btn active" onclick="setMode(1)">1. Kun Filtre</button>
+        <button id="btnMode2" class="mode-btn" onclick="setMode(2)">2. Uensartet Plast</button>
+        <button id="btnMode3" class="mode-btn" onclick="setMode(3)">3. Ensartet Plastfolie</button>
+        <button id="infoBtn" onclick="toggleInfo()">📖 Fysikken Bag</button>
+    </div>
+
+    <div id="physicsInfo">
+        <h3>Fysikken bag de tre tilfælde</h3>
+        <p><strong>1) Kun filtre (Ingen plastik):</strong> Når lyset passerer det første filter, bliver det polariseret i én retning. Det andet filter (analysatoren) blokerer lyset afhængigt af vinklen. Dette beskrives af <em>Malus' lov</em>: $I = I_0 \cos^2(\theta)$. Ved præcis 90 grader blokeres alt lys (krydspolarisering), og feltet bliver helt sort.</p>
+        
+        <p><strong>2) Filtre med et stykke plast (Indre spændinger):</strong> Almindelig gennemsigtig plast (som en plastkasse eller en lineal) har ofte uensartede indre spændinger fra støbningen. Dette gør materialet lokalt <em>dobbeltbrydende</em> (fotoelasticitet). Fordi tykkelsen og spændingen varierer, skaber det et komplekst, regnbuefarvet interferensmønster, der ændrer sig uregelmæssigt, når du roterer filtret.</p>
+
+        <p><strong>3) Filtre med plastfolie (Uniform orientering):</strong> Plastfolie strækkes under produktionen, hvilket tvinger alle de lange polymermolekyler til at pege i samme retning. Dette gør hele fladen uniformt dobbeltbrydende – den fungerer som en optisk <em>bølgeplade</em>. Den forsinker en bestemt bølgelængde uniformt over hele fladen. Når du drejer filtret, skifter interferensen mellem to faste farver, ofte komplementærfarver (f.eks. blå og rødlig/orange).</p>
+    </div>
+
+    <div class="simulation-container">
+        <div id="filter1" class="layer"></div>
+        <div id="middleLayer" class="layer"></div>
+        <div id="filter2" class="layer"></div>
+    </div>
+
+    <div class="controls">
+        <label for="angleSlider">Vinkel på øverste filter:</label>
+        <input type="range" id="angleSlider" min="0" max="180" value="0">
+        <div class="angle-display"><span id="angleValue">0</span>° grader</div>
+    </div>
+
+    <script>
+        let currentMode = 1;
+        const slider = document.getElementById('angleSlider');
+        const filter2 = document.getElementById('filter2');
+        const middleLayer = document.getElementById('middleLayer');
+        const angleValueDisplay = document.getElementById('angleValue');
+        const infoPanel = document.getElementById('physicsInfo');
+
+        // Knapper til UI
+        const btns = [
+            document.getElementById('btnMode1'),
+            document.getElementById('btnMode2'),
+            document.getElementById('btnMode3')
+        ];
+
+        // Toggler info panelet
+        function toggleInfo() {
+            if (infoPanel.style.display === 'block') {
+                infoPanel.style.display = 'none';
+            } else {
+                infoPanel.style.display = 'block';
+            }
+        }
+
+        // Skifter mellem de tre tilstande
+        function setMode(mode) {
+            currentMode = mode;
+            
+            // Opdater knap-styling
+            btns.forEach((btn, index) => {
+                if (index + 1 === mode) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            // Kør opdateringen for at sætte det visuelle ud fra den nye tilstand
+            updateSimulation();
+        }
+
+        // Opdaterer simuleringen baseret på vinkel og aktiv tilstand
+        function updateSimulation() {
+            const angleInDegrees = parseInt(slider.value);
+            angleValueDisplay.textContent = angleInDegrees;
+            
+            // Roter gittermønsteret på det øverste filter
+            filter2.style.transform = `rotate(${angleInDegrees}deg)`;
+
+            const angleInRadians = angleInDegrees * (Math.PI / 180);
+
+            // Nulstil styling på mellemlaget
+            middleLayer.style.backgroundImage = 'none';
+            middleLayer.style.backgroundColor = 'transparent';
+            middleLayer.style.filter = 'none';
+            middleLayer.style.opacity = '1';
+
+            if (currentMode === 1) {
+                // TILFÆLDE 1: Malus' lov (Kun filtre)
+                // Lyset bliver mørkere mod 90 grader
+                const lightIntensity = Math.pow(Math.cos(angleInRadians), 2);
+                middleLayer.style.backgroundColor = '#000';
+                middleLayer.style.opacity = 1 - lightIntensity;
+            
+            } else if (currentMode === 2) {
+                // TILFÆLDE 2: Uensartet plast (Fotoelasticitet)
+                // Vi skaber en regnbue-gradient og hue-roterer den
+                middleLayer.style.backgroundImage = 'radial-gradient(circle at center, #0ff, #f0f, #ff0, #0f0, #00f, #f00, transparent)';
+                const hueRotateValue = angleInDegrees * 2;
+                
+                // Gør farverne kraftigst omkring 45 grader (i forhold til krydsede filtre)
+                const normalizedAngle = Math.abs(angleInDegrees % 180 - 90);
+                const brightnessValue = 80 + (normalizedAngle / 90) * 40; 
+                
+                middleLayer.style.filter = `hue-rotate(${hueRotateValue}deg) contrast(180%) brightness(${brightnessValue}%)`;
+                middleLayer.style.opacity = '0.85';
+
+            } else if (currentMode === 3) {
+                // TILFÆLDE 3: Uniform plastfolie (Bølgeplade)
+                // Blander uniformt mellem to farver (Blålig til Orange/Rød)
+                const color1 = { r: 40, g: 120, b: 200 }; 
+                const color2 = { r: 210, g: 80, b: 40 };
+
+                // Sinus-kvadreret interpolation mellem farverne
+                const mixRatio = Math.pow(Math.sin(angleInRadians), 2);
+
+                const r = Math.round(color1.r + (color2.r - color1.r) * mixRatio);
+                const g = Math.round(color1.g + (color2.g - color1.g) * mixRatio);
+                const b = Math.round(color1.b + (color2.b - color1.b) * mixRatio);
+
+                middleLayer.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.85)`;
+            }
+        }
+
+        // Lyt på skyderen og initialiser
+        slider.addEventListener('input', updateSimulation);
+        updateSimulation(); // Sætter initial tilstand
+
+    </script>
+</body>
+</html>
