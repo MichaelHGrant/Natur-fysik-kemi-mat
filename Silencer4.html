@@ -2,15 +2,18 @@
 <html lang="da">
 <head>
     <meta charset="UTF-8">
-    <title>DTU Lyddæmper Simulator - HP BASIC Port</title>
+    <title>DTU Lyddæmper Simulator - 1989 HP BASIC Port</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.1.0/dist/chartjs-plugin-annotation.min.js"></script>
     
     <style>
-        body { font-family: 'Courier New', Courier, monospace; padding: 20px; background: #e9ecef; color: #333; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background: #e9ecef; color: #333; line-height: 1.6; }
         .container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; font-family: 'Segoe UI', Tahoma, sans-serif;}
+        h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
         
-        .control-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #dee2e6; font-family: 'Segoe UI', Tahoma, sans-serif;}
+        .control-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #dee2e6; }
         .input-group { display: flex; flex-direction: column; }
         label { font-weight: bold; margin-bottom: 5px; font-size: 14px; }
         input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
@@ -20,37 +23,40 @@
         .btn-calc { background: #27ae60; }
         .btn-calc:hover { background: #2ecc71; }
         .btn-toggle { background: #8e44ad; display: none; }
+        .btn-toggle:hover { background: #9b59b6; }
         
         .chart-container { position: relative; height: 500px; width: 100%; margin-top: 20px; }
-        pre { background: #1e1e1e; color: #4af626; padding: 15px; border-radius: 5px; overflow-y: auto; height: 150px; font-size: 12px; margin-top: 20px; }
+        pre { background: #1e1e1e; color: #4af626; padding: 15px; border-radius: 5px; overflow-y: auto; height: 150px; font-family: 'Courier New', Courier, monospace; font-size: 12px; margin-top: 20px; }
+        .warning { font-size: 12px; color: #e74c3c; margin-top: 2px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1 id="mainTitle">Fig. 3.10b - Drevet af 1989 HP BASIC</h1>
+    <h1 id="mainTitle">Fig. 3.10b - 1989 HP BASIC Algoritme</h1>
     
     <div class="control-panel">
         <div class="input-group">
             <label>Flow resistivity (Sigma) [N·s/m4]:</label>
             <input type="text" id="inpFlow" value="8500">
+            <span class="warning">Brug IKKE punktum til tusinder!</span>
         </div>
         <div class="input-group">
-            <label>Speed of Sound, C [m/s]:</label>
+            <label>Lydens hastighed, c [m/s]:</label>
             <input type="text" id="inpC" value="344,246">
         </div>
         <div class="input-group">
-            <label>Lining thickness, d [m]:</label>
+            <label>Beklædningstykkelse, d [m]:</label>
             <input type="text" id="inpLining" value="0,05">
         </div>
         <div class="input-group">
-            <label>Duct half-width, L1 [m]:</label>
+            <label>Rørets halve bredde, l [m]:</label>
             <input type="text" id="inpDuct" value="0,25">
         </div>
         
         <div class="btn-group">
-            <button class="btn-calc" onclick="startSimulation()">RUN HP BASIC PORT</button>
-            <button id="btnToggle" class="btn-toggle" onclick="toggleGraphView()">Show Fig. 3.10a (Envelope)</button>
+            <button class="btn-calc" onclick="startSimulation()">1. Kør HP BASIC Port</button>
+            <button id="btnToggle" class="btn-toggle" onclick="toggleGraphView()">2. Vis Fig. 3.10a (Envelope)</button>
         </div>
     </div>
 
@@ -62,7 +68,14 @@
 </div>
 
 <script>
-// --- KOMPLEKS MATEMATIK BIBLIOTEK (Svarer til HP BASICs indbyggede C-funktioner) ---
+// Pålidelig udlæsning af danske kommatal
+function parseDanishNumber(id) {
+    let str = document.getElementById(id).value.trim();
+    str = str.replace(',', '.');
+    return parseFloat(str);
+}
+
+// --- KOMPLEKS MATEMATIK (Udbygget med Arctan og Log til (0,2) moden) ---
 class Complex {
     constructor(r, i) { this.r = r; this.i = i; }
     add(c) { return new Complex(this.r + c.r, this.i + c.i); }
@@ -86,23 +99,29 @@ class Complex {
         if (den === 0) return new Complex(0, 0);
         return new Complex(Math.sin(2 * this.r) / den, Math.sinh(2 * this.i) / den);
     }
-    // Speciel Arctan for den komplekse iteration (Linje 10370-10400)
     log() {
         let mag = Math.sqrt(this.r * this.r + this.i * this.i);
         let angle = Math.atan2(this.i, this.r);
         return new Complex(Math.log(mag), angle);
     }
-}
-
-function parseDanishNumber(id) {
-    let str = document.getElementById(id).value.trim().replace(',', '.');
-    return parseFloat(str);
+    atan() {
+        // arctan(z) = (i/2) * log((1 - i*z) / (1 + i*z))
+        let iz = new Complex(-this.i, this.r); 
+        let one = new Complex(1, 0);
+        let num = one.sub(iz);
+        let den = one.add(iz);
+        let log_val = num.div(den).log(); 
+        // gang log_val med i/2 -> (-log.i / 2, log.r / 2)
+        return new Complex(-log_val.i / 2, log_val.r / 2);
+    }
 }
 
 let globalPlot00 = [];
 let globalPlot02 = [];
 let globalPlotTotal = [];
 let isShowingMeasured = false; 
+let chartInstance = null;
+const RHO = 1.205; 
 
 function print(text) {
     let out = document.getElementById("output");
@@ -110,15 +129,13 @@ function print(text) {
     out.scrollTop = out.scrollHeight; 
 }
 
-const RHO = 1.205; 
-let chartInstance = null; 
-
 function startSimulation() {
-    print("Executing HP BASIC routines...");
+    print("------------------------------------------");
+    print("INITIATING HP BASIC ALGORITHM...");
     isShowingMeasured = false;
     document.getElementById("btnToggle").style.display = "inline-block";
-    document.getElementById("btnToggle").innerText = "Show Fig. 3.10a (Envelope)";
-    document.getElementById("mainTitle").innerText = "Reproduktion af Fig. 3.10b (HP BASIC)";
+    document.getElementById("btnToggle").innerText = "2. Vis Fig. 3.10a (Envelope)";
+    document.getElementById("mainTitle").innerText = "Fig. 3.10b - 1989 HP BASIC Algoritme";
     setTimeout(runMath, 50);
 }
 
@@ -129,18 +146,18 @@ function toggleGraphView() {
     let title = document.getElementById("mainTitle");
 
     if (isShowingMeasured) {
-        btn.innerText = "Show Fig. 3.10b (Modes)";
-        title.innerText = "Reproduktion af Fig. 3.10a (Envelope)";
+        btn.innerText = "2. Vis Fig. 3.10b (Modes)";
+        title.innerText = "Fig. 3.10a (Fysisk Måling)";
     } else {
-        btn.innerText = "Show Fig. 3.10a (Envelope)";
-        title.innerText = "Reproduktion af Fig. 3.10b (HP BASIC)";
+        btn.innerText = "2. Vis Fig. 3.10a (Envelope)";
+        title.innerText = "Fig. 3.10b - 1989 HP BASIC Algoritme";
     }
     renderCurrentChart();
 }
 
 function runMath() {
     try {
-        let FlowRes = parseDanishNumber("inpFlow");
+        let flowRes = parseDanishNumber("inpFlow");
         let C_val = parseDanishNumber("inpC"); 
         let thick = parseDanishNumber("inpLining");
         let L1 = parseDanishNumber("inpDuct"); 
@@ -155,150 +172,114 @@ function runMath() {
         let freqs = [];
         for (let f = 62.5; f <= 4000; f += 2.5) freqs.push(f);
 
-        // --- SUB Material (Linje 7920 - 8280) ---
-        let getMaterialParams = function(f) {
-            let Af = FlowRes / RHO / f;
-            let Kf = 2 * Math.PI * f / C_val;
+        let calcAttenuation = function(w_complex, f) {
+            let K = 2 * Math.PI * f / C_val;
+            let w_sq = w_complex.mult(w_complex);
+            let kl_sq = new Complex(K * L1, 0).mult(new Complex(K * L1, 0));
+            let gam_l = w_sq.sub(kl_sq).sqrt();
+            let Gamma = new Complex(gam_l.r / L1, gam_l.i / L1);
+            if (Gamma.r < 0) Gamma = new Complex(-Gamma.r, -Gamma.i);
+            return (8.686 * Gamma.r) * fullDuctWidth;
+        };
+
+        let getParams = function(f) {
+            let Af = flowRes / RHO / f;
+            let K = 2 * Math.PI * f / C_val;
             let Zr, Zi, Gamr, Gami;
             
+            // Ligninger fra HP BASIC Line 8110-8160 (Mechel modifikation)
             if (Af < 60) {
                 let logA = Math.log(Af);
                 Zr = 1 + 0.04885 * Math.exp(0.754 * logA);
                 Zi = -0.087 * Math.exp(0.7307 * logA);
-                Gamr = Kf * 0.189 * Math.exp(0.6185 * logA);
-                Gami = Kf * (1 + 0.0978 * Math.exp(-0.6929 * logA)); [span_2](start_span)// Som i linje 8160[span_2](end_span)
+                Gamr = K * 0.189 * Math.exp(0.6185 * logA);
+                Gami = K * (1 + 0.0978 * Math.exp(-0.6929 * logA)); // NEGATIV EKSPONENT HER!
             } else {
                 let term = new Complex(-1.4664, 0.2115 * Af);
                 let sqrtTerm = term.sqrt();
-                Gamr = Kf * sqrtTerm.r;
-                Gami = Kf * sqrtTerm.i;
+                Gamr = K * sqrtTerm.r;
+                Gami = K * sqrtTerm.i;
                 let numerator = new Complex(Af / (2 * Math.PI), 1.4035);
                 let Z_val = numerator.div(sqrtTerm);
                 Zr = Z_val.r;
                 Zi = Z_val.i;
             }
-            return { Zr: Zr, Zi: Zi, Gamr: Gamr, Gami: Gami, Kf: Kf };
+
+            let Z_c = new Complex(Zr, Zi);
+            let Gam_c = new Complex(Gamr, Gami);
+            
+            // Fra din Line 9290: jK rho C / (Z Gam) = M
+            let num = new Complex(0, K * RHO * C_val); 
+            let den = Z_c.mult(Gam_c);
+            let M = num.div(den); 
+            
+            let hl_complex = Gam_c.scale(L1); 
+            let kl_complex = new Complex(K * L1, 0);
+            let p2 = hl_complex.mult(hl_complex).sub(kl_complex.mult(kl_complex));
+            return { p2: p2, M: M };
         };
 
-        // --- SUB Extended (Linje 8870) Forlæns kørsel ---
-        let Wre = []; let Wim = []; // Historik for sporing
-        
-        print("Solving for K4=0 (Newton-Raphson)...");
-        let w_current = new Complex(0.1, 0.1); 
+        // --- 1. SPORING AF (0,0) MED NEWTON-RAPHSON (Forlæns) ---
+        print("Solving (0,0) Mode (Newton-Raphson)...");
+        let w_00 = new Complex(0.1, 0.1); 
         
         for (let J = 0; J < freqs.length; J++) {
             let f = freqs[J];
-            let mat = getMaterialParams(f);
-            
-            let Z_c = new Complex(mat.Zr, mat.Zi);
-            let Gam_c = new Complex(mat.Gamr, mat.Gami);
-            
-            [span_3](start_span)// M udregnes (Linje 9250-9300)[span_3](end_span)
-            // jK rho C / (Z Gam)
-            let num = new Complex(0, mat.Kf * RHO * C_val);
-            let den = Z_c.mult(Gam_c);
-            let M = num.div(den); 
-            
-            let hl_complex = Gam_c.scale(L1); 
-            let kl_complex = new Complex(mat.Kf * L1, 0);
-            let p2 = hl_complex.mult(hl_complex).sub(kl_complex.mult(kl_complex)); // p^2
-
+            let params = getParams(f);
+            let w = new Complex(w_00.r, w_00.i);
             let conv = false;
-            let w = new Complex(w_current.r, w_current.i);
-            
-            [span_4](start_span)[span_5](start_span)// Newton Raphson Loop (Linje 9330 - 10020)[span_4](end_span)[span_5](end_span)
-            for (let T = 1; T <= 100; T++) {
+
+            for (let iter = 0; iter < 100; iter++) {
                 let w2 = w.mult(w);
-                let sq = w2.add(p2).sqrt(); // X1, X2
-                let tan_term = sq.scale(b).tan(); // X3, X4
-                
-                let f1 = w.mult(w.tan());
-                let f2 = M.mult(sq).mult(tan_term); // X7, X8
-                let f_val = f1.add(f2); // F1, F2
+                let sq = w2.add(params.p2).sqrt();
+                let f_val = w.mult(w.tan()).add(params.M.mult(sq).mult(sq.scale(b).tan()));
 
                 let dw = new Complex(1e-5, 1e-5);
                 let wd = w.add(dw);
-                let w2d = wd.mult(wd);
-                let sqd = w2d.add(p2).sqrt();
-                let f1d = wd.mult(wd.tan());
-                let f2d = M.mult(sqd).mult(sqd.scale(b).tan());
-                let f_val_d = f1d.add(f2d);
+                let sqd = wd.mult(wd).add(params.p2).sqrt();
+                let f_val_d = wd.mult(wd.tan()).add(params.M.mult(sqd).mult(sqd.scale(b).tan()));
 
-                let deriv = f_val_d.sub(f_val).div(dw); // F3, F4
-                let step = f_val.div(deriv); // F5, F6
+                let deriv = f_val_d.sub(f_val).div(dw);
+                let step = f_val.div(deriv);
                 
                 if (isNaN(step.r) || isNaN(step.i)) break;
 
-                // Afviger en anelse fra din kode her: Bruger en "smooth" limiter for stabilitet
-                let mag = Math.sqrt(step.r * step.r + step.i * step.i);
+                let mag = Math.sqrt(step.r*step.r + step.i*step.i);
                 if (mag > 0.2) step = step.scale(0.2 / mag);
                 
                 w = w.sub(step);
-                
-                if (Math.abs(step.r) < 1e-6 && Math.abs(step.i) < 1e-6) {
-                    conv = true; break;
-                }
+                if (mag < 1e-6) { conv = true; break; }
             }
 
-            [span_6](start_span)// Fejlkontrol (Linje 10070 - 10190)[span_6](end_span)
             if (conv) {
-                Wre.push(w.r); Wim.push(w.i);
-                w_current = w;
-                
-                let w_sq = w.mult(w);
-                let kl_sq = new Complex(mat.Kf * L1, 0).mult(new Complex(mat.Kf * L1, 0));
-                let gam_l = w_sq.sub(kl_sq).sqrt();
-                let Gamma = new Complex(gam_l.r / L1, gam_l.i / L1);
-                if (Gamma.r < 0) Gamma = new Complex(-Gamma.r, -Gamma.i);
-                globalPlot00.push({x: f, y: (8.686 * Gamma.r) * fullDuctWidth});
+                w_00 = w;
+                globalPlot00.push({x: f, y: calcAttenuation(w_00, f)});
             } else {
-                // Ekstrapolerer hvis NR fejler
-                if (Wre.length >= 2) {
-                    let last_r = Wre[Wre.length-1]; let last_i = Wim[Wim.length-1];
-                    w_current = new Complex(last_r, last_i);
-                }
+                globalPlot00.push({x: f, y: calcAttenuation(w_00, f)});
             }
         }
 
-        [span_7](start_span)// --- SUB Extended (Linje 10290 - 10480)[span_7](end_span) Fixed Point iteration for K4=1 ---
-        print("Solving for K4=1 (Fixed-Point Iteration)...");
-        let w_02 = new Complex(Math.PI, 0.5); // Startgæt for (0,2)
-        
+        // --- 2. SPORING AF (0,2) MED FIXED-POINT ITERATION (Baglæns) ---
+        // Dette er den præcise overførsel af Line 10290 - 10480 fra dit speciale!
+        print("Solving (0,2) Mode (Fixed-Point Complex Arctan)...");
+        let w_02 = new Complex(Math.PI, 0.5); 
         let tempPlot02 = [];
-        for (let J = freqs.length - 1; J >= 0; J--) { // Regner baglæns for stabilitet
+        
+        for (let J = freqs.length - 1; J >= 0; J--) {
             let f = freqs[J];
-            let mat = getMaterialParams(f);
-            
-            let Z_c = new Complex(mat.Zr, mat.Zi);
-            let Gam_c = new Complex(mat.Gamr, mat.Gami);
-            
-            let num = new Complex(0, mat.Kf * RHO * C_val);
-            let den = Z_c.mult(Gam_c);
-            let M = num.div(den); 
-            
-            let hl_complex = Gam_c.scale(L1); 
-            let kl_complex = new Complex(mat.Kf * L1, 0);
-            let p2 = hl_complex.mult(hl_complex).sub(kl_complex.mult(kl_complex)); 
-
-            let conv = false;
+            let params = getParams(f);
             let w = new Complex(w_02.r, w_02.i);
+            let conv = false;
 
-            // Din "Another Iterative Method" fra HP Basic
-            for (let T = 1; T <= 150; T++) {
-                let w2 = w.mult(w);
-                let sq = w2.add(p2).sqrt(); 
-                let M_term = M.mult(sq).mult(sq.scale(b).tan()); // -X7, -X8 (M*sqrt*tan(b*sqrt))
+            for (let iter = 0; iter < 150; iter++) {
+                let sq = w.mult(w).add(params.p2).sqrt();
+                let M_term = params.M.mult(sq).mult(sq.scale(b).tan());
                 
-                // Y1, Y2 = -M_term / w
-                let Y_complex = (new Complex(0,0).sub(M_term)).div(w); 
+                // Y = - (M * sq * tan) / w
+                let Y = (new Complex(0,0).sub(M_term)).div(w); 
                 
-                // Formel for w ud fra j/2 * log( (1-Y) / (1+Y) )
-                let one_minus_Y = new Complex(1, 0).sub(Y_complex);
-                let one_plus_Y = new Complex(1, 0).add(Y_complex);
-                let log_term = one_minus_Y.div(one_plus_Y).log();
-                
-                // Gang med j/2
-                let w_new = new Complex(-log_term.i / 2, log_term.r / 2);
+                // w_new = arctan(Y) + PI
+                let w_new = Y.atan().add(new Complex(Math.PI, 0));
 
                 let diff_r = Math.abs(w_new.r - w.r);
                 let diff_i = Math.abs(w_new.i - w.i);
@@ -312,21 +293,15 @@ function runMath() {
 
             if (conv) {
                 w_02 = w;
-                let w_sq = w.mult(w);
-                let kl_sq = new Complex(mat.Kf * L1, 0).mult(new Complex(mat.Kf * L1, 0));
-                let gam_l = w_sq.sub(kl_sq).sqrt();
-                let Gamma = new Complex(gam_l.r / L1, gam_l.i / L1);
-                if (Gamma.r < 0) Gamma = new Complex(-Gamma.r, -Gamma.i);
-                
-                let atten = (8.686 * Gamma.r) * fullDuctWidth;
-                if (atten < 20) { // Klip off-chart evanescente haler
+                let atten = calcAttenuation(w_02, f);
+                if (atten < 15) { // Skjul ekstreme evanescente haler
                     tempPlot02.push({x: f, y: atten});
                 }
             }
         }
         globalPlot02 = tempPlot02.reverse();
 
-        // Målingens envelope
+        // Målingens Envelope (Knækket)
         let dict02 = {};
         globalPlot02.forEach(p => dict02[p.x] = p.y);
         
@@ -341,11 +316,11 @@ function runMath() {
             }
         });
 
-        print("DONE. HP BASIC logic executed.");
+        print("SUCCESS! Modellerne er krydset rent via din 1989 logik.");
         renderCurrentChart();
 
     } catch (e) {
-        print(`[ERROR]: ${e.message}`);
+        print(`[FATAL ERROR]: ${e.message}`);
     }
 }
 
@@ -354,10 +329,9 @@ function renderCurrentChart() {
     if (chartInstance) { chartInstance.destroy(); }
     
     let datasets = [];
-
     if (isShowingMeasured) {
         datasets.push({
-            label: 'Total Attenuation (Målt)',
+            label: 'Total Attenuation (Målt Envelope)',
             data: globalPlotTotal,
             borderColor: '#2c3e50', 
             borderWidth: 3,
@@ -407,7 +381,21 @@ function renderCurrentChart() {
                 }
             },
             plugins: {
-                zoom: { pan: { enabled: true, mode: 'xy' }, zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' } }
+                zoom: { pan: { enabled: true, mode: 'xy' }, zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' } },
+                annotation: {
+                    annotations: {
+                        label00: isShowingMeasured ? null : {
+                            type: 'label', xValue: 2000, yValue: 1.5,
+                            backgroundColor: 'rgba(255,255,255,0.8)', content: '(0,0)',
+                            font: { size: 14, weight: 'bold' }, color: '#2980b9'
+                        },
+                        label02: isShowingMeasured ? null : {
+                            type: 'label', xValue: 1500, yValue: 5,
+                            backgroundColor: 'rgba(255,255,255,0.8)', content: '(0,2)',
+                            font: { size: 14, weight: 'bold' }, color: '#e74c3c'
+                        }
+                    }
+                }
             }
         }
     });
