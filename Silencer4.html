@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <title>DTU Lyddæmper Simulator - Fig 3.10a & 3.10b</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.1.0/dist/chartjs-plugin-annotation.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background: #e9ecef; color: #333; line-height: 1.6; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+        
+        .control-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #dee2e6; }
+        .input-group { display: flex; flex-direction: column; }
+        label { font-weight: bold; margin-bottom: 5px; font-size: 14px; }
+        input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+        
+        .btn-group { grid-column: span 2; display: flex; gap: 10px; flex-wrap: wrap; }
+        button { flex: 1; min-width: 200px; color: white; border: none; padding: 12px; font-size: 14px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: background 0.3s; }
+        .btn-calc { background: #27ae60; }
+        .btn-calc:hover { background: #2ecc71; }
+        .btn-toggle { background: #8e44ad; display: none; } /* Skjult indtil der er regnet */
+        .btn-toggle:hover { background: #9b59b6; }
+        .btn-info { background: #34495e; }
+        .btn-info:hover { background: #2c3e50; }
+        
+        .chart-container { position: relative; height: 500px; width: 100%; margin-top: 20px; }
+        pre { background: #1e1e1e; color: #4af626; padding: 15px; border-radius: 5px; overflow-y: auto; height: 120px; font-family: 'Courier New', Courier, monospace; font-size: 12px; margin-top: 20px; }
+        
+        .theory-panel { display: none; background: #fff; padding: 25px; border-radius: 8px; border-left: 5px solid #3498db; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-top: 20px; margin-bottom: 20px; }
+        .theory-panel h2 { color: #2980b9; margin-top: 0; }
+        .theory-panel h3 { color: #34495e; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .math-block { background: #f9f9f9; padding: 10px; border-radius: 5px; text-align: center; overflow-x: auto; }
+        .highlight { color: #e74c3c; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1 id="mainTitle">Reproduktion af Fig. 3.10b (Teoretiske Modes)</h1>
+    
+    <div class="control-panel">
+        <div class="input-group">
+            <label>Strømningsmodstand (Flow resistivity) [N·s/m4]:</label>
+            <input type="number" id="inpFlow" value="8500">
+        </div>
+        <div class="input-group">
+            <label>Beklædningstykkelse, d [m]:</label>
+            <input type="number" step="0.01" id="inpLining" value="0.05">
+        </div>
+        <div class="input-group">
+            <label>Rørets dimensionsparameter, l [m]:</label>
+            <input type="number" step="0.01" id="inpDuct" value="0.5">
+        </div>
+        
+        <div class="btn-group">
+            <button class="btn-calc" onclick="startSimulation()">1. Beregn Data</button>
+            <button id="btnToggle" class="btn-toggle" onclick="toggleGraphView()">2. Skift til Måling (Fig 3.10a)</button>
+            <button class="btn-info" onclick="toggleTheory()">Forklar Fysikken & Matematikken</button>
+        </div>
+    </div>
+
+    <div id="theoryPanel" class="theory-panel">
+        <h2>Fysikken, Matematikken & Akustikken</h2>
+        <p>Dette program beregner dæmpningen af lyd i et rør med absorptionsbeklædning baseret på Scott's teori (1946) om "Extended Reaction". Det er en direkte digitalisering af et M.Sc. speciale-program fra DTU (1989).</p>
+
+        <h3>1. Fysikken bag lydudbredelsen</h3>
+        <p>Når lyd udbreder sig i et rør med en blød, porøs beklædning, trænger energien ind i materialet. Den gamle <i>Local Reaction</i>-teori antog, at lyden kun gik vinkelret ind i væggen (som om væggen bestod af små, adskilte bikube-celler). <b>Extended Reaction</b> anerkender virkeligheden: Lydbølgen rejser også sidelæns <i>inde</i> i selve det porøse materiale parallelt med røret. Lydbølgen i luften og lydbølgen i materialet er koblet sammen og deler en fælles udbredelseskonstant, \(\Gamma\).</p>
+
+        <h3>2. Akustikken i materialet</h3>
+        <p>Lydens opførsel inde i det absorberende materiale beskrives af <i>Delany & Bazley's</i> empiriske formler (modificeret af Mechel for at virke ved lave frekvenser). Impedansen og bølgetallet afhænger af en enkelt parameter \(A = \sigma / (\rho \cdot f)\), hvor \(\sigma\) er strømningsmodstanden. Formlerne ser for eksempel således ud:</p>
+        <div class="math-block">
+            \(\frac{\Gamma_a}{k} = 0.189 A^{0.6185} + j \cdot (1 + 0.0978 A^{0.6929})\)
+        </div>
+
+        <h3>3. Matematikken (Newton-Raphson)</h3>
+        <p>For at finde den endelige dæmpning for hele røret, skal Scott's transcendente feltligning løses:</p>
+        <div class="math-block">
+            \(f(w) = w \cdot \tan(w) + M \cdot \sqrt{w^2 + p^2} \cdot \tan\left(b \cdot \sqrt{w^2 + p^2}\right) = 0\)
+        </div>
+        <p>Da ligningen indeholder en tangens-funktion af den ukendte \(w\), kan den ikke løses med en almindelig formel. Programmet bruger <b>Newton-Raphsons metode</b> i det komplekse plan: Computeren gætter på en startværdi for \(w\), evaluerer fejlmarginen via den afledte funktion, og forbedrer gættet iterativt, indtil den rammer præcist nul.</p>
+
+        <h3>4. Modes vs. Fysisk Måling (Fig 3.10b mod 3.10a)</h3>
+        <p>Ligningen har uendeligt mange løsninger, kendt som "modes":</p>
+        <ul>
+            <li><b>(0,0) Mode:</b> Den plane grundbølge, som altid udbreder sig.</li>
+            <li><b>(0,2) Mode:</b> En højere ordens bølge. Ved lave frekvenser dør den ud med det samme (ekstremt høj dæmpning). Men ved en bestemt "cut-on" frekvens bliver den pludselig i stand til at udbrede sig og krydser (0,0)-moden.</li>
+        </ul>
+        <p class="highlight">Hvorfor er den samlede måling (Fig 3.10a) et knæk?</p>
+        <p>Når du sætter en mikrofon op i virkeligheden for at måle "Insertion Loss" (som vist i Fig. 3.10a fra Wassilieff), kan mikrofonen ikke adskille (0,0) og (0,2). Den måler blot den samlede lydenergi, der overlever. Lyd følger "mindste modstands vej". Ved lave frekvenser er (0,0) dominerende. Ved de høje frekvenser overtager (0,2)-moden pludselig, da den har lavere dæmpning. Den fysisk målte kurve er derfor altid den <b>nederste envelope</b> af de to teoretiske modes – hvilket skaber det markante knæk!</p>
+    </div>
+
+    <div class="chart-container">
+        <canvas id="resultChart"></canvas>
+    </div>
+
+    <pre id="output">System klar...</pre>
+</div>
+
+<script>
+// Globale variabler til at gemme vores to visninger
+let globalData00 = [];
+let globalData02 = [];
+let globalDataTotal = [];
+let isShowingMeasured = false; // False = Fig 3.10b, True = Fig 3.10a
+
+function toggleTheory() {
+    let panel = document.getElementById("theoryPanel");
+    panel.style.display = (panel.style.display === "none" || panel.style.display === "") ? "block" : "none";
+}
+
+function print(text) {
+    let out = document.getElementById("output");
+    out.innerText += "\n" + text;
+    out.scrollTop = out.scrollHeight; 
+}
+
+class Complex {
+    constructor(r, i) { this.r = r; this.i = i; }
+    add(c) { return new Complex(this.r + c.r, this.i + c.i); }
+    sub(c) { return new Complex(this.r - c.r, this.i - c.i); }
+    mult(c) { return new Complex(this.r * c.r - this.i * c.i, this.r * c.i + this.i * c.r); }
+    div(c) {
+        let den = c.r * c.r + c.i * c.i;
+        if (den === 0) return new Complex(0,0);
+        return new Complex((this.r * c.r + this.i * c.i) / den, (this.i * c.r - this.r * c.i) / den);
+    }
+    scale(s) { return new Complex(this.r * s, this.i * s); }
+    sqrt() {
+        let mag = Math.sqrt(this.r * this.r + this.i * this.i);
+        let angle = Math.atan2(this.i, this.r);
+        return new Complex(Math.sqrt(mag) * Math.cos(angle / 2), Math.sqrt(mag) * Math.sin(angle / 2));
+    }
+    tan() {
+        if (this.i > 25) return new Complex(0, 1);
+        if (this.i < -25) return new Complex(0, -1);
+        let den = Math.cos(2 * this.r) + Math.cosh(2 * this.i);
+        if (den === 0) return new Complex(0, 0);
+        return new Complex(Math.sin(2 * this.r) / den, Math.sinh(2 * this.i) / den);
+    }
+}
+
+function solveNR(guess, p2, M, b, modeType) {
+    let currentW = new Complex(guess.r, guess.i);
+    let iter = 0, conv = false;
+
+    while (iter < 150 && !conv) {
+        iter++;
+        let w2 = currentW.mult(currentW);
+        let sqrt_w2_p2 = (w2.add(p2)).sqrt();
+        let fw = currentW.mult(currentW.tan()).add(M.mult(sqrt_w2_p2).mult((sqrt_w2_p2.scale(b)).tan()));
+
+        let delta = new Complex(1e-6, 1e-6);
+        let w_d = currentW.add(delta);
+        let sqrt_w2_p2_d = (w_d.mult(w_d).add(p2)).sqrt();
+        let fw_d = w_d.mult(w_d.tan()).add(M.mult(sqrt_w2_p2_d).mult((sqrt_w2_p2_d.scale(b)).tan()));
+
+        let f_prime = fw_d.sub(fw).div(delta);
+        let w_step = fw.div(f_prime);
+        
+        if (isNaN(w_step.r) || isNaN(w_step.i)) break;
+
+        let maxStep = 0.5;
+        if (Math.abs(w_step.r) > maxStep) w_step.r = maxStep * Math.sign(w_step.r);
+        if (Math.abs(w_step.i) > maxStep) w_step.i = maxStep * Math.sign(w_step.i);
+        
+        currentW = currentW.sub(w_step);
+        
+        if (modeType === 0) {
+            if (currentW.r < 0.01) currentW.r = 0.01;
+            if (currentW.r > 1.5) currentW.r = 1.5;
+        } else if (modeType === 2) {
+            if (currentW.r < 1.6) currentW.r = 1.6;
+            if (currentW.r > 4.7) currentW.r = 4.7;
+        }
+
+        if (Math.abs(w_step.r) <= 1e-7 && Math.abs(w_step.i) <= 1e-7) conv = true;
+    }
+    return { w: currentW, converged: conv };
+}
+
+const C = 344.246; 
+const RHO = 1.205; 
+let chartInstance = null; 
+
+function startSimulation() {
+    let out = document.getElementById("output");
+    out.innerText = "Udregner data for modelfigurerne...";
+    isShowingMeasured = false; // Reset til 3.10b
+    document.getElementById("btnToggle").style.display = "inline-block";
+    document.getElementById("btnToggle").innerText = "2. Skift til Måling (Fig 3.10a)";
+    document.getElementById("mainTitle").innerText = "Reproduktion af Fig. 3.10b (Teoretiske Modes)";
+    
+    setTimeout(runMath, 50);
+}
+
+function toggleGraphView() {
+    if (globalData00.length === 0) return; // Sikkerhed hvis man trykker for tidligt
+    
+    isShowingMeasured = !isShowingMeasured;
+    let btn = document.getElementById("btnToggle");
+    let title = document.getElementById("mainTitle");
+
+    if (isShowingMeasured) {
+        btn.innerText = "Skift tilbage til Modes (Fig 3.10b)";
+        title.innerText = "Reproduktion af Fig. 3.10a (Fysisk Måling)";
+        print("Viser nu den samlede dæmpning (least attenuation envelope).");
+    } else {
+        btn.innerText = "2. Skift til Måling (Fig 3.10a)";
+        title.innerText = "Reproduktion af Fig. 3.10b (Teoretiske Modes)";
+        print("Viser nu de adskilte teoretiske modes.");
+    }
+    
+    renderCurrentChart();
+}
+
+function runMath() {
+    try {
+        let flowRes = parseFloat(document.getElementById("inpFlow").value);
+        let thick = parseFloat(document.getElementById("inpLining").value);
+        let L1 = parseFloat(document.getElementById("inpDuct").value); 
+        
+        let fullDuctWidth = 2 * L1; 
+        let b = thick / L1; 
+
+        // Nulstil globale arrays
+        globalData00 = [];
+        globalData02 = [];
+        globalDataTotal = [];
+        let map00 = {};
+        let map02 = {};
+
+        let lastW_00 = new Complex(0.1, 0.1); 
+        let lastLastW_00 = new Complex(0.1, 0.1); 
+        let lastW_02 = new Complex(Math.PI, 0.5); 
+        let lastLastW_02 = new Complex(Math.PI, 0.5); 
+
+        let freqs = [];
+        for (let f = 62.5; f <= 4000; f += 2.5) freqs.push(f);
+
+        let calcAttenuation = function(w_complex, f) {
+            let K = 2 * Math.PI * f / C;
+            let w_sq = w_complex.mult(w_complex);
+            let kl_sq = new Complex(K * L1, 0).mult(new Complex(K * L1, 0));
+            let gam_l = w_sq.sub(kl_sq).sqrt();
+            let Gamma = new Complex(gam_l.r / L1, gam_l.i / L1);
+            if (Gamma.r < 0) Gamma = new Complex(-Gamma.r, -Gamma.i);
+            return (8.686 * Gamma.r) * 0.5;
+        };
+
+        // BEREGN FORLÆNS (0,0)
+        for (let i = 0; i < freqs.length; i++) {
+            let f = freqs[i];
+            let Af = flowRes / RHO / f;
+            let K = 2 * Math.PI * f / C;
+            
+            let Zr, Zi, Gamr, Gami;
+            if (Af < 60) {
+                let logA = Math.log(Af);
+                Zr = 1 + 0.04885 * Math.exp(0.754 * logA);
+                Zi = -0.087 * Math.exp(0.7307 * logA);
+                Gamr = K * 0.189 * Math.exp(0.6185 * logA);
+                Gami = K * (1 + 0.0978 * Math.exp(0.6929 * logA)); 
+            } else {
+                let term = new Complex(-1.4664, 0.2115 * Af);
+                let sqrtTerm = term.sqrt();
+                Gamr = K * sqrtTerm.r;
+                Gami = K * sqrtTerm.i;
+                let numerator = new Complex(Af / (2 * Math.PI), 1.4035);
+                let Z_val = numerator.div(sqrtTerm);
+                Zr = Z_val.r;
+                Zi = Z_val.i;
+            }
+
+            let Z_c = new Complex(Zr, Zi);
+            let Gam_c = new Complex(Gamr, Gami);
+            let M = (new Complex(0, -K)).div(Z_c.mult(Gam_c));
+            let h_c = new Complex(Gami, -Gamr); 
+            let hl_complex = h_c.scale(L1); 
+            let kl_complex = new Complex(K * L1, 0);
+            let p2 = hl_complex.mult(hl_complex).sub(kl_complex.mult(kl_complex));
+
+            let guess00;
+            if (i === 0) guess00 = new Complex(0.1, 0.1);
+            else guess00 = lastW_00.add(lastW_00.sub(lastLastW_00)); 
+
+            let res00 = solveNR(guess00, p2, M, b, 0);
+            if (res00.converged) {
+                lastLastW_00 = lastW_00;
+                lastW_00 = res00.w;
+                let atten = calcAttenuation(res00.w, f);
+                map00[f] = atten;
+                globalData00.push({x: f, y: atten});
+            }
+        }
+
+        // BEREGN BAGLÆNS (0,2)
+        for (let i = freqs.length - 1; i >= 0; i--) {
+            let f = freqs[i];
+            let Af = flowRes / RHO / f;
+            let K = 2 * Math.PI * f / C;
+            
+            let Zr, Zi, Gamr, Gami;
+            if (Af < 60) {
+                let logA = Math.log(Af);
+                Zr = 1 + 0.04885 * Math.exp(0.754 * logA);
+                Zi = -0.087 * Math.exp(0.7307 * logA);
+                Gamr = K * 0.189 * Math.exp(0.6185 * logA);
+                Gami = K * (1 + 0.0978 * Math.exp(0.6929 * logA)); 
+            } else {
+                let term = new Complex(-1.4664, 0.2115 * Af);
+                let sqrtTerm = term.sqrt();
+                Gamr = K * sqrtTerm.r;
+                Gami = K * sqrtTerm.i;
+                let numerator = new Complex(Af / (2 * Math.PI), 1.4035);
+                let Z_val = numerator.div(sqrtTerm);
+                Zr = Z_val.r;
+                Zi = Z_val.i;
+            }
+
+            let Z_c = new Complex(Zr, Zi);
+            let Gam_c = new Complex(Gamr, Gami);
+            let M = (new Complex(0, -K)).div(Z_c.mult(Gam_c));
+            let h_c = new Complex(Gami, -Gamr); 
+            let hl_complex = h_c.scale(L1); 
+            let kl_complex = new Complex(K * L1, 0);
+            let p2 = hl_complex.mult(hl_complex).sub(kl_complex.mult(kl_complex));
+
+            let guess02;
+            if (i === freqs.length - 1) guess02 = new Complex(Math.PI, 0.5);
+            else guess02 = lastW_02.add(lastW_02.sub(lastLastW_02)); 
+
+            let res02 = solveNR(guess02, p2, M, b, 2);
+            if (res02.converged) {
+                lastLastW_02 = lastW_02;
+                lastW_02 = res02.w;
+                let atten = calcAttenuation(res02.w, f);
+                map02[f] = atten;
+                if (atten < 25) globalData02.push({x: f, y: atten});
+            } else {
+                lastW_02 = new Complex(Math.PI, 0.5); // Nulstil
+            }
+        }
+        globalData02.reverse(); // For at X er stigende
+
+        // Byg den SAMLEDE måling (Mindste værdi pr. frekvens)
+        for (let f of freqs) {
+            let v00 = map00[f];
+            let v02 = map02[f];
+            if (v00 !== undefined || v02 !== undefined) {
+                let minVal = Math.min(v00 !== undefined ? v00 : Infinity, v02 !== undefined ? v02 : Infinity);
+                globalDataTotal.push({x: f, y: minVal});
+            }
+        }
+
+        print("Data udregnet. Du kan nu skifte mellem de to figurer!");
+        renderCurrentChart();
+
+    } catch (e) {
+        print(`[MATEMATISK FEJL]: ${e.message}`);
+    }
+}
+
+function renderCurrentChart() {
+    let ctx = document.getElementById('resultChart').getContext('2d');
+    if (chartInstance) { chartInstance.destroy(); }
+    
+    let datasets = [];
+    let annotations = {};
+
+    if (isShowingMeasured) {
+        // FIG 3.10 A (Samlet Måling)
+        datasets.push({
+            label: 'Total Attenuation (Målt)',
+            data: globalDataTotal,
+            borderColor: '#2c3e50', 
+            borderWidth: 3,
+            pointRadius: 0, 
+            fill: true,
+            backgroundColor: 'rgba(52, 73, 94, 0.1)',
+            tension: 0.1
+        });
+        
+        let labelYTotal = globalDataTotal.find(p => p.x >= 1000)?.y || 0;
+        annotations.labelTotal = {
+            type: 'label',
+            xValue: 1000,
+            yValue: labelYTotal + 1,
+            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+            content: 'Samlet Måling (Knæk)',
+            font: { size: 14, weight: 'bold', family: 'sans-serif' },
+            color: '#2c3e50'
+        };
+
+    } else {
+        // FIG 3.10 B (Teoretiske Modes)
+        datasets.push({
+            label: '(0,0) Mode',
+            data: globalData00,
+            borderColor: '#2980b9', 
+            borderWidth: 2,
+            pointRadius: 0, 
+            fill: false,
+            tension: 0.1
+        });
+        datasets.push({
+            label: '(0,2) Mode',
+            data: globalData02,
+            borderColor: '#e74c3c', 
+            borderWidth: 2,
+            pointRadius: 0, 
+            fill: false,
+            tension: 0.1
+        });
+
+        let labelY00 = globalData00.find(p => p.x >= 250)?.y || 0;
+        let labelY02 = globalData02.find(p => p.x >= 1200)?.y || 0;
+        
+        annotations.label00 = {
+            type: 'label', xValue: 250, yValue: labelY00 + 0.6,
+            backgroundColor: 'rgba(255, 255, 255, 0.8)', content: '(0,0)',
+            font: { size: 14, weight: 'bold' }, color: '#2980b9'
+        };
+        annotations.label02 = {
+            type: 'label', xValue: 1200, yValue: (labelY02 > 9 ? 8.5 : labelY02 + 0.6),
+            backgroundColor: 'rgba(255, 255, 255, 0.8)', content: '(0,2)',
+            font: { size: 14, weight: 'bold' }, color: '#e74c3c'
+        };
+    }
+
+    chartInstance = new Chart(ctx, {
+        type: 'line', 
+        data: { datasets: datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { 
+                    type: 'logarithmic', 
+                    title: { display: true, text: 'Frequency [Hz]', font: {weight: 'bold'} },
+                    min: 62.5,
+                    max: 4000
+                },
+                y: { 
+                    title: { display: true, text: 'Attenuation per duct width [dB]', font: {weight: 'bold'} }, 
+                    min: 0,
+                    max: 10 
+                }
+            },
+            plugins: {
+                zoom: { pan: { enabled: true, mode: 'xy' }, zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' } },
+                annotation: { annotations: annotations }
+            }
+        }
+    });
+}
+</script>
+
+</body>
+</html>
