@@ -3,235 +3,158 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>C/2025 R3 (PanSTARRS) - Bane Animation</title>
+    <title>C/2025 R3 (PanSTARRS) 3D Interaktiv Bane</title>
     <style>
-        body {
-            background-color: #050510;
-            color: #e0e0e0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            text-align: center;
-            margin: 0;
-            padding: 10px;
-        }
-        h1 {
-            color: #4da6ff;
-            font-size: 24px;
-        }
-        p {
-            max-width: 700px;
-            margin: 0 auto 15px auto;
-            line-height: 1.5;
-            font-size: 14px;
-        }
-        canvas {
-            background: radial-gradient(circle at center, #111 0%, #000 100%);
-            border: 1px solid #333;
+        body { margin: 0; overflow: hidden; background-color: #050510; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: white; }
+        #info-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
             border-radius: 8px;
-            box-shadow: 0 0 20px rgba(77, 166, 255, 0.2);
-            margin-bottom: 20px;
-            max-width: 100%; /* Sørger for at den passer på mobilskærme */
-            height: auto;
+            border: 1px solid #333;
+            pointer-events: none;
+            max-width: 300px;
         }
-       .controls {
-            display: flex;
-            justify-content: center;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-       .controls button {
-            background-color: #0078D7;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            font-size: 16px;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-       .controls button:hover {
-            background-color: #005a9e;
-        }
-        #info-box {
-            font-size: 18px;
-            font-weight: bold;
-            color: #ffcc00;
-            height: 30px;
-            margin-bottom: 10px;
+        h1 { margin: 0 0 10px 0; font-size: 20px; color: #4da6ff; }
+        p { margin: 5px 0; font-size: 14px; line-height: 1.4; }
+       .legend { display: flex; align-items: center; margin-top: 5px; font-size: 13px; }
+       .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            font-size: 14px;
+            color: #aaa;
+            pointer-events: none;
         }
     </style>
 </head>
 <body>
 
-    <h1>Komet C/2025 R3 (PanSTARRS) Interaktiv Bane</h1>
-    <p>Denne 2D-simulering viser kometens hyperbolske tur. De farvede punkter markerer dagene for observationerne med dit Unistellar eVscope 2 teleskop.</p>
-    
-    <div id="info-box">Klar til start</div>
-    <canvas id="orbitCanvas" width="800" height="600"></canvas>
-    
-    <div class="controls">
-        <button onclick="startAnimation()">Start Animation</button>
-        <button onclick="resetAnimation()">Nulstil</button>
+    <div id="info-panel">
+        <h1>C/2025 R3 (PanSTARRS) i 3D</h1>
+        <p>Banehældning (Inklination): 124,7°<br>Excentricitet (Hyperbel): 1,000366</p>
+        <p style="margin-top: 10px; color: #ccc;">Dine observationer med eVscope 2:</p>
+        <div class="legend"><div class="dot" style="background: #ff3366;"></div> 8. april 2026 (8 min eksponering)</div>
+        <div class="legend"><div class="dot" style="background: #33ccff;"></div> 11. april 2026 (5 min eksponering)</div>
+        <div class="legend"><div class="dot" style="background: #33ff33;"></div> 13. april 2026 (Tåge, 36 sek)</div>
+        <div class="legend"><div class="dot" style="background: #ff9933;"></div> 16. april 2026 (96 sek eksponering)</div>
     </div>
 
+    <div id="instructions">Træk for at rotere rummet i 3D • Scroll for at zoome</div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
     <script>
-        const canvas = document.getElementById('orbitCanvas');
-        const ctx = canvas.getContext('2d');
-        const infoBox = document.getElementById('info-box');
+        // Opsætning af 3D Scene
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 2000);
+        camera.position.set(150, 100, 200); // Starter med et godt skråt kig ovenfra
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
 
-        const width = canvas.width;
-        const height = canvas.height;
-        const centerX = width / 2;
-        const centerY = height / 2 + 50; 
-        const AU = 220;
+        // Interaktive kontroller (Rotering, zoom, panorering)
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
 
-        const e = 1.00034; 
-        const q = 0.499;   
-        const p = q * (1 + e); 
+        // Skala: 1 AU = 100 3D-enheder
+        const AU = 100;
 
-        const observations =;
+        // 1. Solen
+        const sunGeo = new THREE.SphereGeometry(3, 32, 32);
+        const sunMat = new THREE.MeshBasicMaterial({ color: 0xffcc00 });
+        const sun = new THREE.Mesh(sunGeo, sunMat);
+        scene.add(sun);
 
-        let currentAngle = -2.0;
-        let animationId = null;
-        let isAnimating = false;
+        // 2. Jordens bane (Referenceplanet / Ekliptika)
+        // Cirkel i X-Y planet (vi gør z-aksen til "op" for overskuelighed)
+        const earthCurve = new THREE.EllipseCurve(0, 0, AU, AU, 0, 2 * Math.PI, false, 0);
+        const earthPoints = earthCurve.getPoints(100);
+        const earthGeo = new THREE.BufferGeometry().setFromPoints(earthPoints);
+        const earthMat = new THREE.LineBasicMaterial({ color: 0x0078D7, transparent: true, opacity: 0.5 });
+        const earthOrbit = new THREE.Line(earthGeo, earthMat);
+        // Roter så X-Y planet ligger vandret i 3D rummet
+        earthOrbit.rotation.x = Math.PI / 2;
+        scene.add(earthOrbit);
 
-        function drawBackground() {
-            ctx.clearRect(0, 0, width, height);
+        // Ekliptika-Gitter for at hjælpe med at se hældningen visuelt
+        const gridHelper = new THREE.GridHelper(300, 30, 0x333333, 0x111111);
+        scene.add(gridHelper);
 
-            // Solen
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, 15, 0, Math.PI * 2);
-            ctx.fillStyle = "#ffcc00";
-            ctx.shadowBlur = 20;
-            ctx.shadowColor = "#ff9900";
-            ctx.fill();
-            ctx.shadowBlur = 0;
+        // 3. Kometens hyperbolske bane (Officielle baneelementer)
+        const e = 1.000366; 
+        const q = 0.499 * AU; 
+        const p = q * (1 + e);
+        
+        // Vinkler konverteret til radianer
+        const inclination = 124.73 * Math.PI / 180;
+        const argPeriapsis = 162.22 * Math.PI / 180;
+        const ascNode = 38.69 * Math.PI / 180;
 
-            // Jordens bane - Gjort meget mere synlig
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, AU, 0, Math.PI * 2);
-            ctx.strokeStyle = "rgba(0, 150, 255, 0.7)"; 
-            ctx.lineWidth = 1.5;
-            ctx.setLineDash([5, 5]);
-            ctx.stroke();
-            ctx.setLineDash(); // RETTET BUG! Tomt array er krævet i nyere browsere
-
-            // Jorden
-            let earthX = centerX + Math.cos(1.0) * AU;
-            let earthY = centerY + Math.sin(1.0) * AU;
-            ctx.beginPath();
-            ctx.arc(earthX, earthY, 7, 0, Math.PI * 2);
-            ctx.fillStyle = "#0078D7";
-            ctx.fill();
-            ctx.fillStyle = "white";
-            ctx.font = "14px sans-serif";
-            ctx.fillText("Jorden", earthX + 12, earthY + 5);
-
-            // Kometens bane - Gjort meget tydeligere
-            ctx.beginPath();
-            ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
-            ctx.lineWidth = 2.5;
-            for (let v = -2.2; v <= 2.2; v += 0.05) {
-                let r = p / (1 + e * Math.cos(v));
-                let x = centerX + r * Math.cos(v) * AU;
-                let y = centerY + r * Math.sin(v) * AU;
-                if (v === -2.2) ctx.moveTo(x, y);
-                else ctx.lineTo(x, y);
-            }
-            ctx.stroke();
-
-            // Markører for observationer - Gjort lidt større
-            observations.forEach(obs => {
-                let r = p / (1 + e * Math.cos(obs.angle));
-                let x = centerX + r * Math.cos(obs.angle) * AU;
-                let y = centerY + r * Math.sin(obs.angle) * AU;
-                
-                ctx.beginPath();
-                ctx.arc(x, y, 6, 0, Math.PI * 2);
-                ctx.fillStyle = obs.color;
-                ctx.fill();
-                ctx.strokeStyle = "white";
-                ctx.lineWidth = 1;
-                ctx.stroke();
-            });
-        }
-
-        function drawComet(angle) {
-            let r = p / (1 + e * Math.cos(angle));
-            let x = centerX + r * Math.cos(angle) * AU;
-            let y = centerY + r * Math.sin(angle) * AU;
-
-            // Koma
-            ctx.beginPath();
-            ctx.arc(x, y, 7, 0, Math.PI * 2);
-            ctx.fillStyle = "#ffffff";
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = "#4da6ff";
-            ctx.fill();
-            ctx.shadowBlur = 0;
-
-            // Hale
-            let dx = x - centerX;
-            let dy = y - centerY;
-            let dist = Math.sqrt(dx*dx + dy*dy);
-            let tailLen = 70 * (1 / r); 
+        const cometPoints =;
+        for (let v = -2.2; v <= 2.2; v += 0.01) {
+            let r = p / (1 + e * Math.cos(v));
+            let x = r * Math.cos(v);
+            let y = r * Math.sin(v);
             
-            ctx.beginPath();
-            ctx.moveTo(x, y);
-            ctx.lineTo(x + (dx/dist)*tailLen, y + (dy/dist)*tailLen);
-            ctx.strokeStyle = "rgba(77, 166, 255, 0.7)";
-            ctx.lineWidth = 5;
-            ctx.lineCap = "round";
-            ctx.stroke();
-
-            // Info Boks
-            let activeObs = observations.find(obs => Math.abs(obs.angle - angle) < 0.03);
-            if (activeObs) {
-                infoBox.innerText = activeObs.name;
-                infoBox.style.color = activeObs.color;
-            } else if (angle > 2.0) {
-                infoBox.innerText = "Kometen forlader det indre solsystem...";
-                infoBox.style.color = "#aaaaaa";
-            } else {
-                infoBox.innerText = "Komet i fart (op mod 57,5 km/s)";
-                infoBox.style.color = "#4da6ff";
-            }
+            let vec = new THREE.Vector3(x, y, 0);
+            
+            // Transformering i 3D rum ifølge klassiske baneelementer (Z-X-Z Euler rotation)
+            vec.applyAxisAngle(new THREE.Vector3(0, 0, 1), argPeriapsis); // Roterer i eget plan
+            vec.applyAxisAngle(new THREE.Vector3(1, 0, 0), inclination);  // Vipper banen (124.7 grader)
+            vec.applyAxisAngle(new THREE.Vector3(0, 0, 1), ascNode);      // Roterer til den rette himmelekvator
+            
+            // Konverterer til Three.js standard (hvor Y er "op")
+            cometPoints.push(new THREE.Vector3(vec.x, vec.z, -vec.y));
         }
 
+        const cometGeo = new THREE.BufferGeometry().setFromPoints(cometPoints);
+        const cometMat = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 });
+        const cometOrbitObj = new THREE.Line(cometGeo, cometMat);
+        scene.add(cometOrbitObj);
+
+        // 4. Markører for dine 4 observationer
+        const obsAngles = [-0.60, -0.40, -0.30, -0.15];
+        const obsColors = [0xff3366, 0x33ccff, 0x33ff33, 0xff9933];
+        
+        obsAngles.forEach((v, index) => {
+            let r = p / (1 + e * Math.cos(v));
+            let x = r * Math.cos(v);
+            let y = r * Math.sin(v);
+            
+            let vec = new THREE.Vector3(x, y, 0);
+            vec.applyAxisAngle(new THREE.Vector3(0, 0, 1), argPeriapsis);
+            vec.applyAxisAngle(new THREE.Vector3(1, 0, 0), inclination);
+            vec.applyAxisAngle(new THREE.Vector3(0, 0, 1), ascNode);
+            
+            // Skaber den farvede prik
+            const pointGeo = new THREE.SphereGeometry(2, 16, 16);
+            const pointMat = new THREE.MeshBasicMaterial({ color: obsColors[index] });
+            const pointMesh = new THREE.Mesh(pointGeo, pointMat);
+            pointMesh.position.set(vec.x, vec.z, -vec.y);
+            scene.add(pointMesh);
+        });
+
+        // Animations-loop (Gør kontrol og interaktivitet flydende)
         function animate() {
-            if (!isAnimating) return;
-            
-            drawBackground();
-            drawComet(currentAngle);
-            
-            currentAngle += 0.008; 
-            
-            if (currentAngle <= 2.2) {
-                animationId = requestAnimationFrame(animate);
-            } else {
-                isAnimating = false;
-            }
+            requestAnimationFrame(animate);
+            controls.update(); // Nødvendig for "damping"
+            renderer.render(scene, camera);
         }
+        animate();
 
-        function startAnimation() {
-            if (!isAnimating) {
-                isAnimating = true;
-                if (currentAngle > 2.1) currentAngle = -2.0;
-                animate();
-            }
-        }
-
-        function resetAnimation() {
-            isAnimating = false;
-            if(animationId) cancelAnimationFrame(animationId);
-            currentAngle = -2.0;
-            drawBackground();
-            drawComet(currentAngle);
-            infoBox.innerText = "Klar til start";
-            infoBox.style.color = "#ffcc00";
-        }
-
-        // Sikrer at baggrunden tegnes første gang siden indlæses
-        window.onload = resetAnimation;
+        // Sikrer at 3D rummet tilpasser sig hvis vinduet / skærmen ændrer størrelse
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
     </script>
 </body>
 </html>
