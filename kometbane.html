@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C/2025 R3 (PanSTARRS) - Bane Animation</title>
+    <style>
+        body {
+            background-color: #050510;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            color: #4da6ff;
+        }
+        p {
+            max-width: 700px;
+            margin: 0 auto 20px auto;
+            line-height: 1.5;
+        }
+        canvas {
+            background: radial-gradient(circle at center, #111 0%, #000 100%);
+            border: 1px solid #333;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(77, 166, 255, 0.2);
+            margin-bottom: 20px;
+        }
+       .controls button {
+            background-color: #0078D7;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: background 0.2s;
+        }
+       .controls button:hover {
+            background-color: #005a9e;
+        }
+        #info-box {
+            font-size: 18px;
+            font-weight: bold;
+            color: #ffcc00;
+            height: 30px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Komet C/2025 R3 (PanSTARRS) Interaktiv Bane</h1>
+    <p>Denne 2D-simulering viser kometens hyperbolske tur (e = 1.00034) gennem det indre solsystem. De gule punkter markerer de præcise dage for observationerne med dit Unistellar eVscope 2 teleskop.</p>
+    
+    <div id="info-box">Venter på start...</div>
+    <canvas id="orbitCanvas" width="800" height="600"></canvas>
+    
+    <div class="controls">
+        <button onclick="startAnimation()">Start Animation</button>
+        <button onclick="resetAnimation()">Nulstil</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('orbitCanvas');
+        const ctx = canvas.getContext('2d');
+        const infoBox = document.getElementById('info-box');
+
+        // Opsætning af skala og konstanter
+        const width = canvas.width;
+        const height = canvas.height;
+        const centerX = width / 2;
+        const centerY = height / 2 + 50; 
+        const AU = 220; // 1 AU = 220 pixels på skærmen
+
+        // Kometens fysiske baneelementer (C/2025 R3)
+        const e = 1.00034; // Excentricitet (Hyperbolsk)
+        const q = 0.499;   // Perihelion afstand i AU
+        const p = q * (1 + e); // Parameter til polære koordinater
+
+        // Observationspunkter ud fra billedernes datoer (estimeret sand anomali vinkel)
+        const observations =;
+
+        let currentAngle = -2.0;
+        let animationId = null;
+        let isAnimating = false;
+
+        function drawBackground() {
+            ctx.clearRect(0, 0, width, height);
+
+            // Tegn Solen
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 15, 0, Math.PI * 2);
+            ctx.fillStyle = "#ffcc00";
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = "#ff9900";
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // Tegn Jordens bane (1 AU)
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, AU, 0, Math.PI * 2);
+            ctx.strokeStyle = "rgba(0, 150, 255, 0.3)";
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            ctx.stroke();
+            ctx.setLineDash();
+
+            // Jordens position i april (ca. bund/højre i denne simple 2D projektion)
+            ctx.beginPath();
+            ctx.arc(centerX + Math.cos(1.0) * AU, centerY + Math.sin(1.0) * AU, 6, 0, Math.PI * 2);
+            ctx.fillStyle = "#0078D7";
+            ctx.fill();
+            ctx.fillStyle = "white";
+            ctx.font = "12px sans-serif";
+            ctx.fillText("Jorden (April)", centerX + Math.cos(1.0) * AU + 10, centerY + Math.sin(1.0) * AU + 4);
+
+            // Tegn Kometens bane (Hyperbel)
+            ctx.beginPath();
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
+            ctx.lineWidth = 2;
+            for (let v = -2.2; v <= 2.2; v += 0.05) {
+                let r = p / (1 + e * Math.cos(v));
+                let x = centerX + r * Math.cos(v) * AU;
+                let y = centerY + r * Math.sin(v) * AU;
+                if (v === -2.2) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            // Tegn markører for billeder/observationer
+            observations.forEach(obs => {
+                let r = p / (1 + e * Math.cos(obs.angle));
+                let x = centerX + r * Math.cos(obs.angle) * AU;
+                let y = centerY + r * Math.sin(obs.angle) * AU;
+                
+                ctx.beginPath();
+                ctx.arc(x, y, 4, 0, Math.PI * 2);
+                ctx.fillStyle = obs.color;
+                ctx.fill();
+            });
+        }
+
+        function drawComet(angle) {
+            let r = p / (1 + e * Math.cos(angle));
+            let x = centerX + r * Math.cos(angle) * AU;
+            let y = centerY + r * Math.sin(angle) * AU;
+
+            // Koma
+            ctx.beginPath();
+            ctx.arc(x, y, 6, 0, Math.PI * 2);
+            ctx.fillStyle = "#ffffff";
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = "#4da6ff";
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // Simpel Hale (peger væk fra solen)
+            let dx = x - centerX;
+            let dy = y - centerY;
+            let dist = Math.sqrt(dx*dx + dy*dy);
+            let tailLen = 60 * (1 / r); // Halen bliver længere tæt på Solen
+            
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + (dx/dist)*tailLen, y + (dy/dist)*tailLen);
+            ctx.strokeStyle = "rgba(77, 166, 255, 0.5)";
+            ctx.lineWidth = 4;
+            ctx.lineCap = "round";
+            ctx.stroke();
+
+            // Opdater Info Boks
+            let activeObs = observations.find(obs => Math.abs(obs.angle - angle) < 0.02);
+            if (activeObs) {
+                infoBox.innerText = activeObs.name;
+                infoBox.style.color = activeObs.color;
+            } else if (angle > 2.0) {
+                infoBox.innerText = "Kometen slynges ud af solsystemet...";
+                infoBox.style.color = "#aaaaaa";
+            } else {
+                infoBox.innerText = "Rejser med op mod 57,5 km/s...";
+                infoBox.style.color = "#4da6ff";
+            }
+        }
+
+        function animate() {
+            if (!isAnimating) return;
+            
+            drawBackground();
+            drawComet(currentAngle);
+            
+            currentAngle += 0.008; // Hastighed for animationen
+            
+            if (currentAngle <= 2.2) {
+                animationId = requestAnimationFrame(animate);
+            } else {
+                isAnimating = false;
+            }
+        }
+
+        function startAnimation() {
+            if (!isAnimating) {
+                isAnimating = true;
+                if (currentAngle > 2.1) currentAngle = -2.0;
+                animate();
+            }
+        }
+
+        function resetAnimation() {
+            isAnimating = false;
+            cancelAnimationFrame(animationId);
+            currentAngle = -2.0;
+            infoBox.innerText = "Klar til start";
+            infoBox.style.color = "#ffcc00";
+            drawBackground();
+            drawComet(currentAngle);
+        }
+
+        // Initial tegn
+        resetAnimation();
+    </script>
+</body>
+</html>
