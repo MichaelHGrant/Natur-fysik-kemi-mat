@@ -1,0 +1,1080 @@
+
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Gauss' metode – offline skolebogsnotation</title>
+<style>
+:root{
+  --bg:#09111f; --panel:#111c33; --panel2:#172542; --text:#edf3ff; --muted:#b2c0df;
+  --accent:#7cc7ff; --accent2:#a2ffd0; --warn:#ffd17c; --danger:#ff8f98; --ok:#b3ffc2;
+  --border:rgba(255,255,255,.10); --shadow:0 18px 46px rgba(0,0,0,.28);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:
+radial-gradient(circle at 20% 0%, #1b2d63 0%, #0a1223 38%, var(--bg) 100%);color:var(--text)}
+header,main,footer{max-width:1280px;margin:auto;padding:0 20px}
+header{padding-top:28px}
+.hero{padding:28px;border:1px solid var(--border);border-radius:26px;background:linear-gradient(135deg, rgba(124,199,255,.15), rgba(162,255,208,.09));box-shadow:var(--shadow)}
+.hero h1{margin:0 0 8px;font-size:2.25rem;line-height:1.15}
+.hero p{margin:10px 0 0;color:var(--muted);max-width:900px;line-height:1.6}
+.controls{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+button,.tab,.chip{
+  border:1px solid var(--border);background:var(--panel2);color:var(--text);
+  padding:11px 14px;border-radius:14px;cursor:pointer;font-weight:650
+}
+button:hover,.tab:hover{filter:brightness(1.08)}
+main{padding-top:18px;padding-bottom:34px}
+.layout{display:grid;grid-template-columns:290px 1fr;gap:18px}
+aside{position:sticky;top:14px;height:fit-content;padding:16px;background:rgba(17,28,51,.92);border:1px solid var(--border);border-radius:22px;box-shadow:var(--shadow)}
+aside .tab{display:block;width:100%;text-align:left;margin-bottom:10px}
+.badge{display:inline-block;padding:5px 10px;border-radius:999px;background:rgba(124,199,255,.14);border:1px solid var(--border);font-size:.85rem}
+.panel{display:none;padding:22px;background:rgba(17,28,51,.92);border:1px solid var(--border);border-radius:22px;box-shadow:var(--shadow)}
+.panel.active{display:block}
+h2{margin:0 0 12px;font-size:1.55rem}
+h3{margin:22px 0 10px}
+p,li{line-height:1.62}
+.muted{color:var(--muted)}
+.notice{padding:12px 14px;background:rgba(255,209,124,.08);border:1px solid rgba(255,209,124,.18);border-left:4px solid var(--warn);border-radius:14px}
+.success{padding:12px 14px;background:rgba(179,255,194,.08);border:1px solid rgba(179,255,194,.18);border-left:4px solid var(--ok);border-radius:14px}
+.danger{padding:12px 14px;background:rgba(255,143,152,.08);border:1px solid rgba(255,143,152,.18);border-left:4px solid var(--danger);border-radius:14px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.card{background:var(--panel2);border:1px solid var(--border);border-radius:18px;padding:16px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.kpi{padding:14px;border-radius:18px;background:var(--panel2);border:1px solid var(--border)}
+label{display:block;margin:10px 0 6px;font-weight:650}
+input,select,textarea{
+  width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--border);
+  background:#0c1529;color:var(--text)
+}
+textarea{min-height:180px;resize:vertical}
+.table-wrap{overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:.95rem}
+th,td{padding:10px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+code,pre{background:#0a1220;border:1px solid var(--border);border-radius:14px}
+pre{padding:14px;white-space:pre-wrap}
+.gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.figure{overflow:hidden;background:var(--panel2);border:1px solid var(--border);border-radius:20px}
+.figure svg{display:block;width:100%;height:auto;background:linear-gradient(180deg,#0c1631,#0a1020)}
+.figure .cap{padding:12px 14px;color:var(--muted)}
+.quiz{padding:16px;background:var(--panel2);border:1px solid var(--border);border-radius:18px;margin-bottom:14px}
+.answer{display:none;margin-top:8px;color:var(--accent2)}
+.teacher-only{display:none}
+.compare-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:12px}
+.compare-box{padding:14px;border:1px solid var(--border);border-radius:16px;background:#0b1425}
+.compare-box strong{display:block;margin-bottom:6px}
+.facit-banner{margin-top:10px;padding:10px 12px;border-radius:14px;background:rgba(162,255,208,.10);border:1px solid var(--border)}
+canvas{width:100%;height:560px;background:radial-gradient(circle at 50% 20%, #17254b, #060a14 72%);border:1px solid var(--border);border-radius:18px}
+.report-box{padding:18px;background:#08101d;border:1px solid var(--border);border-radius:18px;white-space:pre-wrap;line-height:1.55}
+.small{font-size:.92rem}
+hr{border:none;border-top:1px solid var(--border);margin:18px 0}
+@media (max-width:980px){
+  .layout{grid-template-columns:1fr}
+  aside{position:static}
+  .grid2,.grid3{grid-template-columns:1fr}
+}
+
+<style>
+.formula-inline{font-family:"Cambria Math","STIX Two Math","Times New Roman",serif;white-space:nowrap}
+.formula-block{margin:10px 0;padding:12px 14px;border:1px solid var(--border);border-radius:14px;background:#0a1220;font-family:"Cambria Math","STIX Two Math","Times New Roman",serif;overflow-x:auto}
+
+.formula-inline,.formula-block,.eq{
+  font-family: "Cambria Math","Times New Roman",serif;
+}
+.formula-block{
+  margin:10px 0;
+  padding:14px 16px;
+  border:1px solid var(--border);
+  border-radius:16px;
+  background:#07101f;
+  overflow-x:auto;
+  font-size:1.12rem;
+  line-height:1.5;
+}
+.eq{white-space:nowrap}
+.sym{
+  display:inline-block;
+  position:relative;
+  padding:0 .02em;
+}
+.sym.hat::before{
+  content:"ˆ";
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  top:-0.62em;
+  font-size:.9em;
+  line-height:1;
+}
+.sym.vec::after{
+  content:"→";
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  top:-0.92em;
+  font-size:.78em;
+  line-height:1;
+}
+.sub{
+  font-size:.68em;
+  vertical-align:-0.42em;
+  margin-left:.02em;
+}
+.math-note{color:var(--muted); margin-top:8px}
+
+</style>
+</head>
+<body>
+<header>
+  <div class="hero">
+    <div class="badge" id="modeBadge">Elevtilstand</div>
+    <h1>Gauss' metode for 3 observationer – skolebogsnotation</h1>
+    <p>Denne version bruger en <strong>ægte undervisningsvenlig Gauss-approksimation</strong> på tre observationer (RA, Dec, tid) og laver samtidig en automatisk elevrapport. Løsningen er fagligt mere seriøs end et rent vinkelhastigheds-estimat, men stadig forenklet: Jorden modelleres med en lavpræcisions heliocentrisk bane, og topocentriske/planetariske korrektioner er ikke med.</p>
+    <div class="controls">
+      <button onclick="document.getElementById('csvFile').click()">Importér CSV</button>
+      <button onclick="loadExample()">Indlæs eksempel</button>
+      <button onclick="runGauss()">Kør Gauss-approksimation</button>
+      <button onclick="toggleTeacherMode()">Skift elev-/lærertilstand</button>
+      <button id="facitToggleBtn" onclick="toggleFacit()" class="teacher-only">Vis facit</button>
+      <button onclick="downloadExampleCSV()">Download eksempel-CSV</button>
+      <input type="file" id="csvFile" accept=".csv,text/csv" hidden />
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="layout">
+    <aside>
+      <h3>Navigation</h3>
+      <button class="tab activeTab" onclick="showPanel('teori', this)">Teori & figurer</button>
+      <button class="tab" onclick="showPanel('data', this)">Data & Gauss</button>
+      <button class="tab" onclick="showPanel('plot', this)">3D-plot</button>
+      <button class="tab" onclick="showPanel('rapport', this)">Elevrapport</button>
+      <button class="tab" onclick="showPanel('quiz', this)">Quiz</button>
+      <div class="notice small" style="margin-top:12px">
+        <strong>CSV-format</strong><br>
+        Kolonner: <code>time,ra,dec</code><br>
+        Tid i ISO-format, fx <code>2026-04-03T21:00</code>.
+      </div>
+    </aside>
+
+    <section id="teori" class="panel active">
+      <h2>Teori og figurgalleri</h2>
+      <div class="grid2">
+        <div>
+          <p>Gauss' metode bestemmer en foreløbig bane ud fra mindst tre observationer af et himmellegemes retning på himlen. Fra observationerne får man tre enhedsvektorer <span class="formula-inline"><span class="eq"><span class="sym hat">ρ</span><span class="sub">1</span></span>, <span class="eq"><span class="sym hat">ρ</span><span class="sub">2</span></span>, <span class="eq"><span class="sym hat">ρ</span><span class="sub">3</span></span></span>, og man kombinerer dem med Jordens heliocentriske positioner <span class="formula-inline"><span class="eq"><span class="sym vec">R</span><span class="sub">1</span></span>, <span class="eq"><span class="sym vec">R</span><span class="sub">2</span></span>, <span class="eq"><span class="sym vec">R</span><span class="sub">3</span></span></span>.</p>
+          <div class="card">
+            <strong>Grundligning</strong>
+            <div class="formula-block"><span class="eq"><span class="sym vec">r</span></span> = <span class="eq"><span class="sym vec">R</span></span> + ρ · <span class="eq"><span class="sym hat">ρ</span></span></div>
+            <div class="muted small">hvor <span class="eq"><span class="sym vec">r</span></span> er objektets heliocentriske position, <span class="eq"><span class="sym vec">R</span></span> er Jordens heliocentriske position og ρ er geocentrisk afstand.</div><div class="notation-note">Her bruges suffixerne <strong>_vec</strong> for vektorer og <strong>_hat</strong> for enhedsvektorer, så matematikken vises stabilt på alle enheder.</div>
+          </div>
+          <div class="card">
+            <strong>Enhedsvektor fra RA/Dec</strong>
+            <div class="formula-block"><span class="eq"><span class="sym hat">ρ</span></span> = (cos δ cos α, cos δ sin α, sin δ)</div>
+          </div>
+          <div class="notice">
+            <strong>Vigtigt:</strong> Denne side bruger en didaktisk Gauss-approksimation. Den er velegnet til undervisning, rapportskrivning og elevprojekter, men ikke til professionel bane-bestemmelse på JPL-niveau.
+          </div>
+        </div>
+        <div class="gallery">
+          <div class="figure">
+            <svg viewBox="0 0 600 360" xmlns="http://www.w3.org/2000/svg">
+              <defs><linearGradient id="g1" x1="0" x2="1"><stop offset="0" stop-color="#7cc7ff"/><stop offset="1" stop-color="#a2ffd0"/></linearGradient></defs>
+              <rect width="600" height="360" fill="#0b1326"/>
+              <circle cx="130" cy="190" r="18" fill="#ffd36b"/>
+              <circle cx="260" cy="190" r="12" fill="#84b7ff"/>
+              <circle cx="470" cy="110" r="10" fill="#7cc7ff"/>
+              <line x1="130" y1="190" x2="260" y2="190" stroke="#ffd36b" stroke-width="4"/>
+              <line x1="260" y1="190" x2="470" y2="110" stroke="url(#g1)" stroke-width="4"/>
+              <line x1="130" y1="190" x2="470" y2="110" stroke="#ffffff33" stroke-dasharray="8 8" stroke-width="2"/>
+              <text x="110" y="230" fill="#edf3ff" font-size="24">Sol</text>
+              <text x="230" y="225" fill="#edf3ff" font-size="24">Jord</text>
+              <text x="420" y="90" fill="#edf3ff" font-size="24">Komet</text>
+              <text x="170" y="176" fill="#ffd36b" font-size="22"><span class="eq"><span class="sym vec">R</span></span></text>
+              <text x="344" y="150" fill="#a2ffd0" font-size="22">ρ·<span class="eq"><span class="sym hat">ρ</span></span></text>
+              <text x="270" y="130" fill="#ffffffbb" font-size="20"><span class="eq"><span class="sym vec">r</span></span></text>
+            </svg>
+            <div class="cap">Figur 1. Den geometriske idé i Gauss' metode.</div>
+          </div>
+          <div class="figure">
+            <svg viewBox="0 0 600 360" xmlns="http://www.w3.org/2000/svg">
+              <rect width="600" height="360" fill="#0b1326"/>
+              <path d="M74 250 C180 130, 320 120, 530 100" fill="none" stroke="#7cc7ff" stroke-width="5"/>
+              <circle cx="180" cy="168" r="8" fill="#a2ffd0"/>
+              <circle cx="300" cy="138" r="8" fill="#a2ffd0"/>
+              <circle cx="430" cy="113" r="8" fill="#a2ffd0"/>
+              <line x1="120" y1="310" x2="180" y2="168" stroke="#ffd36b" stroke-width="3"/>
+              <line x1="250" y1="310" x2="300" y2="138" stroke="#ffd36b" stroke-width="3"/>
+              <line x1="380" y1="310" x2="430" y2="113" stroke="#ffd36b" stroke-width="3"/>
+              <circle cx="120" cy="310" r="10" fill="#84b7ff"/>
+              <circle cx="250" cy="310" r="10" fill="#84b7ff"/>
+              <circle cx="380" cy="310" r="10" fill="#84b7ff"/>
+              <text x="95" y="336" fill="#edf3ff" font-size="20">E₁</text>
+              <text x="225" y="336" fill="#edf3ff" font-size="20">E₂</text>
+              <text x="355" y="336" fill="#edf3ff" font-size="20">E₃</text>
+              <text x="168" y="154" fill="#edf3ff" font-size="20">O₁</text>
+              <text x="288" y="124" fill="#edf3ff" font-size="20">O₂</text>
+              <text x="418" y="99" fill="#edf3ff" font-size="20">O₃</text>
+              <text x="22" y="44" fill="#edf3ff" font-size="24">Tre observationer giver en foreløbig bane</text>
+            </svg>
+            <div class="cap">Figur 2. Tre sigtelinjer fra Jorden til objektet.</div>
+          </div>
+          <div class="figure">
+            <svg viewBox="0 0 600 360" xmlns="http://www.w3.org/2000/svg">
+              <rect width="600" height="360" fill="#0b1326"/>
+              <circle cx="300" cy="180" r="16" fill="#ffd36b"/>
+              <ellipse cx="300" cy="180" rx="210" ry="110" fill="none" stroke="#7cc7ff" stroke-width="4"/>
+              <path d="M510 177 A210 110 0 0 1 370 280" fill="none" stroke="#a2ffd0" stroke-width="6"/>
+              <line x1="300" y1="180" x2="505" y2="176" stroke="#ffffff55" stroke-dasharray="8 8" stroke-width="2"/>
+              <circle cx="505" cy="176" r="8" fill="#a2ffd0"/>
+              <text x="520" y="182" fill="#edf3ff" font-size="22">O₂</text>
+              <text x="252" y="220" fill="#edf3ff" font-size="24">Sol</text>
+              <text x="344" y="154" fill="#edf3ff" font-size="22">ν</text>
+              <text x="380" y="300" fill="#edf3ff" font-size="20">Foreløbig bane fra r₂ og v₂</text>
+            </svg>
+            <div class="cap">Figur 3. Når r₂ og v₂ er fundet, kan baneelementer estimeres.</div>
+          </div>
+        </div>
+      </div>
+      <div class="teacher-only">
+        <hr>
+        <div class="success">
+          <strong>Lærernote:</strong> En god klassediskussion er at sammenligne denne approksimation med en fuld numerisk orbit-determination. Eleverne kan diskutere, hvilke antagelser der er gjort, og hvordan de påvirker ekscentricitet, perihelafstand og baneplan.
+        </div>
+      </div>
+    </section>
+
+    <section id="data" class="panel">
+      <h2>Dataimport og Gauss-beregning</h2>
+      <div class="grid2">
+        <div>
+          <label for="csvText">Observationer</label>
+          <textarea id="csvText">time,ra,dec
+2026-04-01T21:00,212.10,-8.00
+2026-04-04T21:00,214.60,-6.40
+2026-04-08T21:00,218.90,-3.80
+2026-04-12T21:00,223.40,-1.10</textarea>
+          <div class="grid3">
+            <div>
+              <label for="obs1">Observation 1</label>
+              <select id="obs1"></select>
+            </div>
+            <div>
+              <label for="obs2">Observation 2</label>
+              <select id="obs2"></select>
+            </div>
+            <div>
+              <label for="obs3">Observation 3</label>
+              <select id="obs3"></select>
+            </div>
+          </div>
+          <div class="muted small" style="margin-top:8px">Hvis du importerer mere end tre målinger, bruges de tre valgte observationer i selve Gauss-løsningen.</div>
+        </div>
+        <div>
+          <div class="card">
+            <strong>Hvad beregnes?</strong>
+            <ul>
+              <li>Jordens heliocentriske position ved de tre tider</li>
+              <li>Tre sigtevektorer fra RA/Dec</li>
+              <li>Foreløbige geocentriske afstande ρ_1,ρ_2,ρ_3</li>
+              <li>Heliocentrisk tilstandsvektor <span class="formula-inline">(r₂, v₂)</span></li>
+              <li>Baneelementer: a, e, i, Ω, ω, ν</li>
+            </ul>
+          </div>
+          <div class="notice small">
+            <strong>Datakrav:</strong> Tiderne skal være forskellige, og himmelretningerne må ikke være næsten identiske. Ved næsten kollineære observationer bliver Gauss-matricen numerisk ustabil.
+          </div>
+          <div id="statusBox" class="success" style="margin-top:14px">Klar til beregning.</div>
+        </div>
+      </div>
+
+      <h3>Resultater</h3>
+      <div class="kpis" id="kpis"></div>
+
+      <div class="grid2" style="margin-top:16px">
+        <div class="card">
+          <strong>Valgte observationer</strong>
+          <div class="table-wrap">
+            <table id="selectedTable">
+              <thead><tr><th>#</th><th>Tid</th><th>RA</th><th>Dec</th><th>ρ̂x</th><th>ρ̂y</th><th>ρ̂z</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <strong>Heliocentriske vektorer ved t₂</strong>
+          <div class="table-wrap">
+            <table>
+              <tbody id="vectorTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+
+
+      <h3>Sammenligning med referencebane</h3>
+      <div class="grid2">
+        <div class="card">
+          <strong>Indsæt kendte baneelementer</strong>
+          <div class="grid3">
+            <div><label for="refE">e</label><input id="refE" placeholder="fx 1.0012"></div>
+            <div><label for="refA">a (AU)</label><input id="refA" placeholder="fx -420"></div>
+            <div><label for="refQ">q (AU)</label><input id="refQ" placeholder="fx 0.55"></div>
+          </div>
+          <div class="grid3">
+            <div><label for="refI">i (°)</label><input id="refI" placeholder="fx 82.4"></div>
+            <div><label for="refOmega">Ω (°)</label><input id="refOmega" placeholder="fx 14.7"></div>
+            <div><label for="refOmegaSmall">ω (°)</label><input id="refOmegaSmall" placeholder="fx 203.8"></div>
+          </div>
+          <div class="controls">
+            <button onclick="compareReference()">Sammenlign med reference</button>
+            <button onclick="loadReferenceExample()">Indlæs eksempel</button>
+          </div>
+          <div class="muted small">Udfyld de elementer du kender. Siden beregner afvigelser mellem referencebanen og den beregnede undervisningsbane.</div>
+        </div>
+        <div class="card">
+          <strong>Afvigelser</strong>
+          <div id="referenceComparison" class="compare-grid muted small">Ingen reference indsat endnu.</div>
+        </div>
+      </div>
+      <div class="teacher-only">
+        <h3>Metoden bag</h3>
+        <pre id="methodNote"></pre>
+      </div>
+    </section>
+
+    <section id="plot" class="panel">
+      <h2>3D-plot af foreløbig bane</h2>
+      <p class="muted">Træk med musen for at rotere. Brug musehjul/trackpad for zoom. Plottet viser Solen, de tre jordpositioner, de tre objektpositioner, sigtelinjer og den foreløbige bane fra de beregnede elementer.</p>
+      <canvas id="plotCanvas" width="1000" height="620"></canvas>
+    </section>
+
+    <section id="rapport" class="panel">
+      <h2>Automatisk elevrapport</h2>
+      <div class="grid2">
+        <div>
+          <label>Elevnavn / gruppe</label>
+          <input id="studentName" placeholder="fx Gruppe 2 eller Anna & Omar"/>
+          <label>Klasse</label>
+          <input id="studentClass" placeholder="fx 2.g fys/mat"/>
+          <label>Rapporttitel</label>
+          <input id="reportTitle" value="Foreløbig bane for komet ud fra 3 observationer"/>
+          <div class="controls">
+            <button onclick="generateReport()">Generér rapport</button>
+            <button onclick="copyReport()">Kopiér rapport</button>
+            <button onclick="exportReportToWord()">Eksportér til Word</button>
+            <button onclick="window.print()">Udskriv / gem som PDF</button>
+          </div>
+        </div>
+        <div>
+          <div class="notice small">
+            Rapporten samler automatisk:
+            <ul>
+              <li>de importerede observationer</li>
+              <li>de tre valgte målinger</li>
+              <li>Gauss-resultater og baneelementer</li>
+              <li>en kort faglig fortolkning</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <h3>Rapporttekst</h3>
+      <div class="facit-banner teacher-only" id="facitBanner">Lærerfacit er skjult. Brug knappen øverst for at vise/skjule facitfelter og svar.</div>
+      <div id="reportBox" class="report-box">Tryk på “Generér rapport” efter beregningen.</div>
+    </section>
+
+    <section id="quiz" class="panel">
+      <h2>Quiz og refleksion</h2>
+      <div class="quiz">
+        <strong>1. Hvorfor kræver Gauss' metode mindst tre observationer?</strong><br>
+        <button onclick="toggleAnswer(this)">Vis svar</button>
+        <div class="answer">Fordi man kun observerer retninger på himlen. Tre observationer giver nok information til at estimere de tre ukendte afstande og objektets foreløbige bevægelse i rummet.</div>
+      </div>
+      <div class="quiz">
+        <strong>2. Hvad betyder det, hvis den beregnede ekscentricitet er større end 1?</strong><br>
+        <button onclick="toggleAnswer(this)">Vis svar</button>
+        <div class="answer">Så er den foreløbige bane hyperbolsk. Objektet er i så fald ikke gravitationelt bundet i en lukket ellipse omkring Solen.</div>
+      </div>
+      <div class="quiz">
+        <strong>3. Hvilke fejl kan påvirke resultatet mest?</strong><br>
+        <button onclick="toggleAnswer(this)">Vis svar</button>
+        <div class="answer">Små målefejl i RA/Dec, for korte tidsintervaller mellem observationer, næsten parallelle sigtelinjer og den forenklede model for Jordens bane.</div>
+      </div>
+      <div class="teacher-only">
+        <div class="quiz">
+          <strong>Læreridé: Hvad kan eleverne sammenligne med?</strong><br>
+          <button onclick="toggleAnswer(this)">Vis svar</button>
+          <div class="answer">Eleverne kan sammenligne deres beregnede <span class="formula-inline">e</span>, <span class="formula-inline">i</span> og <span class="formula-inline">q</span> med værdier fra Minor Planet Center eller JPL Small-Body Database og diskutere forskellen mellem en foreløbig og en professionel bane.</div>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer class="muted small" style="padding-bottom:30px">Undervisningsværktøj til Gauss' metode – lokal HTML uden serverkrav.</footer>
+
+<script>
+const K = 0.01720209895;               // Gauss' gravitationskonstant
+const AU_KM = 149597870.7;
+const MU_SUN_KM = 1.32712440018e11;
+const VEL_FACTOR = K * AU_KM / 86400;  // AU/TU -> km/s
+
+const state = {
+  rows: [],
+  chosen: [],
+  result: null,
+  teacherMode: false,
+  facitVisible: false,
+  reference: null,
+  view: { rotX: -0.35, rotY: 0.8, zoom: 165 }
+};
+
+function rerenderMath(){}
+
+function showPanel(id, btn){
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('aside .tab').forEach(t => t.classList.remove('activeTab'));
+  if (btn) btn.classList.add('activeTab');
+}
+function toggleTeacherMode(){
+  state.teacherMode = !state.teacherMode;
+  document.getElementById('modeBadge').textContent = state.teacherMode ? 'Lærertilstand' : 'Elevtilstand';
+  document.querySelectorAll('.teacher-only').forEach(el => el.style.display = state.teacherMode ? 'block' : 'none');
+  if (!state.teacherMode && state.facitVisible) toggleFacit(false);
+}
+function toggleAnswer(btn){
+  const el = btn.parentElement.querySelector('.answer');
+  const open = el.style.display === 'block';
+  el.style.display = open ? 'none' : 'block';
+  btn.textContent = open ? 'Vis svar' : 'Skjul svar';
+}
+
+function toggleFacit(force){
+  if (!state.teacherMode && force !== false){
+    setStatus('Skift først til lærertilstand for at bruge facit-knappen.', 'notice');
+    return;
+  }
+  state.facitVisible = typeof force === 'boolean' ? force : !state.facitVisible;
+  document.querySelectorAll('.answer').forEach(el => el.style.display = state.facitVisible ? 'block' : 'none');
+  document.querySelectorAll('#quiz button[onclick^="toggleAnswer"]').forEach(btn => btn.textContent = state.facitVisible ? 'Skjul svar' : 'Vis svar');
+  const btn = document.getElementById('facitToggleBtn');
+  if (btn) btn.textContent = state.facitVisible ? 'Skjul facit' : 'Vis facit';
+  const banner = document.getElementById('facitBanner');
+  if (banner) banner.textContent = state.facitVisible ? 'Lærerfacit er synligt.' : 'Lærerfacit er skjult. Brug knappen øverst for at vise/skjule facitfelter og svar.';
+}
+
+function getReferenceInput(){
+  const fields = [
+    ['e','refE'], ['a','refA'], ['qperi','refQ'], ['i','refI'], ['Omega','refOmega'], ['omega','refOmegaSmall']
+  ];
+  const ref = {};
+  let count = 0;
+  for (const [key,id] of fields){
+    const raw = document.getElementById(id).value.trim();
+    if (!raw) continue;
+    const val = parseFloat(raw.replace(',', '.'));
+    if (Number.isFinite(val)){ ref[key] = val; count++; }
+  }
+  return count ? ref : null;
+}
+
+function angleDelta(a,b){
+  let d = Math.abs(a-b) % 360;
+  return d > 180 ? 360-d : d;
+}
+
+function compareReference(){
+  const box = document.getElementById('referenceComparison');
+  if (!state.result){
+    box.innerHTML = 'Kør først Gauss-beregningen.';
+    return;
+  }
+  const ref = getReferenceInput();
+  if (!ref){
+    box.innerHTML = 'Ingen gyldige referenceelementer indtastet endnu.';
+    state.reference = null;
+    return;
+  }
+  state.reference = ref;
+  const el = state.result.elements;
+  const defs = [
+    ['e','Ekscentricitet', false],
+    ['a','Store halvakse (AU)', false],
+    ['qperi','Perihelafstand q (AU)', false],
+    ['i','Inklination i (°)', true],
+    ['Omega','Knude Ω (°)', true],
+    ['omega','Perihelargument ω (°)', true]
+  ];
+  const cards = [];
+  for (const [key,label,isAngle] of defs){
+    if (!(key in ref)) continue;
+    const calc = el[key];
+    const delta = isAngle ? angleDelta(calc, ref[key]) : Math.abs(calc - ref[key]);
+    cards.push(`<div class="compare-box"><strong>${label}</strong>Reference: ${fmt(ref[key],4)}<br>Beregnet: ${fmt(calc,4)}<br>Afvigelse: ${fmt(delta,4)}</div>`);
+  }
+  box.innerHTML = cards.join('') || 'Ingen sammenlignelige referenceelementer.';
+  generateReport();
+}
+
+function loadReferenceExample(){
+  document.getElementById('refE').value = '1.0012';
+  document.getElementById('refQ').value = '0.55';
+  document.getElementById('refI').value = '82.4';
+  document.getElementById('refOmega').value = '14.7';
+  document.getElementById('refOmegaSmall').value = '203.8';
+  compareReference();
+}
+
+function referenceSummaryText(){
+  if (!state.reference || !state.result) return 'Ingen referencebane er indsat.';
+  const ref = state.reference, el = state.result.elements;
+  const parts = [];
+  if (Number.isFinite(ref.e)) parts.push(`e: ref ${fmt(ref.e,5)} vs. beregnet ${fmt(el.e,5)} (Δ=${fmt(Math.abs(el.e-ref.e),5)})`);
+  if (Number.isFinite(ref.a)) parts.push(`a: ref ${fmt(ref.a,5)} AU vs. beregnet ${fmt(el.a,5)} AU (Δ=${fmt(Math.abs(el.a-ref.a),5)})`);
+  if (Number.isFinite(ref.qperi)) parts.push(`q: ref ${fmt(ref.qperi,5)} AU vs. beregnet ${fmt(el.qperi,5)} AU (Δ=${fmt(Math.abs(el.qperi-ref.qperi),5)})`);
+  if (Number.isFinite(ref.i)) parts.push(`i: ref ${fmt(ref.i,3)}° vs. beregnet ${fmt(el.i,3)}° (Δ=${fmt(angleDelta(el.i,ref.i),3)}°)`);
+  if (Number.isFinite(ref.Omega)) parts.push(`Ω: ref ${fmt(ref.Omega,3)}° vs. beregnet ${fmt(el.Omega,3)}° (Δ=${fmt(angleDelta(el.Omega,ref.Omega),3)}°)`);
+  if (Number.isFinite(ref.omega)) parts.push(`ω: ref ${fmt(ref.omega,3)}° vs. beregnet ${fmt(el.omega,3)}° (Δ=${fmt(angleDelta(el.omega,ref.omega),3)}°)`);
+  return parts.join('\n');
+}
+
+function exportReportToWord(){
+  if (!state.result) generateReport();
+  const title = (document.getElementById('reportTitle').value || 'gauss_rapport').replace(/[^\wæøåÆØÅ -]+/g,'').trim().replace(/\s+/g,'_');
+  const report = document.getElementById('reportBox').textContent
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title>
+  <!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->
+  <style>body{font-family:Calibri,Arial,sans-serif;margin:28px;line-height:1.45} h1{font-size:20pt} .meta{color:#555;margin-bottom:18px} .box{border:1px solid #bbb;padding:14px;border-radius:8px}</style></head>
+  <body><h1>${document.getElementById('reportTitle').value || 'Foreløbig bane'}</h1><div class="meta">Eksporteret fra den lokale undervisningsside om Gauss' metode.</div><div class="box">${report}</div></body></html>`;
+  const blob = new Blob(['\ufeff', html], {type:'application/msword'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${title || 'gauss_rapport'}.doc`;
+  a.click();
+  setStatus('Rapporten er eksporteret i Word-kompatibelt format.', 'success');
+}
+
+document.getElementById('csvFile').addEventListener('change', async (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  document.getElementById('csvText').value = await f.text();
+  prepareRows();
+});
+
+function parseCSV(text){
+  const lines = text.trim().split(/\r?\n/).filter(Boolean);
+  if (lines.length < 2) throw new Error('CSV-filen er tom eller mangler data.');
+  const header = lines[0].split(',').map(s => s.trim().toLowerCase());
+  const iTime = header.indexOf('time');
+  const iRa = header.indexOf('ra');
+  const iDec = header.indexOf('dec');
+  if (iTime < 0 || iRa < 0 || iDec < 0) throw new Error('CSV skal indeholde kolonnerne time, ra, dec');
+  const rows = lines.slice(1).map((line, idx) => {
+    const parts = line.split(',').map(s => s.trim());
+    const t = new Date(parts[iTime]);
+    const ra = parseFloat(parts[iRa]);
+    const dec = parseFloat(parts[iDec]);
+    return {index: idx+1, timeRaw: parts[iTime], time: t, ra, dec};
+  }).filter(r => !isNaN(r.time) && isFinite(r.ra) && isFinite(r.dec));
+  if (rows.length < 3) throw new Error('Der skal være mindst 3 gyldige observationer.');
+  rows.sort((a,b) => a.time - b.time);
+  rows.forEach(r => r.rhoHat = vecFromRaDec(r.ra, r.dec));
+  return rows;
+}
+function prepareRows(){
+  try{
+    state.rows = parseCSV(document.getElementById('csvText').value);
+    populateSelectors();
+    setStatus('Observationer læst korrekt. Vælg tre observationer eller kør standardvalget.', 'success');
+  }catch(err){
+    setStatus('Fejl: ' + err.message, 'danger');
+  }
+}
+function populateSelectors(){
+  ['obs1','obs2','obs3'].forEach(id => {
+    const sel = document.getElementById(id);
+    sel.innerHTML = state.rows.map((r, idx) => `<option value="${idx}">${idx+1}: ${r.timeRaw} | RA ${r.ra.toFixed(2)} | Dec ${r.dec.toFixed(2)}</option>`).join('');
+  });
+  if (state.rows.length >= 3){
+    document.getElementById('obs1').value = 0;
+    document.getElementById('obs2').value = Math.floor((state.rows.length - 1)/2);
+    document.getElementById('obs3').value = state.rows.length - 1;
+  }
+}
+
+function deg2rad(d){ return d * Math.PI / 180; }
+function rad2deg(r){ return r * 180 / Math.PI; }
+function fmt(n, d=5){ return Number.isFinite(n) ? n.toFixed(d) : '—'; }
+
+function vec(x,y,z){ return {x,y,z}; }
+function add(a,b){ return vec(a.x+b.x, a.y+b.y, a.z+b.z); }
+function sub(a,b){ return vec(a.x-b.x, a.y-b.y, a.z-b.z); }
+function scale(a,s){ return vec(a.x*s, a.y*s, a.z*s); }
+function dot(a,b){ return a.x*b.x + a.y*b.y + a.z*b.z; }
+function cross(a,b){ return vec(a.y*b.z - a.z*b.y, a.z*b.x - a.x*b.z, a.x*b.y - a.y*b.x); }
+function mag(a){ return Math.sqrt(dot(a,a)); }
+function unit(a){ const m = mag(a); return scale(a, 1/m); }
+function det(a,b,c){ return dot(a, cross(b,c)); }
+
+function vecFromRaDec(raDeg, decDeg){
+  const a = deg2rad(raDeg), d = deg2rad(decDeg);
+  return vec(Math.cos(d)*Math.cos(a), Math.cos(d)*Math.sin(a), Math.sin(d));
+}
+function julianDate(date){
+  let y = date.getUTCFullYear(), m = date.getUTCMonth() + 1;
+  const D = date.getUTCDate() + (date.getUTCHours() + (date.getUTCMinutes() + date.getUTCSeconds()/60)/60)/24;
+  if (m <= 2){ y -= 1; m += 12; }
+  const A = Math.floor(y/100);
+  const B = 2 - A + Math.floor(A/4);
+  return Math.floor(365.25*(y + 4716)) + Math.floor(30.6001*(m + 1)) + D + B - 1524.5;
+}
+function earthHeliocentricEquatorial(jd){
+  const n = jd - 2451545.0;
+  const L = deg2rad((280.460 + 0.9856474*n) % 360);
+  const g = deg2rad((357.528 + 0.9856003*n) % 360);
+  const lambda = L + deg2rad(1.915)*Math.sin(g) + deg2rad(0.020)*Math.sin(2*g);
+  const R = 1.00014 - 0.01671*Math.cos(g) - 0.00014*Math.cos(2*g);
+  const xEcl = -R*Math.cos(lambda);
+  const yEcl = -R*Math.sin(lambda);
+  const eps = deg2rad(23.439291);
+  return vec(
+    xEcl,
+    yEcl*Math.cos(eps),
+    yEcl*Math.sin(eps)
+  );
+}
+function solve3x3(M, b){
+  // Cramer's rule for 3x3
+  const d = det(M[0], M[1], M[2]);
+  if (Math.abs(d) < 1e-12) throw new Error('Matrixen er næsten singulær; observationerne er numerisk ustabile.');
+  return [
+    det(b, M[1], M[2]) / d,
+    det(M[0], b, M[2]) / d,
+    det(M[0], M[1], b) / d
+  ];
+}
+function polyEval(coeff, x){
+  let s = 0;
+  for (let i=0; i<coeff.length; i++) s = s*x + coeff[i];
+  return s;
+}
+function solvePositiveR2(A, B, E, F){
+  // x^8 - (A^2 + 2AE + F)x^6 - 2B(A+E)x^3 - B^2 = 0
+  const c = [1,0,-(A*A + 2*A*E + F),0,0,-2*B*(A+E),0,0,-B*B];
+  const roots = [];
+  for (let x=0.05; x<=8; x+=0.01){
+    const y1 = polyEval(c, x), y2 = polyEval(c, x+0.01);
+    if (y1 === 0) roots.push(x);
+    if (y1*y2 < 0){
+      let a=x, b=x+0.01, fa=y1, fb=y2;
+      for (let i=0; i<70; i++){
+        const m = 0.5*(a+b), fm = polyEval(c, m);
+        if (fa*fm <= 0){ b=m; fb=fm; } else { a=m; fa=fm; }
+      }
+      roots.push(0.5*(a+b));
+    }
+  }
+  // dedupe close roots
+  const out = [];
+  roots.sort((u,v)=>u-v).forEach(r => { if (!out.length || Math.abs(out[out.length-1]-r) > 1e-3) out.push(r); });
+  return out.filter(r => r > 0);
+}
+function fgSeries(r2, v2, tau){
+  const r = mag(r2);
+  const u = 1 / Math.pow(r, 3);
+  const z = dot(r2, v2) / (r*r);
+  const q = dot(v2, v2)/(r*r) - u;
+  const f = 1 - 0.5*u*tau*tau + 0.5*u*z*Math.pow(tau,3) + (1/24)*(3*u*q - 15*u*z*z + u*u)*Math.pow(tau,4);
+  const g = tau - (1/6)*u*Math.pow(tau,3) + 0.25*u*z*Math.pow(tau,4);
+  return {f,g};
+}
+function gaussOrbit(obs3){
+  const rows = [...obs3].sort((a,b)=>a.time-b.time);
+  const t = rows.map(r => julianDate(r.time));
+  const R = t.map(jd => earthHeliocentricEquatorial(jd));
+  const rho = rows.map(r => r.rhoHat);
+  const tau1 = K*(t[0]-t[1]);
+  const tau3 = K*(t[2]-t[1]);
+  const tau = tau3 - tau1;
+  const D0 = det(rho[0], rho[1], rho[2]);
+  if (Math.abs(D0) < 1e-10) throw new Error('D0 er for lille. Vælg observationer med større geometrisk spredning.');
+
+  const D = [
+    [det(R[0], rho[1], rho[2]), det(rho[0], R[0], rho[2]), det(rho[0], rho[1], R[0])],
+    [det(R[1], rho[1], rho[2]), det(rho[0], R[1], rho[2]), det(rho[0], rho[1], R[1])],
+    [det(R[2], rho[1], rho[2]), det(rho[0], R[2], rho[2]), det(rho[0], rho[1], R[2])]
+  ];
+  const A = (-D[0][1]*(tau3/tau) + D[1][1] + D[2][1]*(tau1/tau)) / D0;
+  const B = (D[0][1]*(tau3*tau3 - tau*tau)*(tau3/tau) + D[2][1]*(tau*tau - tau1*tau1)*(tau1/tau)) / (6*D0);
+  const E = dot(R[1], rho[1]);
+  const F = dot(R[1], R[1]);
+  const roots = solvePositiveR2(A, B, E, F);
+  if (!roots.length) throw new Error('Kunne ikke finde en positiv rod til Gauss-polynomiet. Prøv andre observationer.');
+  let r2mag = roots.reduce((best, cur) => Math.abs(cur - 1) < Math.abs(best - 1) ? cur : best, roots[0]);
+
+  let f1 = 1 - (tau1*tau1)/(2*Math.pow(r2mag,3));
+  let f3 = 1 - (tau3*tau3)/(2*Math.pow(r2mag,3));
+  let g1 = tau1 - Math.pow(tau1,3)/(6*Math.pow(r2mag,3));
+  let g3 = tau3 - Math.pow(tau3,3)/(6*Math.pow(r2mag,3));
+
+  let r1, r2, r3, v2, rhoMag = [NaN,NaN,NaN], iterations = 0;
+  for (let iter=0; iter<20; iter++){
+    iterations = iter + 1;
+    const den = f1*g3 - f3*g1;
+    if (Math.abs(den) < 1e-12) throw new Error('fg-determinanten blev for lille.');
+    const c1 = g3 / den, c2 = -1, c3 = -g1 / den;
+    const M = [rho[0], rho[1], rho[2]];
+    const rhs = scale(add(add(scale(R[0], c1), scale(R[1], c2)), scale(R[2], c3)), -1);
+    const q = solve3x3(M, rhs); // q_i = c_i * rho_i
+    rhoMag = [q[0]/c1, q[1]/c2, q[2]/c3];
+    r1 = add(R[0], scale(rho[0], rhoMag[0]));
+    r2 = add(R[1], scale(rho[1], rhoMag[1]));
+    r3 = add(R[2], scale(rho[2], rhoMag[2]));
+    v2 = scale(add(scale(r3, f1), scale(r1, -f3)), 1/den);
+    const r2new = mag(r2);
+    const fg1 = fgSeries(r2, v2, tau1);
+    const fg3 = fgSeries(r2, v2, tau3);
+    f1 = fg1.f; g1 = fg1.g; f3 = fg3.f; g3 = fg3.g;
+    if (Math.abs(r2new - r2mag) < 1e-10) break;
+    r2mag = r2new;
+  }
+
+  if (!rhoMag.every(x => Number.isFinite(x)) || ![r1,r2,r3,v2].every(v => Number.isFinite(v.x) && Number.isFinite(v.y) && Number.isFinite(v.z))) {
+    throw new Error('Beregningen gav ikke gyldige vektorer.');
+  }
+
+  const h = cross(r2, v2), hmag = mag(h);
+  const n = cross(vec(0,0,1), h), nmag = mag(n);
+  const r2m = mag(r2), v2m = mag(v2);
+  const eVec = scale(sub(scale(r2, v2m*v2m - 1/r2m), scale(v2, dot(r2,v2))), 1);
+  const e = mag(eVec);
+  const energy = 0.5*v2m*v2m - 1/r2m;
+  const a = Math.abs(energy) < 1e-12 ? Infinity : -1/(2*energy);
+  const i = rad2deg(Math.acos(h.z / hmag));
+  const Omega = nmag < 1e-12 ? 0 : (rad2deg(Math.atan2(n.y, n.x)) + 360) % 360;
+  let omega = 0;
+  if (nmag > 1e-12 && e > 1e-12){
+    omega = rad2deg(Math.acos(Math.max(-1, Math.min(1, dot(n, eVec)/(nmag*e)))));
+    if (eVec.z < 0) omega = 360 - omega;
+  }
+  let nu = 0;
+  if (e > 1e-12){
+    nu = rad2deg(Math.acos(Math.max(-1, Math.min(1, dot(eVec, r2)/(e*r2m)))));
+    if (dot(r2, v2) < 0) nu = 360 - nu;
+  }
+  const qperi = hmag*hmag / (1 + e);
+  const v2km = v2m * VEL_FACTOR;
+  const periodYears = (a > 0 && Number.isFinite(a)) ? Math.sqrt(a*a*a) : null;
+  return {
+    rows, R, rhoHat: rho, rhoMag, r1, r2, r3, v2,
+    elements: {a, e, i, Omega, omega, nu, qperi, periodYears, energy, hmag},
+    speeds: {v2Canonical: v2m, v2km},
+    diagnostics: {D0, A, B, E, F, roots, tau1, tau3, iterations}
+  };
+}
+function interpretation(elements){
+  let type = 'uklar';
+  if (elements.e < 0.98) type = 'elliptisk og tydeligt bundet';
+  else if (elements.e <= 1.02) type = 'nær-parabolsk';
+  else type = 'hyperbolsk';
+  return type;
+}
+function chooseThreeRows(){
+  const ids = ['obs1','obs2','obs3'].map(id => parseInt(document.getElementById(id).value, 10));
+  if (new Set(ids).size !== 3) throw new Error('De tre valgte observationer skal være forskellige.');
+  const chosen = ids.map(i => state.rows[i]).sort((a,b) => a.time - b.time);
+  return chosen;
+}
+function setStatus(msg, type='success'){
+  const el = document.getElementById('statusBox');
+  el.className = type === 'danger' ? 'danger' : (type === 'notice' ? 'notice' : 'success');
+  el.textContent = msg;
+}
+function runGauss(){
+  try{
+    if (!state.rows.length) prepareRows();
+    state.chosen = chooseThreeRows();
+    state.result = gaussOrbit(state.chosen);
+    renderResults();
+    drawPlot();
+    generateReport();
+    setStatus('Gauss-approksimation gennemført.', 'success');
+  }catch(err){
+    state.result = null;
+    document.getElementById('kpis').innerHTML = '';
+    document.querySelector('#selectedTable tbody').innerHTML = '';
+    document.getElementById('vectorTable').innerHTML = '';
+    document.getElementById('reportBox').textContent = 'Beregningen kunne ikke gennemføres: ' + err.message;
+    setStatus('Fejl i beregningen: ' + err.message, 'danger');
+  }
+}
+function renderResults(){
+  const r = state.result;
+  const el = r.elements;
+  const type = interpretation(el);
+  document.getElementById('kpis').innerHTML = `
+    <div class="kpi"><strong>${fmt(el.e,4)}</strong><br><span class="muted">ekscentricitet e</span></div>
+    <div class="kpi"><strong>${fmt(el.a,4)} AU</strong><br><span class="muted">store halvakse a</span></div>
+    <div class="kpi"><strong>${fmt(el.qperi,4)} AU</strong><br><span class="muted">perihelafstand q</span></div>
+    <div class="kpi"><strong>${fmt(el.i,2)}°</strong><br><span class="muted">inklination i</span></div>
+    <div class="kpi"><strong>${fmt(r.speeds.v2km,2)} km/s</strong><br><span class="muted">hastighed ved t₂</span></div>
+    <div class="kpi"><strong>${type}</strong><br><span class="muted">fortolket banetype</span></div>
+  `;
+
+  document.querySelector('#selectedTable tbody').innerHTML = state.chosen.map((row, idx) => `
+    <tr>
+      <td>${idx+1}</td>
+      <td>${row.timeRaw}</td>
+      <td>${fmt(row.ra,2)}</td>
+      <td>${fmt(row.dec,2)}</td>
+      <td>${fmt(row.rhoHat.x,5)}</td>
+      <td>${fmt(row.rhoHat.y,5)}</td>
+      <td>${fmt(row.rhoHat.z,5)}</td>
+    </tr>
+  `).join('');
+
+  document.getElementById('vectorTable').innerHTML = `
+    <tr><th>R₂ (Jord, AU)</th><td>(${fmt(r.R[1].x,5)}, ${fmt(r.R[1].y,5)}, ${fmt(r.R[1].z,5)})</td></tr>
+    <tr><th>r₂ (objekt, AU)</th><td>(${fmt(r.r2.x,5)}, ${fmt(r.r2.y,5)}, ${fmt(r.r2.z,5)})</td></tr>
+    <tr><th>v₂ (AU/TU)</th><td>(${fmt(r.v2.x,5)}, ${fmt(r.v2.y,5)}, ${fmt(r.v2.z,5)})</td></tr>
+    <tr><th>ρ₁, ρ₂, ρ₃ (AU)</th><td>${fmt(r.rhoMag[0],5)}, ${fmt(r.rhoMag[1],5)}, ${fmt(r.rhoMag[2],5)}</td></tr>
+    <tr><th>Ω, ω, ν</th><td>${fmt(r.elements.Omega,2)}°, ${fmt(r.elements.omega,2)}°, ${fmt(r.elements.nu,2)}°</td></tr>
+    <tr><th>Iterationer</th><td>${r.diagnostics.iterations}</td></tr>
+  `;
+
+  if (getReferenceInput()) compareReference();
+
+  document.getElementById('methodNote').textContent =
+`Gauss-approksimation på siden:
+
+1) CSV -> tre observationer (t, RA, Dec)
+2) RA/Dec -> enhedsvektorer <span class="eq"><span class="sym hat">ρ</span></span>
+3) Jordens heliocentriske position R ved tiderne estimeres fra en lavpræcisions solmodel
+4) Gauss-polynomiet i |r₂| løses numerisk
+5) f- og g-funktioner opdateres iterativt
+6) r₂ og v₂ omsættes til baneelementer
+
+Diagnostik:
+D0 = ${fmt(r.diagnostics.D0,8)}
+A = ${fmt(r.diagnostics.A,8)}
+B = ${fmt(r.diagnostics.B,8)}
+rødder for |r₂| = ${r.diagnostics.roots.map(x => fmt(x,5)).join(', ')}`;
+}
+function generateReport(){
+  const box = document.getElementById('reportBox');
+  if (!state.result){
+    box.textContent = 'Kør først Gauss-beregningen, så rapporten kan genereres.';
+    return;
+  }
+  const name = document.getElementById('studentName').value || 'Ikke angivet';
+  const klass = document.getElementById('studentClass').value || 'Ikke angivet';
+  const title = document.getElementById('reportTitle').value || 'Foreløbig bane';
+  const r = state.result, e = r.elements;
+  const type = interpretation(e);
+  const obsLines = state.rows.map((row,i) => `${i+1}. ${row.timeRaw} | RA=${fmt(row.ra,2)}° | Dec=${fmt(row.dec,2)}°`).join('\n');
+  const chosenLines = state.chosen.map((row,i) => `${i+1}. ${row.timeRaw} | RA=${fmt(row.ra,2)}° | Dec=${fmt(row.dec,2)}°`).join('\n');
+  const periodText = e.periodYears ? `${fmt(e.periodYears,3)} år` : 'ikke defineret for hyperbolsk bane';
+  const refText = referenceSummaryText();
+  box.textContent =
+`${title}
+
+Elev / gruppe: ${name}
+Klasse: ${klass}
+Dato: ${new Date().toLocaleDateString('da-DK')}
+
+1. Formål
+Formålet er at bestemme en foreløbig heliocentrisk bane for et observeret objekt ved hjælp af tre observationer og en undervisningsvenlig Gauss-approksimation.
+
+2. Importerede observationer
+${obsLines}
+
+3. Valgte observationer til Gauss-metoden
+${chosenLines}
+
+4. Metode
+Observationerne blev omsat fra rektascension og deklination til enhedsvektorer. Derefter blev Jordens heliocentriske position ved de tre tidspunkter estimeret. Med Gauss' metode blev de geocentriske afstande og objektets tilstandsvektor ved den midterste observation bestemt, hvorefter de klassiske baneelementer blev beregnet.
+
+5. Resultater
+Ekscentricitet e = ${fmt(e.e,5)}
+Store halvakse a = ${fmt(e.a,5)} AU
+Perihelafstand q = ${fmt(e.qperi,5)} AU
+Inklination i = ${fmt(e.i,3)}°
+Længde af opstigende knude Ω = ${fmt(e.Omega,3)}°
+Perihelargument ω = ${fmt(e.omega,3)}°
+Sand anomali ν ved t₂ = ${fmt(e.nu,3)}°
+Hastighed ved t₂ = ${fmt(r.speeds.v2km,3)} km/s
+Foreløbig fortolkning = ${type}
+Anslået omløbstid = ${periodText}
+
+6. Fortolkning
+Den beregnede ekscentricitet viser, at banen i denne model er ${type}. Resultatet er foreløbigt og afhænger både af observationsfejl og af de antagelser, der er indbygget i den forenklede model for Jordens bane.
+
+7. Sammenligning med referencebane
+${refText}
+
+8. Fejlkilder
+Mulige fejlkilder er usikkerhed på RA/Dec, korte tidsintervaller mellem observationerne, numerisk ustabil geometri mellem sigtelinjerne samt at modellen ikke medtager topocentriske korrektioner eller en fuld præcis planetephemeride.
+
+9. Konklusion
+På baggrund af de tre valgte observationer kan Gauss' metode bruges til at bestemme en realistisk foreløbig bane og give et kvalificeret estimat af objektets bevægelse i Solsystemet.`;
+}
+async function copyReport(){
+  const text = document.getElementById('reportBox').textContent;
+  try{
+    await navigator.clipboard.writeText(text);
+    setStatus('Rapporten er kopieret til udklipsholderen.', 'success');
+  }catch{
+    setStatus('Kunne ikke kopiere automatisk. Markér og kopiér teksten manuelt.', 'notice');
+  }
+}
+
+function loadExample(){
+  document.getElementById('csvText').value = `time,ra,dec
+2026-04-01T21:00,212.10,-8.00
+2026-04-04T21:00,214.60,-6.40
+2026-04-08T21:00,218.90,-3.80
+2026-04-12T21:00,223.40,-1.10`;
+  prepareRows();
+  runGauss();
+}
+function downloadExampleCSV(){
+  const blob = new Blob([document.getElementById('csvText').value], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'gauss_eksempel_observationer.csv';
+  a.click();
+}
+
+// Plot
+const canvas = document.getElementById('plotCanvas');
+const ctx = canvas.getContext('2d');
+let dragging = false, lastX = 0, lastY = 0;
+canvas.addEventListener('mousedown', e => { dragging = true; lastX=e.offsetX; lastY=e.offsetY; });
+window.addEventListener('mouseup', () => dragging = false);
+window.addEventListener('mousemove', e => {
+  if (!dragging) return;
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left, y = e.clientY - rect.top;
+  state.view.rotY += (x-lastX)*0.01;
+  state.view.rotX += (y-lastY)*0.01;
+  lastX=x; lastY=y;
+  drawPlot();
+});
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  state.view.zoom *= e.deltaY > 0 ? 0.93 : 1.07;
+  state.view.zoom = Math.max(70, Math.min(320, state.view.zoom));
+  drawPlot();
+});
+
+function rotate(v){
+  let {x,y,z} = v;
+  const cx = Math.cos(state.view.rotX), sx = Math.sin(state.view.rotX);
+  const cy = Math.cos(state.view.rotY), sy = Math.sin(state.view.rotY);
+  let y1 = y*cx - z*sx, z1 = y*sx + z*cx;
+  let x2 = x*cy + z1*sy, z2 = -x*sy + z1*cy;
+  return vec(x2, y1, z2);
+}
+function project(v){
+  const rv = rotate(v), dist=8;
+  const p = dist / (dist - rv.z);
+  return {x: canvas.width/2 + rv.x*state.view.zoom*p, y: canvas.height/2 - rv.y*state.view.zoom*p, p};
+}
+function drawLine3D(a,b,color,width=1,dash=[]){
+  const pa = project(a), pb = project(b);
+  ctx.beginPath();
+  ctx.setLineDash(dash);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.moveTo(pa.x, pa.y);
+  ctx.lineTo(pb.x, pb.y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+function drawPoint3D(v,color,r=5,label=''){
+  const p = project(v);
+  ctx.beginPath();
+  ctx.fillStyle = color;
+  ctx.arc(p.x, p.y, r*p.p, 0, Math.PI*2);
+  ctx.fill();
+  if (label){
+    ctx.fillStyle = '#eef3ff';
+    ctx.font = '12px Inter, sans-serif';
+    ctx.fillText(label, p.x+8, p.y-8);
+  }
+}
+function drawAxes(){
+  drawLine3D(vec(-2.4,0,0), vec(2.4,0,0), 'rgba(255,130,130,.8)', 2);
+  drawLine3D(vec(0,-2.4,0), vec(0,2.4,0), 'rgba(140,255,180,.8)', 2);
+  drawLine3D(vec(0,0,-2.4), vec(0,0,2.4), 'rgba(130,180,255,.8)', 2);
+}
+function drawPolyline(points, color, width=2){
+  for (let i=1; i<points.length; i++) drawLine3D(points[i-1], points[i], color, width);
+}
+function orbitPoints(elements){
+  const pts = [];
+  if (!elements || !Number.isFinite(elements.e) || !Number.isFinite(elements.qperi)) return pts;
+  const e = elements.e;
+  const h2 = elements.qperi * (1 + e); // since q = p/(1+e) => p = q(1+e)
+  const p = h2;
+  const Om = deg2rad(elements.Omega), inc = deg2rad(elements.i), om = deg2rad(elements.omega);
+  const cO=Math.cos(Om), sO=Math.sin(Om), ci=Math.cos(inc), si=Math.sin(inc), co=Math.cos(om), so=Math.sin(om);
+  const Q11 = cO*co - sO*so*ci, Q12 = -cO*so - sO*co*ci;
+  const Q21 = sO*co + cO*so*ci, Q22 = -sO*so + cO*co*ci;
+  const Q31 = so*si,             Q32 = co*si;
+  let start=-180, end=180, step=4;
+  if (e > 1){
+    const limit = rad2deg(Math.acos(-1/e)) - 5;
+    start = -limit; end = limit; step = Math.max(2, limit/60);
+  }
+  for (let nu=start; nu<=end; nu+=step){
+    const nur = deg2rad(nu);
+    const denom = 1 + e*Math.cos(nur);
+    if (denom <= 0) continue;
+    const r = p / denom;
+    const xpf = r*Math.cos(nur), ypf = r*Math.sin(nur);
+    pts.push(vec(
+      Q11*xpf + Q12*ypf,
+      Q21*xpf + Q22*ypf,
+      Q31*xpf + Q32*ypf
+    ));
+  }
+  return pts;
+}
+function earthOrbitPoints(){
+  const pts = [];
+  for (let d=0; d<=360; d+=4){
+    const a = deg2rad(d), eps = deg2rad(23.439291);
+    pts.push(vec(Math.cos(a), Math.sin(a)*Math.cos(eps), Math.sin(a)*Math.sin(eps)));
+  }
+  return pts;
+}
+function drawPlot(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  drawAxes();
+  drawPolyline(earthOrbitPoints(), 'rgba(255,211,107,.28)', 1.5);
+  drawPoint3D(vec(0,0,0), '#ffd36b', 8, 'Sol');
+  if (!state.result) return;
+  const r = state.result;
+  // Earth positions
+  r.R.forEach((p,i) => drawPoint3D(p, '#84b7ff', 5, 'E'+(i+1)));
+  // Object positions
+  [r.r1,r.r2,r.r3].forEach((p,i) => drawPoint3D(p, '#7cc7ff', 6, 'O'+(i+1)));
+  // rays
+  drawLine3D(r.R[0], r.r1, 'rgba(124,199,255,.55)', 1.5, [5,5]);
+  drawLine3D(r.R[1], r.r2, 'rgba(124,199,255,.55)', 1.5, [5,5]);
+  drawLine3D(r.R[2], r.r3, 'rgba(124,199,255,.55)', 1.5, [5,5]);
+  // orbit
+  const pts = orbitPoints(r.elements);
+  drawPolyline(pts, 'rgba(162,255,208,.95)', 3);
+}
+prepareRows();
+runGauss();
+</script>
+</body>
+</html>
