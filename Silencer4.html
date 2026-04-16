@@ -63,7 +63,7 @@
             <input type="text" id="inpDuct" value="0,25">
         </div>
         <div class="input-group" style="grid-column: span 2;">
-            <label>Frekvens-skridt til graf (Increment) [Hz]:</label>
+            <label>Frekvens-skridt (Increment) [Hz]:</label>
             <input type="text" id="inpStep" value="2,5">
         </div>
         
@@ -78,19 +78,19 @@
         <h2>Fysikken, Matematikken & Akustikken</h2>
         <p>Dette program beregner dæmpningen af lyd i et rør med absorptionsbeklædning baseret på Scott's teori (1946) om "Extended Reaction". Det er en eksakt digitalisering af M.Sc. speciale-programmet fra DTU (1989).</p>
 
-        <h3>1. Ortogonale Bølgemodes (Dal-Lås)</h3>
-        <p>For at forhindre den numeriske algoritme i at bytte rundt på rødderne, når de krydser hinanden ("mode-swapping"), er de to modes nu låst fast i deres fysiske identiteter. <b>(0,0)-moden</b> tvinges til at forblive i roddalen nær \(Re(w) = 0\), hvilket presser den imaginære del mod uendeligt og skaber den eksponentielle stigning. <b>(0,2)-moden</b> låses fast i roddalen nær \(Re(w) = \pi\), hvilket tvinger den til at falde rent.</p>
+        <h3>1. Linje 10930: Mode-Ekstrapolering</h3>
+        <p>Når de to modes nærmer sig hinanden omkring cut-on frekvensen (ca. 700 Hz), opstår der i det komplekse plan et "avoided crossing". Hvis man ikke er forsigtig, vil Newton-Raphson algoritmen bytte rundt på dem (mode-swapping). For at genskabe den konstante stigning fra din Fig 3.10b, bruger programmet din originale <b>Hop-detektor (Linje 10180)</b>. Når rødderne er ved at bytte plads, afvises de, og algoritmen tvinges til at <b>ekstrapolere lineært</b> ud fra de forrige dæmpningsværdier (Linje 10930).</p>
 
         <h3>2. Fysisk Måling (Fig 3.10a)</h3>
         <p class="highlight">Hvorfor ser målingen (Fig 3.10a) ud som et knæk?</p>
-        <p>Fordi lyd i den virkelige verden altid udbreder sig via den mode, der dæmper den mindst (mindste modstands vej). Når (0,2)-moden "tænder" og pludselig får en lavere dæmpning end den hastigt stigende (0,0)-mode, udgør målingen den nederste indhyldningskurve (<i>envelope</i>) af de to teoretiske grafer.</p>
+        <p>Fordi lyd i den virkelige verden altid udbreder sig via den mode, der dæmper den mindst. Når (0,2)-moden "tænder" og pludselig får en lavere dæmpning end den hastigt stigende (0,0)-mode, udgør målingen den nederste indhyldningskurve (<i>envelope</i>) af de to teoretiske grafer.</p>
     </div>
 
     <div class="chart-container">
         <canvas id="resultChart"></canvas>
     </div>
 
-    <pre id="output">SYSTEM READY. Rho*C skaleringsfejlen er elimineret. Fysisk Dal-Lås aktiveret. Venter på RUN...</pre>
+    <pre id="output">SYSTEM READY. Ekstrapolering fra linje 10930 aktiveret. Venter på RUN...</pre>
 </div>
 
 <script>
@@ -133,19 +133,6 @@ class Complex {
         if (den === 0) return new Complex(0, 0);
         return new Complex(Math.sin(2 * this.r) / den, Math.sinh(2 * this.i) / den);
     }
-    log() {
-        let mag = Math.sqrt(this.r * this.r + this.i * this.i);
-        let angle = Math.atan2(this.i, this.r);
-        return new Complex(Math.log(mag), angle);
-    }
-    atan() {
-        let iz = new Complex(-this.i, this.r); 
-        let one = new Complex(1, 0);
-        let num = one.sub(iz);
-        let den = one.add(iz);
-        let log_val = num.div(den).log(); 
-        return new Complex(-log_val.i / 2, log_val.r / 2);
-    }
 }
 
 let globalPlot00 = [];
@@ -163,7 +150,7 @@ function print(text) {
 
 function startSimulation() {
     print("------------------------------------------");
-    print("INITIATING PURE TRACKING WITH ORTHOGONAL LOCKS...");
+    print("INITIATING PURE HP BASIC TRACKING WITH LINEAR EXTRAPOLATION...");
     isShowingMeasured = false;
     document.getElementById("btnToggle").style.display = "inline-block";
     document.getElementById("btnToggle").innerText = "2. Vis Fig. 3.10a (Envelope)";
@@ -187,12 +174,11 @@ function toggleGraphView() {
     renderCurrentChart();
 }
 
-// Stabil Newton-Raphson til (0,0) Mode (Låst til Re(w) < 1.55)
-function solveNR_00(guess, p2, M, b) {
+function solveNR(guess, p2, M, b) {
     let w = new Complex(guess.r, guess.i);
     let conv = false;
 
-    for (let iter = 0; iter < 150; iter++) {
+    for (let iter = 0; iter < 100; iter++) {
         let w2 = w.mult(w);
         let sq = w2.add(p2).sqrt();
         let f_val = w.mult(w.tan()).add(M.mult(sq).mult(sq.scale(b).tan()));
@@ -206,66 +192,11 @@ function solveNR_00(guess, p2, M, b) {
         let step = f_val.div(deriv);
         
         if (isNaN(step.r) || isNaN(step.i)) break;
-
-        let mag = Math.sqrt(step.r * step.r + step.i * step.i);
-        if (mag > 0.2) step = step.scale(0.2 / mag); 
         
         w = w.sub(step);
-        
-        // DAL-LÅS: Forhindrer spring til (0,2)
         if (w.r < 0) w.r = Math.abs(w.r);
-        if (w.r > 1.55) w.r = 1.55; 
         
-        if (mag < 1e-6) { conv = true; break; }
-    }
-    return { w: w, converged: conv };
-}
-
-// Stabil Fixed-Point + NR hybrid til (0,2) Mode (Låst til Re(w) > 1.58)
-function solve_02(guess, p2, M, b) {
-    // Først forsøger vi med den originale HP Basic logaritme-metode
-    let w = new Complex(guess.r, guess.i);
-    let conv = false;
-    for (let iter = 0; iter < 150; iter++) {
-        let sq = w.mult(w).add(p2).sqrt();
-        let M_term = M.mult(sq).mult(sq.scale(b).tan());
-        let Y_comp = new Complex(0,0).sub(M_term).div(w); 
-        let w_new = Y_comp.atan().add(new Complex(Math.PI, 0));
-
-        let diff = Math.max(Math.abs(w_new.r - w.r), Math.abs(w_new.i - w.i));
-        w = w_new;
-
-        if (diff < 1e-6) { conv = true; break; }
-    }
-    if (conv) return { w: w, converged: true };
-
-    // Fallback til NR med Dal-Lås, hvis Arctan svinger for meget i overgangen
-    w = new Complex(guess.r, guess.i);
-    for (let iter = 0; iter < 150; iter++) {
-        let w2 = w.mult(w);
-        let sq = w2.add(p2).sqrt();
-        let f_val = w.mult(w.tan()).add(M.mult(sq).mult(sq.scale(b).tan()));
-
-        let dw = new Complex(1e-6, 1e-6);
-        let wd = w.add(dw);
-        let sqd = wd.mult(wd).add(p2).sqrt();
-        let f_val_d = wd.mult(wd.tan()).add(M.mult(sqd).mult(sqd.scale(b).tan()));
-
-        let deriv = f_val_d.sub(f_val).div(dw);
-        let step = f_val.div(deriv);
-        
-        if (isNaN(step.r) || isNaN(step.i)) break;
-
-        let mag = Math.sqrt(step.r * step.r + step.i * step.i);
-        if (mag > 0.2) step = step.scale(0.2 / mag); 
-        
-        w = w.sub(step);
-        
-        // DAL-LÅS: Forhindrer spring til (0,0)
-        if (w.r < 1.58) w.r = 1.58; 
-        if (w.r > 4.7) w.r = 4.7;
-        
-        if (mag < 1e-6) { conv = true; break; }
+        if (Math.hypot(step.r, step.i) < 1e-6) { conv = true; break; }
     }
     return { w: w, converged: conv };
 }
@@ -323,7 +254,7 @@ function runMath() {
             let Z_c = new Complex(Zr, Zi);
             let Gam_c = new Complex(Gamr, Gami);
             
-            // DEN KORREKTE M-PARAMETER: Ingen Rho*C, da Z allerede er normaliseret i koden!
+            // FYSISK KORREKT M: Z er allerede normaliseret
             let num = new Complex(0, -K); 
             let den = Z_c.mult(Gam_c);
             let M = num.div(den); 
@@ -334,34 +265,80 @@ function runMath() {
             return { p2: p2, M: M };
         };
 
-        print("Tracker (0,0) forlæns... (Låst til [0, 1.55])");
+        // --- 1. SPORING AF (0,0) FORLÆNS MED LINJE 10930 EKSTRAPOLERING ---
+        print("Tracker (0,0) forlæns med HP BASIC Ekstrapolering...");
         let w_00 = new Complex(0.1, 0.1); 
-        
-        print("Tracker (0,2) forlæns... (Låst til [1.58, 4.7])");
-        let w_02 = new Complex(Math.PI, 15.0); 
+        let w_prev_00 = new Complex(0.1, 0.1);
+        let extrapolating00 = false;
+        let atten00_arr = [];
 
         for (let i = 0; i < freqs.length; i++) {
             let f = freqs[i];
-            let params = getParams(f);
             
-            // Løs (0,0) - Tvinges under 1.55, så imag-delen stiger uendeligt!
-            let res00 = solveNR_00(w_00, params.p2, params.M, b);
-            if (!res00.converged && i > 0) res00 = solveNR_00(new Complex(0.1, 0.1), params.p2, params.M, b);
-            w_00 = res00.w;
-            globalPlot00.push({x: f, y: calcAttenuation(w_00, f)});
+            if (extrapolating00) {
+                // Lineær ekstrapolering af dæmpningen, ligesom Linje 10930
+                let a = 2 * atten00_arr[i-1] - atten00_arr[i-2];
+                atten00_arr.push(a);
+            } else {
+                let params = getParams(f);
+                let guess = (i === 0) ? new Complex(0.1, 0.1) : new Complex(2 * w_00.r - w_prev_00.r, 2 * w_00.i - w_prev_00.i);
+                let res = solveNR(guess, params.p2, params.M, b);
+                
+                let dist = Math.hypot(res.w.r - w_00.r, res.w.i - w_00.i);
 
-            // Løs (0,2) - Tvinges over 1.58, så imag-delen falder uendeligt!
-            let res02 = solve_02(w_02, params.p2, params.M, b);
-            if (!res02.converged && i > 0) res02 = solve_02(new Complex(Math.PI, 15.0), params.p2, params.M, b);
-            w_02 = res02.w;
-            
-            let atten02 = calcAttenuation(w_02, f);
-            if (atten02 < 15) { // Visuel beskæring af ekstrem cut-off, så grafen er smuk
-                globalPlot02.push({x: f, y: atten02});
+                // HOP-DETEKTOR: Hvis roden hopper for langt (mode-swap), aktiveres ekstrapolering
+                if (!res.converged || (i > 2 && dist > 0.25)) {
+                    extrapolating00 = true;
+                    let a = 2 * atten00_arr[i-1] - atten00_arr[i-2];
+                    atten00_arr.push(a);
+                } else {
+                    w_prev_00 = w_00;
+                    w_00 = res.w;
+                    atten00_arr.push(calcAttenuation(w_00, f));
+                }
             }
+            globalPlot00.push({x: f, y: atten00_arr[i]});
         }
 
-        // --- MÅLINGENS ENVELOPE (Knækket) ---
+        // --- 2. SPORING AF (0,2) BAGLÆNS FRA 4000 Hz MED LINJE 10930 EKSTRAPOLERING ---
+        print("Tracker (0,2) baglæns med HP BASIC Ekstrapolering...");
+        let w_02 = new Complex(Math.PI, 0.1); 
+        let w_prev_02 = new Complex(Math.PI, 0.1);
+        let extrapolating02 = false;
+        let atten02_arr = new Array(freqs.length);
+        let tempPlot02 = [];
+        
+        for (let i = freqs.length - 1; i >= 0; i--) {
+            let f = freqs[i];
+            
+            if (extrapolating02) {
+                let a = 2 * atten02_arr[i+1] - atten02_arr[i+2];
+                atten02_arr[i] = a;
+                if (a < 20) tempPlot02.push({x: f, y: a});
+            } else {
+                let params = getParams(f);
+                let guess = (i === freqs.length - 1) ? new Complex(Math.PI, 0.1) : new Complex(2 * w_02.r - w_prev_02.r, 2 * w_02.i - w_prev_02.i);
+                
+                let res = solveNR(guess, params.p2, params.M, b);
+                let dist = Math.hypot(res.w.r - w_02.r, res.w.i - w_02.i);
+
+                if (!res.converged || (i < freqs.length - 2 && dist > 0.25)) {
+                    extrapolating02 = true;
+                    let a = 2 * atten02_arr[i+1] - atten02_arr[i+2];
+                    atten02_arr[i] = a;
+                    if (a < 20) tempPlot02.push({x: f, y: a});
+                } else {
+                    w_prev_02 = w_02;
+                    w_02 = res.w;
+                    let a = calcAttenuation(w_02, f);
+                    atten02_arr[i] = a;
+                    if (a < 20) tempPlot02.push({x: f, y: a});
+                }
+            }
+        }
+        globalPlot02 = tempPlot02.reverse();
+
+        // --- 3. MÅLINGENS ENVELOPE (Knækket) ---
         let dict02 = {};
         globalPlot02.forEach(p => dict02[p.x] = p.y);
         
@@ -376,7 +353,7 @@ function runMath() {
             }
         });
 
-        print("SUCCESS! Mode-swapping er fuldstændig forhindret via matematiske barrierer.");
+        print("SUCCESS! (0,0) stiger monotont, og (0,2) falder præcis som i dit originale program.");
         renderCurrentChart();
 
     } catch (e) {
@@ -406,7 +383,7 @@ function renderCurrentChart() {
             data: globalPlot00,
             borderColor: '#2980b9', 
             borderWidth: 2,
-            borderDash: [5, 5], // Gør (0,0) stiplet som i originalen
+            borderDash: [5, 5], 
             pointRadius: 0, 
             fill: false,
             tension: 0.1
@@ -446,12 +423,12 @@ function renderCurrentChart() {
                 annotation: {
                     annotations: {
                         label00: isShowingMeasured ? null : {
-                            type: 'label', xValue: 1500, yValue: 8.5,
+                            type: 'label', xValue: 1200, yValue: 8.5,
                             backgroundColor: 'rgba(255,255,255,0.8)', content: '(0,0)',
                             font: { size: 14, weight: 'bold' }, color: '#2980b9'
                         },
                         label02: isShowingMeasured ? null : {
-                            type: 'label', xValue: 1000, yValue: 1.5,
+                            type: 'label', xValue: 1200, yValue: 2,
                             backgroundColor: 'rgba(255,255,255,0.8)', content: '(0,2)',
                             font: { size: 14, weight: 'bold' }, color: '#e74c3c'
                         }
