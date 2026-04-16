@@ -7,7 +7,6 @@
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.1.0/dist/chartjs-plugin-annotation.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background: #e9ecef; color: #333; line-height: 1.6; }
@@ -35,8 +34,6 @@
         .theory-panel { display: none; background: #fff; padding: 25px; border-radius: 8px; border-left: 5px solid #3498db; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-top: 20px; margin-bottom: 20px; }
         .theory-panel h2 { color: #2980b9; margin-top: 0; }
         .theory-panel h3 { color: #34495e; border-bottom: 1px solid #eee; padding-bottom: 5px; }
-        .math-block { background: #f9f9f9; padding: 10px; border-radius: 5px; text-align: center; overflow-x: auto; }
-        .highlight { color: #e74c3c; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -70,27 +67,26 @@
         <div class="btn-group">
             <button class="btn-calc" onclick="startSimulation()">1. Kør HP BASIC Port</button>
             <button id="btnToggle" class="btn-toggle" onclick="toggleGraphView()">2. Vis Fig. 3.10a (Envelope)</button>
-            <button class="btn-info" onclick="toggleTheory()">Forklar Fysikken & Matematikken</button>
+            <button class="btn-info" onclick="toggleTheory()">Forklar Metoden</button>
         </div>
     </div>
 
     <div id="theoryPanel" class="theory-panel">
         <h2>Fysikken, Matematikken & Akustikken</h2>
-        <p>Dette program beregner dæmpningen af lyd i et rør med absorptionsbeklædning baseret på Scott's teori (1946) om "Extended Reaction". Det er en eksakt digitalisering af M.Sc. speciale-programmet fra DTU (1989).</p>
+        <p>Dette program er en 1:1 logisk rekonstruktion af M.Sc. speciale-programmet fra DTU (1989). Modene udregnes i to fuldstændig uafhængige kørsler (svarende til K4=0 og K4=1 i koden).</p>
 
-        <h3>1. Linje 10930: Mode-Ekstrapolering</h3>
-        <p>Når de to modes nærmer sig hinanden omkring cut-on frekvensen (ca. 700 Hz), opstår der i det komplekse plan et "avoided crossing". Hvis man ikke er forsigtig, vil Newton-Raphson algoritmen bytte rundt på dem (mode-swapping). For at genskabe den konstante stigning fra din Fig 3.10b, bruger programmet din originale <b>Hop-detektor (Linje 10180)</b>. Når rødderne er ved at bytte plads, afvises de, og algoritmen tvinges til at <b>ekstrapolere lineært</b> ud fra de forrige dæmpningsværdier (Linje 10930).</p>
+        <h3>1. Uafhængige Kørsler</h3>
+        <p>I stedet for at forsøge at løse modene på samme tid, simuleres to uafhængige plot-forløb. Først beregnes <b>(0,0)-moden</b> via Newton-Raphson. For at tvinge den til at følge sin fysiske funktion (uden at hoppe til andre rødder), bruges kodens originale "Hop-detektor" (Linje 10180) til lineær ekstrapolering, hvis iterationen svigter. Herefter beregnes <b>(0,2)-moden</b> i sin egen kørsel via den specialudviklede komplekse Arctan-metode (Linje 10300).</p>
 
         <h3>2. Fysisk Måling (Fig 3.10a)</h3>
-        <p class="highlight">Hvorfor ser målingen (Fig 3.10a) ud som et knæk?</p>
-        <p>Fordi lyd i den virkelige verden altid udbreder sig via den mode, der dæmper den mindst. Når (0,2)-moden "tænder" og pludselig får en lavere dæmpning end den hastigt stigende (0,0)-mode, udgør målingen den nederste indhyldningskurve (<i>envelope</i>) af de to teoretiske grafer.</p>
+        <p>Når (0,2)-moden rammer sin "cut-on" frekvens omkring 700 Hz, falder dens dæmpning drastisk og krydser (0,0)-moden. Da lydenergi altid følger <b>mindste modstands vej</b>, vil en fysisk mikrofon-måling nede i røret altid udgøre den nederste indhyldningskurve (<i>envelope</i>) af de to underliggende matematiske funktioner.</p>
     </div>
 
     <div class="chart-container">
         <canvas id="resultChart"></canvas>
     </div>
 
-    <pre id="output">SYSTEM READY. Ekstrapolering fra linje 10930 aktiveret. Venter på RUN...</pre>
+    <pre id="output">SYSTEM READY. Simulering kører modene i uafhængige loops. Venter på RUN...</pre>
 </div>
 
 <script>
@@ -150,7 +146,7 @@ function print(text) {
 
 function startSimulation() {
     print("------------------------------------------");
-    print("INITIATING PURE HP BASIC TRACKING WITH LINEAR EXTRAPOLATION...");
+    print("INITIATING INDEPENDENT RUNS FOR K4=0 AND K4=1...");
     isShowingMeasured = false;
     document.getElementById("btnToggle").style.display = "inline-block";
     document.getElementById("btnToggle").innerText = "2. Vis Fig. 3.10a (Envelope)";
@@ -196,7 +192,8 @@ function solveNR(guess, p2, M, b) {
         w = w.sub(step);
         if (w.r < 0) w.r = Math.abs(w.r);
         
-        if (Math.hypot(step.r, step.i) < 1e-6) { conv = true; break; }
+        let mag = Math.sqrt(step.r * step.r + step.i * step.i);
+        if (mag < 1e-6) { conv = true; break; }
     }
     return { w: w, converged: conv };
 }
@@ -254,7 +251,7 @@ function runMath() {
             let Z_c = new Complex(Zr, Zi);
             let Gam_c = new Complex(Gamr, Gami);
             
-            // FYSISK KORREKT M: Z er allerede normaliseret
+            // Fysisk korrekt, normaliseret M
             let num = new Complex(0, -K); 
             let den = Z_c.mult(Gam_c);
             let M = num.div(den); 
@@ -265,80 +262,101 @@ function runMath() {
             return { p2: p2, M: M };
         };
 
-        // --- 1. SPORING AF (0,0) FORLÆNS MED LINJE 10930 EKSTRAPOLERING ---
-        print("Tracker (0,0) forlæns med HP BASIC Ekstrapolering...");
-        let w_00 = new Complex(0.1, 0.1); 
-        let w_prev_00 = new Complex(0.1, 0.1);
-        let extrapolating00 = false;
-        let atten00_arr = [];
-
-        for (let i = 0; i < freqs.length; i++) {
-            let f = freqs[i];
-            
-            if (extrapolating00) {
-                // Lineær ekstrapolering af dæmpningen, ligesom Linje 10930
-                let a = 2 * atten00_arr[i-1] - atten00_arr[i-2];
-                atten00_arr.push(a);
-            } else {
-                let params = getParams(f);
-                let guess = (i === 0) ? new Complex(0.1, 0.1) : new Complex(2 * w_00.r - w_prev_00.r, 2 * w_00.i - w_prev_00.i);
-                let res = solveNR(guess, params.p2, params.M, b);
-                
-                let dist = Math.hypot(res.w.r - w_00.r, res.w.i - w_00.i);
-
-                // HOP-DETEKTOR: Hvis roden hopper for langt (mode-swap), aktiveres ekstrapolering
-                if (!res.converged || (i > 2 && dist > 0.25)) {
-                    extrapolating00 = true;
-                    let a = 2 * atten00_arr[i-1] - atten00_arr[i-2];
-                    atten00_arr.push(a);
-                } else {
-                    w_prev_00 = w_00;
-                    w_00 = res.w;
-                    atten00_arr.push(calcAttenuation(w_00, f));
-                }
-            }
-            globalPlot00.push({x: f, y: atten00_arr[i]});
-        }
-
-        // --- 2. SPORING AF (0,2) BAGLÆNS FRA 4000 Hz MED LINJE 10930 EKSTRAPOLERING ---
-        print("Tracker (0,2) baglæns med HP BASIC Ekstrapolering...");
-        let w_02 = new Complex(Math.PI, 0.1); 
-        let w_prev_02 = new Complex(Math.PI, 0.1);
-        let extrapolating02 = false;
-        let atten02_arr = new Array(freqs.length);
-        let tempPlot02 = [];
+        // --- KØRSEL 1: (0,0) MODEN (K4=0) ---
+        print("Run 1: Sporsøger (0,0) uafhængigt (med Newton-Raphson & Hop-Detektor)...");
+        let w_arr_00 = [];
         
-        for (let i = freqs.length - 1; i >= 0; i--) {
-            let f = freqs[i];
+        for (let j = 0; j < freqs.length; j++) {
+            let f = freqs[j];
+            let params = getParams(f);
             
-            if (extrapolating02) {
-                let a = 2 * atten02_arr[i+1] - atten02_arr[i+2];
-                atten02_arr[i] = a;
-                if (a < 20) tempPlot02.push({x: f, y: a});
-            } else {
-                let params = getParams(f);
-                let guess = (i === freqs.length - 1) ? new Complex(Math.PI, 0.1) : new Complex(2 * w_02.r - w_prev_02.r, 2 * w_02.i - w_prev_02.i);
-                
-                let res = solveNR(guess, params.p2, params.M, b);
-                let dist = Math.hypot(res.w.r - w_02.r, res.w.i - w_02.i);
+            let w_guess;
+            if (j === 0) w_guess = new Complex(0.1, 0.1);
+            else if (j === 1) w_guess = w_arr_00[0];
+            else w_guess = new Complex(2 * w_arr_00[j-1].r - w_arr_00[j-2].r, 2 * w_arr_00[j-1].i - w_arr_00[j-2].i);
+                        
+            let res = solveNR(w_guess, params.p2, params.M, b);
+            let w_new = res.w;
 
-                if (!res.converged || (i < freqs.length - 2 && dist > 0.25)) {
-                    extrapolating02 = true;
-                    let a = 2 * atten02_arr[i+1] - atten02_arr[i+2];
-                    atten02_arr[i] = a;
-                    if (a < 20) tempPlot02.push({x: f, y: a});
-                } else {
-                    w_prev_02 = w_02;
-                    w_02 = res.w;
-                    let a = calcAttenuation(w_02, f);
-                    atten02_arr[i] = a;
-                    if (a < 20) tempPlot02.push({x: f, y: a});
+            // HP Basic Jump Detector (Linje 10180)
+            let K5 = 0;
+            if (j >= 2) {
+                let e1 = Math.abs(w_arr_00[j-1].r - w_arr_00[j-2].r);
+                let e2 = Math.abs(w_arr_00[j-1].i - w_arr_00[j-2].i);
+                let e3 = Math.abs(w_new.r - w_arr_00[j-1].r);
+                let e4 = Math.abs(w_new.i - w_arr_00[j-1].i);
+                
+                // Hvis skridtet pludselig er 3 gange forrige skridt, er vi hoppet i den forkerte dal
+                if (Math.sqrt(e1*e1 + e2*e2) > 0 && Math.sqrt(e3*e3 + e4*e4) > 3 * Math.sqrt(e1*e1 + e2*e2)) {
+                    K5 = 1; 
                 }
             }
-        }
-        globalPlot02 = tempPlot02.reverse();
 
-        // --- 3. MÅLINGENS ENVELOPE (Knækket) ---
+            if (!res.converged || K5 === 1) {
+                // Tving roden til at fortsætte i blinde (Ekstrapolering Linje 10700)
+                w_new = w_guess; 
+            }
+
+            w_arr_00.push(w_new);
+            globalPlot00.push({x: f, y: calcAttenuation(w_new, f)});
+        }
+
+        // --- KØRSEL 2: (0,2) MODEN (K4=1) ---
+        print("Run 2: Sporsøger (0,2) uafhængigt (med kompleks Arctan iteration)...");
+        let w_arr_02 = [];
+        
+        for (let j = 0; j < freqs.length; j++) {
+            let f = freqs[j];
+            let params = getParams(f);
+            
+            // Start højt oppe ved Pi (fysisk lokation for mode 2)
+            let w_guess;
+            if (j === 0) w_guess = new Complex(Math.PI, 2.0);
+            else if (j === 1) w_guess = w_arr_02[0];
+            else w_guess = new Complex(2 * w_arr_02[j-1].r - w_arr_02[j-2].r, 2 * w_arr_02[j-1].i - w_arr_02[j-2].i);
+            
+            let w = w_guess;
+            let conv = false;
+            
+            // HP BASIC Arctan Iteration (Linje 10300 - 10450)
+            for (let iter = 0; iter < 150; iter++) {
+                let sq = w.mult(w).add(params.p2).sqrt();
+                let M_term = params.M.mult(sq).mult(sq.scale(b).tan());
+                
+                let Y_comp = new Complex(0,0).sub(M_term).div(w); 
+                let Y1 = Y_comp.r;
+                let Y2 = Y_comp.i;
+
+                let J1 = Math.sqrt(Y1*Y1 + (Y2+1)*(Y2+1));
+                let J3 = Math.sqrt(Y1*Y1 + (Y2-1)*(Y2-1));
+                let J2 = Math.atan2(Y1, Y2+1);
+                let J4 = Math.atan2(-Y1, 1-Y2);
+
+                let Y3 = Math.PI + (J4 - J2)/2;
+                let Y4 = 0.5 * Math.log(J1/J3);
+
+                let w_next = new Complex(Y3, Y4);
+
+                if (Math.abs(w_next.r - w.r) < 1e-6 && Math.abs(w_next.i - w.i) < 1e-6) {
+                    conv = true;
+                    w = w_next;
+                    break;
+                }
+                w = w_next;
+            }
+
+            if (!conv) {
+                w = w_guess; // Ekstrapoler hvis iterationen svigter
+            }
+
+            w_arr_02.push(w);
+            let atten = calcAttenuation(w, f);
+            
+            // Vi skubber alle data ind (Chart.js klipper selv ved max 10 dB)
+            globalPlot02.push({x: f, y: atten});
+        }
+
+        // --- MÅLINGENS ENVELOPE (Knækket) ---
         let dict02 = {};
         globalPlot02.forEach(p => dict02[p.x] = p.y);
         
@@ -353,7 +371,7 @@ function runMath() {
             }
         });
 
-        print("SUCCESS! (0,0) stiger monotont, og (0,2) falder præcis som i dit originale program.");
+        print("SUCCESS! De to uafhængige kørsler er fuldført.");
         renderCurrentChart();
 
     } catch (e) {
@@ -413,27 +431,14 @@ function renderCurrentChart() {
                     max: 4000
                 },
                 y: { 
+                    // Fastlåst skala for at vise krydset perfekt!
                     title: { display: true, text: 'Attenuation per duct width [dB]', font: {weight: 'bold'} }, 
                     min: 0,
                     max: 10 
                 }
             },
             plugins: {
-                zoom: { pan: { enabled: true, mode: 'xy' }, zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' } },
-                annotation: {
-                    annotations: {
-                        label00: isShowingMeasured ? null : {
-                            type: 'label', xValue: 1200, yValue: 8.5,
-                            backgroundColor: 'rgba(255,255,255,0.8)', content: '(0,0)',
-                            font: { size: 14, weight: 'bold' }, color: '#2980b9'
-                        },
-                        label02: isShowingMeasured ? null : {
-                            type: 'label', xValue: 1200, yValue: 2,
-                            backgroundColor: 'rgba(255,255,255,0.8)', content: '(0,2)',
-                            font: { size: 14, weight: 'bold' }, color: '#e74c3c'
-                        }
-                    }
-                }
+                zoom: { pan: { enabled: true, mode: 'xy' }, zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' } }
             }
         }
     });
