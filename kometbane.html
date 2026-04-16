@@ -11,15 +11,17 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             text-align: center;
             margin: 0;
-            padding: 20px;
+            padding: 10px;
         }
         h1 {
             color: #4da6ff;
+            font-size: 24px;
         }
         p {
             max-width: 700px;
-            margin: 0 auto 20px auto;
+            margin: 0 auto 15px auto;
             line-height: 1.5;
+            font-size: 14px;
         }
         canvas {
             background: radial-gradient(circle at center, #111 0%, #000 100%);
@@ -27,19 +29,26 @@
             border-radius: 8px;
             box-shadow: 0 0 20px rgba(77, 166, 255, 0.2);
             margin-bottom: 20px;
+            max-width: 100%; /* Sørger for at den passer på mobilskærme */
+            height: auto;
         }
-      .controls button {
+       .controls {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+       .controls button {
             background-color: #0078D7;
             color: white;
             border: none;
-            padding: 10px 20px;
+            padding: 12px 24px;
             font-size: 16px;
             border-radius: 4px;
             cursor: pointer;
-            margin: 0 10px;
             transition: background 0.2s;
         }
-      .controls button:hover {
+       .controls button:hover {
             background-color: #005a9e;
         }
         #info-box {
@@ -47,15 +56,16 @@
             font-weight: bold;
             color: #ffcc00;
             height: 30px;
+            margin-bottom: 10px;
         }
     </style>
 </head>
 <body>
 
     <h1>Komet C/2025 R3 (PanSTARRS) Interaktiv Bane</h1>
-    <p>Denne 2D-simulering viser kometens hyperbolske tur gennem det indre solsystem. De farvede punkter markerer de præcise dage for observationerne med dit Unistellar eVscope 2 teleskop.</p>
+    <p>Denne 2D-simulering viser kometens hyperbolske tur. De farvede punkter markerer dagene for observationerne med dit Unistellar eVscope 2 teleskop.</p>
     
-    <div id="info-box">Venter på start...</div>
+    <div id="info-box">Klar til start</div>
     <canvas id="orbitCanvas" width="800" height="600"></canvas>
     
     <div class="controls">
@@ -68,25 +78,17 @@
         const ctx = canvas.getContext('2d');
         const infoBox = document.getElementById('info-box');
 
-        // Opsætning af skala og konstanter
         const width = canvas.width;
         const height = canvas.height;
         const centerX = width / 2;
         const centerY = height / 2 + 50; 
-        const AU = 220; // 1 AU = 220 pixels på skærmen
+        const AU = 220;
 
-        // Kometens fysiske baneelementer
         const e = 1.00034; 
         const q = 0.499;   
         const p = q * (1 + e); 
 
-        // Dine 4 observationer (tilføjet korrekt)
-        const observations = [
-            { name: "Observation 1: 8. april", angle: -0.60, color: "#ff3366" },
-            { name: "Observation 2: 11. april", angle: -0.40, color: "#33ccff" },
-            { name: "Observation 3: 13. april", angle: -0.30, color: "#33ff33" },
-            { name: "Observation 4: 16. april", angle: -0.15, color: "#ff9933" }
-        ];
+        const observations =;
 
         let currentAngle = -2.0;
         let animationId = null;
@@ -95,7 +97,7 @@
         function drawBackground() {
             ctx.clearRect(0, 0, width, height);
 
-            // Tegn Solen
+            // Solen
             ctx.beginPath();
             ctx.arc(centerX, centerY, 15, 0, Math.PI * 2);
             ctx.fillStyle = "#ffcc00";
@@ -104,28 +106,30 @@
             ctx.fill();
             ctx.shadowBlur = 0;
 
-            // Tegn Jordens bane (1 AU)
+            // Jordens bane - Gjort meget mere synlig
             ctx.beginPath();
             ctx.arc(centerX, centerY, AU, 0, Math.PI * 2);
-            ctx.strokeStyle = "rgba(0, 150, 255, 0.3)";
-            ctx.lineWidth = 1;
+            ctx.strokeStyle = "rgba(0, 150, 255, 0.7)"; 
+            ctx.lineWidth = 1.5;
             ctx.setLineDash([5, 5]);
             ctx.stroke();
-            ctx.setLineDash();
+            ctx.setLineDash(); // RETTET BUG! Tomt array er krævet i nyere browsere
 
-            // Jordens position
+            // Jorden
+            let earthX = centerX + Math.cos(1.0) * AU;
+            let earthY = centerY + Math.sin(1.0) * AU;
             ctx.beginPath();
-            ctx.arc(centerX + Math.cos(1.0) * AU, centerY + Math.sin(1.0) * AU, 6, 0, Math.PI * 2);
+            ctx.arc(earthX, earthY, 7, 0, Math.PI * 2);
             ctx.fillStyle = "#0078D7";
             ctx.fill();
             ctx.fillStyle = "white";
-            ctx.font = "12px sans-serif";
-            ctx.fillText("Jorden (April)", centerX + Math.cos(1.0) * AU + 10, centerY + Math.sin(1.0) * AU + 4);
+            ctx.font = "14px sans-serif";
+            ctx.fillText("Jorden", earthX + 12, earthY + 5);
 
-            // Tegn Kometens bane
+            // Kometens bane - Gjort meget tydeligere
             ctx.beginPath();
-            ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
-            ctx.lineWidth = 2;
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
+            ctx.lineWidth = 2.5;
             for (let v = -2.2; v <= 2.2; v += 0.05) {
                 let r = p / (1 + e * Math.cos(v));
                 let x = centerX + r * Math.cos(v) * AU;
@@ -135,16 +139,19 @@
             }
             ctx.stroke();
 
-            // Tegn markører for billeder/observationer
+            // Markører for observationer - Gjort lidt større
             observations.forEach(obs => {
                 let r = p / (1 + e * Math.cos(obs.angle));
                 let x = centerX + r * Math.cos(obs.angle) * AU;
                 let y = centerY + r * Math.sin(obs.angle) * AU;
                 
                 ctx.beginPath();
-                ctx.arc(x, y, 4, 0, Math.PI * 2);
+                ctx.arc(x, y, 6, 0, Math.PI * 2);
                 ctx.fillStyle = obs.color;
                 ctx.fill();
+                ctx.strokeStyle = "white";
+                ctx.lineWidth = 1;
+                ctx.stroke();
             });
         }
 
@@ -155,37 +162,37 @@
 
             // Koma
             ctx.beginPath();
-            ctx.arc(x, y, 6, 0, Math.PI * 2);
+            ctx.arc(x, y, 7, 0, Math.PI * 2);
             ctx.fillStyle = "#ffffff";
             ctx.shadowBlur = 15;
             ctx.shadowColor = "#4da6ff";
             ctx.fill();
             ctx.shadowBlur = 0;
 
-            // Simpel Hale
+            // Hale
             let dx = x - centerX;
             let dy = y - centerY;
             let dist = Math.sqrt(dx*dx + dy*dy);
-            let tailLen = 60 * (1 / r); 
+            let tailLen = 70 * (1 / r); 
             
             ctx.beginPath();
             ctx.moveTo(x, y);
             ctx.lineTo(x + (dx/dist)*tailLen, y + (dy/dist)*tailLen);
-            ctx.strokeStyle = "rgba(77, 166, 255, 0.5)";
-            ctx.lineWidth = 4;
+            ctx.strokeStyle = "rgba(77, 166, 255, 0.7)";
+            ctx.lineWidth = 5;
             ctx.lineCap = "round";
             ctx.stroke();
 
-            // Opdater Info Boks
-            let activeObs = observations.find(obs => Math.abs(obs.angle - angle) < 0.02);
+            // Info Boks
+            let activeObs = observations.find(obs => Math.abs(obs.angle - angle) < 0.03);
             if (activeObs) {
                 infoBox.innerText = activeObs.name;
                 infoBox.style.color = activeObs.color;
             } else if (angle > 2.0) {
-                infoBox.innerText = "Kometen slynges ud af solsystemet...";
+                infoBox.innerText = "Kometen forlader det indre solsystem...";
                 infoBox.style.color = "#aaaaaa";
             } else {
-                infoBox.innerText = "Rejser med op mod 57,5 km/s...";
+                infoBox.innerText = "Komet i fart (op mod 57,5 km/s)";
                 infoBox.style.color = "#4da6ff";
             }
         }
@@ -215,16 +222,16 @@
 
         function resetAnimation() {
             isAnimating = false;
-            cancelAnimationFrame(animationId);
+            if(animationId) cancelAnimationFrame(animationId);
             currentAngle = -2.0;
-            infoBox.innerText = "Klar til start";
-            infoBox.style.color = "#ffcc00";
             drawBackground();
             drawComet(currentAngle);
+            infoBox.innerText = "Klar til start";
+            infoBox.style.color = "#ffcc00";
         }
 
-        // Initial tegn
-        resetAnimation();
+        // Sikrer at baggrunden tegnes første gang siden indlæses
+        window.onload = resetAnimation;
     </script>
 </body>
 </html>
