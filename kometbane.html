@@ -19,8 +19,8 @@
         }
         h1 { margin: 0 0 10px 0; font-size: 20px; color: #4da6ff; }
         p { margin: 5px 0; font-size: 14px; line-height: 1.4; }
-       .legend { display: flex; align-items: center; margin-top: 5px; font-size: 13px; }
-       .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
+     .legend { display: flex; align-items: center; margin-top: 5px; font-size: 13px; }
+     .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
         #instructions {
             position: absolute;
             bottom: 20px;
@@ -42,6 +42,7 @@
         <div class="legend"><div class="dot" style="background: #33ccff;"></div> 11. april 2026 (5 min eksponering)</div>
         <div class="legend"><div class="dot" style="background: #33ff33;"></div> 13. april 2026 (Tåge, 36 sek)</div>
         <div class="legend"><div class="dot" style="background: #ff9933;"></div> 16. april 2026 (96 sek eksponering)</div>
+        <div class="legend" style="margin-top: 15px;"><div class="dot" style="background: #0078D7;"></div> Jorden (Midt april)</div>
     </div>
 
     <div id="instructions">Træk (touch) for at rotere rummet i 3D • Scroll (pinch) for at zoome</div>
@@ -72,7 +73,7 @@
         const sun = new THREE.Mesh(sunGeo, sunMat);
         scene.add(sun);
 
-        // 2. Jordens bane (Referenceplanet / Ekliptika)
+        // 2a. Jordens bane (Referenceplanet / Ekliptika)
         const earthCurve = new THREE.EllipseCurve(0, 0, AU, AU, 0, 2 * Math.PI, false, 0);
         const earthPoints = earthCurve.getPoints(100);
         const earthGeo = new THREE.BufferGeometry().setFromPoints(earthPoints);
@@ -81,11 +82,19 @@
         earthOrbit.rotation.x = Math.PI / 2;
         scene.add(earthOrbit);
 
+        // 2b. Jorden (Selve planeten tilføjet)
+        const earthPlanetGeo = new THREE.SphereGeometry(2.5, 16, 16);
+        const earthPlanetMat = new THREE.MeshBasicMaterial({ color: 0x0078D7 });
+        const earthPlanet = new THREE.Mesh(earthPlanetGeo, earthPlanetMat);
+        // Placerer Jorden på sin bane i april
+        earthPlanet.position.set(Math.cos(1.0) * AU, 0, -Math.sin(1.0) * AU);
+        scene.add(earthPlanet);
+
         // Ekliptika-Gitter for at hjælpe med at se hældningen visuelt
         const gridHelper = new THREE.GridHelper(300, 30, 0x333333, 0x111111);
         scene.add(gridHelper);
 
-        // 3. Kometens hyperbolske bane (Officielle baneelementer)
+        // 3. Kometens hyperbolske bane
         const e = 1.000366; 
         const q = 0.499 * AU; 
         const p = q * (1 + e);
@@ -95,7 +104,6 @@
         const argPeriapsis = 162.22 * Math.PI / 180;
         const ascNode = 38.69 * Math.PI / 180;
 
-        // SIKKER METODE: Opretter array uden brug af specialtegn, der kan slettes
         const cometPoints = new Array(); 
 
         for (let v = -2.2; v <= 2.2; v += 0.01) {
