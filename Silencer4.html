@@ -28,7 +28,7 @@
         .btn-info:hover { background: #2c3e50; }
         
         .chart-container { position: relative; height: 500px; width: 100%; margin-top: 20px; }
-        pre { background: #1e1e1e; color: #4af626; padding: 15px; border-radius: 5px; overflow-y: auto; height: 150px; font-family: 'Courier New', Courier, monospace; font-size: 12px; margin-top: 20px; }
+        pre { background: #1e1e1e; color: #4af626; padding: 15px; border-radius: 5px; overflow-y: auto; height: 120px; font-family: 'Courier New', Courier, monospace; font-size: 12px; margin-top: 20px; }
         .warning { font-size: 12px; color: #e74c3c; margin-top: 2px; }
         
         .theory-panel { display: none; background: #fff; padding: 25px; border-radius: 8px; border-left: 5px solid #3498db; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-top: 20px; margin-bottom: 20px; }
@@ -67,26 +67,29 @@
         <div class="btn-group">
             <button class="btn-calc" onclick="startSimulation()">1. Kør HP BASIC Port</button>
             <button id="btnToggle" class="btn-toggle" onclick="toggleGraphView()">2. Vis Fig. 3.10a (Envelope)</button>
-            <button class="btn-info" onclick="toggleTheory()">Forklar Fysikken</button>
+            <button class="btn-info" onclick="toggleTheory()">Forklar Fysikken & Nyquist</button>
         </div>
     </div>
 
     <div id="theoryPanel" class="theory-panel">
-        <h2>Fysikken bag Monotonitet</h2>
-        <p>Dette program er en 1:1 logisk rekonstruktion af M.Sc. speciale-programmet fra DTU (1989). [span_3](start_span)Modene udregnes i to fuldstændig uafhængige kørsler[span_3](end_span).</p>
+        <h2>Fysikken, Matematikken & Nyquist</h2>
+        <p>Dette program er en matematisk 1:1 rekonstruktion af M.Sc. speciale-programmet fra DTU (1989). Modene udregnes i to fuldstændig uafhængige kørsler.</p>
 
-        <h3>1. Uafhængige Kørsler (K4=0 og K4=1)</h3>
-        <p>I stedet for at forsøge at løse modene på samme tid, simuleres to uafhængige plot-forløb. Først beregnes <b>(0,0)-moden</b> via Newton-Raphson fra bunden. [span_4](start_span)Herefter beregnes <b>(0,2)-moden</b> i sin helt egen kørsel via den specialudviklede komplekse Arctan-metode[span_4](end_span). Algoritmerne overvåger ikke hinanden, men følger blot deres egne matematiske spor ud i rummet.</p>
+        <h3>1. Uafhængige Kørsler og Modeller</h3>
+        <p>I stedet for at forsøge at løse modene på samme tid med kunstig styring, simuleres de to uafhængige plot-forløb eksakt som i 1989: Først beregnes <b>(0,0)-moden (K4=0)</b> via Newton-Raphson og den <i>eksakte analytiske afledte</i> funktion (kodens linje 9510-9840). Herefter beregnes <b>(0,2)-moden (K4=1)</b> i sin egen kørsel via den specialudviklede komplekse Arctan-metode (kodens linje 10290-10450). Metoderne kender ikke hinanden, men følger blot de sande fysiske spor ud i rummet.</p>
 
-        <h3>2. Fysisk Måling (Fig 3.10a)</h3>
-        <p>Når (0,2)-moden rammer sin "cut-on" frekvens omkring 600-700 Hz, falder dens dæmpning drastisk og krydser (0,0)-moden. Da lydenergi altid følger <b>mindste modstands vej</b>, vil en fysisk mikrofon-måling nede i røret altid udgøre den nederste indhyldningskurve (<i>envelope</i>) af de to underliggende uafhængige funktioner.</p>
+        <h3>2. Hvad blev Nyquist-diagrammerne brugt til?</h3>
+        <p>Da Scott's transcendente ligning har uendeligt mange komplekse rødder (modes), er Newton-Raphson "blind" og kræver et præcist startgæt for ikke at fare vild. Nyquist-diagrammer (baseret på Argumentprincippet) blev brugt som et "skattekort". Ved at lade programmet tegne en kasse i det komplekse plan og tælle, hvor mange gange funktionen snoede sig om origo (0,0), kunne man bevise eksistensen og den omtrentlige lokation af roden. Dette startgæt blev derefter tastet ind i programmet for at fange den rette mode.</p>
+
+        <h3>3. Fysisk Måling (Fig 3.10a)</h3>
+        <p>Når den faldende (0,2)-mode krydser den stigende (0,0)-mode, skifter den dominerende lydudbredelse i røret. Lyd følger altid <b>mindste modstands vej</b>, så den samlede mikrofon-måling (envelope) vil altid følge den underliggende kurve, der har den laveste dæmpning – hvilket skaber knækket!</p>
     </div>
 
     <div class="chart-container">
         <canvas id="resultChart"></canvas>
     </div>
 
-    <pre id="output">SYSTEM READY. Simulering kører modene i uafhængige loops. Ingen kunstig tvang. Venter på RUN...</pre>
+    <pre id="output">SYSTEM READY. Simulering kører modene i rene, uafhængige loops. Venter på RUN...</pre>
 </div>
 
 <script>
@@ -146,7 +149,7 @@ function print(text) {
 
 function startSimulation() {
     print("------------------------------------------");
-    print("INITIATING INDEPENDENT RUNS FOR K4=0 AND K4=1...");
+    print("INITIATING INDEPENDENT RUNS WITHOUT ARTIFICIAL LOCKS...");
     isShowingMeasured = false;
     document.getElementById("btnToggle").style.display = "inline-block";
     document.getElementById("btnToggle").innerText = "2. Vis Fig. 3.10a (Envelope)";
@@ -170,42 +173,57 @@ function toggleGraphView() {
     renderCurrentChart();
 }
 
-// Ren Newton-Raphson. INGEN kunstige låse eller grænser.
-function solveNR(guess, p2, M, b) {
-    let w = new Complex(guess.r, guess.i);
+// 100% Ren Analytisk Newton-Raphson (Direkte port af HP BASIC Linje 9510-9840)
+function solveNR_exact(w_guess, p2, M, b) {
+    let w = new Complex(w_guess.r, w_guess.i);
     let conv = false;
-
     for (let iter = 0; iter < 100; iter++) {
         let w2 = w.mult(w);
         let sq = w2.add(p2).sqrt();
-        let f_val = w.mult(w.tan()).add(M.mult(sq).mult(sq.scale(b).tan()));
-
-        let dw = new Complex(1e-6, 1e-6);
-        let wd = w.add(dw);
-        let sqd = wd.mult(wd).add(p2).sqrt();
-        let f_val_d = wd.mult(wd.tan()).add(M.mult(sqd).mult(sqd.scale(b).tan()));
-
-        let deriv = f_val_d.sub(f_val).div(dw);
-        let step = f_val.div(deriv);
         
+        let tan_w = w.tan();
+        let tan_bsq = sq.scale(b).tan();
+        
+        // f(w)
+        let f1 = w.mult(tan_w);
+        let f2 = M.mult(sq).mult(tan_bsq);
+        let f_val = f1.add(f2);
+        
+        // f'(w) Del 1: (2w + sin(2w)) / (1 + cos(2w)) = d/dw[w * tan(w)]
+        let w_2 = w.scale(2);
+        let sin_2w = new Complex(Math.sin(w_2.r)*Math.cosh(w_2.i), Math.cos(w_2.r)*Math.sinh(w_2.i));
+        let cos_2w = new Complex(Math.cos(w_2.r)*Math.cosh(w_2.i), -Math.sin(w_2.r)*Math.sinh(w_2.i));
+        let num1 = w_2.add(sin_2w);
+        let den1 = new Complex(1,0).add(cos_2w);
+        let deriv_part1 = num1.div(den1);
+        
+        // f'(w) Del 2: d/dw[M * sq * tan(b*sq)]
+        let bsq_2 = sq.scale(2*b);
+        let sin_2bsq = new Complex(Math.sin(bsq_2.r)*Math.cosh(bsq_2.i), Math.cos(bsq_2.r)*Math.sinh(bsq_2.i));
+        let cos_2bsq = new Complex(Math.cos(bsq_2.r)*Math.cosh(bsq_2.i), -Math.sin(bsq_2.r)*Math.sinh(bsq_2.i));
+        let num2 = bsq_2.add(sin_2bsq);
+        let den2 = new Complex(1,0).add(cos_2bsq);
+        let term2 = num2.div(den2); // Dette udgør [ b*sq*sec^2 + tan ]
+        let deriv_part2 = M.mult(w).div(sq).mult(term2);
+        
+        // Samlet afledt f'(w)
+        let deriv = deriv_part1.add(deriv_part2);
+        
+        let step = f_val.div(deriv);
         if (isNaN(step.r) || isNaN(step.i)) break;
         
-        let mag = Math.hypot(step.r, step.i);
-        if (mag > 0.5) step = step.scale(0.5 / mag); // Generel numerisk stabilitet, ikke en begrænsning.
-        
         w = w.sub(step);
-        if (w.r < 0) w.r = Math.abs(w.r); // Bølgen er fysisk symmetrisk
         
-        if (mag < 1e-6) { conv = true; break; }
+        // Original HP BASIC fejl-tolerance (Linje 9880)
+        if (Math.hypot(step.r, step.i) < 1e-10) { conv = true; break; }
     }
     return { w: w, converged: conv };
 }
 
-// Ren Arctan metode baseret 1:1 på HP BASIC koden for (0,2)
-function solveArctan(guess, p2, M, b) {
-    let w = new Complex(guess.r, guess.i);
+// 100% Ren Arctan Metode (Direkte port af HP BASIC Linje 10290-10450)
+function solveArctan_exact(w_guess, p2, M, b) {
+    let w = new Complex(w_guess.r, w_guess.i);
     let conv = false;
-
     for (let iter = 0; iter < 150; iter++) {
         let sq = w.mult(w).add(p2).sqrt();
         let M_term = M.mult(sq).mult(sq.scale(b).tan());
@@ -214,20 +232,25 @@ function solveArctan(guess, p2, M, b) {
         let Y1 = Y_comp.r;
         let Y2 = Y_comp.i;
         
+        // J1 - J4 som i HP BASIC
         let J1 = Math.hypot(Y1, Y2+1);
         let J3 = Math.hypot(Y1, Y2-1);
         let J2 = Math.atan2(Y1, Y2+1);
         let J4 = Math.atan2(-Y1, 1-Y2);
 
-        // Mode 1 (svarer til K3=1 i HP BASIC, altså + PI)
+        // K3 = 1 -> arctan + PI
         let Y3 = Math.PI + (J4 - J2)/2; 
         let Y4 = 0.5 * Math.log(J1/J3);
 
         let w_new = new Complex(Y3, Y4);
-        let diff = Math.max(Math.abs(w_new.r - w.r), Math.abs(w_new.i - w.i));
+        
+        // Konvergenstjek
+        if (Math.max(Math.abs(w_new.r - w.r), Math.abs(w_new.i - w.i)) < 1e-10) { 
+            conv = true; 
+            w = w_new; 
+            break; 
+        }
         w = w_new;
-
-        if (diff < 1e-6) { conv = true; break; }
     }
     return { w: w, converged: conv };
 }
@@ -285,55 +308,53 @@ function runMath() {
             let Z_c = new Complex(Zr, Zi);
             let Gam_c = new Complex(Gamr, Gami);
             
-            // FYSISK KORREKT M: UDEN Rho*C, da Z er normaliseret. Skalaen passer nu til 10 dB!
-            let num = new Complex(0, -K); 
+            // FYSISK KORREKT M: Normaliseret Z (Uden Rho*C fejlskalering)
+            let num = new Complex(0, K); 
             let den = Z_c.mult(Gam_c);
             let M = num.div(den); 
             
+            // FYSISK KORREKT p2: -(Gam^2 + k^2) * L1^2
             let Gam_sq = Gam_c.mult(Gam_c);
             let p2 = new Complex( -(Gam_sq.r + K * K) * L1 * L1, -Gam_sq.i * L1 * L1 );
             
             return { p2: p2, M: M };
         };
 
-        // --- KØRSEL 1: (0,0) MODEN (K4=0) UAFHÆNGIGT ---
-        print("Run 1: Sporsøger (0,0) uafhængigt med ren Newton-Raphson...");
+        // --- KØRSEL 1: (0,0) MODEN UAFHÆNGIGT ---
+        print("Kører WAVE TYPE (0,0) MODE (0)...");
         let w_00 = new Complex(0.1, 0.1); 
         
         for (let j = 0; j < freqs.length; j++) {
             let f = freqs[j];
             let params = getParams(f);
             
-            // Startgæt er den forrige frekvens' rod (som originalen)
+            // Forrige rod bruges direkte som gæt (Ingen ekstrapolering)
             let guess = (j === 0) ? new Complex(0.1, 0.1) : w_00;
                         
-            let res = solveNR(guess, params.p2, params.M, b);
+            let res = solveNR_exact(guess, params.p2, params.M, b);
             if (res.converged) {
                 w_00 = res.w;
+                globalPlot00.push({x: f, y: calcAttenuation(w_00, f)});
             }
-            
-            globalPlot00.push({x: f, y: calcAttenuation(w_00, f)});
         }
 
-        // --- KØRSEL 2: (0,2) MODEN (K4=1) UAFHÆNGIGT ---
-        print("Run 2: Sporsøger (0,2) uafhængigt med Arctan iteration...");
+        // --- KØRSEL 2: (0,2) MODEN UAFHÆNGIGT ---
+        print("Kører WAVE TYPE (0,2) MODE (1)...");
         let w_02 = new Complex(Math.PI, 10.0); 
         
         for (let j = 0; j < freqs.length; j++) {
             let f = freqs[j];
             let params = getParams(f);
             
-            // Startgæt er den forrige frekvens' rod (som originalen)
             let guess = (j === 0) ? new Complex(Math.PI, 10.0) : w_02;
             
-            let res = solveArctan(guess, params.p2, params.M, b);
+            let res = solveArctan_exact(guess, params.p2, params.M, b);
             if (res.converged) {
                 w_02 = res.w;
-            }
-            
-            let atten = calcAttenuation(w_02, f);
-            if (atten < 25) { // Skjul ekstreme out-of-bounds startværdier
-                globalPlot02.push({x: f, y: atten});
+                let atten = calcAttenuation(w_02, f);
+                if (atten < 25) { // Skjul ekstreme out-of-bounds startværdier
+                    globalPlot02.push({x: f, y: atten});
+                }
             }
         }
 
@@ -352,7 +373,7 @@ function runMath() {
             }
         });
 
-        print("SUCCESS! Modene blev kørt og tegnet fuldstændig uafhængigt.");
+        print("SUCCESS! Modene blev kørt og tegnet fuldstændig uafhængigt, ren matematik.");
         renderCurrentChart();
 
     } catch (e) {
@@ -382,7 +403,7 @@ function renderCurrentChart() {
             data: globalPlot00,
             borderColor: '#2980b9', 
             borderWidth: 2,
-            borderDash: [5, 5], // Gør (0,0) stiplet som i originalen
+            borderDash: [5, 5], 
             pointRadius: 0, 
             fill: false,
             tension: 0.1
