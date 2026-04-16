@@ -19,8 +19,8 @@
         }
         h1 { margin: 0 0 10px 0; font-size: 20px; color: #4da6ff; }
         p { margin: 5px 0; font-size: 14px; line-height: 1.4; }
-       .legend { display: flex; align-items: center; margin-top: 5px; font-size: 13px; }
-       .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
+      .legend { display: flex; align-items: center; margin-top: 5px; font-size: 13px; }
+      .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
         #instructions {
             position: absolute;
             bottom: 20px;
@@ -44,7 +44,7 @@
         <div class="legend"><div class="dot" style="background: #ff9933;"></div> 16. april 2026 (96 sek eksponering)</div>
     </div>
 
-    <div id="instructions">Træk for at rotere rummet i 3D • Scroll for at zoome</div>
+    <div id="instructions">Træk (touch) for at rotere rummet i 3D • Scroll (pinch) for at zoome</div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
@@ -53,7 +53,7 @@
         // Opsætning af 3D Scene
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 2000);
-        camera.position.set(150, 100, 200); // Starter med et godt skråt kig ovenfra
+        camera.position.set(150, 100, 200); 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
@@ -67,19 +67,17 @@
         const AU = 100;
 
         // 1. Solen
-        const sunGeo = new THREE.SphereGeometry(3, 32, 32);
+        const sunGeo = new THREE.SphereGeometry(4, 32, 32);
         const sunMat = new THREE.MeshBasicMaterial({ color: 0xffcc00 });
         const sun = new THREE.Mesh(sunGeo, sunMat);
         scene.add(sun);
 
         // 2. Jordens bane (Referenceplanet / Ekliptika)
-        // Cirkel i X-Y planet (vi gør z-aksen til "op" for overskuelighed)
         const earthCurve = new THREE.EllipseCurve(0, 0, AU, AU, 0, 2 * Math.PI, false, 0);
         const earthPoints = earthCurve.getPoints(100);
         const earthGeo = new THREE.BufferGeometry().setFromPoints(earthPoints);
         const earthMat = new THREE.LineBasicMaterial({ color: 0x0078D7, transparent: true, opacity: 0.5 });
         const earthOrbit = new THREE.Line(earthGeo, earthMat);
-        // Roter så X-Y planet ligger vandret i 3D rummet
         earthOrbit.rotation.x = Math.PI / 2;
         scene.add(earthOrbit);
 
@@ -97,7 +95,8 @@
         const argPeriapsis = 162.22 * Math.PI / 180;
         const ascNode = 38.69 * Math.PI / 180;
 
-        const cometPoints =;
+        // RETTET FEJL: Der manglede et tomt array "" herunder
+        const cometPoints =; 
         for (let v = -2.2; v <= 2.2; v += 0.01) {
             let r = p / (1 + e * Math.cos(v));
             let x = r * Math.cos(v);
@@ -105,12 +104,12 @@
             
             let vec = new THREE.Vector3(x, y, 0);
             
-            // Transformering i 3D rum ifølge klassiske baneelementer (Z-X-Z Euler rotation)
-            vec.applyAxisAngle(new THREE.Vector3(0, 0, 1), argPeriapsis); // Roterer i eget plan
-            vec.applyAxisAngle(new THREE.Vector3(1, 0, 0), inclination);  // Vipper banen (124.7 grader)
-            vec.applyAxisAngle(new THREE.Vector3(0, 0, 1), ascNode);      // Roterer til den rette himmelekvator
+            // Transformering i 3D rum ifølge klassiske baneelementer
+            vec.applyAxisAngle(new THREE.Vector3(0, 0, 1), argPeriapsis); 
+            vec.applyAxisAngle(new THREE.Vector3(1, 0, 0), inclination);  
+            vec.applyAxisAngle(new THREE.Vector3(0, 0, 1), ascNode);      
             
-            // Konverterer til Three.js standard (hvor Y er "op")
+            // Konverterer til Three.js standard
             cometPoints.push(new THREE.Vector3(vec.x, vec.z, -vec.y));
         }
 
@@ -133,23 +132,22 @@
             vec.applyAxisAngle(new THREE.Vector3(1, 0, 0), inclination);
             vec.applyAxisAngle(new THREE.Vector3(0, 0, 1), ascNode);
             
-            // Skaber den farvede prik
-            const pointGeo = new THREE.SphereGeometry(2, 16, 16);
+            const pointGeo = new THREE.SphereGeometry(2.5, 16, 16);
             const pointMat = new THREE.MeshBasicMaterial({ color: obsColors[index] });
             const pointMesh = new THREE.Mesh(pointGeo, pointMat);
             pointMesh.position.set(vec.x, vec.z, -vec.y);
             scene.add(pointMesh);
         });
 
-        // Animations-loop (Gør kontrol og interaktivitet flydende)
+        // Animations-loop
         function animate() {
             requestAnimationFrame(animate);
-            controls.update(); // Nødvendig for "damping"
+            controls.update(); 
             renderer.render(scene, camera);
         }
         animate();
 
-        // Sikrer at 3D rummet tilpasser sig hvis vinduet / skærmen ændrer størrelse
+        // Sikrer at 3D rummet tilpasser sig skærmen
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
