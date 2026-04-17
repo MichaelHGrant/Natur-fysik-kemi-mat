@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gauss Metode: Jupiter og Jorden</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #0d0d1a;
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+        canvas {
+            display: block;
+            border: 2px solid #333;
+            border-radius: 10px;
+            background: radial-gradient(circle at center, #1a1a2e, #000000);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+            max-width: 95vw;
+            max-height: 70vh;
+            object-fit: contain;
+        }
+        #info {
+            background: rgba(20, 20, 40, 0.85);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #555;
+            text-align: center;
+            margin-bottom: 20px;
+            max-width: 90vw;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+        h1 { 
+            font-size: 22px; 
+            margin: 0 0 10px 0; 
+            color: #ffaa00; 
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        p { 
+            margin: 8px 0; 
+            font-size: 15px; 
+            color: #dddddd; 
+        }
+      .highlight {
+            color: #4da6ff;
+            font-weight: bold;
+        }
+      .highlight-jup {
+            color: #ff9933;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="info">
+        <h1>Banebestemmelse (Gauss Metode)</h1>
+        <p>Den stiplede linje repræsenterer din <span style="color: #fff;">Sigtelinje (Line of Sight)</span> fra Grenaa mod Jupiter.</p>
+        <p><strong>Aktuel Afstand til Jupiter:</strong> <span id="distance" class="highlight">0</span> AU</p>
+        <p><strong>Observationsvinkel (Fasevinkel):</strong> <span id="phaseAngle" class="highlight-jup">0</span>°</p>
+    </div>
+
+    <canvas id="orbitCanvas" width="800" height="800"></canvas>
+
+    <script>
+        const canvas = document.getElementById('orbitCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+
+        // Skalering af systemet til at passe til 800x800 lærred
+        const scale = 70; 
+        const earthDistance = 1 * scale; 
+        const jupiterDistance = 5.2038 * scale; // Jupiters halve storakse
+
+        // Kinetik (Newtons & Keplers love simuleres her via hastighed)
+        const earthSpeed = 0.015;
+        // Jupiters hastighed ifølge Keplers 3. lov (langsommere ydre bane)
+        const jupiterSpeed = earthSpeed / Math.sqrt(Math.pow(5.2038, 3)); 
+
+        // Startvinkler, der simulerer en situation omkring oppositionen
+        let earthAngle = 0;
+        let jupiterAngle = Math.PI / 6; 
+
+        function drawBody(x, y, radius, color, glow) {
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.shadowBlur = glow;
+            ctx.shadowColor = color;
+            ctx.fill();
+            ctx.shadowBlur = 0; // reset
+            ctx.closePath();
+        }
+
+        function drawOrbit(radius, color) {
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            ctx.closePath();
+        }
+
+        function animate() {
+            // Ryd baggrunden
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Opdater orbital bevægelse
+            earthAngle += earthSpeed;
+            jupiterAngle += jupiterSpeed;
+
+            // Trigonometrisk beregning af koordinater (x,y) for Jorden og Jupiter
+            const ex = centerX + earthDistance * Math.cos(earthAngle);
+            const ey = centerY + earthDistance * Math.sin(earthAngle);
+
+            const jx = centerX + jupiterDistance * Math.cos(jupiterAngle);
+            const jy = centerY + jupiterDistance * Math.sin(jupiterAngle);
+
+            // 1. Tegn planetbaner (ekliptika)
+            drawOrbit(earthDistance, 'rgba(77, 166, 255, 0.25)'); // Jordens bane
+            drawOrbit(jupiterDistance, 'rgba(255, 153, 51, 0.25)'); // Jupiters bane
+
+            // 2. Tegn Solen
+            drawBody(centerX, centerY, 18, '#ffcc00', 30); 
+
+            // 3. Tegn Sigtelinje (Observation fra kamera til planet - kernen i Gauss' polynomium)
+            ctx.beginPath();
+            ctx.moveTo(ex, ey);
+            ctx.lineTo(jx, jy);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+            ctx.setLineDash([1, 2]);
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.setLineDash(); // <--- RETTELSEN ER HER: Et tomt array nulstiller den stiplede linje
+            
+            // 4. Tegn Planeterne
+            drawBody(ex, ey, 7, '#4da6ff', 15); // Jorden
+            drawBody(jx, jy, 14, '#ffaa33', 20); // Jupiter
+
+            // --- Fysik & Matematik Udregninger til UI ---
+            
+            // Afstand beregnes via Pythagoras (Delta afstand mellem legemerne)
+            const dx = jx - ex;
+            const dy = jy - ey;
+            const distPixels = Math.sqrt(dx*dx + dy*dy);
+            const distAU = (distPixels / scale).toFixed(3);
+            
+            // Fasevinkel beregnes med Cosinusrelationerne
+            const dEarthSun = 1;
+            const dJupSun = 5.2038;
+            const dEarthJup = distPixels / scale;
+            
+            // cos(C) = (a^2 + b^2 - c^2) / 2ab
+            const cosPhase = (dJupSun*dJupSun + dEarthJup*dEarthJup - dEarthSun*dEarthSun) / (2 * dJupSun * dEarthJup);
+            const phaseAngle = (Math.acos(cosPhase) * 180 / Math.PI).toFixed(2);
+
+            // Opdater Teksten på skærmen
+            document.getElementById('distance').innerText = distAU;
+            document.getElementById('phaseAngle').innerText = phaseAngle;
+
+            // Kald næste frame for en uendelig loop
+            requestAnimationFrame(animate);
+        }
+
+        // Start simuleringen
+        animate();
+    </script>
+</body>
+</html>
