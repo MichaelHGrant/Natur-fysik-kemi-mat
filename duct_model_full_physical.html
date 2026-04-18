@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Absorptionsbeklædt kanal – fysisk korrekt model</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #141b34;
+      --panel-2: #1a2447;
+      --text: #edf2ff;
+      --muted: #b5c1e6;
+      --accent: #89a7ff;
+      --line: #2a3768;
+      --ok: #90d2a1;
+      --warn: #ffd479;
+      --err: #ff9d9d;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, Arial, sans-serif;
+      background: linear-gradient(180deg, #0a1022 0%, #0f1730 100%);
+      color: var(--text);
+    }
+    .wrap {
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 22px;
+      display: grid;
+      gap: 18px;
+      grid-template-columns: 360px 1fr;
+    }
+    .panel {
+      background: rgba(20, 27, 52, 0.98);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.25);
+    }
+    .controls { padding: 18px; }
+    h1, h2, h3 { margin: 0 0 12px 0; }
+    h1 { font-size: 1.35rem; }
+    h2 { font-size: 1.03rem; color: var(--accent); margin-top: 12px; }
+    p, li { color: var(--muted); line-height: 1.45; }
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    label {
+      display: block;
+      font-size: 0.88rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    input, select, button {
+      width: 100%;
+      background: var(--panel-2);
+      color: var(--text);
+      border: 1px solid #31427d;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 0.95rem;
+    }
+    button {
+      cursor: pointer;
+      background: linear-gradient(180deg, #3451a7, #273f84);
+      border: 1px solid #5777db;
+      font-weight: 600;
+    }
+    button:hover { filter: brightness(1.06); }
+    .chartPanel { padding: 12px 14px 18px; }
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      padding: 4px 2px 12px;
+    }
+    .pill {
+      font-size: 0.82rem;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #162247;
+      border: 1px solid #31427d;
+      color: var(--muted);
+    }
+    #plotWrap {
+      width: 100%;
+      overflow: auto;
+      background: #fff;
+      border-radius: 14px;
+      padding: 10px;
+      border: 1px solid #dbe2ff;
+    }
+    #plot { width: 100%; height: auto; display: block; }
+    .small { font-size: 0.84rem; color: var(--muted); }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .status-ok { color: var(--ok); }
+    .status-warn { color: var(--warn); }
+    .status-err { color: var(--err); }
+    details {
+      margin-top: 10px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: rgba(255,255,255,0.02);
+    }
+    summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+    code.k {
+      display: inline-block;
+      padding: 2px 5px;
+      border-radius: 6px;
+      background: #111a36;
+      border: 1px solid #32406d;
+      color: #dbe5ff;
+    }
+    .out {
+      background: #0d152e;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px;
+      margin-top: 8px;
+    }
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      margin-top: 10px;
+    }
+    .table td, .table th {
+      border-bottom: 1px solid #2b3868;
+      padding: 8px 6px;
+      text-align: left;
+    }
+    .legendRow {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+      font-size: 0.88rem;
+      color: #223;
+    }
+    .legendItem {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #223;
+    }
+    .swatch {
+      width: 16px;
+      height: 3px;
+      border-radius: 99px;
+      display: inline-block;
+    }
+    @media (max-width: 980px) {
+      .wrap { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="panel controls">
+      <h1>Fuld fysisk korrekt kanalmodel</h1>
+      <p>
+        Denne side beregner dæmpning i en kanal med porøs lining ved at løse den
+        komplekse dispersionsligning numerisk for hver frekvens. Modellen bruger
+        Delany–Bazley for den porøse lining, kontinuitet i tryk og normalhastighed
+        ved grænsefladen, samt rigid bagvæg.
+      </p>
+
+      <h2>Geometri</h2>
+      <div class="grid2">
+        <div>
+          <label for="h">Luftkanalens bredde h [m]</label>
+          <input id="h" type="number" step="0.001" value="0.30" />
+        </div>
+        <div>
+          <label for="d">Liningtykkelse d [m]</label>
+          <input id="d" type="number" step="0.001" value="0.15" />
+        </div>
+      </div>
+
+      <h2>Materiale og medium</h2>
+      <div class="grid2">
+        <div>
+          <label for="sigma">Flow resistivity σ [Pa·s/m²]</label>
+          <input id="sigma" type="number" step="1" value="3000" />
+        </div>
+        <div>
+          <label for="model">Porøs model</label>
+          <select id="model">
+            <option value="db">Delany–Bazley</option>
+            <option value="miki">Miki</option>
+          </select>
+        </div>
+        <div>
+          <label for="rho0">Luftdensitet ρ₀ [kg/m³]</label>
+          <input id="rho0" type="number" step="0.001" value="1.21" />
+        </div>
+        <div>
+          <label for="c0">Lydhastighed c₀ [m/s]</label>
+          <input id="c0" type="number" step="0.1" value="343" />
+        </div>
+      </div>
+
+      <h2>Plot og mode</h2>
+      <div class="grid2">
+        <div>
+          <label for="mode">Tværmode n</label>
+          <select id="mode">
+            <option value="0">n = 0</option>
+            <option value="1">n = 1</option>
+            <option value="2" selected>n = 2</option>
+            <option value="3">n = 3</option>
+            <option value="4">n = 4</option>
+          </select>
+        </div>
+        <div>
+          <label for="plotType">Kurvetype</label>
+          <select id="plotType">
+            <option value="alpha_dbm" selected>Dæmpning [dB/m]</option>
+            <option value="alpha_npm">Dæmpning [Np/m]</option>
+            <option value="phase">Fasekonstant β [rad/m]</option>
+            <option value="nyquist">Nyquist af F(Γ)</option>
+          </select>
+        </div>
+        <div>
+          <label for="fMin">f min [Hz]</label>
+          <input id="fMin" type="number" step="1" value="20" />
+        </div>
+        <div>
+          <label for="fMax">f max [Hz]</label>
+          <input id="fMax" type="number" step="1" value="4000" />
+        </div>
+        <div>
+          <label for="df">Δf [Hz]</label>
+          <input id="df" type="number" step="1" value="20" />
+        </div>
+        <div>
+          <label for="nyquistFreq">Nyquist-frekvens [Hz]</label>
+          <input id="nyquistFreq" type="number" step="1" value="630" />
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;">
+        <button id="runBtn">Beregn</button>
+        <button id="presetBtn" type="button">Preset: Figurlignende</button>
+      </div>
+
+      <div class="out">
+        <div id="status" class="small">Klar.</div>
+        <table class="table">
+          <tr><th>Størrelse</th><th>Værdi</th></tr>
+          <tr><td>Dispersionsligning</td><td class="mono">tan(k_y h)/k_y + (Z_c / jωρ₀) tanh(k_p d)/k_p = 0</td></tr>
+          <tr><td>Aksial konstant</td><td class="mono">Γ = α + jβ</td></tr>
+          <tr><td>Dæmpning</td><td class="mono">α_dB/m = 8.685889638 · Re(Γ)</td></tr>
+        </table>
+      </div>
+
+      <details>
+        <summary>Matematisk model</summary>
+        <p>
+          Vi sætter <code class="k">Γ = α + jβ</code> og definerer
+          <code class="k">k₀ = ω/c₀</code>, <code class="k">k_y = √(k₀² − Γ²)</code>
+          i luftregionen og <code class="k">k_p = √(k_c² − Γ²)</code> i den porøse lining.
+        </p>
+        <p>
+          For en rigid bagvæg og kontinuitet ved grænsefladen fås den komplekse ligning
+          <span class="mono">F(Γ) = tan(k_y h)/k_y + (Z_c/(jωρ₀))·tanh(k_p d)/k_p = 0</span>.
+        </p>
+        <p>
+          Her er <code class="k">Z_c</code> og <code class="k">k_c</code> det effektive
+          karakteristiske medium i den porøse lining. De beregnes med Delany–Bazley eller Miki.
+        </p>
+      </details>
+
+      <details>
+        <summary>Om mode-tracking</summary>
+        <p>
+          For at følge samme gren med stigende frekvens startes Newton-løsningen ved hårdvægs-approksimationen
+          <span class="mono">Γ₀ ≈ j·√(k₀² − (nπ/h)²)</span>,
+          og derefter bruges fortsættelse med den forrige frekvens som startgæt.
+        </p>
+      </details>
+
+      <p class="small">
+        Denne implementation er lavet for at reproducere samme type kurve som i dit scannede specialedokument,
+        hvor teori, porøs model og numerisk rodsporing er centrale.
+      </p>
+    </section>
+
+    <section class="panel chartPanel">
+      <div class="toolbar">
+        <span class="pill">Kompleks Newton-løser</span>
+        <span class="pill">Delany–Bazley / Miki</span>
+        <span class="pill">Mode continuation</span>
+        <span class="pill">SVG-plot uden eksterne biblioteker</span>
+      </div>
+      <div id="plotWrap">
+        <svg id="plot" viewBox="0 0 1000 620" preserveAspectRatio="xMidYMid meet"></svg>
+        <div id="legend" class="legendRow"></div>
+      </div>
+      <div class="out small" id="summaryBox">
+        Ingen beregning endnu.
+      </div>
+    </section>
+  </div>
+
+  <script>
+    class Complex {
+      constructor(re = 0, im = 0) { this.re = re; this.im = im; }
+      add(z) { return new Complex(this.re + z.re, this.im + z.im); }
+      sub(z) { return new Complex(this.re - z.re, this.im - z.im); }
+      mul(z) {
+        if (typeof z === 'number') return new Complex(this.re * z, this.im * z);
+        return new Complex(this.re * z.re - this.im * z.im, this.re * z.im + this.im * z.re);
+      }
+      div(z) {
+        if (typeof z === 'number') return new Complex(this.re / z, this.im / z);
+        const den = z.re * z.re + z.im * z.im;
+        return new Complex((this.re * z.re + this.im * z.im) / den, (this.im * z.re - this.re * z.im) / den);
+      }
+      abs() { return Math.hypot(this.re, this.im); }
+      arg() { return Math.atan2(this.im, this.re); }
+      sqrt() {
+        const r = this.abs();
+        const t = this.arg() / 2;
+        return Complex.fromPolar(Math.sqrt(r), t);
+      }
+      exp() {
+        const ea = Math.exp(this.re);
+        return new Complex(ea * Math.cos(this.im), ea * Math.sin(this.im));
+      }
+      log() { return new Complex(Math.log(this.abs()), this.arg()); }
+      sin() {
+        return new Complex(Math.sin(this.re) * Math.cosh(this.im), Math.cos(this.re) * Math.sinh(this.im));
+      }
+      cos() {
+        return new Complex(Math.cos(this.re) * Math.cosh(this.im), -Math.sin(this.re) * Math.sinh(this.im));
+      }
+      tan() { return this.sin().div(this.cos()); }
+      sinh() {
+        return new Complex(Math.sinh(this.re) * Math.cos(this.im), Math.cosh(this.re) * Math.sin(this.im));
+      }
+      cosh() {
+        return new Complex(Math.cosh(this.re) * Math.cos(this.im), Math.sinh(this.re) * Math.sin(this.im));
+      }
+      tanh() { return this.sinh().div(this.cosh()); }
+      toString(p = 5) {
+        const s = this.im >= 0 ? '+' : '−';
+        return `${this.re.toFixed(p)} ${s} j${Math.abs(this.im).toFixed(p)}`;
+      }
+      static fromPolar(r, t) { return new Complex(r * Math.cos(t), r * Math.sin(t)); }
+    }
+
+    const $ = (id) => document.getElementById(id);
+
+    function dbModel(f, sigma, rho0, c0) {
+      const X = (rho0 * f) / sigma;
+      const Zr = 1 + 0.0571 * Math.pow(X, -0.754);
+      const Zi = -0.0870 * Math.pow(X, -0.732);
+      const kr = 1 + 0.0978 * Math.pow(X, -0.700);
+      const ki = -0.1890 * Math.pow(X, -0.595);
+      const Zc = new Complex(Zr, Zi).mul(rho0 * c0);
+      const k0 = 2 * Math.PI * f / c0;
+      const kc = new Complex(kr, ki).mul(k0);
+      return { Zc, kc };
+    }
+
+    function mikiModel(f, sigma, rho0, c0) {
+      const X = f / sigma;
+      const Zr = 1 + 5.50 * Math.pow(1000 * X, -0.632);
+      const Zi = -8.43 * Math.pow(1000 * X, -0.632);
+      const kr = 1 + 7.81 * Math.pow(1000 * X, -0.618);
+      const ki = -11.41 * Math.pow(1000 * X, -0.618);
+      const Zc = new Complex(Zr, Zi).mul(rho0 * c0);
+      const k0 = 2 * Math.PI * f / c0;
+      const kc = new Complex(kr, ki).mul(k0);
+      return { Zc, kc };
+    }
+
+    function hardWallGuess(f, h, n, c0, alphaSeed = 0.02) {
+      const k0 = 2 * Math.PI * f / c0;
+      const ky = n * Math.PI / h;
+      const val = k0 * k0 - ky * ky;
+      if (val >= 0) return new Complex(alphaSeed, Math.sqrt(val));
+      return new Complex(alphaSeed + Math.sqrt(-val), 0);
+    }
+
+    function dispersion(Gamma, f, h, d, sigma, rho0, c0, modelName) {
+      const model = modelName === 'miki' ? mikiModel(f, sigma, rho0, c0) : dbModel(f, sigma, rho0, c0);
+      const omega = 2 * Math.PI * f;
+      const k0 = omega / c0;
+      const k0c = new Complex(k0, 0);
+      const ky = k0c.mul(k0c).sub(Gamma.mul(Gamma)).sqrt();
+      const kp = model.kc.mul(model.kc).sub(Gamma.mul(Gamma)).sqrt();
+      const termAir = ky.mul(h).tan().div(ky);
+      const pref = model.Zc.div(new Complex(0, omega * rho0));
+      const termPorous = kp.mul(d).tanh().div(kp).mul(pref);
+      return termAir.add(termPorous);
+    }
+
+    function newtonComplex(fHandle, z0, maxIter = 50, tol = 1e-10) {
+      let z = new Complex(z0.re, z0.im);
+      const eps = 1e-7;
+      for (let k = 0; k < maxIter; k++) {
+        const F = fHandle(z);
+        if (!isFinite(F.re) || !isFinite(F.im)) return { ok: false, root: z, iters: k, res: Infinity };
+        const res = F.abs();
+        if (res < tol) return { ok: true, root: z, iters: k, res };
+        const dRe = fHandle(new Complex(z.re + eps, z.im)).sub(fHandle(new Complex(z.re - eps, z.im))).div(2 * eps);
+        const dIm = fHandle(new Complex(z.re, z.im + eps)).sub(fHandle(new Complex(z.re, z.im - eps))).div(new Complex(0, 2 * eps));
+        const dF = dRe.add(dIm).div(2);
+        if (dF.abs() < 1e-14) return { ok: false, root: z, iters: k, res };
+        const step = F.div(dF);
+        z = z.sub(step);
+        if (step.abs() < tol * Math.max(1, z.abs())) {
+          const Fres = fHandle(z).abs();
+          return { ok: Fres < 1e-6, root: z, iters: k + 1, res: Fres };
+        }
+      }
+      return { ok: false, root: z, iters: maxIter, res: fHandle(z).abs() };
+    }
+
+    function solveCurve(params) {
+      const { h, d, sigma, rho0, c0, modelName, n, fMin, fMax, df } = params;
+      const data = [];
+      let prev = null;
+      let failures = 0;
+      for (let f = fMin; f <= fMax + 1e-9; f += df) {
+        const start = prev ? prev : hardWallGuess(f, h, n, c0, 0.02);
+        const handle = (G) => dispersion(G, f, h, d, sigma, rho0, c0, modelName);
+        let result = newtonComplex(handle, start, 60, 1e-10);
+        if (!result.ok) result = newtonComplex(handle, hardWallGuess(f, h, n, c0, 0.05), 80, 1e-9);
+        if (!result.ok && prev) result = newtonComplex(handle, new Complex(prev.re + 0.02, prev.im * 1.02), 80, 1e-8);
+        const G = result.root;
+        prev = G;
+        if (!result.ok) failures++;
+        const alphaNp = Math.max(0, G.re);
+        const alphaDb = 8.685889638 * alphaNp;
+        const beta = Math.abs(G.im);
+        data.push({ f, Gamma: G, alphaNp, alphaDb, beta, residual: result.res, ok: result.ok });
+      }
+      return { data, failures };
+    }
+
+    function solveNyquistAtFrequency(params, nyquistFreq) {
+      const { h, d, sigma, rho0, c0, modelName, n } = params;
+      const guess = hardWallGuess(nyquistFreq, h, n, c0, 0.02);
+      const root = newtonComplex((G) => dispersion(G, nyquistFreq, h, d, sigma, rho0, c0, modelName), guess, 70, 1e-10).root;
+      const pts = [];
+      const alphaMax = Math.max(1.4, root.re * 2.2 + 0.6);
+      const betaCenter = Math.max(0.2, Math.abs(root.im));
+      const betaMin = Math.max(0, betaCenter * 0.15);
+      const betaMax = betaCenter * 1.85 + 0.6;
+      const na = 120, nb = 140;
+      for (let i = 0; i < na; i++) {
+        const a = alphaMax * i / (na - 1);
+        for (let j = 0; j < nb; j++) {
+          const b = betaMin + (betaMax - betaMin) * j / (nb - 1);
+          const G = new Complex(a, b);
+          const F = dispersion(G, nyquistFreq, h, d, sigma, rho0, c0, modelName);
+          pts.push({ a, b, x: F.re, y: F.im });
+        }
+      }
+      return { pts, root };
+    }
+
+    function nice(v) {
+      if (!isFinite(v)) return '—';
+      const av = Math.abs(v);
+      if (av >= 1000 || (av > 0 && av < 1e-3)) return v.toExponential(3);
+      return v.toFixed(5);
+    }
+
+    function svgEl(name, attrs = {}) {
+      const el = document.createElementNS('http://www.w3.org/2000/svg', name);
+      for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, String(v));
+      return el;
+    }
+
+    function renderAxes(svg, W, H, margin, xLabel, yLabel, xMin, xMax, yMin, yMax, darkText = '#1d274d') {
+      const plotW = W - margin.left - margin.right;
+      const plotH = H - margin.top - margin.bottom;
+      const g = svgEl('g');
+      svg.appendChild(g);
+      g.appendChild(svgEl('rect', { x: margin.left, y: margin.top, width: plotW, height: plotH, fill: '#ffffff', stroke: '#bac7ef' }));
+      const nTicks = 6;
+      for (let i = 0; i <= nTicks; i++) {
+        const tx = margin.left + plotW * i / nTicks;
+        const ty = margin.top + plotH * i / nTicks;
+        g.appendChild(svgEl('line', { x1: tx, y1: margin.top, x2: tx, y2: margin.top + plotH, stroke: '#e5ebff', 'stroke-width': 1 }));
+        g.appendChild(svgEl('line', { x1: margin.left, y1: ty, x2: margin.left + plotW, y2: ty, stroke: '#e5ebff', 'stroke-width': 1 }));
+        const xv = xMin + (xMax - xMin) * i / nTicks;
+        const yv = yMax - (yMax - yMin) * i / nTicks;
+        const xt = svgEl('text', { x: tx, y: H - margin.bottom + 28, 'text-anchor': 'middle', 'font-size': 15, fill: darkText });
+        xt.textContent = nice(xv);
+        g.appendChild(xt);
+        const yt = svgEl('text', { x: margin.left - 14, y: ty + 5, 'text-anchor': 'end', 'font-size': 15, fill: darkText });
+        yt.textContent = nice(yv);
+        g.appendChild(yt);
+      }
+      const xl = svgEl('text', { x: margin.left + plotW / 2, y: H - 18, 'text-anchor': 'middle', 'font-size': 18, fill: darkText, 'font-weight': 600 });
+      xl.textContent = xLabel;
+      g.appendChild(xl);
+      const yl = svgEl('text', { x: 24, y: margin.top + plotH / 2, transform: `rotate(-90 24 ${margin.top + plotH / 2})`, 'text-anchor': 'middle', 'font-size': 18, fill: darkText, 'font-weight': 600 });
+      yl.textContent = yLabel;
+      g.appendChild(yl);
+      return {
+        xMap: (x) => margin.left + (x - xMin) / (xMax - xMin) * plotW,
+        yMap: (y) => margin.top + (yMax - y) / (yMax - yMin) * plotH,
+      };
+    }
+
+    function renderCurvePlot(result, params) {
+      const svg = $('plot');
+      svg.innerHTML = '';
+      $('legend').innerHTML = '';
+      const W = 1000, H = 620;
+      const margin = { left: 80, right: 30, top: 30, bottom: 70 };
+      const mode = Number(params.n);
+      const plotType = params.plotType;
+      const series = result.data;
+      let yAccessor = (p) => p.alphaDb;
+      let yLabel = 'Dæmpning [dB/m]';
+      let title = `Mode n = ${mode}`;
+      if (plotType === 'alpha_npm') { yAccessor = (p) => p.alphaNp; yLabel = 'Dæmpning [Np/m]'; }
+      if (plotType === 'phase') { yAccessor = (p) => p.beta; yLabel = 'Fasekonstant β [rad/m]'; }
+      const xMin = series[0].f;
+      const xMax = series[series.length - 1].f;
+      let yMin = Infinity, yMax = -Infinity;
+      for (const p of series) {
+        const y = yAccessor(p);
+        if (isFinite(y)) { yMin = Math.min(yMin, y); yMax = Math.max(yMax, y); }
+      }
+      if (yMin === yMax) { yMin -= 1; yMax += 1; }
+      const pad = 0.08 * (yMax - yMin || 1);
+      yMin = Math.max(0, yMin - pad);
+      yMax += pad;
+      const head = svgEl('text', { x: 500, y: 18, 'text-anchor': 'middle', 'font-size': 24, fill: '#1d274d', 'font-weight': 700 });
+      head.textContent = `${title} – ${yLabel}`;
+      svg.appendChild(head);
+      const axes = renderAxes(svg, W, H, margin, 'Frekvens [Hz]', yLabel, xMin, xMax, yMin, yMax);
+      let dPath = '';
+      series.forEach((p, i) => {
+        const x = axes.xMap(p.f);
+        const y = axes.yMap(yAccessor(p));
+        dPath += `${i === 0 ? 'M' : 'L'} ${x} ${y} `;
+      });
+      svg.appendChild(svgEl('path', { d: dPath, fill: 'none', stroke: '#365edc', 'stroke-width': 3.2 }));
+      series.filter(p => !p.ok).forEach((p) => {
+        const x = axes.xMap(p.f);
+        const y = axes.yMap(yAccessor(p));
+        svg.appendChild(svgEl('circle', { cx: x, cy: y, r: 3.2, fill: '#c21b3a' }));
+      });
+      const leg = $('legend');
+      const item = document.createElement('div');
+      item.className = 'legendItem';
+      item.innerHTML = `<span class="swatch" style="background:#365edc"></span><span>beregnet gren Γ(f)</span>`;
+      leg.appendChild(item);
+      if (result.failures > 0) {
+        const item2 = document.createElement('div');
+        item2.className = 'legendItem';
+        item2.innerHTML = `<span style="width:10px;height:10px;border-radius:50%;background:#c21b3a;display:inline-block"></span><span>frekvenser med svag konvergens</span>`;
+        leg.appendChild(item2);
+      }
+    }
+
+    function renderNyquist(nyq, params) {
+      const svg = $('plot');
+      svg.innerHTML = '';
+      $('legend').innerHTML = '';
+      const W = 1000, H = 620;
+      const margin = { left: 80, right: 30, top: 30, bottom: 70 };
+      const xs = nyq.pts.map(p => p.x), ys = nyq.pts.map(p => p.y);
+      let xMin = Math.min(...xs), xMax = Math.max(...xs), yMin = Math.min(...ys), yMax = Math.max(...ys);
+      const dx = xMax - xMin || 1, dy = yMax - yMin || 1;
+      xMin -= 0.08 * dx; xMax += 0.08 * dx; yMin -= 0.08 * dy; yMax += 0.08 * dy;
+      const head = svgEl('text', { x: 500, y: 18, 'text-anchor': 'middle', 'font-size': 24, fill: '#1d274d', 'font-weight': 700 });
+      head.textContent = `Nyquist-plot af F(Γ) ved ${params.nyquistFreq} Hz`;
+      svg.appendChild(head);
+      const axes = renderAxes(svg, W, H, margin, 'Re(F)', 'Im(F)', xMin, xMax, yMin, yMax);
+      const group = svgEl('g');
+      svg.appendChild(group);
+      const alphaLevels = [...new Set(nyq.pts.map(p => p.a.toFixed(4)))].map(Number);
+      const betaLevels = [...new Set(nyq.pts.map(p => p.b.toFixed(4)))].map(Number);
+      const aStep = Math.max(1, Math.floor(alphaLevels.length / 12));
+      const bStep = Math.max(1, Math.floor(betaLevels.length / 12));
+      for (let ia = 0; ia < alphaLevels.length; ia += aStep) {
+        const aVal = alphaLevels[ia];
+        const pts = nyq.pts.filter(p => Math.abs(p.a - aVal) < 1e-6);
+        let d = '';
+        pts.forEach((p, i) => { d += `${i===0?'M':'L'} ${axes.xMap(p.x)} ${axes.yMap(p.y)} `; });
+        group.appendChild(svgEl('path', { d, fill: 'none', stroke: '#6287ff', 'stroke-width': 1.2, opacity: 0.55 }));
+      }
+      for (let ib = 0; ib < betaLevels.length; ib += bStep) {
+        const bVal = betaLevels[ib];
+        const pts = nyq.pts.filter(p => Math.abs(p.b - bVal) < 1e-6);
+        let d = '';
+        pts.forEach((p, i) => { d += `${i===0?'M':'L'} ${axes.xMap(p.x)} ${axes.yMap(p.y)} `; });
+        group.appendChild(svgEl('path', { d, fill: 'none', stroke: '#ec6c44', 'stroke-width': 1.1, opacity: 0.45 }));
+      }
+      const rootF = dispersion(nyq.root, params.nyquistFreq, params.h, params.d, params.sigma, params.rho0, params.c0, params.modelName);
+      svg.appendChild(svgEl('circle', { cx: axes.xMap(rootF.re), cy: axes.yMap(rootF.im), r: 6, fill: '#0f7f32' }));
+      const tx = svgEl('text', { x: axes.xMap(rootF.re) + 10, y: axes.yMap(rootF.im) - 10, 'font-size': 16, fill: '#1d274d', 'font-weight': 700 });
+      tx.textContent = `Rod ved Γ = ${nyq.root.toString(4)}`;
+      svg.appendChild(tx);
+      $('legend').innerHTML = `
+        <div class="legendItem"><span class="swatch" style="background:#6287ff"></span><span>konstant α</span></div>
+        <div class="legendItem"><span class="swatch" style="background:#ec6c44"></span><span>konstant β</span></div>
+        <div class="legendItem"><span style="width:10px;height:10px;border-radius:50%;background:#0f7f32;display:inline-block"></span><span>numerisk rod</span></div>
+      `;
+    }
+
+    function readParams() {
+      return {
+        h: Number($('h').value),
+        d: Number($('d').value),
+        sigma: Number($('sigma').value),
+        rho0: Number($('rho0').value),
+        c0: Number($('c0').value),
+        modelName: $('model').value,
+        n: Number($('mode').value),
+        plotType: $('plotType').value,
+        fMin: Number($('fMin').value),
+        fMax: Number($('fMax').value),
+        df: Number($('df').value),
+        nyquistFreq: Number($('nyquistFreq').value),
+      };
+    }
+
+    function updateSummary(result, params) {
+      const okCount = result.data.filter(p => p.ok).length;
+      const maxAlpha = Math.max(...result.data.map(p => p.alphaDb));
+      const pMax = result.data[result.data.findIndex(p => p.alphaDb === maxAlpha)];
+      const worstResidual = Math.max(...result.data.map(p => p.residual));
+      $('summaryBox').innerHTML = `
+        <strong>Resume</strong><br>
+        Mode: <span class="mono">n = ${params.n}</span><br>
+        Frekvensområde: <span class="mono">${params.fMin}–${params.fMax} Hz</span><br>
+        Konvergens: <span class="mono">${okCount}/${result.data.length}</span> punkter med stærk rodkonvergens<br>
+        Maksimal dæmpning: <span class="mono">${nice(maxAlpha)} dB/m</span> ved <span class="mono">${nice(pMax.f)} Hz</span><br>
+        Største residual: <span class="mono">${nice(worstResidual)}</span><br>
+        Seneste rod: <span class="mono">Γ = ${result.data[result.data.length - 1].Gamma.toString(5)}</span>
+      `;
+    }
+
+    function setStatus(text, cls = 'status-ok') {
+      const el = $('status');
+      el.className = `small ${cls}`;
+      el.textContent = text;
+    }
+
+    function run() {
+      const params = readParams();
+      if (!(params.h > 0 && params.d > 0 && params.sigma > 0 && params.fMax > params.fMin && params.df > 0)) {
+        setStatus('Ugyldige inputværdier.', 'status-err');
+        return;
+      }
+      setStatus('Beregner kompleks gren og plotter…', 'status-warn');
+      setTimeout(() => {
+        try {
+          const result = solveCurve(params);
+          if (params.plotType === 'nyquist') {
+            const nyq = solveNyquistAtFrequency(params, params.nyquistFreq);
+            renderNyquist(nyq, params);
+            $('summaryBox').innerHTML = `
+              <strong>Nyquist-resume</strong><br>
+              Frekvens: <span class="mono">${params.nyquistFreq} Hz</span><br>
+              Fundet rod: <span class="mono">Γ = ${nyq.root.toString(6)}</span><br>
+              Dæmpning: <span class="mono">${nice(8.685889638 * Math.max(0, nyq.root.re))} dB/m</span><br>
+              Fasekonstant: <span class="mono">${nice(Math.abs(nyq.root.im))} rad/m</span>
+            `;
+          } else {
+            renderCurvePlot(result, params);
+            updateSummary(result, params);
+          }
+          const msg = result.failures === 0
+            ? `Færdig. Alle frekvenser konvergerede for mode n=${params.n}.`
+            : `Færdig med ${result.failures} frekvenser med svag konvergens. De er markeret i plottet.`;
+          setStatus(msg, result.failures === 0 ? 'status-ok' : 'status-warn');
+        } catch (err) {
+          console.error(err);
+          setStatus(`Fejl under beregning: ${err.message}`, 'status-err');
+        }
+      }, 20);
+    }
+
+    $('runBtn').addEventListener('click', run);
+    $('presetBtn').addEventListener('click', () => {
+      $('h').value = '0.30';
+      $('d').value = '0.15';
+      $('sigma').value = '3000';
+      $('model').value = 'db';
+      $('mode').value = '2';
+      $('plotType').value = 'alpha_dbm';
+      $('fMin').value = '20';
+      $('fMax').value = '4000';
+      $('df').value = '20';
+      $('nyquistFreq').value = '630';
+      setStatus('Preset indlæst.', 'status-ok');
+    });
+
+    run();
+  </script>
+</body>
+</html>
