@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <title>Sound Propagation in Ducts - Fig 3.10 (b) Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 900px; margin: 20px auto; line-height: 1.6; }
+       .controls { background: #f4f4f4; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+       .controls label { display: inline-block; width: 200px; font-weight: bold; }
+       .controls input { padding: 5px; width: 100px; margin-bottom: 10px; }
+        button { padding: 10px 20px; background: #0056b3; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #004494; }
+        canvas { background: white; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
+
+    <h2>Dæmpning i Absorptionsbeklædt Rør (Extended Reaction)</h2>
+    <p>Interaktiv generering af data svarende til Fig. 3.10 (b) for (0,2)-moden.</p>
+
+    <div class="controls">
+        <label>Flow Resistivity (σ):</label>
+        <input type="number" id="sigma" value="8500"> N·s/m⁴<br>
+        <label>Duct Width (2l):</label>
+        <input type="number" id="ductWidth" value="0.5" step="0.1"> m<br>
+        <label>Lining Thickness (d):</label>
+        <input type="number" id="liningThickness" value="0.05" step="0.01"> m<br>
+        <label>Max Frequency:</label>
+        <input type="number" id="maxFreq" value="4000" step="100"> Hz<br>
+        <button onclick="generateGraph()">Beregn og tegn graf</button>
+    </div>
+
+    <canvas id="attenuationChart"></canvas>
+
+    <script>
+        let chartInstance = null;
+
+        // Subrutine: Material (Mechel's modifikation af Delany & Bazley)
+        function getMaterialProperties(f, sigma) {
+            const rho = 1.205; // Luftens densitet
+            const c = 344.25;  // Lydens hastighed
+            const A = sigma / (rho * f);
+            const k = 2 * Math.PI * f / c;
+
+            let Gam_k, Z_Z0;
+
+            if (A <= 60) {
+                const Gamr = 0.189 * Math.pow(A, 0.6185);
+                const Gami = 1 + 0.0978 * Math.pow(A, 0.6929);
+                Gam_k = math.complex(Gamr, Gami);
+
+                const Zr = 1 + 0.04885 * Math.pow(A, 0.754);
+                const Zi = -0.087 * Math.pow(A, 0.7307);
+                Z_Z0 = math.complex(Zr, Zi);
+            } else {
+                // Lavfrekvens modifikation (A > 60)
+                const inner = math.complex(-1.4664, 0.2115 * A);
+                Gam_k = math.sqrt(inner);
+
+                const num = math.complex(A / (2 * Math.PI), 1.4035);
+                Z_Z0 = math.divide(num, Gam_k);
+            }
+
+            const Gam = math.multiply(Gam_k, k);
+            const Z = math.multiply(Z_Z0, rho * c);
+
+            return { Gam, Z, k, rho, c };
+        }
+
+        // Subrutine: Evaluering af Scotts transcendente ligning f(w)
+        function evaluateF(w, M, p, b) {
+            const w2 = math.multiply(w, w);
+            const p2 = math.multiply(p, p);
+            const sqrt_term = math.sqrt(math.add(w2, p2));
+
+            const term1 = math.multiply(w, math.tan(w));
+            const tan_term = math.tan(math.multiply(b, sqrt_term));
+            const term2 = math.multiply(M, math.multiply(sqrt_term, tan_term));
+
+            return math.add(term1, term2);
+        }
+
+        // Subrutine: Extended (Newton-Raphson iteration med numerisk afledt)
+        function solveW(M, p, b, w_guess) {
+            let w = math.complex(w_guess);
+            const maxIter = 100;
+            const tol = 1e-10;
+            const delta = math.complex(1e-8, 1e-8);
+
+            for (let i = 0; i < maxIter; i++) {
+                const fw = evaluateF(w, M, p, b);
+                if (math.abs(fw) < tol) break;
+
+                const fw_plus = evaluateF(math.add(w, delta), M, p, b);
+                const derivative = math.divide(math.subtract(fw_plus, fw), delta);
+
+                w = math.subtract(w, math.divide(fw, derivative));
+            }
+            return w;
+        }
+
+        // Hovedprogram til generering af data
+        function generateGraph() {
+            const sigma = parseFloat(document.getElementById('sigma').value);
+            const l = parseFloat(document.getElementById('ductWidth').value) / 2;
+            const d = parseFloat(document.getElementById('liningThickness').value);
+            const maxFreq = parseFloat(document.getElementById('maxFreq').value);
+            const b = d / l;
+
+            const frequencies =;
+            const attenuations =;
+            
+            // Startgæt for (0,2)-moden er Pi (svarende til analysen i afhandlingen)
+            let w_guess = math.complex(Math.PI, 0.1); 
+
+            for (let f = 20; f <= maxFreq; f += 20) {
+                const mat = getMaterialProperties(f, sigma);
+                
+                // Beregn kompleks densitetsforhold M = -j * rho * c * k / (Z_a * Gam_a)
+                const M_num = math.complex(0, -mat.rho * mat.c * mat.k);
+                const M_den = math.multiply(mat.Z, mat.Gam);
+                const M = math.divide(M_num, M_den);
+
+                // Beregn parameteren p = sqrt( (h*l)^2 - (k*l)^2 )
+                // Da Gam_a = j*h  =>  h = -j*Gam_a  =>  h^2 = -Gam_a^2
+                const Gam_a2 = math.multiply(mat.Gam, mat.Gam);
+                const h2 = math.multiply(-1, Gam_a2);
+                const hl2 = math.multiply(h2, l * l);
+                const kl2 = (mat.k * l) * (mat.k * l);
+                const p = math.sqrt(math.subtract(hl2, kl2));
+
+                // Løs for w via Newton-Raphson
+                const w = solveW(M, p, b, w_guess);
+                w_guess = w; // Brug løsningen som startgæt til næste frekvens
+
+                // Udtræk propagationskonstanten for røret: Gamma_duct = sqrt(w^2 / l^2 - k^2)
+                const w2_l2 = math.divide(math.multiply(w, w), l * l);
+                const Gamma_duct = math.sqrt(math.subtract(w2_l2, mat.k * mat.k));
+
+                // Dæmpning i dB pr. duct width = Real(Gamma) * 8.686 * (2 * l)
+                const attenuation = Gamma_duct.re * 8.686 * (2 * l);
+
+                frequencies.push(f);
+                attenuations.push(attenuation);
+            }
+
+            drawChart(frequencies, attenuations);
+        }
+
+        // Tegn graf med Chart.js
+        function drawChart(labels, data) {
+            const ctx = document.getElementById('attenuationChart').getContext('2d');
+            if (chartInstance) chartInstance.destroy();
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets:
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: { title: { display: true, text: 'Frequency (Hz)' } },
+                        y: { title: { display: true, text: 'Attenuation (dB)' }, beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        // Kør automatisk ved start
+        window.onload = generateGraph;
+    </script>
+</body>
+</html>
