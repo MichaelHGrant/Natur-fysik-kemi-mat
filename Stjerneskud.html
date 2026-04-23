@@ -33,19 +33,17 @@
         // 2. Skab Jordkloden
         const earthRadius = 100;
         const earthGeo = new THREE.SphereGeometry(earthRadius, 32, 32);
-        const earthMat = new THREE.MeshBasicMaterial({ color: 0x1155aa, wireframe: true }); // Simpel wireframe jord
+        const earthMat = new THREE.MeshBasicMaterial({ color: 0x1155aa, wireframe: true }); 
         const earth = new THREE.Mesh(earthGeo, earthMat);
         scene.add(earth);
 
         // 3. Matematik til transformation af Astronomiske Koordinater
-        // Konverterer Rektascension (RA i timer/minutter) og Deklination (Dec i grader) til x,y,z
         const skyRadius = 8000;
         function radecToXYZ(raHours, raMin, decDegrees, radius) {
             const raDecimalHours = raHours + (raMin / 60);
-            const raRad = (raDecimalHours * 15) * (Math.PI / 180); // 1 time = 15 grader
+            const raRad = (raDecimalHours * 15) * (Math.PI / 180); 
             const decRad = decDegrees * (Math.PI / 180);
 
-            // Three.js højrehåndet system
             const x = radius * Math.cos(decRad) * Math.cos(raRad);
             const y = radius * Math.sin(decRad);
             const z = -radius * Math.cos(decRad) * Math.sin(raRad);
@@ -53,23 +51,20 @@
         }
 
         // 4. Placer Stjernebilledet Lyren og Radianten
-        // Vega (RA 18h 36m, Dec +38.78 grader)
         const vegaPos = radecToXYZ(18, 36, 38.78, skyRadius);
         const vegaGeo = new THREE.SphereGeometry(50, 16, 16);
-        const vegaMat = new THREE.MeshBasicMaterial({ color: 0x88bbff }); // Blå-hvid stjerne
+        const vegaMat = new THREE.MeshBasicMaterial({ color: 0x88bbff }); 
         const vega = new THREE.Mesh(vegaGeo, vegaMat);
         vega.position.copy(vegaPos);
         scene.add(vega);
 
-        // Radianten for Lyriderne (RA 18h 10m, Dec +33 grader)
         const radiantPos = radecToXYZ(18, 10, 33, skyRadius);
         const radiantGeo = new THREE.SphereGeometry(30, 16, 16);
-        const radiantMat = new THREE.MeshBasicMaterial({ color: 0xff0000 }); // Rød markør
+        const radiantMat = new THREE.MeshBasicMaterial({ color: 0xff0000 }); 
         const radiant = new THREE.Mesh(radiantGeo, radiantMat);
         radiant.position.copy(radiantPos);
         scene.add(radiant);
 
-        // Beregn hastighedsvektoren for meteorerne (peger fra radianten mod origo/Jorden)
         const meteorDirection = new THREE.Vector3().copy(radiantPos).negate().normalize();
 
         // 5. Partikelsystem for Meteorerne
@@ -77,20 +72,20 @@
         const meteorsGeo = new THREE.BufferGeometry();
         const meteorPositions = new Float32Array(meteorCount * 3);
         
-        // Randomiserede startpositioner over Jorden
         const spawnRadius = 2000;
-        const initialPositions =; // Rettelse: Tomt array til at gemme offset
+        
+        // RETTELSE 1: initialPositions er nu et korrekt tomt array
+        const initialPositions =; 
+        
         for(let i=0; i<meteorCount; i++) {
-            // Skab et offset-plan vinkelret på ankomstretningen
             const offsetX = (Math.random() - 0.5) * spawnRadius;
             const offsetY = (Math.random() - 0.5) * spawnRadius;
             
-            // Forskyd meteorerne tilbage langs ankomstretningen, så de falder
             const startDist = 1000 + Math.random() * 4000; 
             
             const pos = new THREE.Vector3(offsetX, offsetY, 0);
-            pos.lookAt(meteorDirection); // Orienter det tilfældige felt mod faldretningen
-            pos.addScaledVector(meteorDirection, -startDist); // Skub tilbage i rummet
+            pos.lookAt(meteorDirection); 
+            pos.addScaledVector(meteorDirection, -startDist); 
             
             initialPositions.push({ vec: pos.clone(), dist: startDist });
 
@@ -105,31 +100,26 @@
         scene.add(meteorSystem);
 
         // 6. Animations-sløjfen
-        const speed = 25; // Faldhastighed
+        const speed = 25; 
         
         function animate() {
             requestAnimationFrame(animate);
 
-            // Roter Jorden let
             earth.rotation.y += 0.002;
 
-            // Opdater meteorernes positioner (Kinematisk fald)
             const positions = meteorSystem.geometry.attributes.position.array;
             
             for(let i=0; i<meteorCount; i++) {
-                // Flyt partiklen langs den parallelle retningsvektor
                 positions[i*3] += meteorDirection.x * speed;
                 positions[i*3+1] += meteorDirection.y * speed;
                 positions[i*3+2] += meteorDirection.z * speed;
                 
-                // Tjek om meteoren er nået forbi Jorden (distance til origo < noget specifikt, eller gået for langt)
                 const currentPos = new THREE.Vector3(positions[i*3], positions[i*3+1], positions[i*3+2]);
                 
-                // Rettelse: Samlet linje for betingelsen uden afbrydelse
+                // RETTELSE 2: Korrekt samlet linje for 'eller' operatoren (||)
                 if(currentPos.length() < earthRadius - 20 |
 
 | currentPos.dot(meteorDirection) > earthRadius * 2) {
-                    // Nulstil positionen til startpunktet ude i rummet
                     positions[i*3] = initialPositions[i].vec.x;
                     positions[i*3+1] = initialPositions[i].vec.y;
                     positions[i*3+2] = initialPositions[i].vec.z;
@@ -141,7 +131,6 @@
             renderer.render(scene, camera);
         }
 
-        // Håndtering af vinduesstørrelse
         window.addEventListener('resize', onWindowResize, false);
         function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
