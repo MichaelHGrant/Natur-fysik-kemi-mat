@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Månens Hældningsillusion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      #03060F;
+  --bg2:     #060B18;
+  --bg3:     #080E1E;
+  --moon:    #C8D0E8;
+  --sun:     #F5C84A;
+  --red:     #D95555;
+  --teal:    #3EC9BE;
+  --text:    #8A96B4;
+  --bright:  #CDD6EE;
+  --dim:     #3A4260;
+  --border:  #0E162A;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'JetBrains Mono',monospace;
+  font-size:13px;
+  line-height:1.75;
+  overflow-x:hidden;
+}
+
+/* ── HERO ── */
+#hero{
+  height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+  overflow:hidden;
+  background:radial-gradient(ellipse 80% 60% at 50% 110%,#091428 0%,#03060F 65%);
+}
+#hero-stars{position:absolute;inset:0;pointer-events:none}
+.hero-inner{
+  position:relative;z-index:1;
+  text-align:center;
+  padding:2rem 1.5rem;
+  max-width:680px;
+}
+.eyebrow{
+  font-size:10px;letter-spacing:.35em;text-transform:uppercase;
+  color:var(--dim);margin-bottom:1.75rem;
+  opacity:0;animation:fadeUp .8s .2s forwards;
+}
+h1{
+  font-family:'Cormorant Garamond',serif;
+  font-size:clamp(2.6rem,8vw,5.2rem);
+  font-weight:600;color:var(--bright);
+  line-height:1.05;margin-bottom:1.2rem;
+  opacity:0;animation:fadeUp .9s .4s forwards;
+}
+h1 em{font-style:italic;color:#7EB3D4}
+.hero-desc{
+  font-size:12px;line-height:1.9;
+  color:var(--text);max-width:420px;margin:0 auto 2.5rem;
+  opacity:0;animation:fadeUp .9s .6s forwards;
+}
+.scroll-btn{
+  display:inline-flex;flex-direction:column;align-items:center;gap:.4rem;
+  opacity:0;animation:fadeUp .8s .8s forwards, bob 2.2s 1.6s ease-in-out infinite;
+  color:var(--dim);cursor:pointer;background:none;border:none;
+}
+.scroll-btn span{font-size:9px;letter-spacing:.25em;text-transform:uppercase}
+.arrow-down{width:16px;height:16px;border-right:1px solid currentColor;border-bottom:1px solid currentColor;transform:rotate(45deg)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(7px)}}
+
+/* ── DEMO ── */
+#demo{
+  padding:5rem 1.5rem 3rem;
+  max-width:920px;margin:0 auto;
+}
+.sec-label{
+  font-size:9px;letter-spacing:.35em;text-transform:uppercase;
+  color:var(--dim);margin-bottom:1.25rem;
+}
+.sec-title{
+  font-family:'Cormorant Garamond',serif;
+  font-size:clamp(1.7rem,4vw,2.8rem);
+  font-weight:600;color:var(--bright);
+  line-height:1.15;margin-bottom:.9rem;
+}
+.sec-body{color:var(--text);max-width:580px;margin-bottom:2rem;font-size:12px;}
+
+/* Canvas wrapper */
+#canvas-wrap{
+  position:relative;
+  border:1px solid var(--border);
+  border-radius:14px;overflow:hidden;
+  background:#020509;
+  margin-bottom:1.25rem;
+  box-shadow:0 0 60px rgba(0,0,0,.6);
+}
+#sky{display:block;width:100%;cursor:grab;touch-action:none}
+#sky:active{cursor:grabbing}
+.c-hint{
+  position:absolute;bottom:.85rem;right:1rem;
+  font-size:9px;letter-spacing:.12em;color:rgba(138,150,180,.35);
+  pointer-events:none;text-transform:uppercase;
+}
+
+/* Controls */
+.btns{display:flex;gap:.65rem;flex-wrap:wrap;margin-bottom:1.5rem}
+.btn{
+  padding:.55rem 1.15rem;
+  border:1px solid var(--border);
+  background:transparent;color:var(--text);
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+  letter-spacing:.08em;border-radius:6px;cursor:pointer;
+  transition:border-color .2s,color .2s,background .2s;
+}
+.btn:hover{border-color:#1C2840;color:var(--bright)}
+.btn.on-red{border-color:var(--red);color:var(--red);background:rgba(217,85,85,.07)}
+.btn.on-teal{border-color:var(--teal);color:var(--teal);background:rgba(62,201,190,.07)}
+
+/* Legend */
+.legend{display:flex;gap:1.5rem;flex-wrap:wrap;margin-bottom:.5rem}
+.legend-item{display:flex;align-items:center;gap:.55rem;font-size:10px;color:var(--text)}
+.leg-line{width:28px;height:2px;border-radius:1px}
+.leg-dash{width:28px;height:0;border-top:2px dashed}
+
+/* ── EXPLAINER CARDS ── */
+#explain{
+  padding:3rem 1.5rem 3rem;
+  max-width:920px;margin:0 auto;
+  border-top:1px solid var(--border);
+}
+.cards{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+  gap:1.25rem;margin-top:2rem;
+}
+.card{
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:12px;padding:1.75rem;
+  transition:border-color .25s;
+}
+.card:hover{border-color:#162035}
+.card-n{font-size:9px;letter-spacing:.3em;color:var(--dim);margin-bottom:.75rem}
+.card-icon{font-size:1.4rem;margin-bottom:.75rem;display:block}
+.card-h{
+  font-family:'Cormorant Garamond',serif;
+  font-size:1.15rem;font-weight:600;
+  color:var(--bright);margin-bottom:.65rem;line-height:1.25;
+}
+.card-p{font-size:11px;line-height:1.85}
+
+/* ── SPHERE EXPLAINER ── */
+#sphere{
+  padding:3rem 1.5rem 3rem;
+  max-width:920px;margin:0 auto;
+  border-top:1px solid var(--border);
+}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:2rem}
+@media(max-width:600px){.two-col{grid-template-columns:1fr}}
+.col-box{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:12px;padding:1.5rem;text-align:center;
+}
+.col-box canvas{width:100%;border-radius:8px;display:block}
+.col-label{font-size:10px;letter-spacing:.12em;margin-top:.85rem;text-transform:uppercase}
+.col-desc{font-size:11px;margin-top:.5rem;line-height:1.7}
+
+/* ── STRING EXPERIMENT ── */
+#string{
+  padding:3rem 1.5rem 4rem;
+  max-width:920px;margin:0 auto;
+  border-top:1px solid var(--border);
+}
+.steps{display:flex;flex-direction:column;gap:1.1rem;margin-top:1.75rem}
+.step{display:flex;gap:1rem;align-items:flex-start}
+.step-n{
+  width:26px;height:26px;border-radius:50%;
+  border:1px solid var(--dim);flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:9px;color:var(--dim);margin-top:3px;
+}
+.step-t{font-size:11px;line-height:1.85}
+.step-t strong{color:var(--bright);font-weight:400}
+
+footer{
+  text-align:center;padding:2rem;
+  font-size:9px;letter-spacing:.15em;color:var(--dim);
+  border-top:1px solid var(--border);text-transform:uppercase;
+}
+
+/* ── Scrollfade ── */
+.fade-in{opacity:0;transform:translateY(20px);transition:opacity .7s,transform .7s}
+.fade-in.visible{opacity:1;transform:translateY(0)}
+</style>
+</head>
+<body>
+
+<!-- ══ HERO ══ -->
+<section id="hero">
+  <canvas id="hero-stars"></canvas>
+  <div class="hero-inner">
+    <p class="eyebrow">Astronomisk illusion · Sfærisk geometri</p>
+    <h1>Månens<br><em>Hældningsillusion</em></h1>
+    <p class="hero-desc">Halvmånens lyse side fortæller altid sandheden. Men alligevel ser det ud, som om en linje vinkelret på terminatoren peger et helt andet sted end Solen. Her er hvad der sker.</p>
+    <button class="scroll-btn" onclick="document.getElementById('demo').scrollIntoView({behavior:'smooth'})">
+      <span>Udforsk</span>
+      <div class="arrow-down"></div>
+    </button>
+  </div>
+</section>
+
+<!-- ══ DEMO ══ -->
+<section id="demo">
+  <p class="sec-label fade-in">01 — Interaktiv demonstration</p>
+  <h2 class="sec-title fade-in">Prøv illusionen selv</h2>
+  <p class="sec-body fade-in">
+    Træk halvmånen rundt på himlen. Den <span style="color:var(--red)">røde stiplede linje</span> er den intuitive, flade linje
+    vinkelret på terminatoren — den peger <em>forbi</em> Solen.
+    Den <span style="color:var(--teal)">blå kurve</span> er storcirklen på himmelkupplen — den rammer Solen præcist.
+  </p>
+  <div id="canvas-wrap" class="fade-in">
+    <canvas id="sky"></canvas>
+    <div class="c-hint">Træk halvmånen ↑</div>
+  </div>
+  <div class="btns fade-in">
+    <button class="btn on-red" id="btn-flat">↗ Flad linje (illusion)</button>
+    <button class="btn on-teal" id="btn-gc">⌒ Storcirkel (virkelighed)</button>
+    <button class="btn" id="btn-both">Vis begge</button>
+  </div>
+  <div class="legend fade-in">
+    <div class="legend-item">
+      <div class="leg-dash" style="border-color:var(--red)"></div>
+      <span>Flad streg — peger forbi Solen</span>
+    </div>
+    <div class="legend-item">
+      <div class="leg-line" style="background:var(--teal)"></div>
+      <span>Storcirkel — rammer Solen</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══ EXPLAIN ══ -->
+<section id="explain">
+  <p class="sec-label fade-in">02 — Forklaring</p>
+  <h2 class="sec-title fade-in">Tre ting at forstå</h2>
+  <div class="cards">
+    <div class="card fade-in">
+      <span class="card-icon">🌙</span>
+      <div class="card-n">01</div>
+      <div class="card-h">Halvmånens orientering er helt korrekt</div>
+      <p class="card-p">Den lyse side af Månen vender altid mod Solen — det er grundlæggende geometri og kan ikke være forkert. Terminatoren er altid vinkelret på linjen fra Månen til Solen i 3D-rum.</p>
+    </div>
+    <div class="card fade-in">
+      <span class="card-icon">🧠</span>
+      <div class="card-n">02</div>
+      <div class="card-h">Din hjerne flatten himmelen ud</div>
+      <p class="card-p">Vi opfatter himmelen som en flad skærm — ikke en krum kuppel. Denne "fladtrykning" af virkeligheden er kilden til illusionen. Din hjerne forventer en ret linje, men himmelen er rund.</p>
+    </div>
+    <div class="card fade-in">
+      <span class="card-icon">🌍</span>
+      <div class="card-n">03</div>
+      <div class="card-h">Storcirkler er kuglens "rette linjer"</div>
+      <p class="card-p">På en kugle er storcirklen (som ækvator) den korteste vej mellem to punkter. Flyverruter buer over Grønland på en globus af samme grund. Storcirklen fra Månens til Solen buer på himmelkupplen og <em>rammer</em> Solen perfekt.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ SPHERE COMPARISON ══ -->
+<section id="sphere">
+  <p class="sec-label fade-in">03 — Visualisering</p>
+  <h2 class="sec-title fade-in">Flad vs. krum himmel</h2>
+  <p class="sec-body fade-in">Halvmånens vinkelrette linje starter i samme retning i begge verdener — men på en krum overflade fortsætter den langs en kurve, der rammer Solen.</p>
+  <div class="two-col">
+    <div class="col-box fade-in">
+      <canvas id="flat-canvas" height="200"></canvas>
+      <div class="col-label" style="color:var(--red)">Flad opfattelse</div>
+      <div class="col-desc">Den intuitive rette linje peger forbi Solen</div>
+    </div>
+    <div class="col-box fade-in">
+      <canvas id="sphere-canvas" height="200"></canvas>
+      <div class="col-label" style="color:var(--teal)">Krum virkelighed</div>
+      <div class="col-desc">Storcirklen buer og rammer Solen præcist</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ STRING EXPERIMENT ══ -->
+<section id="string">
+  <p class="sec-label fade-in">04 — Prøv det selv udenfor</p>
+  <h2 class="sec-title fade-in">Snoreksperimentet</h2>
+  <p class="sec-body fade-in">Der er én simpel måde at bevise illusionen på med dine egne øjne:</p>
+  <div class="steps">
+    <div class="step fade-in">
+      <div class="step-n">1</div>
+      <div class="step-t">Find en aften eller morgen, hvor du kan se både halvmånen og Solen (eller Venus) på himlen på <em>samme tid</em>.</div>
+    </div>
+    <div class="step fade-in">
+      <div class="step-n">2</div>
+      <div class="step-t">Hold et stykke <strong>snor eller tråd</strong> stramt udspændt — hold den tæt på øjenhøjde og ret den vinkelret mod terminatoren (det mørke/lyse skel).</div>
+    </div>
+    <div class="step fade-in">
+      <div class="step-n">3</div>
+      <div class="step-t">Snoren følger <strong>himmelkupplen</strong> og vil ramme Solen. Intuitivt synes den at pege forkert — men det er illusionen. Snoren er den sande storcirkel.</div>
+    </div>
+    <div class="step fade-in">
+      <div class="step-n">4</div>
+      <div class="step-t">Tegn nu den samme linje på et stykke <strong>papir</strong> som en ret streg — og se den misse Solen. Det er forskellen på din flade opfattelse og den krumme virkelighed.</div>
+    </div>
+  </div>
+</section>
+
+<footer>Månens Hældningsillusion &mdash; Sfærisk geometri forklaret interaktivt</footer>
+
+<script>
+// ═══════════════════════════════════════
+// SHARED MATH
+// ═══════════════════════════════════════
+const D = Math.PI / 180;
+
+function sph2cart(alt, az) {
+  // alt, az in degrees. Returns [East, North, Up]
+  const a = alt * D, z = az * D;
+  return [Math.cos(a)*Math.sin(z), Math.cos(a)*Math.cos(z), Math.sin(a)];
+}
+
+function cart2sph(p) {
+  const alt = Math.asin(Math.max(-1, Math.min(1, p[2]))) / D;
+  const az  = (Math.atan2(p[0], p[1]) / D + 360) % 360;
+  return { alt, az };
+}
+
+function dot3(a, b) { return a[0]*b[0]+a[1]*b[1]+a[2]*b[2]; }
+function scale3(a, s) { return [a[0]*s, a[1]*s, a[2]*s]; }
+function add3(a, b) { return [a[0]+b[0], a[1]+b[1], a[2]+b[2]]; }
+function sub3(a, b) { return [a[0]-b[0], a[1]-b[1], a[2]-b[2]]; }
+function len3(a) { return Math.sqrt(a[0]**2+a[1]**2+a[2]**2); }
+function norm3(a) { const l=len3(a)||1; return [a[0]/l, a[1]/l, a[2]/l]; }
+
+function slerp3(p1, p2, t) {
+  let d = Math.max(-1, Math.min(1, dot3(p1, p2)));
+  const th = Math.acos(d);
+  if (th < 1e-5) return [...p1];
+  const s = Math.sin(th);
+  return add3(scale3(p1, Math.sin((1-t)*th)/s), scale3(p2, Math.sin(t*th)/s));
+}
+
+// ═══════════════════════════════════════
+// HERO STARFIELD
+// ═══════════════════════════════════════
+(function() {
+  const cv = document.getElementById('hero-stars');
+  const ctx = cv.getContext('2d');
+  let stars = [], W, H;
+
+  function resize() {
+    W = cv.width = cv.offsetWidth;
+    H = cv.height = cv.offsetHeight;
+    stars = Array.from({length:220}, () => ({
+      x: Math.random()*W, y: Math.random()*H,
+      r: Math.random()*1.4+.3,
+      base: Math.random()*.7+.15,
+      sp: Math.random()*.012+.004,
+      ph: Math.random()*Math.PI*2
+    }));
+  }
+
+  function draw(t) {
+    ctx.clearRect(0,0,W,H);
+    stars.forEach(s => {
+      const a = s.base*(0.55+0.45*Math.sin(t*s.sp+s.ph));
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(200,215,248,${a})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+
+  window.addEventListener('resize', resize);
+  resize();
+  requestAnimationFrame(draw);
+})();
+
+// ═══════════════════════════════════════
+// MAIN SKY CANVAS
+// ═══════════════════════════════════════
+(function() {
+  const cv = document.getElementById('sky');
+  const ctx = cv.getContext('2d');
+
+  // Panoramic alt-az view config
+  const AZ_C  = 208;   // center azimuth
+  const AZ_H  = 82;    // half-range (±degrees)
+  const ALT_MIN = 0;
+  const ALT_MAX = 78;
+
+  // Fixed sun position
+  const SUN = { alt: 16, az: 254 };  // WSW, low
+
+  // Draggable moon
+  let moon = { alt: 60, az: 162 };   // SSE-ish, high
+
+  let W, H;
+  let skyStars = [];
+  let showFlat = true, showGC = true;
+  let alphaFlat = 1, alphaGC = 1;
+  let tgtFlat = 1, tgtGC = 1;
+  let dragging = false;
+
+  function resize() {
+    W = cv.parentElement.clientWidth;
+    H = Math.round(Math.min(W * 0.55, 380));
+    cv.width = W; cv.height = H;
+    skyStars = Array.from({length: 100}, () => {
+      // Random alt/az within view
+      const az = AZ_C + (Math.random()*2-1)*AZ_H * .95;
+      const alt = ALT_MIN + Math.random()*(ALT_MAX - ALT_MIN);
+      return { alt, az, r: Math.random()*1.1+.25, a: Math.random()*.55+.2 };
+    });
+  }
+
+  function skyToCanvas(alt, az) {
+    let daz = az - AZ_C;
+    if (daz > 180) daz -= 360;
+    if (daz < -180) daz += 360;
+    const x = W/2 + daz / AZ_H * (W/2);
+    const y = H  - (alt - ALT_MIN) / (ALT_MAX - ALT_MIN) * H;
+    return { x, y };
+  }
+
+  function canvasToSky(x, y) {
+    const daz = (x - W/2) / (W/2) * AZ_H;
+    const alt = ALT_MIN + (H - y) / H * (ALT_MAX - ALT_MIN);
+    const az  = (AZ_C + daz + 720) % 360;
+    return { alt: Math.max(ALT_MIN, Math.min(ALT_MAX, alt)), az };
+  }
+
+  // GC tangent canvas direction at (alt1,az1) toward (alt2,az2)
+  function gcTangentCanvas(alt1, az1, alt2, az2) {
+    const p1 = sph2cart(alt1, az1);
+    const p2 = sph2cart(alt2, az2);
+    const d  = dot3(p1, p2);
+    const T  = norm3(sub3(p2, scale3(p1, d)));
+    // Step a tiny bit along T to get new sky coords
+    const eps = 0.005;
+    const pn = norm3(add3(p1, scale3(T, eps)));
+    const {alt, az} = cart2sph(pn);
+    const c1 = skyToCanvas(alt1, az1);
+    const c2 = skyToCanvas(alt, az);
+    const dx = c2.x - c1.x, dy = c2.y - c1.y;
+    const l = Math.sqrt(dx*dx+dy*dy) || 1;
+    return { dx: dx/l, dy: dy/l };
+  }
+
+  // Sample great circle
+  function gcPoints(alt1, az1, alt2, az2, n=90) {
+    const p1 = sph2cart(alt1, az1);
+    const p2 = sph2cart(alt2, az2);
+    return Array.from({length: n+1}, (_,i) => {
+      const p = slerp3(p1, p2, i/n);
+      const s = cart2sph(p);
+      return skyToCanvas(s.alt, s.az);
+    });
+  }
+
+  function drawBackground() {
+    // Sky gradient
+    const grd = ctx.createLinearGradient(0, 0, 0, H);
+    grd.addColorStop(0,   '#050B18');
+    grd.addColorStop(0.7, '#04091440');
+    grd.addColorStop(1,   '#0A1525');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, W, H);
+
+    // Horizon glow
+    const hgrd = ctx.createLinearGradient(0, H*0.8, 0, H);
+    hgrd.addColorStop(0, 'transparent');
+    hgrd.addColorStop(1, 'rgba(5,20,50,.6)');
+    ctx.fillStyle = hgrd;
+    ctx.fillRect(0, 0, W, H);
+
+    // Horizon line
+    ctx.beginPath();
+    ctx.moveTo(0, H); ctx.lineTo(W, H);
+    ctx.strokeStyle = 'rgba(30,60,100,.4)';
+    ctx.lineWidth = 1; ctx.stroke();
+  }
+
+  function drawStars() {
+    skyStars.forEach(s => {
+      const p = skyToCanvas(s.alt, s.az);
+      if (p.x < -5 || p.x > W+5) return;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, s.r, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(200,215,248,${s.a})`;
+      ctx.fill();
+    });
+  }
+
+  function drawSun() {
+    const p = skyToCanvas(SUN.alt, SUN.az);
+    // outer glow
+    const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 55);
+    g.addColorStop(0, 'rgba(245,200,74,.30)');
+    g.addColorStop(0.5, 'rgba(245,160,40,.10)');
+    g.addColorStop(1, 'rgba(245,160,40,0)');
+    ctx.beginPath(); ctx.arc(p.x, p.y, 55, 0, Math.PI*2);
+    ctx.fillStyle = g; ctx.fill();
+    // disk
+    ctx.beginPath(); ctx.arc(p.x, p.y, 14, 0, Math.PI*2);
+    ctx.fillStyle = '#F5C84A'; ctx.fill();
+    ctx.beginPath(); ctx.arc(p.x, p.y, 10, 0, Math.PI*2);
+    ctx.fillStyle = '#FFE580'; ctx.fill();
+    // label
+    ctx.fillStyle = 'rgba(245,200,74,.5)';
+    ctx.font = '9px JetBrains Mono';
+    ctx.textAlign = 'center';
+    ctx.fillText('SOLEN', p.x, p.y + 26);
+  }
+
+  function drawMoon() {
+    const p  = skyToCanvas(moon.alt, moon.az);
+    const sp = skyToCanvas(SUN.alt, SUN.az);
+    const moonR = 16;
+    // direction toward sun in canvas (determines crescent orientation)
+    // Use GC tangent for correct physical orientation
+    const { dx, dy } = gcTangentCanvas(moon.alt, moon.az, SUN.alt, SUN.az);
+    const offset = moonR * 0.62;
+
+    ctx.save();
+    // Clip to moon circle
+    ctx.beginPath(); ctx.arc(p.x, p.y, moonR, 0, Math.PI*2); ctx.clip();
+    // Full lit side
+    ctx.beginPath(); ctx.arc(p.x, p.y, moonR, 0, Math.PI*2);
+    ctx.fillStyle = '#A8B4CC'; ctx.fill();
+    // Dark half — offset in the AWAY-from-sun direction
+    ctx.beginPath();
+    ctx.arc(p.x - dx*offset, p.y - dy*offset, moonR, 0, Math.PI*2);
+    ctx.fillStyle = '#020509'; ctx.fill();
+    ctx.restore();
+
+    // Rim
+    ctx.beginPath(); ctx.arc(p.x, p.y, moonR, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(180,192,228,.35)'; ctx.lineWidth = 1; ctx.stroke();
+
+    // Terminator perpendicular indicator (small tick)
+    const perp = { dx: -dy, dy: dx }; // perpendicular in canvas
+    ctx.beginPath();
+    ctx.moveTo(p.x + perp.dx*moonR, p.y + perp.dy*moonR);
+    ctx.lineTo(p.x - perp.dx*moonR, p.y - perp.dy*moonR);
+    ctx.strokeStyle = 'rgba(100,120,180,.3)'; ctx.lineWidth=1; ctx.stroke();
+
+    // Drag hint ring
+    ctx.beginPath(); ctx.arc(p.x, p.y, moonR+6, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(140,160,220,.12)'; ctx.lineWidth=1; ctx.stroke();
+
+    // Label
+    ctx.fillStyle = 'rgba(180,192,228,.45)';
+    ctx.font = '9px JetBrains Mono'; ctx.textAlign = 'center';
+    ctx.fillText('MÅNEN', p.x, p.y - moonR - 7);
+  }
+
+  let dashOffset = 0;
+  function drawFlatLine(alpha) {
+    if (alpha < 0.01) return;
+    const p  = skyToCanvas(moon.alt, moon.az);
+    const sp = skyToCanvas(SUN.alt, SUN.az);
+    const { dx, dy } = gcTangentCanvas(moon.alt, moon.az, SUN.alt, SUN.az);
+
+    // Extend line far
+    const extend = Math.max(W, H) * 2;
+    const x1 = p.x + dx*extend, y1 = p.y + dy*extend;
+    const x2 = p.x - dx*extend, y2 = p.y - dy*extend;
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.setLineDash([7, 5]);
+    ctx.lineDashOffset = -dashOffset;
+    ctx.beginPath(); ctx.moveTo(x2, y2); ctx.lineTo(x1, y1);
+    ctx.strokeStyle = '#D95555'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Miss marker — where flat line is at sun's x
+    const t = (sp.x - p.x)*dx + (sp.y - p.y)*dy;
+    const mx = p.x + t*dx, my = p.y + t*dy;
+    const missY = my;
+    const sunY = sp.y;
+    const missDist = Math.abs(missY - sunY);
+
+    if (missDist > 5) {
+      // draw miss gap indicator
+      ctx.beginPath();
+      ctx.moveTo(mx, sp.y); ctx.lineTo(mx, my);
+      ctx.strokeStyle = 'rgba(217,85,85,.35)'; ctx.lineWidth=1;
+      ctx.setLineDash([2,3]); ctx.stroke(); ctx.setLineDash([]);
+
+      // X mark
+      const s = 5;
+      ctx.beginPath();
+      ctx.moveTo(mx-s, my-s); ctx.lineTo(mx+s, my+s);
+      ctx.moveTo(mx+s, my-s); ctx.lineTo(mx-s, my+s);
+      ctx.strokeStyle = '#D95555'; ctx.lineWidth=1.5; ctx.stroke();
+
+      // "Savner Solen" label
+      ctx.font = '9px JetBrains Mono';
+      ctx.fillStyle = 'rgba(217,85,85,.7)';
+      ctx.textAlign = 'left';
+      ctx.fillText('Savner solen', mx + 8, my);
+    }
+    ctx.restore();
+  }
+
+  function drawGreatCircle(alpha) {
+    if (alpha < 0.01) return;
+    const pts = gcPoints(moon.alt, moon.az, SUN.alt, SUN.az, 80);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+
+    // Glow pass
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = 'rgba(62,201,190,.12)';
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.beginPath();
+    pts.forEach((p,i) => i===0 ? ctx.moveTo(p.x,p.y) : ctx.lineTo(p.x,p.y));
+    ctx.stroke();
+
+    // Main line
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#3EC9BE';
+    ctx.beginPath();
+    pts.forEach((p,i) => i===0 ? ctx.moveTo(p.x,p.y) : ctx.lineTo(p.x,p.y));
+    ctx.stroke();
+
+    // Hit ring around sun
+    const sp = skyToCanvas(SUN.alt, SUN.az);
+    ctx.beginPath(); ctx.arc(sp.x, sp.y, 22, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(62,201,190,.5)'; ctx.lineWidth=1.5; ctx.stroke();
+    ctx.beginPath(); ctx.arc(sp.x, sp.y, 28, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(62,201,190,.2)'; ctx.lineWidth=1; ctx.stroke();
+
+    // Checkmark label
+    ctx.font = '9px JetBrains Mono';
+    ctx.fillStyle = 'rgba(62,201,190,.7)';
+    ctx.textAlign = 'center';
+    ctx.fillText('✓ Rammer!', sp.x, sp.y - 36);
+
+    ctx.restore();
+  }
+
+  function draw(t) {
+    dashOffset = t * 0.035;
+    ctx.clearRect(0, 0, W, H);
+    drawBackground();
+    drawStars();
+
+    // Smooth transitions
+    const spd = 0.06;
+    alphaFlat += (tgtFlat - alphaFlat) * spd;
+    alphaGC   += (tgtGC   - alphaGC)   * spd;
+
+    drawFlatLine(alphaFlat);
+    drawGreatCircle(alphaGC);
+    drawSun();
+    drawMoon();
+
+    requestAnimationFrame(draw);
+  }
+
+  // ── Interaction ──
+  function getXY(e) {
+    const r = cv.getBoundingClientRect();
+    const cl = e.touches ? e.touches[0] : e;
+    const scale = cv.width / r.width;
+    return { x: (cl.clientX - r.left) * scale, y: (cl.clientY - r.top) * scale };
+  }
+
+  function nearMoon(x, y) {
+    const p = skyToCanvas(moon.alt, moon.az);
+    return (x-p.x)**2 + (y-p.y)**2 < 900;
+  }
+
+  cv.addEventListener('mousedown',  e => { if(nearMoon(...Object.values(getXY(e)))) dragging=true; });
+  cv.addEventListener('touchstart', e => { const {x,y}=getXY(e); if(nearMoon(x,y)){dragging=true;e.preventDefault();} },{passive:false});
+
+  function move(e) {
+    if (!dragging) return;
+    const {x, y} = getXY(e);
+    const s = canvasToSky(x, y);
+    // Keep moon away from sun
+    moon.alt = Math.max(20, Math.min(ALT_MAX-3, s.alt));
+    moon.az  = s.az;
+  }
+  cv.addEventListener('mousemove',  move);
+  cv.addEventListener('touchmove',  e => { move(e); e.preventDefault(); }, {passive:false});
+  cv.addEventListener('mouseup',    () => dragging=false);
+  cv.addEventListener('touchend',   () => dragging=false);
+  document.addEventListener('mouseup', () => dragging=false);
+
+  // ── Buttons ──
+  function setMode(flat, gc) {
+    tgtFlat = flat ? 1 : 0;
+    tgtGC   = gc   ? 1 : 0;
+    document.querySelectorAll('.btn').forEach(b => b.className='btn');
+    if (flat) document.getElementById('btn-flat').classList.add('on-red');
+    if (gc)   document.getElementById('btn-gc').classList.add('on-teal');
+    if (flat && gc) document.getElementById('btn-both').classList.add('on-teal');
+  }
+
+  document.getElementById('btn-flat').addEventListener('click', () => setMode(true, false));
+  document.getElementById('btn-gc').addEventListener('click',   () => setMode(false, true));
+  document.getElementById('btn-both').addEventListener('click', () => setMode(true, true));
+
+  window.addEventListener('resize', resize);
+  resize();
+  requestAnimationFrame(draw);
+})();
+
+// ═══════════════════════════════════════
+// COMPARISON CANVASES (flat vs sphere)
+// ═══════════════════════════════════════
+(function() {
+  // Flat view demo
+  const fc = document.getElementById('flat-canvas');
+  const fctx = fc.getContext('2d');
+  // Sphere view demo
+  const sc = document.getElementById('sphere-canvas');
+  const sctx = sc.getContext('2d');
+
+  function resizeComparison() {
+    [fc, sc].forEach(c => {
+      c.width = c.parentElement.clientWidth - 48; // padding
+      c.height = 200;
+    });
+    drawComparisons();
+  }
+
+  function drawCompCanvas(ctx, isSphere) {
+    const W = ctx.canvas.width, H = ctx.canvas.height;
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#030608';
+    ctx.fillRect(0, 0, W, H);
+
+    const sunX = W * 0.78, sunY = H * 0.72;
+    const moonX = W * 0.25, moonY = H * 0.28;
+
+    // Stars
+    const rng = (seed) => { let x=seed; return ()=>{ x=(x*1664525+1013904223)&0xffffffff; return (x>>>0)/0xffffffff; }; };
+    const r = rng(42);
+    for (let i=0; i<40; i++) {
+      const sx = r()*W, sy = r()*H;
+      ctx.beginPath(); ctx.arc(sx, sy, r()*1+.2, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(180,200,240,${r()*.4+.1})`; ctx.fill();
+    }
+
+    // Sun glow + disk
+    const sg = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 40);
+    sg.addColorStop(0,'rgba(245,200,74,.35)'); sg.addColorStop(1,'transparent');
+    ctx.beginPath(); ctx.arc(sunX, sunY, 40, 0, Math.PI*2);
+    ctx.fillStyle=sg; ctx.fill();
+    ctx.beginPath(); ctx.arc(sunX, sunY, 11, 0, Math.PI*2);
+    ctx.fillStyle='#F5C84A'; ctx.fill();
+
+    // Moon crescent
+    const moonR = 13;
+    const dx = sunX - moonX, dy = sunY - moonY;
+    const dl = Math.sqrt(dx*dx+dy*dy)||1;
+    const nx = dx/dl, ny = dy/dl;
+    ctx.save();
+    ctx.beginPath(); ctx.arc(moonX, moonY, moonR, 0, Math.PI*2); ctx.clip();
+    ctx.beginPath(); ctx.arc(moonX, moonY, moonR, 0, Math.PI*2);
+    ctx.fillStyle='#8A96B4'; ctx.fill();
+    ctx.beginPath(); ctx.arc(moonX-nx*moonR*.6, moonY-ny*moonR*.6, moonR, 0, Math.PI*2);
+    ctx.fillStyle='#030608'; ctx.fill();
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(moonX, moonY, moonR, 0, Math.PI*2);
+    ctx.strokeStyle='rgba(160,175,220,.3)'; ctx.lineWidth=1; ctx.stroke();
+
+    if (!isSphere) {
+      // Flat: draw straight line in direction from moon, slightly offset from moon-sun line
+      // to visually show it missing
+      const angle = Math.atan2(dy, dx);
+      const tiltAngle = angle - 0.38; // tilt to show miss
+      const ext = W * 1.5;
+      ctx.setLineDash([5,4]);
+      ctx.beginPath();
+      ctx.moveTo(moonX - Math.cos(tiltAngle)*ext, moonY - Math.sin(tiltAngle)*ext);
+      ctx.lineTo(moonX + Math.cos(tiltAngle)*ext, moonY + Math.sin(tiltAngle)*ext);
+      ctx.strokeStyle='rgba(217,85,85,.7)'; ctx.lineWidth=1.5; ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Miss X
+      const missX = sunX + 5, missY = sunY - 38;
+      const s=4;
+      ctx.beginPath();
+      ctx.moveTo(missX-s,missY-s); ctx.lineTo(missX+s,missY+s);
+      ctx.moveTo(missX+s,missY-s); ctx.lineTo(missX-s,missY+s);
+      ctx.strokeStyle='rgba(217,85,85,.9)'; ctx.lineWidth=1.5; ctx.stroke();
+
+    } else {
+      // Sphere: draw curved arc (quadratic bezier to simulate great circle)
+      const cpx = (moonX + sunX)/2 - 20, cpy = (moonY + sunY)/2 + 28;
+      ctx.beginPath();
+      ctx.moveTo(moonX, moonY);
+      ctx.quadraticCurveTo(cpx, cpy, sunX, sunY);
+      ctx.strokeStyle='rgba(62,201,190,.7)'; ctx.lineWidth=2; ctx.stroke();
+
+      // Glow
+      ctx.beginPath();
+      ctx.moveTo(moonX, moonY);
+      ctx.quadraticCurveTo(cpx, cpy, sunX, sunY);
+      ctx.strokeStyle='rgba(62,201,190,.15)'; ctx.lineWidth=6; ctx.stroke();
+
+      // Hit ring
+      ctx.beginPath(); ctx.arc(sunX, sunY, 18, 0, Math.PI*2);
+      ctx.strokeStyle='rgba(62,201,190,.5)'; ctx.lineWidth=1.5; ctx.stroke();
+    }
+  }
+
+  function drawComparisons() {
+    drawCompCanvas(fctx, false);
+    drawCompCanvas(sctx, true);
+  }
+
+  window.addEventListener('resize', resizeComparison);
+  resizeComparison();
+})();
+
+// ═══════════════════════════════════════
+// SCROLL FADE-IN
+// ═══════════════════════════════════════
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); }
+  });
+}, { threshold: 0.12 });
+
+document.querySelectorAll('.fade-in').forEach(el => obs.observe(el));
+</script>
+</body>
+</html>
