@@ -1,0 +1,1702 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Elektronspin-resonans — en interaktiv genopfriskning</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600;9..144,700&family=Newsreader:opsz,wght@6..72,300;6..72,400;6..72,500;6..72,600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/[email protected]/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/[email protected]/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/[email protected]/dist/contrib/auto-render.min.js"></script>
+<script>
+  // Robust KaTeX renderer — works on file:// and on web; tolerates slow CDN loads
+  function tryRenderKaTeX(){
+    if (window.renderMathInElement && window.katex) {
+      try {
+        window.renderMathInElement(document.body, {
+          delimiters: [
+            {left:'$$', right:'$$', display:true},
+            {left:'\\[', right:'\\]', display:true},
+            {left:'$',  right:'$',  display:false},
+            {left:'\\(', right:'\\)', display:false}
+          ],
+          throwOnError: false
+        });
+        return true;
+      } catch(e){ console.error('KaTeX render error:', e); }
+    }
+    return false;
+  }
+  function startKaTeX(){
+    if (tryRenderKaTeX()) return;
+    // poll for up to 10 seconds in case CDN scripts are slow on file://
+    let tries = 0;
+    const id = setInterval(()=>{
+      tries++;
+      if (tryRenderKaTeX() || tries > 100) clearInterval(id);
+    }, 100);
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startKaTeX);
+  } else {
+    startKaTeX();
+  }
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<style>
+  :root{
+    --bg:#070a13;
+    --bg-2:#0d1220;
+    --surface:#131a2a;
+    --surface-2:#1a2237;
+    --line:#262f47;
+    --line-bright:#3a456b;
+    --text:#e9ecf3;
+    --text-dim:#9aa3bb;
+    --text-mute:#5d6781;
+    --cyan:#22d3ee;
+    --cyan-deep:#0ea5b7;
+    --amber:#f5b133;
+    --magenta:#ff4fa8;
+    --green:#5eead4;
+    --red:#fb7185;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--text);font-family:'Newsreader',serif;font-weight:400;line-height:1.65;-webkit-font-smoothing:antialiased}
+  body{
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(34,211,238,0.10), transparent 60%),
+      radial-gradient(ellipse 60% 40% at 90% 30%, rgba(245,177,51,0.06), transparent 60%),
+      radial-gradient(ellipse 60% 40% at 10% 60%, rgba(255,79,168,0.05), transparent 60%),
+      var(--bg);
+    min-height:100vh;
+    overflow-x:hidden;
+  }
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 80px 80px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, black 30%, transparent 80%);
+  }
+  body::after{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.55 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/></svg>");
+    opacity:0.04;
+    mix-blend-mode:overlay;
+  }
+
+  .display{font-family:'Fraunces',serif;font-variation-settings:"opsz" 144;font-weight:400;letter-spacing:-0.01em;line-height:1.05}
+  .mono{font-family:'JetBrains Mono',monospace}
+  a{color:var(--cyan);text-decoration:none;border-bottom:1px solid rgba(34,211,238,0.3);transition:all .2s}
+  a:hover{color:var(--amber);border-color:var(--amber)}
+
+  /* ---- Navigation ---- */
+  nav.top{
+    position:sticky;top:0;z-index:50;
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    background:rgba(7,10,19,0.7);
+    border-bottom:1px solid var(--line);
+  }
+  nav.top .inner{
+    max-width:1280px;margin:0 auto;padding:14px 28px;
+    display:flex;align-items:center;justify-content:space-between;gap:24px;
+  }
+  nav.top .brand{display:flex;align-items:center;gap:14px;font-family:'Fraunces',serif;font-weight:500;font-size:18px}
+  nav.top .brand .pulse{
+    width:10px;height:10px;border-radius:50%;background:var(--cyan);
+    box-shadow:0 0 14px var(--cyan);
+    animation:pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse{0%,100%{transform:scale(1);opacity:.95}50%{transform:scale(1.5);opacity:.4}}
+  nav.top ul{display:flex;list-style:none;gap:22px;font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:0.06em;text-transform:uppercase}
+  nav.top ul a{color:var(--text-dim);border:none}
+  nav.top ul a:hover{color:var(--text)}
+  @media (max-width: 720px){ nav.top ul{display:none} }
+
+  /* ---- Layout ---- */
+  main{position:relative;z-index:1;max-width:1280px;margin:0 auto;padding:0 28px}
+  section{padding:80px 0;border-top:1px solid var(--line)}
+  section:first-of-type{border-top:none}
+  .eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--cyan);margin-bottom:18px}
+  h1.display{font-size:clamp(48px,9vw,128px);margin:.2em 0}
+  h2.display{font-size:clamp(34px,5vw,60px);margin:0 0 32px;max-width:24ch}
+  h3{font-family:'Fraunces',serif;font-variation-settings:"opsz" 60;font-weight:500;font-size:24px;margin:32px 0 12px;color:var(--text)}
+  p{color:var(--text-dim);font-size:18px;max-width:62ch}
+  p strong{color:var(--text);font-weight:500}
+  p em{color:var(--amber);font-style:normal}
+
+  .lede{font-size:22px;line-height:1.55;color:var(--text);max-width:55ch}
+  .lede .hl{color:var(--cyan)}
+
+  /* ---- Hero ---- */
+  .hero{padding:60px 0 80px;position:relative}
+  .hero-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:60px;align-items:center}
+  @media (max-width: 920px){ .hero-grid{grid-template-columns:1fr;gap:40px} }
+  .hero-meta{
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.16em;color:var(--text-mute);
+    text-transform:uppercase;display:flex;gap:24px;flex-wrap:wrap;margin-top:32px;
+  }
+  .hero-meta span::before{content:"◆ ";color:var(--cyan);margin-right:4px}
+  .hero-canvas{
+    aspect-ratio:1/1;width:100%;max-width:480px;margin-left:auto;
+    background:radial-gradient(circle at 50% 40%, rgba(34,211,238,0.12), transparent 70%);
+    border:1px solid var(--line);border-radius:50%;
+    position:relative;overflow:hidden;
+  }
+  .hero-canvas canvas{width:100%;height:100%}
+
+  /* ---- Cards & panels ---- */
+  .panel{
+    background:linear-gradient(180deg, var(--surface) 0%, var(--bg-2) 100%);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:28px;
+    position:relative;
+  }
+  .panel.framed::before{
+    content:"";position:absolute;inset:8px;border:1px solid rgba(255,255,255,0.04);border-radius:8px;pointer-events:none;
+  }
+  .label-tl{
+    position:absolute;top:14px;left:18px;
+    font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.18em;color:var(--text-mute);text-transform:uppercase;
+  }
+  .label-tr{
+    position:absolute;top:14px;right:18px;
+    font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.18em;color:var(--cyan);
+  }
+
+  /* ---- Sliders ---- */
+  .control{margin:14px 0}
+  .control label{
+    display:flex;justify-content:space-between;align-items:baseline;
+    font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:0.06em;color:var(--text-dim);text-transform:uppercase;margin-bottom:8px;
+  }
+  .control label .val{color:var(--amber);font-weight:700}
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;width:100%;height:4px;background:var(--line);border-radius:2px;outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;background:var(--cyan);cursor:pointer;
+    box-shadow:0 0 12px var(--cyan);border:2px solid var(--bg);
+  }
+  input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--cyan);cursor:pointer;border:2px solid var(--bg);box-shadow:0 0 12px var(--cyan)}
+
+  button.btn{
+    background:transparent;color:var(--cyan);border:1px solid var(--cyan);
+    padding:10px 18px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:12px;
+    letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;transition:all .2s;
+  }
+  button.btn:hover{background:var(--cyan);color:var(--bg)}
+  button.btn.amber{color:var(--amber);border-color:var(--amber)}
+  button.btn.amber:hover{background:var(--amber);color:var(--bg)}
+
+  /* ---- Two-column interactive ---- */
+  .interactive{display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:start}
+  @media (max-width: 920px){ .interactive{grid-template-columns:1fr} }
+  .vis-stack{display:flex;flex-direction:column;gap:20px}
+
+  canvas.viz{display:block;width:100%;height:auto;background:transparent;border-radius:8px}
+
+  /* ---- Math blocks ---- */
+  .math-block{
+    background:rgba(13,18,32,0.6);
+    border-left:2px solid var(--cyan);
+    padding:18px 24px;margin:18px 0;
+    border-radius:0 6px 6px 0;
+    font-size:17px;
+    overflow-x:auto;
+  }
+  .math-note{color:var(--text-mute);font-size:14px;margin-top:8px;font-style:italic}
+
+  /* ---- Modern apps grid ---- */
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+  @media (max-width: 920px){ .grid-3{grid-template-columns:1fr} }
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+  @media (max-width: 920px){ .grid-2{grid-template-columns:1fr} }
+  .app-card{
+    background:linear-gradient(160deg, var(--surface) 0%, var(--bg-2) 100%);
+    border:1px solid var(--line);
+    border-radius:12px;padding:26px;
+    transition:all .3s;
+    position:relative;overflow:hidden;
+  }
+  .app-card:hover{border-color:var(--cyan-deep);transform:translateY(-2px)}
+  .app-card .num{font-family:'Fraunces',serif;font-size:48px;color:var(--text-mute);font-weight:300;margin-bottom:8px}
+  .app-card h3{margin:0 0 8px;font-size:20px}
+  .app-card p{font-size:15px;line-height:1.55}
+  .app-card .tag{
+    display:inline-block;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--cyan);
+    letter-spacing:0.14em;text-transform:uppercase;margin-bottom:8px;
+  }
+
+  /* ---- Timeline ---- */
+  .timeline{position:relative;padding-left:32px}
+  .timeline::before{content:"";position:absolute;left:6px;top:0;bottom:0;width:1px;background:var(--line)}
+  .tl-item{position:relative;padding:0 0 36px;max-width:60ch}
+  .tl-item::before{
+    content:"";position:absolute;left:-32px;top:6px;width:13px;height:13px;border-radius:50%;
+    background:var(--bg);border:2px solid var(--cyan);box-shadow:0 0 10px rgba(34,211,238,0.4);
+  }
+  .tl-year{font-family:'JetBrains Mono',monospace;color:var(--amber);font-size:13px;letter-spacing:0.12em;margin-bottom:6px}
+  .tl-item h3{margin-top:0;margin-bottom:6px}
+
+  /* ---- Footer ---- */
+  footer{
+    border-top:1px solid var(--line);
+    padding:60px 0 80px;margin-top:60px;
+    color:var(--text-mute);font-size:14px;text-align:center;
+  }
+  footer .sig{font-family:'Fraunces',serif;font-style:italic;font-size:18px;color:var(--text-dim);margin-bottom:16px}
+
+  /* ---- Bloch sphere container ---- */
+  #bloch-container{width:100%;aspect-ratio:1/1;max-width:520px;margin:0 auto;position:relative;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:radial-gradient(circle at 50% 50%, rgba(34,211,238,0.04), transparent 70%)}
+  #bloch-container canvas{width:100% !important;height:100% !important;display:block}
+
+  /* ---- Spectrum readout ---- */
+  .readout{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;font-family:'JetBrains Mono',monospace;font-size:13px;margin-top:14px;padding-top:14px;border-top:1px dashed var(--line)}
+  .readout dt{color:var(--text-mute);text-transform:uppercase;letter-spacing:0.08em;font-size:11px}
+  .readout dd{color:var(--amber)}
+
+  /* Pulse seq */
+  .pulse-controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);margin-top:10px}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .legend i{display:inline-block;width:10px;height:2px;background:currentColor}
+  .swatch-cyan{color:var(--cyan)}
+  .swatch-amber{color:var(--amber)}
+  .swatch-magenta{color:var(--magenta)}
+  .swatch-green{color:var(--green)}
+
+  /* Quote */
+  blockquote{
+    border-left:3px solid var(--amber);
+    padding:8px 24px;margin:24px 0;
+    font-family:'Newsreader',serif;font-size:21px;line-height:1.5;color:var(--text);
+    font-style:italic;
+  }
+  blockquote cite{display:block;margin-top:10px;font-size:13px;color:var(--text-mute);font-style:normal;font-family:'JetBrains Mono',monospace;letter-spacing:0.06em}
+
+  .corner-mark{
+    position:absolute;width:8px;height:8px;border:1px solid var(--cyan);
+  }
+</style>
+</head>
+<body>
+
+<nav class="top">
+  <div class="inner">
+    <div class="brand"><span class="pulse"></span> ESR&nbsp;·&nbsp;<em style="font-style:italic;color:var(--text-dim)">en interaktiv genopfriskning</em></div>
+    <ul>
+      <li><a href="#historie">Historie</a></li>
+      <li><a href="#zeeman">Zeeman</a></li>
+      <li><a href="#resonans">Resonans</a></li>
+      <li><a href="#bloch">Bloch</a></li>
+      <li><a href="#hyperfin">Hyperfin</a></li>
+      <li><a href="#puls">Pulse</a></li>
+      <li><a href="#nu">2026</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main>
+
+<!-- ============ HERO ============ -->
+<section class="hero" style="border-top:none">
+  <div class="hero-grid">
+    <div>
+      <div class="eyebrow">Spektroskopi · Kvantemekanik · 1944 → 2026</div>
+      <h1 class="display">Elektron&shy;spin&shy;-resonans</h1>
+      <p class="lede" style="margin-top:24px">
+        Når en uparret elektron sidder i et magnetfelt, splitter dens to spin-tilstande i energi. Et mikrobølge-foton af præcist den rigtige energi får elektronen til at <span class="hl">vippe</span>. Det er hele idéen — og fra den udspringer fire årtiers spektroskopi, strukturbiologi og kvanteteknologi.
+      </p>
+      <div class="hero-meta">
+        <span>Zavoisky · 1944</span>
+        <span>g ≈ 2.0023</span>
+        <span>X-bånd · 9.5 GHz</span>
+        <span>μ_B = 9.274·10⁻²⁴ J/T</span>
+      </div>
+    </div>
+    <div class="hero-canvas">
+      <canvas id="hero-spin"></canvas>
+    </div>
+  </div>
+</section>
+
+<!-- ============ HISTORIE ============ -->
+<section id="historie">
+  <div class="eyebrow">§ 01 — Et halvt århundredes spektroskopi</div>
+  <h2 class="display">Fra Kazan til en chip</h2>
+  <p style="max-width:60ch;margin-bottom:48px">
+    ESR udspringer af to forberedte sind. Pauli postulerede elektronens spin i 1925; Stern–Gerlach havde allerede vist, at sølvatomers magnetiske moment er kvantiseret. Men det var Zavoisky, alene i et udbombet Kazan i 1944, der først så signalet.
+  </p>
+
+  <div class="timeline">
+    <div class="tl-item">
+      <div class="tl-year">1925</div>
+      <h3>Pauli & Goudsmit-Uhlenbeck</h3>
+      <p>Spin postuleres for at forklare alkali-spektre og den anomale Zeeman-effekt. Diracs ligning (1928) forudsiger g = 2 nøjagtigt; QED-korrektioner giver afvigelsen til 2.00231930…</p>
+    </div>
+    <div class="tl-item">
+      <div class="tl-year">1944 · Kazan</div>
+      <h3>Zavoisky observerer ESR</h3>
+      <p>I CuCl₂·2H₂O ved 133 MHz og 4.76 mT. En verden i krig; opdagelsen publiceret året efter. NMR følger først to år senere (Bloch & Purcell, 1946).</p>
+    </div>
+    <div class="tl-item">
+      <div class="tl-year">1958</div>
+      <h3>Første elektronspin-ekko</h3>
+      <p>Blume og snart efter Mims på Bell Labs. Pulset ESR fødes — men instrumenteringen er for grov til at konkurrere med kontinuerlig CW-EPR.</p>
+    </div>
+    <div class="tl-item">
+      <div class="tl-year">1965</div>
+      <h3>ENDOR</h3>
+      <p>Mims kombinerer puls-EPR med RF-pulser på kerner. Hyperfin-koblinger måles direkte. Dette bliver fundamentet for moderne strukturel ESR.</p>
+    </div>
+    <div class="tl-item">
+      <div class="tl-year">1986 · DTH</div>
+      <h3>Du tager kurset</h3>
+      <p>Bruker ESP300 X-bånd-spektrometre står på laboratorierne; CW-spektre tegnes som første-afledte; håndberegning af g-faktorer og hyperfin-konstanter; <em>Slichter</em> og <em>Carrington & McLachlan</em> ligger på bordet.</p>
+    </div>
+    <div class="tl-item">
+      <div class="tl-year">1990'erne</div>
+      <h3>DEER/PELDOR & SDSL</h3>
+      <p>Milov, Jeschke, Spiess: pulser ved to frekvenser kobler elektroner gennem dipol-vekselvirkning. Hubbell sætter MTSL-spinmærker på cysteiner. ESR bliver strukturbiologi.</p>
+    </div>
+    <div class="tl-item">
+      <div class="tl-year">2000'erne</div>
+      <h3>Højfelt og NV-centre</h3>
+      <p>W-bånd (95 GHz), G-bånd (180 GHz), THz-EPR. Samtidig: Nitrogen-Vacancy-defekten i diamant viser sig at være et stuetempererede enkelt-spin med op til millisekund-koherens.</p>
+    </div>
+    <div class="tl-item">
+      <div class="tl-year">2026</div>
+      <h3>Spektrometeret bliver til en mikrochip</h3>
+      <p>CEA-Leti viser et batteridrevet EPR-spektrometer på enkelt chip; signalet kodes som fase-skift, spektre tages på 200 ns. Pulset DEER måler nu afstande op til 16 nm i deutererede proteiner.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ZEEMAN ============ -->
+<section id="zeeman">
+  <div class="eyebrow">§ 02 — Hamiltonens første led</div>
+  <h2 class="display">Spin i et magnetfelt</h2>
+
+  <div class="grid-2" style="align-items:start">
+    <div>
+      <p>For en fri elektron med spin $S=\tfrac{1}{2}$ er det magnetiske moment</p>
+      <div class="math-block">$$\boldsymbol{\mu} \;=\; -g\,\mu_B\,\mathbf{S}/\hbar$$</div>
+      <p>I et statisk felt $\mathbf{B}_0 = B_0\,\hat{\mathbf z}$ er Zeeman-Hamilton</p>
+      <div class="math-block">$$\hat H_Z \;=\; -\boldsymbol{\mu}\!\cdot\!\mathbf B_0 \;=\; g\,\mu_B\,B_0\,\hat S_z$$</div>
+      <p>Med egenværdier</p>
+      <div class="math-block">$$E_{m_s} \;=\; m_s\,g\,\mu_B\,B_0,\qquad m_s = \pm\tfrac{1}{2}$$</div>
+      <p>Energi-forskellen mellem $|\!\uparrow\rangle$ og $|\!\downarrow\rangle$ skalerer altså <em>lineært</em> med feltet. Et mikrobølge-foton med $h\nu = \Delta E$ kan inducere overgangen — det er resonansbetingelsen.</p>
+      <p style="margin-top:18px">Træk skyderen — se hvordan niveauerne fjerner sig fra hinanden, og fotonet, der akkurat passer, ændrer farve.</p>
+    </div>
+
+    <div class="panel framed">
+      <div class="label-tl">Fig. 02 — Zeeman-opspaltning</div>
+      <div class="label-tr" id="zm-readout">B₀ = 0.34 T · Δ = 9.50 GHz</div>
+      <canvas id="zeeman-canvas" class="viz" width="600" height="420" style="margin-top:36px"></canvas>
+      <div class="control">
+        <label>Magnetfelt B₀ <span class="val" id="zm-B-val">0.340 T</span></label>
+        <input type="range" id="zm-B" min="0" max="1.5" step="0.005" value="0.340">
+      </div>
+      <div class="control">
+        <label>g-faktor <span class="val" id="zm-g-val">2.0023</span></label>
+        <input type="range" id="zm-g" min="1.4" max="4.0" step="0.001" value="2.0023">
+      </div>
+      <div class="legend">
+        <span class="swatch-cyan"><i></i> mₛ = +½</span>
+        <span class="swatch-magenta"><i></i> mₛ = −½</span>
+        <span class="swatch-amber"><i></i> hν foton</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ RESONANS ============ -->
+<section id="resonans">
+  <div class="eyebrow">§ 03 — Når mikrobølgen rammer</div>
+  <h2 class="display">Resonansbetingelsen</h2>
+
+  <p style="margin-bottom:24px">Ved en kontinuerlig-bølge-måling holder man <strong>frekvensen fast</strong> (mikrobølge-resonatoren er "stemt") og scanner <strong>magnetfeltet</strong>. Når $B_0$ rammer den værdi hvor $h\nu = g\mu_B B_0$, absorberer prøven energi. Spektret tegnes traditionelt som <em>første afledede</em> af absorptionen — det øger signal/støj med fasefølsom detektion ved 100 kHz feltmodulation.</p>
+
+  <div class="interactive">
+    <div class="panel framed">
+      <div class="label-tl">Fig. 03a — CW-absorption</div>
+      <div class="label-tr" id="res-readout">på resonans</div>
+      <canvas id="res-canvas" class="viz" width="640" height="320" style="margin-top:30px"></canvas>
+      <div class="control">
+        <label>Mikrobølgefrekvens ν <span class="val" id="res-nu-val">9.500 GHz</span></label>
+        <input type="range" id="res-nu" min="1" max="95" step="0.05" value="9.5">
+      </div>
+      <div class="control">
+        <label>Magnetfelt B₀ <span class="val" id="res-B-val">0.339 T</span></label>
+        <input type="range" id="res-B" min="0.01" max="3.5" step="0.001" value="0.339">
+      </div>
+      <div class="control">
+        <label>Linjebredde ΔB <span class="val" id="res-w-val">2.0 mT</span></label>
+        <input type="range" id="res-w" min="0.2" max="20" step="0.1" value="2.0">
+      </div>
+      <div class="legend">
+        <span class="swatch-cyan"><i></i> Absorption χ″</span>
+        <span class="swatch-amber"><i></i> 1. afledede dχ″/dB</span>
+      </div>
+    </div>
+
+    <div>
+      <h3>De klassiske bånd</h3>
+      <table class="mono" style="width:100%;border-collapse:collapse;margin:14px 0;font-size:13px">
+        <thead><tr style="border-bottom:1px solid var(--line);color:var(--text-mute)"><th style="text-align:left;padding:8px 4px">Bånd</th><th style="text-align:left;padding:8px 4px">ν</th><th style="text-align:left;padding:8px 4px">B₀ (g≈2)</th></tr></thead>
+        <tbody>
+          <tr><td style="padding:6px 4px;color:var(--cyan)">L</td><td style="padding:6px 4px">~1 GHz</td><td style="padding:6px 4px;color:var(--amber)">36 mT</td></tr>
+          <tr><td style="padding:6px 4px;color:var(--cyan)">S</td><td style="padding:6px 4px">~3 GHz</td><td style="padding:6px 4px;color:var(--amber)">107 mT</td></tr>
+          <tr><td style="padding:6px 4px;color:var(--cyan)">X</td><td style="padding:6px 4px">9.5 GHz</td><td style="padding:6px 4px;color:var(--amber)">339 mT</td></tr>
+          <tr><td style="padding:6px 4px;color:var(--cyan)">Q</td><td style="padding:6px 4px">35 GHz</td><td style="padding:6px 4px;color:var(--amber)">1.25 T</td></tr>
+          <tr><td style="padding:6px 4px;color:var(--cyan)">W</td><td style="padding:6px 4px">95 GHz</td><td style="padding:6px 4px;color:var(--amber)">3.39 T</td></tr>
+          <tr><td style="padding:6px 4px;color:var(--cyan)">G</td><td style="padding:6px 4px">180 GHz</td><td style="padding:6px 4px;color:var(--amber)">6.43 T</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:15px">
+        Højere felt giver større <strong>Boltzmann-population</strong>sforskel mellem niveauerne og dermed bedre følsomhed. Det opløser også anisotropier i $g$-tensoren, der falder sammen ved X-bånd — på samme måde som høj-felt NMR opløser kemiske skift.
+      </p>
+      <p style="margin-top:12px;font-size:15px">
+        Absorptionen følger en Lorentzian af bredde $\Delta\nu = (\pi T_2)^{-1}$. T₂ er <em>spin-spin-relaksationstiden</em>, der bærer information om dynamik, jævnaldrende spin og diffusion.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ BLOCH ============ -->
+<section id="bloch">
+  <div class="eyebrow">§ 04 — Magnetiseringen som en pil</div>
+  <h2 class="display">Bloch-kuglen og Larmor-præcession</h2>
+
+  <div class="grid-2">
+    <div>
+      <p>Den klassiske billede er en magnetiseringsvektor $\mathbf M$, der præcederer om feltet med Larmor-frekvensen</p>
+      <div class="math-block">$$\omega_L = \gamma B_0,\qquad \gamma = \dfrac{g\,\mu_B}{\hbar}$$</div>
+      <p>For elektronens $\gamma_e/2\pi = 28.025\,\mathrm{GHz/T}$ — tre størrelsesordener over protonens $42.6\,\mathrm{MHz/T}$. Dynamikken styres af Bloch-ligningerne</p>
+      <div class="math-block">$$\dfrac{d\mathbf M}{dt} = \gamma\,\mathbf M\times\mathbf B - \dfrac{M_x\hat x + M_y\hat y}{T_2} - \dfrac{M_z - M_0}{T_1}\hat z$$</div>
+      <p>Roterer man til et koordinatsystem med vinkelhastighed $\omega$ (det <em>roterende plan</em>), forsvinder $\mathbf B_0$ delvist, og en transvers mikrobølge $\mathbf B_1$ ser konstant ud. Det er sådan, en π/2-puls vipper $\mathbf M$ i et endeligt tidsrum.</p>
+      <p>Kig på sfæren: vippeknapper ændrer felt, T₁/T₂ og pulser $\mathbf M$ ind i xy-planet.</p>
+    </div>
+    <div>
+      <div id="bloch-container"></div>
+      <div class="pulse-controls">
+        <button class="btn" id="bloch-pi2">π/2 puls</button>
+        <button class="btn amber" id="bloch-pi">π puls</button>
+        <button class="btn" id="bloch-reset">Reset</button>
+      </div>
+      <div class="control" style="margin-top:18px">
+        <label>Larmor-rate ω₀ <span class="val" id="bloch-w-val">1.0×</span></label>
+        <input type="range" id="bloch-w" min="0.1" max="3" step="0.05" value="1.0">
+      </div>
+      <div class="control">
+        <label>Relaksation T₂ (henfald) <span class="val" id="bloch-t2-val">2.0 s</span></label>
+        <input type="range" id="bloch-t2" min="0.3" max="20" step="0.1" value="2.0">
+      </div>
+      <div class="control">
+        <label>Relaksation T₁ (genopretning) <span class="val" id="bloch-t1-val">5.0 s</span></label>
+        <input type="range" id="bloch-t1" min="0.5" max="30" step="0.1" value="5.0">
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ HYPERFIN ============ -->
+<section id="hyperfin">
+  <div class="eyebrow">§ 05 — Når kerner taler med</div>
+  <h2 class="display">Hyperfin-struktur</h2>
+
+  <div class="grid-2">
+    <div>
+      <p>Kerner med spin $I\neq 0$ har egne magnetiske momenter, der genererer et lokalt felt på elektronen. Hyperfin-leddet i Hamilton er</p>
+      <div class="math-block">$$\hat H_{hf} = \mathbf S \cdot \mathbf A \cdot \mathbf I$$</div>
+      <p>For den isotrope (Fermi-kontakt) del giver det $\hat H_{hf} = a\,\mathbf S\!\cdot\!\mathbf I$. I første orden splitter hver kerne signalet op i $2I+1$ linjer adskilt af $a$ (i feltenheder).</p>
+      <p>For $n$ ækvivalente kerner med spin $I$ får man $2nI+1$ linjer med <em>binomial</em>-intensitet. <strong>CH₃-radikalet</strong> (3 protoner, $I=\tfrac12$) viser en kvartet 1:3:3:1; nitroxid med ¹⁴N ($I=1$) en triplet 1:1:1.</p>
+      <p>Denne fordobling er ESR's <em>fingeraftryk</em>: antal og styrke af koblingerne afslører naboernes identitet og spin-tæthed.</p>
+    </div>
+    <div class="panel framed">
+      <div class="label-tl">Fig. 05 — Hyperfin-spektrum</div>
+      <div class="label-tr" id="hf-readout">CH₃·</div>
+      <canvas id="hf-canvas" class="viz" width="640" height="320" style="margin-top:30px"></canvas>
+      <div class="control">
+        <label>Antal ækvivalente kerner n <span class="val" id="hf-n-val">3</span></label>
+        <input type="range" id="hf-n" min="0" max="6" step="1" value="3">
+      </div>
+      <div class="control">
+        <label>Kernespin I <span class="val" id="hf-i-val">1/2 (¹H)</span></label>
+        <input type="range" id="hf-i" min="0" max="2" step="1" value="0">
+      </div>
+      <div class="control">
+        <label>Kobling a <span class="val" id="hf-a-val">2.30 mT</span></label>
+        <input type="range" id="hf-a" min="0.1" max="5.0" step="0.05" value="2.3">
+      </div>
+      <div class="control">
+        <label>Linjebredde <span class="val" id="hf-w-val">0.35 mT</span></label>
+        <input type="range" id="hf-w" min="0.05" max="2.0" step="0.05" value="0.35">
+      </div>
+      <div class="legend">
+        <span class="swatch-cyan"><i></i> Absorption</span>
+        <span class="swatch-amber"><i></i> 1. afledede</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PULS ============ -->
+<section id="puls">
+  <div class="eyebrow">§ 06 — Tid i stedet for frekvens</div>
+  <h2 class="display">Puls-eksperimenter & ekkoer</h2>
+
+  <p style="margin-bottom:30px;max-width:65ch">
+    Den moderne ESR er pulset. En kort, hård mikrobølge-puls eksciterer hele spektret samtidig, og man måler det <strong>frie inducerede henfald</strong> (FID) eller et <strong>spin-ekko</strong>. Fourier-transformation af tids-signalet giver spektret. Pulser komponeres i sekvenser, der filtrerer specifikke vekselvirkninger frem.
+  </p>
+
+  <div class="panel framed" style="padding-top:50px">
+    <div class="label-tl">Fig. 06 — Hahn-ekko og DEER</div>
+    <div class="label-tr">Tid (vilkårlige enheder)</div>
+    <canvas id="pulse-canvas" class="viz" width="1100" height="360"></canvas>
+    <div class="pulse-controls" style="justify-content:center">
+      <button class="btn" data-seq="fid">FID</button>
+      <button class="btn" data-seq="hahn">Hahn-ekko (π/2 − τ − π − τ − ekko)</button>
+      <button class="btn amber" data-seq="deer">4-puls DEER (afstandsmåling)</button>
+    </div>
+    <div class="legend" style="justify-content:center;margin-top:18px">
+      <span class="swatch-cyan"><i></i> Detektor-puls</span>
+      <span class="swatch-amber"><i></i> Pump-puls (ν₂)</span>
+      <span class="swatch-magenta"><i></i> Magnetisering</span>
+      <span class="swatch-green"><i></i> Ekko / FID</span>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-top:36px">
+    <div>
+      <h3>Hvad et ekko betyder kvantemekanisk</h3>
+      <p>Density-matricen udvikler sig under $\hat U(t) = e^{-i\hat H t/\hbar}$. En π-puls bytter populationerne og <em>vender fasen</em>. Inhomogen spredning af Larmor-frekvenser refokuseres præcist ved tiden $2\tau$ — Hahn-ekkoet. Hvad der bliver tilbage, henfalder med den <em>intrinsiske</em> $T_2$ og bærer information om dynamik, dipolar kobling og kernepåvirkninger.</p>
+    </div>
+    <div>
+      <h3>DEER (PELDOR) — afstande i nanometer</h3>
+      <p>I 4-puls-DEER kører detektor-pulser ved $\nu_1$, og en pump-puls ved $\nu_2$ flipper et nabo-spin midt i sekvensen. Ekkoets amplitude moduleres med dipolar-frekvensen $\omega_{dd}\propto 1/r^3$. Ud falder afstandsfordelingen mellem to spinmærker — typisk 1.5–8 nm, op til 16 nm i deutereret prøve. Det er dette, der gør ESR til strukturbiologi.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ NU ============ -->
+<section id="nu">
+  <div class="eyebrow">§ 07 — 2026</div>
+  <h2 class="display">Hvor feltet er nu</h2>
+
+  <div class="grid-3">
+    <div class="app-card">
+      <div class="num">01</div>
+      <span class="tag">Strukturbiologi</span>
+      <h3>DEER på membranproteiner</h3>
+      <p>Site-directed spin labeling med MTSL eller Gd³⁺ giver afstandsfordelinger mellem cysteiner. Komplementerer kryo-EM ved at afsløre <em>konformationelle ensembler</em> — flere strukturer i ligevægt, som ét krystal ikke fanger.</p>
+    </div>
+    <div class="app-card">
+      <div class="num">02</div>
+      <span class="tag">Kvantesensing</span>
+      <h3>NV-centre i diamant</h3>
+      <p>Nitrogen-Vacancy-defekten er et S=1 elektronspin, der kan optisk initialiseres og udlæses ved stuetemperatur. Pulset ESR styrer det. I dag verdens følsomste nanoskala-magnetometre — måler enkelt-protein NMR.</p>
+    </div>
+    <div class="app-card">
+      <div class="num">03</div>
+      <span class="tag">In vivo MR</span>
+      <h3>Hyperpolariseret ¹³C-MRI</h3>
+      <p>Dynamic Nuclear Polarization (DNP) overfører elektronens høje spin-polarisering til ¹³C-pyruvat. Klinisk MR-signal forstærkes ~10⁴× og bruges til at billeddanne tumor-metabolisme i realtid.</p>
+    </div>
+    <div class="app-card">
+      <div class="num">04</div>
+      <span class="tag">Instrumentering</span>
+      <h3>EPR på en mikrochip</h3>
+      <p>2026: CEA-Leti's batteri-drevne enkelt-chip-spektrometer koder signalet som fase-skift. Spektre på 200 ns. Kombineret med <em>mikroresonatorer</em> gør dette EPR muligt på nanoliter-prøver og enkelte mikrokrystaller.</p>
+    </div>
+    <div class="app-card">
+      <div class="num">05</div>
+      <span class="tag">Farmaci & ROS</span>
+      <h3>Spin-trapping af radikaler</h3>
+      <p>DMPO og PBN fanger flygtige radikaler in vivo. Farmaceutisk forskning identificerer ROS-medierede skader, oxidationsveje i lægemiddelmetabolisme og frie radikaler i fotokemiske syntesetrin.</p>
+    </div>
+    <div class="app-card">
+      <div class="num">06</div>
+      <span class="tag">Materialer</span>
+      <h3>Defekter & spin-qubits</h3>
+      <p>Donor-elektronspin i ²⁸Si, divacancier i SiC, sjældne-jord-ioner i krystaller. Pulset ESR karakteriserer T₁, T₂ og hyperfin-koblinger — den eneste vej til at vide, om en defekt kan blive til en qubit.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SPIN HAMILTON ============ -->
+<section id="appendix">
+  <div class="eyebrow">§ 08 — Den fulde spin-Hamilton</div>
+  <h2 class="display">Som man ville skrive den i dag</h2>
+
+  <p style="max-width:62ch">Hele spektroskopien koger ned til at finde parametrene i spin-Hamiltonoperatoren — tensorer, der opfanger den lokale elektroniske og kerne-omgivelse — og diagonalisere den. Den generaliserede form er:</p>
+
+  <div class="math-block">
+    $$\hat H \;=\; \underbrace{\mu_B\,\mathbf B \!\cdot\! \mathbf g \!\cdot\! \mathbf S}_{\text{elektron-Zeeman}}
+    + \underbrace{\mathbf S \!\cdot\! \mathbf D \!\cdot\! \mathbf S}_{\text{nul-felt-opspaltning}}
+    + \underbrace{\sum_i \mathbf S \!\cdot\! \mathbf A_i \!\cdot\! \mathbf I_i}_{\text{hyperfin}}
+    + \underbrace{\sum_i \mathbf I_i \!\cdot\! \mathbf Q_i \!\cdot\! \mathbf I_i}_{\text{kvadrupol}}
+    - \underbrace{\sum_i g_{n,i}\mu_N\,\mathbf B \!\cdot\! \mathbf I_i}_{\text{kerne-Zeeman}}$$
+  </div>
+  <p class="math-note">For S = ½ forsvinder $\mathbf D$. For $I = \tfrac12$ forsvinder $\mathbf Q$. Tensorerne $\mathbf g$, $\mathbf A$, $\mathbf D$ er ofte anisotrope og diagonaliseres i hovedaksesystemet.</p>
+
+  <div class="grid-2" style="margin-top:36px">
+    <div>
+      <h3>Resonansbetingelse</h3>
+      <div class="math-block">$$h\nu = g\mu_B B_0$$</div>
+      <h3>Larmor-frekvens</h3>
+      <div class="math-block">$$\omega_L = \gamma_e B_0,\quad \gamma_e/2\pi = 28.025\;\mathrm{GHz/T}$$</div>
+      <h3>Boltzmann-population</h3>
+      <div class="math-block">$$\dfrac{N_-}{N_+} = e^{-h\nu/k_B T}$$</div>
+    </div>
+    <div>
+      <h3>Bloch-ligninger (lab-frame)</h3>
+      <div class="math-block">$$\dot M_x = \gamma(\mathbf M\!\times\!\mathbf B)_x - M_x/T_2$$</div>
+      <div class="math-block">$$\dot M_y = \gamma(\mathbf M\!\times\!\mathbf B)_y - M_y/T_2$$</div>
+      <div class="math-block">$$\dot M_z = \gamma(\mathbf M\!\times\!\mathbf B)_z - (M_z-M_0)/T_1$$</div>
+      <h3>Lorentzian-linjeform</h3>
+      <div class="math-block">$$\chi''(\omega) \propto \dfrac{T_2}{1+(\omega-\omega_0)^2 T_2^2}$$</div>
+    </div>
+  </div>
+
+  <blockquote style="margin-top:48px">
+    "EPR is the spectroscopy of unpaired electrons — and unpaired electrons are everywhere. We just need to look."
+    <cite>— frit efter J. R. Biller, <em>EPR Everywhere</em></cite>
+  </blockquote>
+</section>
+
+<footer>
+  <div class="sig">For den studerende, der fik 10, og som stadig vil vide hvor det er gået hen.</div>
+  <div class="mono" style="font-size:11px;color:var(--text-mute);letter-spacing:0.12em">
+    INTERAKTIV GENOPFRISKNING · KVANTEMEKANIK · MAJ 2026
+  </div>
+</footer>
+
+</main>
+
+<script>
+/* =========================================================
+   1) HERO SPIN — single Bloch vector with precession
+   ========================================================= */
+(function heroSpin(){
+  const c = document.getElementById('hero-spin');
+  const ctx = c.getContext('2d');
+  function fit(){
+    const r = c.getBoundingClientRect();
+    c.width = r.width * devicePixelRatio;
+    c.height = r.height * devicePixelRatio;
+    ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  }
+  fit(); window.addEventListener('resize', fit);
+
+  let t = 0;
+  function loop(){
+    const w = c.clientWidth, h = c.clientHeight;
+    ctx.clearRect(0,0,w,h);
+    const cx = w/2, cy = h/2, R = Math.min(w,h)*0.36;
+
+    // outer rings
+    ctx.save();
+    ctx.translate(cx,cy);
+    for(let i=0;i<3;i++){
+      ctx.beginPath();
+      ctx.ellipse(0,0,R*(1-i*0.05), R*(1-i*0.05)*0.32, 0, 0, Math.PI*2);
+      ctx.strokeStyle = 'rgba(34,211,238,'+(0.18 - i*0.05)+')';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    // B0 axis
+    ctx.beginPath();
+    ctx.moveTo(0, R*1.15);
+    ctx.lineTo(0, -R*1.15);
+    ctx.strokeStyle = 'rgba(245,177,51,0.45)';
+    ctx.setLineDash([4,4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // tip B0
+    ctx.fillStyle = 'rgba(245,177,51,0.9)';
+    ctx.font = '500 12px JetBrains Mono';
+    ctx.fillText('B₀', 8, -R*1.1);
+
+    // spin vector precessing
+    const theta = Math.PI/4; // tilt
+    const phi = t;
+    const tipX = R * Math.sin(theta) * Math.cos(phi);
+    const tipY_3d = -R * Math.cos(theta);
+    const tipZ_3d = R * Math.sin(theta) * Math.sin(phi);
+    // simple ortho projection: x→x, y→y, z foreshortens y a bit
+    const px = tipX;
+    const py = tipY_3d + tipZ_3d * 0.22;
+    // glow
+    const grad = ctx.createLinearGradient(0,0,px,py);
+    grad.addColorStop(0,'rgba(34,211,238,0.0)');
+    grad.addColorStop(1,'rgba(34,211,238,1)');
+    ctx.beginPath();
+    ctx.moveTo(0,0);
+    ctx.lineTo(px,py);
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 3;
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = '#22d3ee';
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // arrowhead
+    const ang = Math.atan2(py, px);
+    const head = 10;
+    ctx.beginPath();
+    ctx.moveTo(px,py);
+    ctx.lineTo(px - head*Math.cos(ang - 0.4), py - head*Math.sin(ang - 0.4));
+    ctx.lineTo(px - head*Math.cos(ang + 0.4), py - head*Math.sin(ang + 0.4));
+    ctx.closePath();
+    ctx.fillStyle = '#22d3ee';
+    ctx.fill();
+
+    // precession trace
+    ctx.beginPath();
+    for(let k=0;k<48;k++){
+      const ph = phi - k*0.06;
+      const x = R * Math.sin(theta) * Math.cos(ph);
+      const z = R * Math.sin(theta) * Math.sin(ph);
+      const X = x;
+      const Y = -R*Math.cos(theta) + z*0.22;
+      if(k===0) ctx.moveTo(X,Y); else ctx.lineTo(X,Y);
+    }
+    ctx.strokeStyle = 'rgba(34,211,238,0.25)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // central dot
+    ctx.beginPath();
+    ctx.arc(0,0,3,0,Math.PI*2);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+
+    ctx.restore();
+
+    t += 0.04;
+    requestAnimationFrame(loop);
+  }
+  loop();
+})();
+
+/* =========================================================
+   2) ZEEMAN SPLITTING canvas
+   ========================================================= */
+(function zeeman(){
+  const c = document.getElementById('zeeman-canvas');
+  const ctx = c.getContext('2d');
+  const Bs = document.getElementById('zm-B');
+  const gs = document.getElementById('zm-g');
+  const Bv = document.getElementById('zm-B-val');
+  const gv = document.getElementById('zm-g-val');
+  const ro = document.getElementById('zm-readout');
+  const muB = 9.2740100783e-24; // J/T
+  const h = 6.62607015e-34; // J s
+
+  function fit(){
+    const r = c.getBoundingClientRect();
+    c.width = r.width * devicePixelRatio;
+    c.height = 420 * devicePixelRatio;
+    c.style.height = '420px';
+    ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  }
+  fit(); window.addEventListener('resize', fit);
+
+  function draw(){
+    const W = c.clientWidth, H = 420;
+    ctx.clearRect(0,0,W,H);
+
+    const B = parseFloat(Bs.value);
+    const g = parseFloat(gs.value);
+    Bv.textContent = B.toFixed(3) + ' T';
+    gv.textContent = g.toFixed(4);
+
+    // x axis = B (0..1.5 T), drawn left to right
+    const Bmax = 1.5;
+    const padL=60, padR=30, padT=30, padB=40;
+    const plotW = W - padL - padR;
+    const plotH = H - padT - padB;
+    const x0 = padL, y0 = padT + plotH/2;
+
+    // axis
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padL, padT); ctx.lineTo(padL, padT+plotH);
+    ctx.moveTo(padL, y0); ctx.lineTo(W-padR, y0);
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.font = '500 11px JetBrains Mono';
+    ctx.fillText('E', padL-30, padT+10);
+    ctx.fillText('B₀ →', W-60, y0+18);
+
+    // Energy scale: max ΔE at Bmax with g=2 and largest field => ~ 1.39e-22 J ~ in arb units
+    // We'll plot E in units of µB (i.e. mE/µB = m_s * g * B). Range ±0.5*g*Bmax * something
+    const maxE = 0.5 * 4.0 * Bmax; // worst case so axis stable
+    const eToY = e => y0 - (e/maxE) * (plotH/2 - 10);
+
+    // draw both branches as a function of B
+    const N = 200;
+    // upper
+    ctx.beginPath();
+    for(let i=0;i<=N;i++){
+      const Bi = (i/N)*Bmax;
+      const E = 0.5 * g * Bi;
+      const X = padL + (Bi/Bmax)*plotW;
+      const Y = eToY(E);
+      if(i===0) ctx.moveTo(X,Y); else ctx.lineTo(X,Y);
+    }
+    ctx.strokeStyle = '#22d3ee';
+    ctx.lineWidth = 2;
+    ctx.shadowBlur = 6; ctx.shadowColor = '#22d3ee';
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // lower
+    ctx.beginPath();
+    for(let i=0;i<=N;i++){
+      const Bi = (i/N)*Bmax;
+      const E = -0.5 * g * Bi;
+      const X = padL + (Bi/Bmax)*plotW;
+      const Y = eToY(E);
+      if(i===0) ctx.moveTo(X,Y); else ctx.lineTo(X,Y);
+    }
+    ctx.strokeStyle = '#ff4fa8';
+    ctx.lineWidth = 2;
+    ctx.shadowBlur = 6; ctx.shadowColor = '#ff4fa8';
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Now mark current B
+    const Xb = padL + (B/Bmax)*plotW;
+    ctx.strokeStyle = 'rgba(245,177,51,0.4)';
+    ctx.setLineDash([3,3]);
+    ctx.beginPath();
+    ctx.moveTo(Xb, padT); ctx.lineTo(Xb, padT+plotH);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // upper/lower points
+    const Eu = 0.5 * g * B;
+    const El = -0.5 * g * B;
+    const Yu = eToY(Eu), Yl = eToY(El);
+
+    ctx.fillStyle = '#22d3ee'; ctx.beginPath(); ctx.arc(Xb,Yu,5,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#ff4fa8'; ctx.beginPath(); ctx.arc(Xb,Yl,5,0,Math.PI*2); ctx.fill();
+
+    // photon arrow between them
+    ctx.strokeStyle = '#f5b133';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(Xb-10, Yl);
+    ctx.lineTo(Xb-10, Yu);
+    ctx.stroke();
+
+    // arrowheads
+    function head(x,y,dir){
+      ctx.beginPath();
+      ctx.moveTo(x,y);
+      ctx.lineTo(x-5, y+dir*8);
+      ctx.lineTo(x+5, y+dir*8);
+      ctx.closePath();
+      ctx.fillStyle = '#f5b133';
+      ctx.fill();
+    }
+    head(Xb-10, Yu, 1);
+    head(Xb-10, Yl, -1);
+
+    // wavy photon
+    ctx.strokeStyle = '#f5b133';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    let xw = Xb + 8;
+    const yMid = (Yu+Yl)/2;
+    for(let i=0;i<24;i++){
+      const xx = xw + i*4;
+      const yy = yMid + Math.sin(i*0.7)*5;
+      if(i===0) ctx.moveTo(xx,yy); else ctx.lineTo(xx,yy);
+    }
+    ctx.stroke();
+
+    // labels next to dots
+    ctx.font = '500 12px JetBrains Mono';
+    ctx.fillStyle = '#22d3ee';
+    ctx.fillText('|+½⟩', Xb+22, Yu+4);
+    ctx.fillStyle = '#ff4fa8';
+    ctx.fillText('|−½⟩', Xb+22, Yl+4);
+
+    // ΔE label
+    const dE_J = g * muB * B;
+    const nu = dE_J / h; // Hz
+    let nuStr;
+    if(nu > 1e9) nuStr = (nu/1e9).toFixed(2) + ' GHz';
+    else if(nu > 1e6) nuStr = (nu/1e6).toFixed(2) + ' MHz';
+    else nuStr = (nu/1e3).toFixed(2) + ' kHz';
+
+    ctx.fillStyle = '#f5b133';
+    ctx.fillText('hν = ' + nuStr, Xb-60, yMid - 12);
+    ctx.fillText('ΔE = gμ_B B', Xb-60, yMid + 18);
+
+    ro.textContent = 'B₀ = ' + B.toFixed(3) + ' T · hν = ' + nuStr;
+  }
+  Bs.addEventListener('input', draw);
+  gs.addEventListener('input', draw);
+  window.addEventListener('resize', ()=>{fit();draw()});
+  draw();
+})();
+
+/* =========================================================
+   3) RESONANCE absorption + 1st derivative
+   ========================================================= */
+(function resonance(){
+  const c = document.getElementById('res-canvas');
+  const ctx = c.getContext('2d');
+  const nuS = document.getElementById('res-nu');
+  const BS = document.getElementById('res-B');
+  const wS = document.getElementById('res-w');
+  const nuV = document.getElementById('res-nu-val');
+  const BV = document.getElementById('res-B-val');
+  const wV = document.getElementById('res-w-val');
+  const ro = document.getElementById('res-readout');
+
+  const g = 2.0023;
+  const muB = 9.2740100783e-24;
+  const h = 6.62607015e-34;
+
+  function fit(){
+    const r = c.getBoundingClientRect();
+    c.width = r.width * devicePixelRatio;
+    c.height = 320 * devicePixelRatio;
+    c.style.height = '320px';
+    ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  }
+  fit(); window.addEventListener('resize', ()=>{fit();draw()});
+
+  function draw(){
+    const W = c.clientWidth, H = 320;
+    ctx.clearRect(0,0,W,H);
+    const padL=50, padR=30, padT=20, padB=40;
+    const pw = W-padL-padR, ph = H-padT-padB;
+
+    const nu = parseFloat(nuS.value)*1e9; // Hz
+    const Bcur = parseFloat(BS.value);
+    const wmT = parseFloat(wS.value); // mT linewidth
+    nuV.textContent = (nu/1e9).toFixed(3) + ' GHz';
+    BV.textContent = Bcur.toFixed(3) + ' T';
+    wV.textContent = wmT.toFixed(2) + ' mT';
+
+    const Bres = h*nu / (g*muB); // T
+
+    // Field axis spans around resonance OR around current Bcur
+    const center = (Bres + Bcur)/2;
+    const span = Math.max( Math.abs(Bres - Bcur)*2.4 , 0.04, wmT*1e-3*8 );
+    const Bmin = center - span/2;
+    const Bmax = center + span/2;
+
+    // axes
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.beginPath();
+    ctx.moveTo(padL, padT+ph); ctx.lineTo(W-padR, padT+ph);
+    ctx.moveTo(padL, padT); ctx.lineTo(padL, padT+ph);
+    ctx.stroke();
+
+    // x ticks
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.font = '500 10px JetBrains Mono';
+    for(let i=0;i<=5;i++){
+      const Bv = Bmin + (i/5)*(Bmax-Bmin);
+      const X = padL + (i/5)*pw;
+      ctx.beginPath(); ctx.moveTo(X, padT+ph); ctx.lineTo(X, padT+ph+4); ctx.stroke();
+      ctx.fillText(Bv.toFixed(3), X-18, padT+ph+18);
+    }
+    ctx.fillText('B [T]', W-padR-30, padT+ph+18);
+
+    // Lorentzian absorption χ''(B): proportional to w/( (B-Bres)^2 + w^2 )
+    // peak at Bres with full width = 2w (actually HWHM = w for our parametrization)
+    const wT = wmT*1e-3 / 2; // half-width param
+    const N = 500;
+    function abs(Bv){ return (wT*wT) / ((Bv-Bres)*(Bv-Bres) + wT*wT); }
+    function dabs(Bv){ const d=Bv-Bres; return -2*d*wT*wT / Math.pow(d*d+wT*wT, 2); }
+
+    // find max amplitude for normalization
+    let maxA = 0, maxD = 0;
+    for(let i=0;i<=N;i++){
+      const Bv = Bmin + (i/N)*(Bmax-Bmin);
+      maxA = Math.max(maxA, abs(Bv));
+      maxD = Math.max(maxD, Math.abs(dabs(Bv)));
+    }
+    if(maxA===0) maxA=1;
+    if(maxD===0) maxD=1;
+
+    // draw absorption (cyan)
+    ctx.beginPath();
+    for(let i=0;i<=N;i++){
+      const Bv = Bmin + (i/N)*(Bmax-Bmin);
+      const X = padL + (i/N)*pw;
+      const Y = padT+ph - (abs(Bv)/maxA)*ph*0.85;
+      if(i===0) ctx.moveTo(X,Y); else ctx.lineTo(X,Y);
+    }
+    ctx.strokeStyle = '#22d3ee';
+    ctx.lineWidth = 2;
+    ctx.shadowBlur = 8; ctx.shadowColor = '#22d3ee';
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // derivative (amber) centered around mid line
+    ctx.beginPath();
+    const midY = padT + ph*0.5;
+    for(let i=0;i<=N;i++){
+      const Bv = Bmin + (i/N)*(Bmax-Bmin);
+      const X = padL + (i/N)*pw;
+      const Y = midY - (dabs(Bv)/maxD)*ph*0.32;
+      if(i===0) ctx.moveTo(X,Y); else ctx.lineTo(X,Y);
+    }
+    ctx.strokeStyle = '#f5b133';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // mark current B as vertical line
+    if(Bcur >= Bmin && Bcur <= Bmax){
+      const X = padL + ((Bcur-Bmin)/(Bmax-Bmin))*pw;
+      ctx.strokeStyle = 'rgba(255,79,168,0.7)';
+      ctx.setLineDash([3,3]);
+      ctx.beginPath(); ctx.moveTo(X, padT); ctx.lineTo(X, padT+ph); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#ff4fa8';
+      ctx.fillText('B₀', X+4, padT+12);
+    }
+
+    // mark Bres
+    if(Bres >= Bmin && Bres <= Bmax){
+      const X = padL + ((Bres-Bmin)/(Bmax-Bmin))*pw;
+      ctx.strokeStyle = 'rgba(94,234,212,0.5)';
+      ctx.setLineDash([1,4]);
+      ctx.beginPath(); ctx.moveTo(X, padT); ctx.lineTo(X, padT+ph); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#5eead4';
+      ctx.fillText('B_res = '+Bres.toFixed(4)+' T', X+4, padT+ph-6);
+    }
+
+    // status
+    const det = Math.abs(Bcur-Bres);
+    if(det < wT*0.5) ro.textContent = '★ på resonans';
+    else if(det < wT*2) ro.textContent = 'nær resonans · |ΔB|=' + (det*1000).toFixed(2) + ' mT';
+    else ro.textContent = 'off-resonans · |ΔB|=' + (det*1000).toFixed(1) + ' mT';
+  }
+  nuS.addEventListener('input', draw);
+  BS.addEventListener('input', draw);
+  wS.addEventListener('input', draw);
+  draw();
+})();
+
+/* =========================================================
+   4) BLOCH SPHERE — Three.js
+   ========================================================= */
+(function bloch(){
+  const container = document.getElementById('bloch-container');
+  const wField = document.getElementById('bloch-w');
+  const t2Field = document.getElementById('bloch-t2');
+  const t1Field = document.getElementById('bloch-t1');
+  const wVal = document.getElementById('bloch-w-val');
+  const t2Val = document.getElementById('bloch-t2-val');
+  const t1Val = document.getElementById('bloch-t1-val');
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+  camera.position.set(2.6, 1.7, 2.6);
+  camera.lookAt(0,0,0);
+
+  const renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+  renderer.setPixelRatio(window.devicePixelRatio);
+  function resize(){
+    const w = container.clientWidth;
+    renderer.setSize(w, w, false);
+    camera.aspect = 1;
+    camera.updateProjectionMatrix();
+  }
+  container.appendChild(renderer.domElement);
+  resize();
+  window.addEventListener('resize', resize);
+
+  // Sphere wireframe
+  const sphereGeom = new THREE.SphereGeometry(1, 32, 24);
+  const sphereWire = new THREE.LineSegments(
+    new THREE.EdgesGeometry(sphereGeom),
+    new THREE.LineBasicMaterial({color: 0x1f2a44, transparent:true, opacity:0.55})
+  );
+  scene.add(sphereWire);
+
+  // Equator
+  const eqGeom = new THREE.BufferGeometry();
+  const eqPts = [];
+  for(let i=0;i<=128;i++){const a = i/128*Math.PI*2;eqPts.push(Math.cos(a),0,Math.sin(a))}
+  eqGeom.setAttribute('position', new THREE.Float32BufferAttribute(eqPts,3));
+  const eq = new THREE.LineLoop(eqGeom, new THREE.LineBasicMaterial({color:0x22d3ee, transparent:true, opacity:0.6}));
+  scene.add(eq);
+
+  // Axes
+  function axisLine(v, color){
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute([0,0,0,v.x,v.y,v.z],3));
+    return new THREE.Line(g, new THREE.LineBasicMaterial({color:color, transparent:true, opacity:0.7}));
+  }
+  scene.add(axisLine(new THREE.Vector3(1.3,0,0), 0x39435e));
+  scene.add(axisLine(new THREE.Vector3(-1.3,0,0), 0x39435e));
+  scene.add(axisLine(new THREE.Vector3(0,1.3,0), 0xf5b133));
+  scene.add(axisLine(new THREE.Vector3(0,-1.3,0), 0x6a4f1c));
+  scene.add(axisLine(new THREE.Vector3(0,0,1.3), 0x39435e));
+  scene.add(axisLine(new THREE.Vector3(0,0,-1.3), 0x39435e));
+
+  // Spin vector arrow
+  const spinDir = new THREE.Vector3(0,1,0);
+  const arrow = new THREE.ArrowHelper(spinDir.clone().normalize(), new THREE.Vector3(0,0,0), 1.0, 0x22d3ee, 0.16, 0.09);
+  arrow.line.material.linewidth = 3;
+  scene.add(arrow);
+
+  // Text-like labels using sprites
+  function makeLabel(text, color){
+    const cv = document.createElement('canvas');
+    cv.width = 128; cv.height = 64;
+    const cx = cv.getContext('2d');
+    cx.fillStyle = color;
+    cx.font = 'bold 36px JetBrains Mono, monospace';
+    cx.textAlign='center';cx.textBaseline='middle';
+    cx.fillText(text, 64, 32);
+    const tex = new THREE.CanvasTexture(cv);
+    const mat = new THREE.SpriteMaterial({map:tex, transparent:true});
+    const sp = new THREE.Sprite(mat);
+    sp.scale.set(0.35,0.18,1);
+    return sp;
+  }
+  const labZ = makeLabel('B₀','#f5b133'); labZ.position.set(0,1.45,0); scene.add(labZ);
+  const labX = makeLabel('x','#7d8aa6'); labX.position.set(1.45,0,0); scene.add(labX);
+  const labY = makeLabel('y','#7d8aa6'); labY.position.set(0,0,1.45); scene.add(labY);
+
+  // Trail
+  const trailMat = new THREE.LineBasicMaterial({color:0x22d3ee, transparent:true, opacity:0.4});
+  const trailGeom = new THREE.BufferGeometry();
+  const TRAIL_LEN = 200;
+  const trailPos = new Float32Array(TRAIL_LEN*3);
+  trailGeom.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
+  trailGeom.setDrawRange(0,0);
+  const trail = new THREE.Line(trailGeom, trailMat);
+  scene.add(trail);
+  let trailIdx = 0;
+
+  // Interaction state — magnetization vector M (initially along +z = B0)
+  // Note: in physics convention B0 is along z, but here y feels more natural as "up"
+  // I'll use y = B0 axis here for visual clarity.
+  let M = new THREE.Vector3(0,1,0);
+
+  // Pulse sequencing
+  let pulse = null; // {axis: Vec3, totalAngle, duration, elapsed, kind}
+  function startPulse(angle){
+    pulse = {
+      axis: new THREE.Vector3(1,0,0), // microwave B1 along x
+      total: angle,
+      duration: 0.5, // seconds animation time
+      elapsed: 0,
+    };
+  }
+
+  document.getElementById('bloch-pi2').addEventListener('click', ()=>startPulse(Math.PI/2));
+  document.getElementById('bloch-pi').addEventListener('click', ()=>startPulse(Math.PI));
+  document.getElementById('bloch-reset').addEventListener('click', ()=>{ M.set(0,1,0); trailIdx=0; trailGeom.setDrawRange(0,0); });
+
+  function update(dt){
+    const w0 = parseFloat(wField.value);
+    const T2 = parseFloat(t2Field.value);
+    const T1 = parseFloat(t1Field.value);
+    wVal.textContent = w0.toFixed(2)+'×';
+    t2Val.textContent = T2.toFixed(1)+' s';
+    t1Val.textContent = T1.toFixed(1)+' s';
+
+    // Larmor precession around y axis (=B0)
+    if(!pulse){
+      const angle = w0 * dt * 2.0; // radians
+      const c = Math.cos(angle), s = Math.sin(angle);
+      const x = M.x*c + M.z*s;
+      const z = -M.x*s + M.z*c;
+      M.x = x; M.z = z;
+    } else {
+      // rotate around the pulse axis
+      pulse.elapsed += dt;
+      const frac = Math.min(1, dt/pulse.duration);
+      const angle = pulse.total * frac;
+      const c = Math.cos(angle), s = Math.sin(angle);
+      // rotation around x: y' = y c - z s, z' = y s + z c
+      const yn = M.y*c - M.z*s;
+      const zn = M.y*s + M.z*c;
+      M.y = yn; M.z = zn;
+      pulse.elapsed += pulse.duration; // hack: complete in one frame
+      pulse = null;
+    }
+
+    // Relaxation: T2 attenuates xz, T1 returns y to 1
+    const k2 = Math.exp(-dt/T2);
+    M.x *= k2; M.z *= k2;
+    M.y = M.y + (1 - M.y) * (1 - Math.exp(-dt/T1));
+
+    // Update arrow
+    const len = Math.max(0.001, M.length());
+    arrow.setDirection(M.clone().normalize());
+    arrow.setLength(len, 0.16*Math.min(1,len), 0.09*Math.min(1,len));
+
+    // Add to trail
+    const idx = trailIdx % TRAIL_LEN;
+    trailPos[idx*3+0] = M.x;
+    trailPos[idx*3+1] = M.y;
+    trailPos[idx*3+2] = M.z;
+    trailIdx++;
+    trailGeom.setDrawRange(0, Math.min(trailIdx, TRAIL_LEN));
+    trailGeom.attributes.position.needsUpdate = true;
+  }
+
+  let last = performance.now();
+  let cameraAng = 0;
+  function loop(){
+    const now = performance.now();
+    const dt = Math.min(0.05, (now - last)/1000);
+    last = now;
+
+    update(dt);
+
+    cameraAng += dt*0.05;
+    camera.position.x = Math.cos(cameraAng)*2.8;
+    camera.position.z = Math.sin(cameraAng)*2.8;
+    camera.position.y = 1.5;
+    camera.lookAt(0,0,0);
+
+    renderer.render(scene, camera);
+    requestAnimationFrame(loop);
+  }
+  loop();
+})();
+
+/* =========================================================
+   5) HYPERFINE SPECTRUM
+   ========================================================= */
+(function hyperfine(){
+  const c = document.getElementById('hf-canvas');
+  const ctx = c.getContext('2d');
+  const nS = document.getElementById('hf-n');
+  const iS = document.getElementById('hf-i');
+  const aS = document.getElementById('hf-a');
+  const wS = document.getElementById('hf-w');
+  const nV = document.getElementById('hf-n-val');
+  const iV = document.getElementById('hf-i-val');
+  const aV = document.getElementById('hf-a-val');
+  const wV = document.getElementById('hf-w-val');
+  const ro = document.getElementById('hf-readout');
+
+  function fit(){
+    const r = c.getBoundingClientRect();
+    c.width = r.width * devicePixelRatio;
+    c.height = 320 * devicePixelRatio;
+    c.style.height = '320px';
+    ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  }
+  fit(); window.addEventListener('resize', ()=>{fit();draw()});
+
+  const Imap = [
+    {I: 0.5, label:'1/2 (¹H)'},
+    {I: 1.0, label:'1 (¹⁴N)'},
+    {I: 1.5, label:'3/2 (⁵⁵Mn)'}
+  ];
+
+  // Compute multinomial intensities for n equivalent nuclei of spin I
+  // Using polynomial expansion of (1 + x + x^2 + ... + x^{2I})^n
+  function multinomial(n, I){
+    const m = Math.round(2*I);
+    let coeffs = [1];
+    for(let k=0;k<n;k++){
+      const next = new Array(coeffs.length + m).fill(0);
+      for(let j=0;j<coeffs.length;j++){
+        for(let q=0;q<=m;q++){
+          next[j+q] += coeffs[j];
+        }
+      }
+      coeffs = next;
+    }
+    return coeffs; // length 2nI+1
+  }
+
+  function findGuess(nI, n){
+    if(nI === 0) return 'enkelt linje';
+    if(n === 3 && nI === 1.5) return 'CH₃·';
+    if(n === 1 && nI === 1) return 'nitroxid';
+    if(n === 2 && nI === 1) return 'NO₂·';
+    if(n === 4 && nI === 2) return 'C₆H₆⁻ (5 linjer)';
+    return n + ' × I=' + (nI/(n||1)).toFixed(0); // fallback
+  }
+
+  function draw(){
+    const W = c.clientWidth, H = 320;
+    ctx.clearRect(0,0,W,H);
+    const padL=50, padR=30, padT=20, padB=40;
+    const pw = W-padL-padR, ph = H-padT-padB;
+
+    const n = parseInt(nS.value);
+    const Iidx = parseInt(iS.value);
+    const Ii = Imap[Iidx];
+    const a = parseFloat(aS.value); // mT
+    const w = parseFloat(wS.value); // mT linewidth FWHM
+
+    nV.textContent = n;
+    iV.textContent = Ii.label;
+    aV.textContent = a.toFixed(2) + ' mT';
+    wV.textContent = w.toFixed(2) + ' mT';
+
+    const coeffs = multinomial(n, Ii.I);
+    const nLines = coeffs.length;
+    const total = coeffs.reduce((s,v)=>s+v,0);
+
+    // line positions in mT relative to center
+    const m = Math.round(2*Ii.I);
+    const totalM = n*m;
+    // positions: from -totalM/2 to +totalM/2 in steps of 1 (in units of "spin-projection sum")
+    // each step in field corresponds to a (mT)
+    const positions = [];
+    for(let k=0;k<nLines;k++){
+      const off = (k - totalM/2) * a;
+      positions.push({off:off, intensity:coeffs[k]/total});
+    }
+
+    // field axis range
+    const halfSpan = (totalM/2)*a + 6*w;
+    const Bmin = -halfSpan, Bmax = halfSpan;
+
+    // axis
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.beginPath();
+    ctx.moveTo(padL, padT+ph); ctx.lineTo(W-padR, padT+ph);
+    ctx.moveTo(padL, padT); ctx.lineTo(padL, padT+ph);
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.font = '500 10px JetBrains Mono';
+    for(let i=0;i<=4;i++){
+      const Bv = Bmin + (i/4)*(Bmax-Bmin);
+      const X = padL + (i/4)*pw;
+      ctx.beginPath(); ctx.moveTo(X, padT+ph); ctx.lineTo(X, padT+ph+4); ctx.stroke();
+      ctx.fillText(Bv.toFixed(1), X-12, padT+ph+18);
+    }
+    ctx.fillText('B-Bcenter [mT]', W-padR-80, padT+ph+18);
+
+    // Build absorption from sum of Lorentzians
+    const N = 800;
+    const wT = w/2;
+    function abs(B){
+      let s = 0;
+      for(const p of positions){
+        const d = B - p.off;
+        s += p.intensity * (wT*wT)/(d*d + wT*wT);
+      }
+      return s;
+    }
+    function dabs(B){
+      let s = 0;
+      for(const p of positions){
+        const d = B - p.off;
+        s += p.intensity * (-2*d*wT*wT)/Math.pow(d*d+wT*wT,2);
+      }
+      return s;
+    }
+
+    let maxA = 0, maxD = 0;
+    const xs = []; const ys = []; const yds = [];
+    for(let i=0;i<=N;i++){
+      const Bv = Bmin + (i/N)*(Bmax-Bmin);
+      const v = abs(Bv); const dv = dabs(Bv);
+      maxA = Math.max(maxA, v);
+      maxD = Math.max(maxD, Math.abs(dv));
+      xs.push(Bv); ys.push(v); yds.push(dv);
+    }
+    if(maxA===0) maxA=1;
+    if(maxD===0) maxD=1;
+
+    // absorption
+    ctx.beginPath();
+    for(let i=0;i<=N;i++){
+      const X = padL + (i/N)*pw;
+      const Y = padT+ph - (ys[i]/maxA)*ph*0.55;
+      if(i===0) ctx.moveTo(X,Y); else ctx.lineTo(X,Y);
+    }
+    ctx.strokeStyle = '#22d3ee';
+    ctx.lineWidth = 1.6;
+    ctx.shadowBlur=6; ctx.shadowColor='#22d3ee';
+    ctx.stroke();
+    ctx.shadowBlur=0;
+
+    // derivative (centered higher up)
+    const midY = padT + ph*0.32;
+    ctx.beginPath();
+    for(let i=0;i<=N;i++){
+      const X = padL + (i/N)*pw;
+      const Y = midY - (yds[i]/maxD)*ph*0.22;
+      if(i===0) ctx.moveTo(X,Y); else ctx.lineTo(X,Y);
+    }
+    ctx.strokeStyle = '#f5b133';
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+
+    // mark line positions and intensities
+    for(const p of positions){
+      const X = padL + ((p.off-Bmin)/(Bmax-Bmin))*pw;
+      ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+      ctx.setLineDash([2,3]);
+      ctx.beginPath(); ctx.moveTo(X, padT+ph); ctx.lineTo(X, padT+ph - p.intensity/(maxA/coeffs.reduce((s,v)=>Math.max(s,v),0)) * 12 - 4); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // intensities label (1:3:3:1 etc.)
+    let label = coeffs.join(':');
+    if(label.length > 38) label = nLines + ' linjer';
+    ctx.fillStyle = '#5eead4';
+    ctx.font = '500 12px JetBrains Mono';
+    ctx.fillText(nLines + ' linjer · ' + label, padL+10, padT+18);
+
+    ro.textContent = (n===0?'enkelt linje':findGuess(Ii.I, n));
+  }
+  nS.addEventListener('input', draw);
+  iS.addEventListener('input', draw);
+  aS.addEventListener('input', draw);
+  wS.addEventListener('input', draw);
+  draw();
+})();
+
+/* =========================================================
+   6) PULSE SEQUENCE animator
+   ========================================================= */
+(function pulseSeq(){
+  const c = document.getElementById('pulse-canvas');
+  const ctx = c.getContext('2d');
+  const buttons = document.querySelectorAll('[data-seq]');
+  let mode = 'hahn';
+  let t0 = performance.now();
+
+  function fit(){
+    const r = c.getBoundingClientRect();
+    c.width = r.width * devicePixelRatio;
+    c.height = 360 * devicePixelRatio;
+    c.style.height = '360px';
+    ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  }
+  fit(); window.addEventListener('resize', fit);
+
+  buttons.forEach(b => b.addEventListener('click', ()=>{ mode = b.dataset.seq; t0 = performance.now(); }));
+
+  function pulseShape(t, t0p, dur, kind){
+    if(t < t0p || t > t0p + dur) return 0;
+    const x = (t - t0p)/dur;
+    return Math.sin(Math.PI*x) * (kind==='pi'?1:0.6);
+  }
+
+  function loop(){
+    const W = c.clientWidth, H = 360;
+    ctx.clearRect(0,0,W,H);
+
+    const padL = 60, padR = 30;
+    const tracks = [
+      {y: 60,  name:'Detektor (ν₁)', color:'#22d3ee'},
+      {y: 130, name:'Pump (ν₂)',     color:'#f5b133'},
+      {y: 220, name:'M_xy',          color:'#ff4fa8'},
+      {y: 295, name:'Signal',        color:'#5eead4'}
+    ];
+
+    // axis labels
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.font = '500 11px JetBrains Mono';
+    tracks.forEach(t=>{
+      ctx.fillStyle = t.color;
+      ctx.fillText(t.name, 10, t.y+4);
+      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+      ctx.beginPath(); ctx.moveTo(padL, t.y); ctx.lineTo(W-padR, t.y); ctx.stroke();
+    });
+
+    const T = (W - padL - padR);
+    const elapsed = ((performance.now() - t0)/4000) % 1; // 0..1 cycle
+
+    // define sequence in fractional time
+    let pulses = [];
+    let echoes = [];
+    let mxy = []; // function of t (frac) returning amplitude
+    if(mode === 'fid'){
+      pulses = [
+        {at:0.10, dur:0.02, ax:'det', kind:'pi2', label:'π/2'}
+      ];
+      mxy = (frac)=>{
+        if(frac < 0.10) return 0;
+        if(frac < 0.12) return (frac-0.10)/0.02;
+        return Math.exp(-(frac-0.12)*7) * Math.cos((frac-0.12)*200);
+      };
+    } else if(mode === 'hahn'){
+      const tau = 0.30;
+      pulses = [
+        {at:0.10, dur:0.02, ax:'det', kind:'pi2', label:'π/2'},
+        {at:0.10+tau, dur:0.025, ax:'det', kind:'pi', label:'π'},
+      ];
+      const echoTime = 0.10 + 2*tau;
+      echoes.push(echoTime);
+      mxy = (frac)=>{
+        if(frac < 0.10) return 0;
+        if(frac < 0.12) return (frac-0.10)/0.02;
+        // free precession with dephasing exp(-Δτ/T2*) cosine
+        if(frac < 0.10+tau){
+          const dt = frac - 0.12;
+          return Math.exp(-dt*5) * Math.cos(dt*180);
+        }
+        if(frac < 0.10+tau+0.025){
+          // pi pulse refocuses; show flat
+          return Math.exp(-(frac - 0.12)*5) * 0.6;
+        }
+        // after pi: rephasing — magnitude grows back to peak at echoTime
+        const dt2 = frac - (0.10+tau+0.025);
+        const refocusGrowth = 1 - Math.exp(-dt2*8);
+        const refocusDecay = Math.exp(-(frac-0.12)*1.2); // overall T2
+        const oscill = Math.cos((frac-0.12)*180);
+        // around echoTime, signal is peak; far from it, dephased
+        const peakDist = Math.abs(frac - echoTime);
+        const env = Math.exp(-Math.pow(peakDist*30,2));
+        return env * refocusDecay;
+      };
+    } else if(mode === 'deer'){
+      // 4-pulse DEER: pi/2_det - tau1 - pi_det - tau1 - <pump pi at variable T> - tau2 - pi_det - tau2 - echo
+      const tau1 = 0.18, tau2 = 0.30;
+      pulses = [
+        {at:0.06, dur:0.02, ax:'det', kind:'pi2', label:'π/2'},
+        {at:0.06+tau1, dur:0.025, ax:'det', kind:'pi', label:'π'},
+      ];
+      const refocusTime = 0.06 + 2*tau1;
+      pulses.push({at:refocusTime+0.06, dur:0.025, ax:'pump', kind:'pi', label:'π_pump'});
+      pulses.push({at:refocusTime+tau2, dur:0.025, ax:'det', kind:'pi', label:'π'});
+      const echoTime = refocusTime + 2*tau2;
+      echoes.push(echoTime);
+      mxy = (frac)=>{
+        if(frac < 0.06) return 0;
+        const dt = frac - 0.08;
+        const env = Math.exp(-dt*0.9);
+        // dipolar modulation kicks in after pump pulse
+        let mod = 1;
+        if(frac > refocusTime + 0.06){
+          const dtd = frac - (refocusTime+0.06);
+          mod = 0.7 + 0.3*Math.cos(dtd*120);
+        }
+        const peakDist = Math.abs(frac - echoTime);
+        const peakEnv = Math.exp(-Math.pow(peakDist*22,2));
+        // also draw small refocus echo at refocusTime
+        const peakDist2 = Math.abs(frac - refocusTime);
+        const peakEnv2 = Math.exp(-Math.pow(peakDist2*22,2)) * 0.6;
+        const oscill = Math.cos((frac-0.08)*180);
+        return env * Math.max(peakEnv, peakEnv2) * mod;
+      };
+    }
+
+    // draw pulses
+    pulses.forEach(p => {
+      const track = (p.ax==='det') ? tracks[0] : tracks[1];
+      const x0 = padL + p.at*T;
+      const w = p.dur * T;
+      // Gaussian-ish envelope
+      ctx.fillStyle = (p.ax==='det') ? 'rgba(34,211,238,0.85)' : 'rgba(245,177,51,0.85)';
+      ctx.beginPath();
+      ctx.moveTo(x0, track.y);
+      const N = 30;
+      for(let i=0;i<=N;i++){
+        const ff = i/N;
+        const xx = x0 + ff*w;
+        const env = Math.sin(Math.PI*ff);
+        const amp = (p.kind==='pi') ? 50 : 32;
+        const yy = track.y - env*amp;
+        if(i===0) ctx.lineTo(xx,yy); else ctx.lineTo(xx,yy);
+      }
+      ctx.lineTo(x0+w, track.y);
+      ctx.closePath();
+      ctx.fill();
+      // label
+      ctx.fillStyle = (p.ax==='det') ? '#22d3ee':'#f5b133';
+      ctx.font = '500 12px JetBrains Mono';
+      ctx.fillText(p.label, x0 + w/2 - 12, track.y - ((p.kind==='pi')?56:38));
+    });
+
+    // draw Mxy envelope
+    const trackM = tracks[2];
+    ctx.beginPath();
+    const N = 600;
+    for(let i=0;i<=N;i++){
+      const f = i/N;
+      const x = padL + f*T;
+      const v = mxy(f);
+      const y = trackM.y - v*40;
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.strokeStyle = '#ff4fa8';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // signal track: just |M_xy| envelope with gain
+    const trackS = tracks[3];
+    ctx.beginPath();
+    for(let i=0;i<=N;i++){
+      const f = i/N;
+      const x = padL + f*T;
+      const v = Math.abs(mxy(f));
+      const y = trackS.y - v*40;
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.strokeStyle = '#5eead4';
+    ctx.lineWidth = 1.8;
+    ctx.shadowBlur=6; ctx.shadowColor='#5eead4';
+    ctx.stroke();
+    ctx.shadowBlur=0;
+
+    // mark echoes
+    echoes.forEach(e => {
+      const x = padL + e*T;
+      ctx.strokeStyle = 'rgba(94,234,212,0.5)';
+      ctx.setLineDash([2,3]);
+      ctx.beginPath();
+      ctx.moveTo(x, 30); ctx.lineTo(x, H-20);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#5eead4';
+      ctx.font = '500 11px JetBrains Mono';
+      ctx.fillText('ekko', x-12, 24);
+    });
+
+    // moving "now" cursor
+    const xNow = padL + elapsed * T;
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+    ctx.setLineDash([4,4]);
+    ctx.beginPath();
+    ctx.moveTo(xNow, 30); ctx.lineTo(xNow, H-20);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // mode label
+    ctx.fillStyle = '#9aa3bb';
+    ctx.font = '500 13px JetBrains Mono';
+    ctx.fillText({fid:'FID',hahn:'HAHN-EKKO',deer:'4-PULS DEER'}[mode], W-padR-130, H-12);
+
+    requestAnimationFrame(loop);
+  }
+  loop();
+})();
+</script>
+</body>
+</html>
