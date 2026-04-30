@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tidevand & Månen — En interaktiv rejse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void: #060810;
+    --deep: #0c1224;
+    --ink: #e8e4d8;
+    --muted: #8a8d9b;
+    --accent: #d4b896;
+    --cyan: #6db3c4;
+    --line: rgba(232,228,216,0.12);
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{background:var(--void);color:var(--ink);overflow-x:hidden;}
+  body{
+    font-family:'Manrope',sans-serif;
+    font-weight:300;
+    line-height:1.6;
+    background:
+      radial-gradient(ellipse at 20% 10%, rgba(109,179,196,0.08), transparent 50%),
+      radial-gradient(ellipse at 80% 60%, rgba(212,184,150,0.06), transparent 50%),
+      var(--void);
+    min-height:100vh;
+  }
+
+  /* Starfield */
+  .stars{
+    position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image:
+      radial-gradient(1px 1px at 23% 18%, white, transparent),
+      radial-gradient(1px 1px at 67% 42%, white, transparent),
+      radial-gradient(1px 1px at 41% 78%, white, transparent),
+      radial-gradient(1px 1px at 89% 12%, white, transparent),
+      radial-gradient(1px 1px at 12% 56%, white, transparent),
+      radial-gradient(1px 1px at 78% 88%, white, transparent),
+      radial-gradient(1px 1px at 55% 25%, white, transparent),
+      radial-gradient(1px 1px at 31% 91%, white, transparent),
+      radial-gradient(1.5px 1.5px at 7% 33%, rgba(255,255,255,0.6), transparent),
+      radial-gradient(1.5px 1.5px at 93% 67%, rgba(255,255,255,0.6), transparent),
+      radial-gradient(2px 2px at 50% 50%, rgba(212,184,150,0.4), transparent);
+    background-size: 100% 100%;
+    opacity:0.6;
+  }
+  .stars::after{
+    content:""; position:absolute; inset:0;
+    background-image:
+      radial-gradient(1px 1px at 15% 5%, white, transparent),
+      radial-gradient(1px 1px at 45% 65%, white, transparent),
+      radial-gradient(1px 1px at 85% 35%, white, transparent),
+      radial-gradient(1px 1px at 25% 45%, white, transparent),
+      radial-gradient(1px 1px at 65% 95%, white, transparent);
+    animation: twinkle 4s ease-in-out infinite;
+  }
+  @keyframes twinkle { 0%,100%{opacity:0.4;} 50%{opacity:1;} }
+
+  main{position:relative; z-index:1;}
+
+  /* Typography */
+  h1,h2,h3{font-family:'Instrument Serif',serif; font-weight:400; letter-spacing:-0.01em;}
+  .italic{font-style:italic; color:var(--accent);}
+  .mono{font-family:'JetBrains Mono',monospace; font-size:0.78rem; letter-spacing:0.05em; text-transform:uppercase; color:var(--muted);}
+
+  /* HERO */
+  .hero{
+    min-height:100vh;
+    display:grid;
+    grid-template-columns:1fr;
+    align-items:center;
+    padding:3rem 1.5rem;
+    position:relative;
+  }
+  @media(min-width:900px){
+    .hero{grid-template-columns:1fr 1fr; padding:4rem 6rem; gap:4rem;}
+  }
+  .hero-text .label{margin-bottom:1.5rem;}
+  .hero-text h1{
+    font-size:clamp(3rem, 8vw, 6rem);
+    line-height:0.95;
+    margin-bottom:1.5rem;
+  }
+  .hero-text h1 .accent{color:var(--accent);}
+  .hero-text p{
+    color:var(--muted);
+    max-width:38ch;
+    font-size:1.05rem;
+  }
+  .scroll-hint{
+    position:absolute; bottom:2rem; left:50%; transform:translateX(-50%);
+    color:var(--muted); font-size:0.75rem; letter-spacing:0.2em; text-transform:uppercase;
+    animation: bob 2s ease-in-out infinite;
+  }
+  @keyframes bob{ 0%,100%{transform:translateX(-50%) translateY(0);} 50%{transform:translateX(-50%) translateY(8px);} }
+
+  /* Hero canvas */
+  .hero-vis{
+    aspect-ratio:1/1;
+    width:100%;
+    max-width:520px;
+    margin:0 auto;
+    position:relative;
+  }
+  .hero-vis canvas{width:100%; height:100%; display:block;}
+
+  /* Section */
+  section{padding:6rem 1.5rem; position:relative;}
+  @media(min-width:900px){section{padding:8rem 6rem;}}
+  .section-num{
+    font-family:'Instrument Serif',serif; font-style:italic;
+    font-size:5rem; color:var(--accent); opacity:0.4;
+    line-height:1; margin-bottom:1rem;
+  }
+  .section-title{
+    font-size:clamp(2rem, 5vw, 3.5rem);
+    line-height:1.05;
+    margin-bottom:2rem;
+    max-width:14ch;
+  }
+  .section-body{
+    color:var(--muted);
+    max-width:55ch;
+    font-size:1.05rem;
+    margin-bottom:2.5rem;
+  }
+  .section-body strong{color:var(--ink); font-weight:500;}
+
+  /* Divider */
+  .divider{
+    height:1px; background:var(--line); margin:0 1.5rem;
+  }
+
+  /* Interactive Block 1: drag the moon */
+  .play{
+    border:1px solid var(--line);
+    background:rgba(12,18,36,0.4);
+    backdrop-filter:blur(4px);
+    border-radius:2px;
+    padding:1.5rem;
+    position:relative;
+  }
+  .play-canvas{
+    width:100%; aspect-ratio:1/1;
+    max-width:600px; margin:0 auto;
+    cursor:grab;
+    display:block;
+  }
+  .play-canvas:active{cursor:grabbing;}
+  .play-instructions{
+    text-align:center; margin-top:1rem;
+    font-size:0.85rem; color:var(--muted);
+    letter-spacing:0.04em;
+  }
+
+  /* Spring/neap tide toggle */
+  .toggle-row{
+    display:flex; gap:0.5rem; flex-wrap:wrap;
+    margin:2rem 0 1rem;
+    justify-content:center;
+  }
+  .toggle{
+    background:transparent;
+    border:1px solid var(--line);
+    color:var(--muted);
+    padding:0.7rem 1.4rem;
+    font-family:'Manrope',sans-serif;
+    font-size:0.8rem;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    cursor:pointer;
+    transition:all 0.3s ease;
+  }
+  .toggle:hover{color:var(--ink); border-color:var(--accent);}
+  .toggle.active{
+    background:var(--accent); color:var(--void); border-color:var(--accent);
+  }
+
+  /* Tidal locking */
+  .lock-grid{
+    display:grid; grid-template-columns:1fr; gap:2rem;
+    margin-top:3rem;
+  }
+  @media(min-width:800px){.lock-grid{grid-template-columns:1fr 1fr;}}
+  .lock-card{
+    border:1px solid var(--line);
+    padding:1.5rem;
+    background:rgba(12,18,36,0.3);
+  }
+  .lock-card h3{
+    font-size:1.6rem; margin-bottom:0.5rem;
+  }
+  .lock-card p{color:var(--muted); font-size:0.9rem; margin-top:1rem;}
+  .lock-canvas{
+    width:100%; aspect-ratio:1/1; display:block;
+  }
+
+  /* Stats / facts row */
+  .facts{
+    display:grid; grid-template-columns:repeat(2,1fr); gap:1px;
+    background:var(--line);
+    border:1px solid var(--line);
+    margin-top:4rem;
+  }
+  @media(min-width:800px){.facts{grid-template-columns:repeat(4,1fr);}}
+  .fact{
+    background:var(--void); padding:2rem 1.5rem;
+  }
+  .fact-num{
+    font-family:'Instrument Serif',serif; font-style:italic;
+    font-size:2.8rem; color:var(--accent); line-height:1;
+    margin-bottom:0.5rem;
+  }
+  .fact-label{
+    font-size:0.75rem; letter-spacing:0.12em;
+    text-transform:uppercase; color:var(--muted);
+  }
+
+  /* Footer */
+  footer{
+    padding:4rem 1.5rem 3rem;
+    text-align:center;
+    color:var(--muted);
+    font-size:0.85rem;
+    border-top:1px solid var(--line);
+    margin-top:6rem;
+  }
+  footer .sig{
+    font-family:'Instrument Serif',serif;
+    font-style:italic;
+    color:var(--accent);
+    font-size:1.1rem;
+    margin-top:0.5rem;
+  }
+
+  /* Reveal */
+  .reveal{opacity:0; transform:translateY(20px); transition:opacity 1s ease, transform 1s ease;}
+  .reveal.in{opacity:1; transform:none;}
+</style>
+</head>
+<body>
+<div class="stars"></div>
+
+<main>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-text">
+      <div class="mono label">— Et himmellegemes greb</div>
+      <h1>Havet,<br/><span class="italic">der trækker</span><br/>vejret <span class="accent">·</span></h1>
+      <p>Hver dag stiger og falder havene under Månens stille tyngde. En interaktiv rejse gennem tidevandskræfter, springflod og hvorfor Månen altid viser os den samme side.</p>
+    </div>
+    <div class="hero-vis">
+      <canvas id="heroCanvas"></canvas>
+    </div>
+    <div class="scroll-hint">↓ rul for at udforske</div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- SECTION 1: TIDAL FORCES -->
+  <section>
+    <div class="section-num">i.</div>
+    <h2 class="section-title">Et træk, der ikke er lige stort</h2>
+    <p class="section-body">Månens tyngdekraft trækker i hele Jorden — men ikke ens overalt. Den side af Jorden der vender <strong>mod</strong> Månen er ~12.700 km tættere på end den modsatte side, og oplever derfor et stærkere træk. Det er denne <em>forskel</em>, ikke trækket i sig selv, der er tidevandskraften. Resultatet er, at Jorden bliver strakt en lille smule langs aksen mod Månen, og havene — som er bevægelige — danner to buler.</p>
+
+    <div class="play">
+      <canvas id="dragCanvas" class="play-canvas"></canvas>
+      <div class="play-instructions">↻ Træk Månen rundt om Jorden — se hvordan vandbulerne følger med</div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- SECTION 2: SPRING VS NEAP -->
+  <section>
+    <div class="section-num">ii.</div>
+    <h2 class="section-title">Når Solen blander sig</h2>
+    <p class="section-body">Solen skaber også tidevandsbuler — cirka <strong>46% så stærke</strong> som Månens. Når Sol og Måne står på linje, lægger deres effekter sig sammen og giver kraftig <em>springflod</em>. Når de står vinkelret modarbejder de hinanden, og vi får den svagere <em>niptid</em>.</p>
+
+    <div class="toggle-row">
+      <button class="toggle active" data-mode="spring">Springflod</button>
+      <button class="toggle" data-mode="neap">Niptid</button>
+    </div>
+
+    <div class="play">
+      <canvas id="springCanvas" class="play-canvas"></canvas>
+      <div class="play-instructions">☉ Sol · ⊕ Jord · ☾ Måne — observer hvordan bulernes højde ændrer sig</div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- SECTION 3: TIDAL LOCKING -->
+  <section>
+    <div class="section-num">iii.</div>
+    <h2 class="section-title">Hvorfor Månen aldrig vender ryggen til</h2>
+    <p class="section-body">Tidevandskræfter virker også <strong>den anden vej</strong>. Jorden skaber buler i Månens klippegrund, og fordi disse buler i tidernes morgen lå en smule ude af linje med Jorden, fungerede friktionen som en bremse. Over <strong>milliarder af år</strong> bremsede det Månens rotation ned, indtil den brugte præcis lige så lang tid på at dreje om sig selv som på at kredse om Jorden — 27,3 dage. Vi ser nu altid den samme side. Sammenlign nedenfor:</p>
+
+    <div class="lock-grid">
+      <div class="lock-card">
+        <div class="mono">venstre</div>
+        <h3>Frit roterende</h3>
+        <canvas id="freeCanvas" class="lock-canvas"></canvas>
+        <p>Hypotetisk måne der roterer hurtigere end den kredser. Vi ville se alle sider efterhånden.</p>
+      </div>
+      <div class="lock-card">
+        <div class="mono">højre — vores måne</div>
+        <h3>Tidevandslåst</h3>
+        <canvas id="lockedCanvas" class="lock-canvas"></canvas>
+        <p>Rotation = omløbstid. Den røde markør (en tænkt krater) peger altid mod Jorden.</p>
+      </div>
+    </div>
+
+    <div class="facts">
+      <div class="fact">
+        <div class="fact-num">2×</div>
+        <div class="fact-label">Højvande pr. døgn</div>
+      </div>
+      <div class="fact">
+        <div class="fact-num">27,3</div>
+        <div class="fact-label">Dage · månens omløb</div>
+      </div>
+      <div class="fact">
+        <div class="fact-num">3,8</div>
+        <div class="fact-label">cm/år · månens drift væk</div>
+      </div>
+      <div class="fact">
+        <div class="fact-num">21t</div>
+        <div class="fact-label">Et døgn for 600 mio. år siden</div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Mekanikken bag bølgeslagene — fra Newton til nu.<br/>
+    <span class="sig">Mare nostrum, in motu perpetuo.</span>
+  </footer>
+
+</main>
+
+<script>
+// ============== HELPERS ==============
+function setupCanvas(canvas){
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  return {ctx, w: rect.width, h: rect.height};
+}
+
+function drawStarfield(ctx, w, h, count=40, seed=1){
+  // Deterministic pseudo-stars
+  let s = seed;
+  for(let i=0;i<count;i++){
+    s = (s*9301+49297)%233280;
+    const x = (s/233280)*w;
+    s = (s*9301+49297)%233280;
+    const y = (s/233280)*h;
+    s = (s*9301+49297)%233280;
+    const r = 0.3 + (s/233280)*1.0;
+    s = (s*9301+49297)%233280;
+    const a = 0.2 + (s/233280)*0.6;
+    ctx.fillStyle = `rgba(255,255,255,${a})`;
+    ctx.beginPath();
+    ctx.arc(x,y,r,0,Math.PI*2);
+    ctx.fill();
+  }
+}
+
+function drawEarth(ctx, cx, cy, r, options={}){
+  const {bulgeAngle=0, bulgeAmount=0.12, drawBulges=true} = options;
+
+  // Tidal bulges (drawn first, behind earth) - elongated water envelope
+  if(drawBulges){
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(bulgeAngle);
+    const grad = ctx.createRadialGradient(0,0,r*0.7, 0,0, r*(1+bulgeAmount));
+    grad.addColorStop(0, 'rgba(109,179,196,0.0)');
+    grad.addColorStop(0.7, 'rgba(109,179,196,0.4)');
+    grad.addColorStop(1, 'rgba(109,179,196,0.0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.ellipse(0,0, r*(1+bulgeAmount), r*(1-bulgeAmount*0.4), 0, 0, Math.PI*2);
+    ctx.fill();
+    // Defined bulge edge
+    ctx.strokeStyle = 'rgba(109,179,196,0.55)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.ellipse(0,0, r*(1+bulgeAmount), r*(1-bulgeAmount*0.4), 0, 0, Math.PI*2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Earth body
+  const eGrad = ctx.createRadialGradient(cx-r*0.3, cy-r*0.3, r*0.1, cx, cy, r);
+  eGrad.addColorStop(0, '#3a5a7a');
+  eGrad.addColorStop(0.6, '#1e3050');
+  eGrad.addColorStop(1, '#0a1428');
+  ctx.fillStyle = eGrad;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI*2);
+  ctx.fill();
+
+  // Continents (stylized)
+  ctx.fillStyle = 'rgba(212,184,150,0.55)';
+  // Random-looking but fixed shapes
+  ctx.beginPath();
+  ctx.ellipse(cx - r*0.3, cy - r*0.1, r*0.25, r*0.18, 0.4, 0, Math.PI*2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(cx + r*0.25, cy + r*0.2, r*0.22, r*0.15, -0.5, 0, Math.PI*2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(cx + r*0.05, cy - r*0.4, r*0.12, r*0.08, 0.2, 0, Math.PI*2);
+  ctx.fill();
+
+  // Atmosphere glow
+  ctx.strokeStyle = 'rgba(109,179,196,0.3)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r+1, 0, Math.PI*2);
+  ctx.stroke();
+}
+
+function drawMoon(ctx, cx, cy, r, options={}){
+  const {marker=null, markerAngle=0} = options;
+  const mGrad = ctx.createRadialGradient(cx-r*0.3, cy-r*0.3, r*0.1, cx, cy, r);
+  mGrad.addColorStop(0, '#e8e4d8');
+  mGrad.addColorStop(0.7, '#9a958a');
+  mGrad.addColorStop(1, '#5a554a');
+  ctx.fillStyle = mGrad;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI*2);
+  ctx.fill();
+
+  // Craters
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.beginPath(); ctx.arc(cx-r*0.3, cy+r*0.1, r*0.18, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx+r*0.2, cy-r*0.25, r*0.12, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx+r*0.1, cy+r*0.3, r*0.08, 0, Math.PI*2); ctx.fill();
+
+  // Marker (red point) for tidal locking demo
+  if(marker){
+    const mx = cx + Math.cos(markerAngle) * r * 0.85;
+    const my = cy + Math.sin(markerAngle) * r * 0.85;
+    ctx.fillStyle = '#d4513e';
+    ctx.beginPath();
+    ctx.arc(mx, my, r*0.15, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+}
+
+function drawSun(ctx, cx, cy, r){
+  const sGrad = ctx.createRadialGradient(cx, cy, r*0.2, cx, cy, r*1.6);
+  sGrad.addColorStop(0, '#fff5d8');
+  sGrad.addColorStop(0.4, '#f4c878');
+  sGrad.addColorStop(1, 'rgba(244,200,120,0)');
+  ctx.fillStyle = sGrad;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r*1.6, 0, Math.PI*2);
+  ctx.fill();
+  ctx.fillStyle = '#fff5d8';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI*2);
+  ctx.fill();
+}
+
+// ============== HERO CANVAS ==============
+(function(){
+  const canvas = document.getElementById('heroCanvas');
+  const {ctx, w, h} = setupCanvas(canvas);
+  let t = 0;
+  function animate(){
+    ctx.clearRect(0,0,w,h);
+    drawStarfield(ctx, w, h, 50, 7);
+    const cx = w/2, cy = h/2;
+    const earthR = Math.min(w,h)*0.18;
+    const orbitR = Math.min(w,h)*0.38;
+    const moonAngle = t * 0.005;
+    const mx = cx + Math.cos(moonAngle)*orbitR;
+    const my = cy + Math.sin(moonAngle)*orbitR;
+
+    // Orbit ring
+    ctx.strokeStyle = 'rgba(232,228,216,0.08)';
+    ctx.setLineDash([2,4]);
+    ctx.beginPath();
+    ctx.arc(cx, cy, orbitR, 0, Math.PI*2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    drawEarth(ctx, cx, cy, earthR, {bulgeAngle: moonAngle, bulgeAmount: 0.14});
+    drawMoon(ctx, mx, my, earthR*0.32);
+
+    // Connecting line
+    ctx.strokeStyle = 'rgba(212,184,150,0.2)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(mx, my);
+    ctx.stroke();
+
+    t++;
+    requestAnimationFrame(animate);
+  }
+  animate();
+  window.addEventListener('resize', ()=>{
+    setupCanvas(canvas);
+  });
+})();
+
+// ============== DRAG CANVAS ==============
+(function(){
+  const canvas = document.getElementById('dragCanvas');
+  let cw, ch, ctx;
+  function init(){
+    const r = setupCanvas(canvas);
+    ctx = r.ctx; cw = r.w; ch = r.h;
+  }
+  init();
+
+  let moonAngle = 0.4;
+  let dragging = false;
+
+  function getCenter(){return {cx: cw/2, cy: ch/2};}
+  function getOrbitR(){return Math.min(cw,ch)*0.36;}
+  function getEarthR(){return Math.min(cw,ch)*0.16;}
+
+  function draw(){
+    ctx.clearRect(0,0,cw,ch);
+    drawStarfield(ctx, cw, ch, 30, 17);
+    const {cx, cy} = getCenter();
+    const er = getEarthR();
+    const orbitR = getOrbitR();
+    const mx = cx + Math.cos(moonAngle)*orbitR;
+    const my = cy + Math.sin(moonAngle)*orbitR;
+
+    // Orbit
+    ctx.strokeStyle = 'rgba(232,228,216,0.08)';
+    ctx.setLineDash([2,4]);
+    ctx.beginPath();
+    ctx.arc(cx, cy, orbitR, 0, Math.PI*2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Force arrows from Moon toward Earth (visualize differential pull)
+    const ax1 = cx - er*1.4, ay1 = cy;  // far side
+    const ax2 = cx + er*1.4, ay2 = cy;  // near side
+    // We'll align arrows along earth-moon axis
+    const dx = mx-cx, dy = my-cy;
+    const len = Math.hypot(dx,dy);
+    const ux = dx/len, uy = dy/len;
+    // near point and far point
+    const nearX = cx + ux*er*1.3, nearY = cy + uy*er*1.3;
+    const farX = cx - ux*er*1.3, farY = cy - uy*er*1.3;
+
+    // Draw arrows showing force differential
+    function arrow(x, y, lengthScale){
+      const ex = x + ux*20*lengthScale;
+      const ey = y + uy*20*lengthScale;
+      ctx.strokeStyle = 'rgba(212,184,150,0.7)';
+      ctx.fillStyle = 'rgba(212,184,150,0.7)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(x,y);
+      ctx.lineTo(ex,ey);
+      ctx.stroke();
+      // arrowhead
+      const ang = Math.atan2(uy,ux);
+      ctx.beginPath();
+      ctx.moveTo(ex,ey);
+      ctx.lineTo(ex-Math.cos(ang-0.4)*5, ey-Math.sin(ang-0.4)*5);
+      ctx.lineTo(ex-Math.cos(ang+0.4)*5, ey-Math.sin(ang+0.4)*5);
+      ctx.fill();
+    }
+    arrow(nearX, nearY, 1.6); // strong pull toward moon
+    arrow(cx, cy, 1.0);       // medium pull
+    arrow(farX, farY, 0.5);   // weak pull
+
+    drawEarth(ctx, cx, cy, er, {bulgeAngle: moonAngle, bulgeAmount: 0.16});
+    drawMoon(ctx, mx, my, er*0.32);
+
+    // Labels
+    ctx.fillStyle = 'rgba(232,228,216,0.5)';
+    ctx.font = '10px JetBrains Mono, monospace';
+    ctx.fillText('STÆRKERE TRÆK', nearX + ux*30 - 30, nearY + uy*30 + 4);
+    ctx.fillText('SVAGERE TRÆK', farX + ux*30 - 25, farY + uy*30 + 4);
+  }
+
+  draw();
+
+  function pointerToAngle(e){
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.touches? e.touches[0].clientX : e.clientX) - rect.left;
+    const y = (e.touches? e.touches[0].clientY : e.clientY) - rect.top;
+    const {cx, cy} = getCenter();
+    return Math.atan2(y-cy, x-cx);
+  }
+
+  canvas.addEventListener('mousedown', e=>{dragging=true; moonAngle=pointerToAngle(e); draw();});
+  canvas.addEventListener('mousemove', e=>{if(dragging){moonAngle=pointerToAngle(e); draw();}});
+  window.addEventListener('mouseup', ()=>dragging=false);
+  canvas.addEventListener('touchstart', e=>{dragging=true; moonAngle=pointerToAngle(e); draw(); e.preventDefault();});
+  canvas.addEventListener('touchmove', e=>{if(dragging){moonAngle=pointerToAngle(e); draw(); e.preventDefault();}});
+  window.addEventListener('touchend', ()=>dragging=false);
+
+  // Auto-rotate when not dragging
+  let auto = 0;
+  setInterval(()=>{
+    if(!dragging){
+      moonAngle += 0.008;
+      auto++;
+      draw();
+    }
+  }, 30);
+
+  window.addEventListener('resize', ()=>{init(); draw();});
+})();
+
+// ============== SPRING/NEAP CANVAS ==============
+(function(){
+  const canvas = document.getElementById('springCanvas');
+  let cw, ch, ctx;
+  function init(){
+    const r = setupCanvas(canvas);
+    ctx = r.ctx; cw = r.w; ch = r.h;
+  }
+  init();
+
+  let mode = 'spring';
+  let t = 0;
+
+  function draw(){
+    ctx.clearRect(0,0,cw,ch);
+    drawStarfield(ctx, cw, ch, 35, 31);
+    const cx = cw*0.55, cy = ch/2;
+    const er = Math.min(cw,ch)*0.10;
+
+    // Sun (far left, large)
+    const sunR = Math.min(cw,ch)*0.06;
+    const sunX = cw*0.12, sunY = ch/2;
+    drawSun(ctx, sunX, sunY, sunR);
+
+    // Moon position depends on mode
+    const moonOrbitR = Math.min(cw,ch)*0.25;
+    let moonAngle, bulgeAngle, bulgeAmount;
+    if(mode==='spring'){
+      // Moon on the opposite side of earth from sun (full moon configuration)
+      // OR same side (new moon). We'll alternate with a slow oscillation for life.
+      const phase = Math.floor(t/300)%2;
+      moonAngle = phase===0 ? 0 : Math.PI; // right or left of earth
+      bulgeAngle = 0; // bulges align with sun-earth-moon line
+      bulgeAmount = 0.22; // strong combined effect
+    } else {
+      // Neap: moon perpendicular
+      moonAngle = -Math.PI/2;
+      bulgeAngle = -Math.PI/4; // average between sun direction and moon direction
+      bulgeAmount = 0.08;
+    }
+
+    const mx = cx + Math.cos(moonAngle)*moonOrbitR;
+    const my = cy + Math.sin(moonAngle)*moonOrbitR;
+
+    // Connection lines
+    ctx.strokeStyle = 'rgba(212,184,150,0.15)';
+    ctx.setLineDash([2,4]);
+    ctx.beginPath();
+    ctx.moveTo(sunX, sunY);
+    ctx.lineTo(cx, cy);
+    ctx.lineTo(mx, my);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Orbit
+    ctx.strokeStyle = 'rgba(232,228,216,0.06)';
+    ctx.beginPath();
+    ctx.arc(cx, cy, moonOrbitR, 0, Math.PI*2);
+    ctx.stroke();
+
+    // Earth with appropriate bulges
+    if(mode==='spring'){
+      // Single strong bulge along sun-earth axis
+      drawEarth(ctx, cx, cy, er, {bulgeAngle: 0, bulgeAmount: 0.22});
+    } else {
+      // Show the conflict: moon pulls vertically, sun pulls horizontally
+      // Draw two competing bulges
+      ctx.save();
+      ctx.translate(cx, cy);
+      // Sun's bulge (horizontal, weaker shown)
+      const g1 = ctx.createRadialGradient(0,0,er*0.7, 0,0, er*1.06);
+      g1.addColorStop(0, 'rgba(244,200,120,0)');
+      g1.addColorStop(0.7, 'rgba(244,200,120,0.25)');
+      g1.addColorStop(1, 'rgba(244,200,120,0)');
+      ctx.fillStyle = g1;
+      ctx.beginPath();
+      ctx.ellipse(0,0, er*1.06, er*0.95, 0, 0, Math.PI*2);
+      ctx.fill();
+      // Moon's bulge (vertical)
+      ctx.rotate(Math.PI/2);
+      const g2 = ctx.createRadialGradient(0,0,er*0.7, 0,0, er*1.10);
+      g2.addColorStop(0, 'rgba(109,179,196,0)');
+      g2.addColorStop(0.7, 'rgba(109,179,196,0.4)');
+      g2.addColorStop(1, 'rgba(109,179,196,0)');
+      ctx.fillStyle = g2;
+      ctx.beginPath();
+      ctx.ellipse(0,0, er*1.10, er*0.94, 0, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+      drawEarth(ctx, cx, cy, er, {drawBulges:false});
+    }
+
+    drawMoon(ctx, mx, my, er*0.36);
+
+    // Mode label
+    ctx.fillStyle = 'rgba(212,184,150,0.8)';
+    ctx.font = '11px JetBrains Mono, monospace';
+    ctx.textAlign = 'center';
+    const txt = mode==='spring' ? 'SOL · JORD · MÅNE PÅ LINJE — KOMBINERET TRÆK' : 'SOL OG MÅNE I 90° — TRÆK MODARBEJDER';
+    ctx.fillText(txt, cw/2, ch-20);
+    ctx.textAlign = 'left';
+  }
+
+  draw();
+  setInterval(()=>{t++; draw();}, 30);
+
+  document.querySelectorAll('.toggle').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.toggle').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      mode = btn.dataset.mode;
+      draw();
+    });
+  });
+
+  window.addEventListener('resize', ()=>{init(); draw();});
+})();
+
+// ============== TIDAL LOCKING CANVASES ==============
+function setupOrbitCanvas(id, locked){
+  const canvas = document.getElementById(id);
+  let cw, ch, ctx;
+  function init(){
+    const r = setupCanvas(canvas);
+    ctx = r.ctx; cw = r.w; ch = r.h;
+  }
+  init();
+
+  let t = 0;
+  function draw(){
+    ctx.clearRect(0,0,cw,ch);
+    drawStarfield(ctx, cw, ch, 25, locked? 53: 71);
+    const cx = cw/2, cy = ch/2;
+    const er = Math.min(cw,ch)*0.12;
+    const orbitR = Math.min(cw,ch)*0.32;
+
+    const orbitalAngle = t * 0.012;
+    const mx = cx + Math.cos(orbitalAngle)*orbitR;
+    const my = cy + Math.sin(orbitalAngle)*orbitR;
+
+    // Orbit
+    ctx.strokeStyle = 'rgba(232,228,216,0.07)';
+    ctx.setLineDash([2,4]);
+    ctx.beginPath();
+    ctx.arc(cx, cy, orbitR, 0, Math.PI*2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    drawEarth(ctx, cx, cy, er, {drawBulges:false});
+
+    // Marker angle:
+    // - If locked: marker always points toward Earth → angle = orbitalAngle + π (pointing back to center from moon's perspective)
+    // Actually marker angle is in moon's local frame. We want the marker to be on the side facing earth.
+    // Vector from moon to earth has angle = atan2(cy-my, cx-mx) = orbitalAngle + π
+    let markerAngle;
+    if(locked){
+      markerAngle = orbitalAngle + Math.PI; // always faces Earth
+    } else {
+      markerAngle = t * 0.04; // independent rotation, faster than orbit
+    }
+    drawMoon(ctx, mx, my, er*0.55, {marker:true, markerAngle});
+
+    // Indicator line for marker direction
+    const moonR = er*0.55;
+    const lineLen = moonR*1.8;
+    const lex = mx + Math.cos(markerAngle)*lineLen;
+    const ley = my + Math.sin(markerAngle)*lineLen;
+    ctx.strokeStyle = 'rgba(212,81,62,0.4)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([2,3]);
+    ctx.beginPath();
+    ctx.moveTo(mx, my);
+    ctx.lineTo(lex, ley);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    t++;
+    requestAnimationFrame(draw);
+  }
+  draw();
+  window.addEventListener('resize', init);
+}
+setupOrbitCanvas('freeCanvas', false);
+setupOrbitCanvas('lockedCanvas', true);
+
+// ============== REVEAL ON SCROLL ==============
+const observer = new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting) e.target.classList.add('in');
+  });
+},{threshold:0.15});
+document.querySelectorAll('section').forEach(s=>{
+  s.classList.add('reveal');
+  observer.observe(s);
+});
+</script>
+</body>
+</html>
