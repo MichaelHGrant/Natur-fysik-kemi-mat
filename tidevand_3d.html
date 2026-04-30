@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tidevand · En 3D rejse gennem fysikken</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=Manrope:wght@200;300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<style>
+  :root{
+    --void:#04060d;
+    --deep:#0a1020;
+    --ink:#ece7d6;
+    --muted:#8a8ea0;
+    --gold:#d4b896;
+    --rust:#c66b4a;
+    --cyan:#74b8c9;
+    --line:rgba(236,231,214,0.10);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{background:var(--void);color:var(--ink);overflow-x:hidden;scroll-behavior:smooth;}
+  body{
+    font-family:'Manrope',sans-serif;font-weight:300;line-height:1.65;
+    background:
+      radial-gradient(ellipse at 15% 5%, rgba(116,184,201,0.06), transparent 50%),
+      radial-gradient(ellipse at 85% 70%, rgba(212,184,150,0.05), transparent 50%),
+      var(--void);
+    min-height:100vh;
+  }
+  .stars{
+    position:fixed;inset:0;pointer-events:none;z-index:0;opacity:0.7;
+    background-image:
+      radial-gradient(1px 1px at 13% 28%,white,transparent),
+      radial-gradient(1px 1px at 67% 12%,white,transparent),
+      radial-gradient(1px 1px at 81% 78%,white,transparent),
+      radial-gradient(1px 1px at 31% 91%,white,transparent),
+      radial-gradient(1.5px 1.5px at 47% 45%,rgba(255,255,255,0.6),transparent),
+      radial-gradient(1px 1px at 7% 67%,white,transparent),
+      radial-gradient(1px 1px at 92% 35%,white,transparent),
+      radial-gradient(1.5px 1.5px at 55% 22%,rgba(212,184,150,0.5),transparent),
+      radial-gradient(1px 1px at 23% 58%,white,transparent),
+      radial-gradient(1px 1px at 73% 88%,white,transparent);
+  }
+  main{position:relative;z-index:1;}
+
+  h1,h2,h3,h4{font-family:'Cormorant Garamond',serif;font-weight:400;letter-spacing:-0.005em;}
+  .italic{font-style:italic;color:var(--gold);}
+  .mono{font-family:'JetBrains Mono',monospace;font-size:0.72rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted);}
+
+  /* HERO */
+  .hero{min-height:100vh;display:grid;grid-template-columns:1fr;align-items:center;padding:3rem 1.5rem;position:relative;}
+  @media(min-width:980px){
+    .hero{grid-template-columns:0.85fr 1.15fr;padding:4rem 5rem;gap:3rem;}
+  }
+  .hero-text .label{margin-bottom:1.8rem;}
+  .hero-text h1{font-size:clamp(3.2rem,8vw,6.5rem);line-height:0.92;margin-bottom:2rem;font-weight:300;}
+  .hero-text h1 .ital{font-style:italic;color:var(--gold);font-weight:400;}
+  .hero-text p{color:var(--muted);max-width:42ch;font-size:1.08rem;}
+  .hero-3d{aspect-ratio:1/1;width:100%;max-width:620px;margin:0 auto;position:relative;}
+  .hero-3d canvas{display:block;border-radius:50%;}
+  .hero-controls{
+    position:absolute;bottom:0.5rem;left:50%;transform:translateX(-50%);
+    font-size:0.7rem;letter-spacing:0.18em;color:var(--muted);
+    text-transform:uppercase;text-align:center;
+  }
+  .scroll-hint{
+    position:absolute;bottom:1.5rem;left:50%;transform:translateX(-50%);
+    color:var(--muted);font-size:0.7rem;letter-spacing:0.22em;text-transform:uppercase;
+    animation:bob 2.4s ease-in-out infinite;
+  }
+  @keyframes bob{0%,100%{transform:translateX(-50%) translateY(0);opacity:0.5;}50%{transform:translateX(-50%) translateY(8px);opacity:1;}}
+
+  /* SECTION */
+  section{padding:6rem 1.5rem;position:relative;}
+  @media(min-width:980px){section{padding:8rem 5rem;}}
+  .section-num{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:5.5rem;color:var(--gold);opacity:0.45;line-height:1;margin-bottom:0.8rem;font-weight:300;}
+  .section-title{font-size:clamp(2.2rem,5.5vw,4rem);line-height:1.02;margin-bottom:2rem;max-width:18ch;font-weight:300;}
+  .section-body{color:var(--muted);max-width:62ch;font-size:1.08rem;margin-bottom:2.5rem;}
+  .section-body strong{color:var(--ink);font-weight:500;}
+  .section-body em{color:var(--gold);font-style:italic;}
+  .divider{height:1px;background:var(--line);margin:0 1.5rem;}
+
+  /* 3D STAGE */
+  .stage{
+    border:1px solid var(--line);background:rgba(10,16,32,0.5);
+    border-radius:2px;padding:1rem;position:relative;overflow:hidden;
+    margin-bottom:1.5rem;
+  }
+  .stage canvas{display:block;width:100%;height:auto;border-radius:1px;cursor:grab;}
+  .stage canvas:active{cursor:grabbing;}
+  .stage-info{
+    text-align:center;margin-top:1rem;
+    font-size:0.78rem;color:var(--muted);letter-spacing:0.05em;
+  }
+  .stage-grid{display:grid;grid-template-columns:1fr;gap:1.5rem;}
+  @media(min-width:900px){.stage-grid{grid-template-columns:1fr 1fr;}}
+
+  /* CONTROLS */
+  .toggle-row{display:flex;gap:0.5rem;flex-wrap:wrap;margin:1.5rem 0;justify-content:center;}
+  .toggle{
+    background:transparent;border:1px solid var(--line);color:var(--muted);
+    padding:0.65rem 1.4rem;font-family:'Manrope',sans-serif;font-weight:400;
+    font-size:0.78rem;letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;
+    transition:all 0.3s ease;
+  }
+  .toggle:hover{color:var(--ink);border-color:var(--gold);}
+  .toggle.active{background:var(--gold);color:var(--void);border-color:var(--gold);}
+
+  /* MATH BLOCK */
+  .math-block{
+    border-left:2px solid var(--gold);
+    padding:1.5rem 2rem;
+    background:rgba(10,16,32,0.4);
+    margin:2rem 0;
+    font-size:1.1rem;
+    overflow-x:auto;
+  }
+  .math-block .label{font-size:0.7rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--gold);margin-bottom:0.8rem;}
+  .math-block .desc{color:var(--muted);font-size:0.92rem;margin-top:1rem;line-height:1.6;}
+
+  /* HISTORY BLOCK */
+  .history{
+    display:grid;grid-template-columns:1fr;gap:2.5rem;margin-top:3rem;
+  }
+  @media(min-width:900px){.history{grid-template-columns:1fr 1fr;}}
+  .figure-card{
+    border:1px solid var(--line);padding:2rem;background:rgba(10,16,32,0.3);
+    position:relative;
+  }
+  .figure-card .portrait{
+    width:80px;height:80px;border-radius:50%;
+    background:linear-gradient(135deg,#3a4060,#1a1f30);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Cormorant Garamond',serif;font-size:2.2rem;font-style:italic;
+    color:var(--gold);margin-bottom:1rem;
+    border:1px solid var(--line);
+  }
+  .figure-card.galileo .portrait{background:linear-gradient(135deg,#5a3a3a,#2a1a1a);color:var(--rust);}
+  .figure-card.newton .portrait{background:linear-gradient(135deg,#3a4a5a,#1a2a3a);color:var(--cyan);}
+  .figure-card .name{font-family:'Cormorant Garamond',serif;font-size:1.8rem;font-weight:400;margin-bottom:0.2rem;}
+  .figure-card .years{font-size:0.75rem;color:var(--muted);letter-spacing:0.1em;margin-bottom:1.5rem;font-family:'JetBrains Mono',monospace;}
+  .figure-card p{color:var(--muted);font-size:0.95rem;margin-bottom:1rem;}
+  .figure-card .verdict{
+    margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--line);
+    font-style:italic;font-family:'Cormorant Garamond',serif;font-size:1.15rem;
+  }
+  .galileo .verdict{color:var(--rust);}
+  .newton .verdict{color:var(--cyan);}
+
+  /* FACT GRID */
+  .facts{
+    display:grid;grid-template-columns:repeat(2,1fr);gap:1px;
+    background:var(--line);border:1px solid var(--line);margin-top:4rem;
+  }
+  @media(min-width:800px){.facts{grid-template-columns:repeat(4,1fr);}}
+  .fact{background:var(--void);padding:2rem 1.5rem;}
+  .fact-num{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:3rem;color:var(--gold);line-height:1;margin-bottom:0.4rem;font-weight:400;}
+  .fact-label{font-size:0.7rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);}
+
+  /* INFO ROWS */
+  .info-row{display:flex;align-items:center;gap:0.8rem;margin:0.6rem 0;font-size:0.88rem;color:var(--muted);}
+  .info-row .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .info-row .label{color:var(--ink);font-family:'JetBrains Mono',monospace;font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;}
+
+  /* QUOTE */
+  .pull-quote{
+    font-family:'Cormorant Garamond',serif;font-style:italic;font-size:clamp(1.6rem,3.2vw,2.4rem);
+    line-height:1.3;color:var(--ink);max-width:30ch;margin:3rem auto;
+    text-align:center;font-weight:300;
+    padding:2rem;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  }
+  .pull-quote::before{content:"";color:var(--gold);font-size:1.5em;vertical-align:-0.4em;margin-right:0.1em;}
+  .pull-quote .attr{display:block;font-size:0.72rem;letter-spacing:0.18em;text-transform:uppercase;font-style:normal;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:1.5rem;}
+
+  /* FOOTER */
+  footer{padding:5rem 1.5rem 3rem;text-align:center;color:var(--muted);font-size:0.85rem;border-top:1px solid var(--line);margin-top:6rem;}
+  footer .sig{font-family:'Cormorant Garamond',serif;font-style:italic;color:var(--gold);font-size:1.3rem;margin-top:0.6rem;font-weight:400;}
+
+  /* REVEAL */
+  .reveal{opacity:0;transform:translateY(24px);transition:opacity 1.1s ease,transform 1.1s ease;}
+  .reveal.in{opacity:1;transform:none;}
+
+  /* legend */
+  .legend{display:flex;gap:1.3rem;flex-wrap:wrap;justify-content:center;margin-top:1rem;font-size:0.78rem;color:var(--muted);}
+  .legend .item{display:flex;align-items:center;gap:0.45rem;}
+  .legend .swatch{width:16px;height:2px;}
+
+  .scrub-row{display:flex;align-items:center;gap:1rem;margin-top:1rem;flex-wrap:wrap;justify-content:center;}
+  .scrub-row label{font-size:0.7rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);}
+  .scrub-row input[type=range]{width:240px;accent-color:var(--gold);}
+
+</style>
+</head>
+<body>
+<div class="stars"></div>
+<main>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-text">
+      <div class="mono label">— Newton's geometri møder havet</div>
+      <h1>Et hav,<br/><span class="ital">strakt</span><br/>af himlen<span style="color:var(--gold);"> ·</span></h1>
+      <p>En 3D-rejse gennem differentialgravitation, foreilende tidevandsbuler, hældede måneorbiter — og hvorfor Galileo, geniet, valgte den forkerte forklaring på det, han kunne se hver dag.</p>
+    </div>
+    <div class="hero-3d">
+      <div id="hero3d"></div>
+      <div class="hero-controls">↻ Træk for at rotere · scroll for at zoome</div>
+    </div>
+    <div class="scroll-hint">↓ rul for at fortsætte</div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- SECTION I — TIDAL FORCES & MATH -->
+  <section>
+    <div class="section-num">i.</div>
+    <h2 class="section-title">Tyngdekraftens forskel — ikke dens størrelse</h2>
+    <p class="section-body">Newtons universelle gravitation siger, at Månen trækker i hver kubikcentimeter af Jorden. Men trækket er ikke ens overalt. Den nære side ligger ~12.700 km tættere på Månen end den fjerne side, og fordi tyngdekraften aftager med afstanden i anden potens, er forskellen — <em>tidevandskraften</em> — proportional med <strong>1/r³</strong>.</p>
+
+    <div class="math-block">
+      <div class="label">Newtons tyngdekraft</div>
+      $$F_g = \frac{G \, M \, m}{r^2}$$
+      <div class="label" style="margin-top:1.5rem;">Tidevandskraft (differentialet)</div>
+      $$F_{tidal} \approx \frac{2 \, G \, M \, m \, R}{r^3}$$
+      <div class="desc">Hvor <em>M</em> er Månens masse, <em>m</em> er en testmasse på Jorden, <em>R</em> er Jordens radius og <em>r</em> er afstanden til Månen. Bemærk <strong>r³</strong> i nævneren — derfor er Solen, trods sin enorme masse, kun ~46% så stærk en tidevandsmotor som den meget nærmere Måne.</div>
+    </div>
+
+    <p class="section-body">Forholdet mellem Solens og Månens tidevandskræfter:</p>
+
+    <div class="math-block">
+      <div class="label">Sol/Måne forhold</div>
+      $$\frac{F_{sol}}{F_{måne}} = \frac{M_\odot}{M_{☾}} \cdot \left(\frac{r_{☾}}{r_\odot}\right)^3 \approx 0{,}46$$
+      <div class="desc">Solen er ~27 millioner gange mere massiv end Månen, men den er også ~390 gange længere væk. Tredje potens vinder.</div>
+    </div>
+
+    <div class="stage" style="margin-top:3rem;">
+      <div id="forceField"></div>
+      <div class="stage-info">↻ <strong>Træk for at rotere</strong> · pilene viser <em>differentialvektorerne</em> — hvor Månens træk er stærkere eller svagere end Jordens center</div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- SECTION II — TIDAL BULGE LEADS THE MOON -->
+  <section>
+    <div class="section-num">ii.</div>
+    <h2 class="section-title">Bulen, der løber forud</h2>
+    <p class="section-body">I et idealiseret univers uden friktion ville vandbulerne ligge præcis på linje med Månen. Men Jorden er ikke ideel — den roterer østpå én gang i døgnet, mens Månen kun bevæger sig én gang om sit kredsløb på 27,3 dage. Jorden roterer altså <strong>~27 gange hurtigere</strong> end Månen kredser.</p>
+
+    <p class="section-body">Friktion mellem havvand og havbund (især over kontinentalsoklerne) trækker derfor bulerne <em>med</em> Jordens rotation — <strong>foran</strong> Månen, ikke bag den. Den foreilende bule udøver et drejningsmoment, der: <strong>(a)</strong> bremser Jordens rotation (~1,7 ms pr. århundrede) og <strong>(b)</strong> accelererer Månen i sin bane, så den driver væk fra os med ~3,8 cm pr. år.</p>
+
+    <div class="stage">
+      <div id="bulgeScene"></div>
+      <div class="legend">
+        <div class="item"><span class="swatch" style="background:var(--cyan);"></span>Idealiseret bule (på linje)</div>
+        <div class="item"><span class="swatch" style="background:var(--gold);"></span>Reel bule (forrest, ~10° lead)</div>
+        <div class="item"><span class="swatch" style="background:var(--rust);"></span>Drejningsmoment</div>
+      </div>
+      <div class="scrub-row">
+        <label>Lead-vinkel</label>
+        <input type="range" id="leadAngle" min="0" max="20" value="10" step="0.5"/>
+        <span class="mono" id="leadValue">10°</span>
+      </div>
+      <div class="stage-info">↻ Roter scenen · justér <em>lead-vinklen</em> for at se hvordan friktion forskyder bulen</div>
+    </div>
+
+    <div class="math-block">
+      <div class="label">Drejningsmoment fra forskudt bule</div>
+      $$\tau = F_{bulge} \cdot d \cdot \sin(\delta)$$
+      <div class="desc">Hvor <em>δ</em> er lead-vinklen (~3-10° i praksis). Dette drejningsmoment overfører rotationsenergi fra Jorden til Månens orbital — målt direkte med <strong>laser ranging</strong> mod refleksen efterladt af Apollo-astronauterne.</div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- SECTION III — INCLINATION & SPRING/NEAP -->
+  <section>
+    <div class="section-num">iii.</div>
+    <h2 class="section-title">En hældet bane, en samarbejdende sol</h2>
+    <p class="section-body">Månens bane ligger ikke i Jordens ækvatorplan, og heller ikke præcis i ekliptika. Den hælder <strong>5,14°</strong> i forhold til ekliptika — derfor passerer Månen ikke gennem solens skive hver måned, og solformørkelser er sjældne. Tilføj Jordens egen aksehældning på 23,5°, og resultatet er et tidevandsmønster, der varierer kompleks gennem året.</p>
+
+    <p class="section-body">Når Sol, Jord og Måne står på linje (nymåne eller fuldmåne) lægger deres tidevandskræfter sig sammen — <em>springflod</em>. Når de står i 90° (første og tredje kvarter) modarbejder de hinanden — <em>niptid</em>.</p>
+
+    <div class="toggle-row">
+      <button class="toggle active" data-mode="spring">Springflod</button>
+      <button class="toggle" data-mode="neap">Niptid</button>
+    </div>
+
+    <div class="stage">
+      <div id="springScene"></div>
+      <div class="legend">
+        <div class="item"><span class="swatch" style="background:#f4c878;"></span>Sol</div>
+        <div class="item"><span class="swatch" style="background:#74b8c9;"></span>Jord</div>
+        <div class="item"><span class="swatch" style="background:#c0bcb0;"></span>Måne (5,14° hældning)</div>
+      </div>
+      <div class="stage-info">↻ Roter scenen for at se månens hældede bane fra forskellige vinkler</div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- SECTION IV — TIDAL LOCKING -->
+  <section>
+    <div class="section-num">iv.</div>
+    <h2 class="section-title">Hvorfor Månen aldrig vender ryggen til</h2>
+    <p class="section-body">Den samme mekanisme der bremser Jordens rotation, har for længst stoppet Månens. Tidligt i Solsystemets historie roterede Månen hurtigere end den kredsede. Jordens tyngdekraft skabte buler i Månens klippegrund, og friktion fra disse buler bremsede Månens spin <strong>over milliarder af år</strong>, indtil rotation = omløbstid: præcis 27,3 dage. Resultatet kaldes <em>synkron rotation</em> eller tidevandslåsning.</p>
+
+    <p class="section-body">Den røde markør på den højre måne nedenfor symboliserer et tænkt krater — den peger altid mod Jorden. På den venstre frit-roterende måne kan du se alle sider af krateret over tid.</p>
+
+    <div class="stage-grid">
+      <div class="stage">
+        <div class="mono" style="margin-bottom:0.5rem;">venstre — hypotetisk</div>
+        <div id="freeMoonScene"></div>
+        <div class="stage-info">Frit roterende måne · alle sider eksponeres</div>
+      </div>
+      <div class="stage">
+        <div class="mono" style="margin-bottom:0.5rem;">højre — vores måne</div>
+        <div id="lockedMoonScene"></div>
+        <div class="stage-info">Tidevandslåst · samme side altid mod Jorden</div>
+      </div>
+    </div>
+
+    <div class="math-block">
+      <div class="label">Tidsskala for tidevandslåsning</div>
+      $$t_{lock} \approx \frac{\omega \, a^6 \, I \, Q}{3 \, G \, M^2 \, k_2 \, R^5}$$
+      <div class="desc">For Månen: ~milliarder af år. For mindre måner tæt på en gigantplanet: meget hurtigere. <em>Q</em> er kvalitetsfaktoren, <em>k₂</em> er Loves nummer (planetens elasticitet).</div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- SECTION V — GALILEO VS NEWTON -->
+  <section>
+    <div class="section-num">v.</div>
+    <h2 class="section-title">Galileos blinde plet, Newtons gennembrud</h2>
+    <p class="section-body">Tidevand var i 1600-tallet et af de mest påtrængende uløste problemer i fysikken. Alle kunne se det. Ingen kunne forklare det. Galileo Galilei mente at have løsningen — og han tog fejl. Hans yngre samtidige, Johannes Kepler, kom tættere på sandheden men blev afvist. Det var Isaac Newton, et halvt århundrede efter Galileos død, der satte tingene på plads.</p>
+
+    <div class="history">
+      <div class="figure-card galileo">
+        <div class="portrait">G</div>
+        <div class="name">Galileo Galilei</div>
+        <div class="years">1564 — 1642</div>
+        <p>I <em>Dialog om de to verdenssystemer</em> (1632) brugte Galileo tidevand som <strong>bevis for Jordens bevægelse</strong> — havene var, hævdede han, vand der "skvulpede" i baljer (oceanbassinerne) på grund af kombinationen af Jordens daglige rotation og årlige kredsløb om Solen.</p>
+        <p>Han <strong>afviste eksplicit</strong> at Månen kunne være årsagen, og kaldte denne tanke for "barnagtigt unyttig". Ideen om "okkulte kræfter" der virker på afstand var for ham uvidenskabelig.</p>
+        <p style="color:var(--rust);"><strong>Hvorfor han tog fejl:</strong> hans teori forudsagde kun ét højvande pr. døgn — virkeligheden viser to. Den kunne ikke forklare hvorfor tidevand følger Månens position. Og fysisk virkede mekanismen ikke.</p>
+        <div class="verdict">"Tidevandet er beviset på at Jorden bevæger sig"<br/>— et elegant argument, baseret på en forkert mekanik.</div>
+      </div>
+
+      <div class="figure-card newton">
+        <div class="portrait">N</div>
+        <div class="name">Isaac Newton</div>
+        <div class="years">1643 — 1727</div>
+        <p>I <em>Principia Mathematica</em> (1687), Bog III, viste Newton at <strong>universel gravitation</strong> — den samme kraft der får æbler til at falde — strakte sig til Månen og Solen, og at <strong>differensen</strong> i deres tyngdekraft over Jordens diameter producerede tidevandsbulerne.</p>
+        <p>Han udledte at to buler — én mod Månen, én væk fra Månen — opstod naturligt af hans matematik. Han forudsagde <strong>kvantitativt</strong> springflod og niptid, og beregnede forholdet mellem sol- og månetidevand.</p>
+        <p style="color:var(--cyan);"><strong>Hvorfor han havde ret:</strong> hans teori forudsagde to daglige højvande, korrekt korrelation med Månens position, korrekt størrelsesforhold mellem sol og måne — alt sammen ud fra én ligning.</p>
+        <div class="verdict">"Hypotheses non fingo"<br/>— jeg opfinder ingen hypoteser. Matematikken talte.</div>
+      </div>
+    </div>
+
+    <div class="pull-quote">
+      Galileo så tidevand som rotationens stempel.<br/>Newton så det som tyngdens fingeraftryk.
+      <span class="attr">— forskellen mellem geni og gennembrud</span>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- FACTS -->
+  <section style="padding-top:3rem;">
+    <div class="facts">
+      <div class="fact"><div class="fact-num">2×</div><div class="fact-label">Højvande pr. døgn</div></div>
+      <div class="fact"><div class="fact-num">5,14°</div><div class="fact-label">Månens banehældning</div></div>
+      <div class="fact"><div class="fact-num">3,8 cm</div><div class="fact-label">Månens drift pr. år</div></div>
+      <div class="fact"><div class="fact-num">1,7 ms</div><div class="fact-label">Døgnforlængelse pr. århundrede</div></div>
+    </div>
+  </section>
+
+  <footer>
+    Mekanikken bag bølgeslag — fra Newton til laserrefleksen på Månen.<br/>
+    <span class="sig">Mare nostrum, in motu perpetuo.</span>
+  </footer>
+
+</main>
+
+<script>
+// =========================================================
+//  TEXTURE GENERATION (procedural, no external dependency)
+// =========================================================
+function makeEarthTexture(){
+  const c = document.createElement('canvas');
+  c.width = 1024; c.height = 512;
+  const ctx = c.getContext('2d');
+
+  // Ocean base — deep blue gradient
+  const og = ctx.createLinearGradient(0,0,0,512);
+  og.addColorStop(0,'#0a3a5a');
+  og.addColorStop(0.5,'#1a5a8a');
+  og.addColorStop(1,'#0a3a5a');
+  ctx.fillStyle = og;
+  ctx.fillRect(0,0,1024,512);
+
+  // Add some noise to ocean
+  for(let i=0;i<3000;i++){
+    const x=Math.random()*1024, y=Math.random()*512;
+    ctx.fillStyle = `rgba(${20+Math.random()*40},${60+Math.random()*40},${100+Math.random()*60},${Math.random()*0.3})`;
+    ctx.fillRect(x,y,1,1);
+  }
+
+  // Continents — stylized landmasses
+  ctx.fillStyle = '#3a5a3a';
+
+  function landBlob(cx,cy,radius,roughness){
+    ctx.beginPath();
+    const points = 16;
+    for(let i=0;i<=points;i++){
+      const a = (i/points)*Math.PI*2;
+      const r = radius * (0.7 + Math.random()*roughness);
+      const x = cx + Math.cos(a)*r;
+      const y = cy + Math.sin(a)*r*0.7;
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Africa-Eurasia (rough)
+  ctx.save();
+  ctx.fillStyle = '#3e5a3a';
+  landBlob(540,260,90,0.5);
+  landBlob(580,180,70,0.4);
+  landBlob(640,220,60,0.5);
+  landBlob(450,280,50,0.4);
+
+  // Americas
+  ctx.fillStyle = '#3a5840';
+  landBlob(220,260,50,0.5);
+  landBlob(260,360,45,0.4);
+  landBlob(180,180,40,0.3);
+
+  // Australia
+  ctx.fillStyle = '#5a4a30';
+  landBlob(820,340,40,0.4);
+
+  // Antarctica — bottom band
+  ctx.fillStyle = '#dde4ea';
+  ctx.fillRect(0,470,1024,42);
+
+  // Greenland-arctic
+  ctx.fillStyle = '#e8eef2';
+  ctx.fillRect(0,0,1024,30);
+  landBlob(280,80,40,0.4);
+  ctx.restore();
+
+  // Add some land texture
+  for(let i=0;i<5000;i++){
+    const x=Math.random()*1024, y=30+Math.random()*440;
+    const data = ctx.getImageData(x,y,1,1).data;
+    if(data[1]>data[2]){ // green > blue = land
+      const g = 60 + Math.random()*40;
+      ctx.fillStyle = `rgba(${30+Math.random()*30},${g},${30+Math.random()*30},0.4)`;
+      ctx.fillRect(x,y,1,1);
+    }
+  }
+
+  // Cloud whisps
+  ctx.fillStyle = 'rgba(255,255,255,0.15)';
+  for(let i=0;i<40;i++){
+    const x=Math.random()*1024, y=Math.random()*512;
+    const w=20+Math.random()*100, h=8+Math.random()*20;
+    ctx.beginPath();
+    ctx.ellipse(x,y,w,h,Math.random()*Math.PI,0,Math.PI*2);
+    ctx.fill();
+  }
+
+  const tex = new THREE.CanvasTexture(c);
+  return tex;
+}
+
+function makeMoonTexture(){
+  const c = document.createElement('canvas');
+  c.width = 1024; c.height = 512;
+  const ctx = c.getContext('2d');
+
+  // Base — pale grey gradient
+  const og = ctx.createLinearGradient(0,0,0,512);
+  og.addColorStop(0,'#b8b3a5');
+  og.addColorStop(0.5,'#a39e92');
+  og.addColorStop(1,'#8a8578');
+  ctx.fillStyle = og;
+  ctx.fillRect(0,0,1024,512);
+
+  // Mare (dark plains)
+  ctx.fillStyle = '#5a564e';
+  function mare(x,y,rx,ry,a){
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.rotate(a);
+    ctx.beginPath();
+    ctx.ellipse(0,0,rx,ry,0,0,Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+  mare(380,200,80,55,0.2);  // Mare Imbrium
+  mare(440,240,50,40,-0.1); // Mare Serenitatis
+  mare(490,270,45,35,0);    // Mare Tranquillitatis
+  mare(420,310,55,30,0.3);  // Mare Nubium
+  mare(540,300,40,25,-0.2); // Mare Fecunditatis
+  mare(360,290,38,28,0);    // Oceanus Procellarum lower
+
+  // Soften mare edges
+  for(let i=0;i<3000;i++){
+    const x=Math.random()*1024, y=Math.random()*512;
+    const data = ctx.getImageData(x,y,1,1).data;
+    const v = 80 + Math.random()*60;
+    ctx.fillStyle = `rgba(${v},${v-5},${v-15},${Math.random()*0.3})`;
+    ctx.fillRect(x,y,1,1);
+  }
+
+  // Craters
+  function crater(x,y,r){
+    // shadow
+    const g = ctx.createRadialGradient(x,y,r*0.2,x,y,r);
+    g.addColorStop(0, 'rgba(60,55,48,0.9)');
+    g.addColorStop(0.7, 'rgba(80,75,68,0.4)');
+    g.addColorStop(1, 'rgba(220,215,205,0.0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(x,y,r,0,Math.PI*2);
+    ctx.fill();
+    // bright rim on one side
+    ctx.strokeStyle = 'rgba(230,225,215,0.6)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(x,y,r*0.85,Math.PI*0.7,Math.PI*1.7);
+    ctx.stroke();
+  }
+
+  for(let i=0;i<200;i++){
+    const x=Math.random()*1024, y=Math.random()*512;
+    const r=2+Math.random()*15;
+    crater(x,y,r);
+  }
+  // A few big craters
+  crater(620,180,30); // Tycho-like
+  crater(720,340,22);
+  crater(280,360,18);
+  crater(820,220,25);
+
+  // Texture noise
+  for(let i=0;i<8000;i++){
+    const x=Math.random()*1024, y=Math.random()*512;
+    const v = -20 + Math.random()*40;
+    ctx.fillStyle = `rgba(${128+v},${124+v},${115+v},0.15)`;
+    ctx.fillRect(x,y,1,1);
+  }
+
+  return new THREE.CanvasTexture(c);
+}
+
+function makeMoonBumpTexture(){
+  // For displacement / normal feel — same craters but as height
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 256;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#808080';
+  ctx.fillRect(0,0,512,256);
+  for(let i=0;i<150;i++){
+    const x=Math.random()*512, y=Math.random()*256;
+    const r=2+Math.random()*10;
+    const g = ctx.createRadialGradient(x,y,0,x,y,r);
+    g.addColorStop(0,'#404040');
+    g.addColorStop(1,'#808080');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(x,y,r,0,Math.PI*2);
+    ctx.fill();
+  }
+  return new THREE.CanvasTexture(c);
+}
+
+function makeStarsTexture(){
+  const c = document.createElement('canvas');
+  c.width = 2048; c.height = 1024;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#000005';
+  ctx.fillRect(0,0,2048,1024);
+  for(let i=0;i<2500;i++){
+    const x=Math.random()*2048, y=Math.random()*1024;
+    const r=Math.random()*1.4;
+    const a=0.3+Math.random()*0.7;
+    ctx.fillStyle = `rgba(255,255,255,${a})`;
+    ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+  }
+  // few warm-tinted stars
+  for(let i=0;i<200;i++){
+    const x=Math.random()*2048, y=Math.random()*1024;
+    ctx.fillStyle = `rgba(${200+Math.random()*55},${180+Math.random()*40},${150+Math.random()*40},${0.5+Math.random()*0.5})`;
+    ctx.beginPath(); ctx.arc(x,y,1+Math.random(),0,Math.PI*2); ctx.fill();
+  }
+  return new THREE.CanvasTexture(c);
+}
+
+// Pre-generate textures once
+const EARTH_TEX = makeEarthTexture();
+const MOON_TEX = makeMoonTexture();
+const MOON_BUMP = makeMoonBumpTexture();
+const STARS_TEX = makeStarsTexture();
+
+// =========================================================
+//  COMMON FACTORIES
+// =========================================================
+function makeEarthMesh(radius=1){
+  const geo = new THREE.SphereGeometry(radius, 64, 48);
+  const mat = new THREE.MeshPhongMaterial({
+    map: EARTH_TEX,
+    shininess: 18,
+    specular: new THREE.Color(0x223344),
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+
+  // Atmosphere glow (back-side larger sphere with additive material)
+  const atmoGeo = new THREE.SphereGeometry(radius*1.04, 48, 32);
+  const atmoMat = new THREE.ShaderMaterial({
+    transparent:true,
+    side:THREE.BackSide,
+    blending:THREE.AdditiveBlending,
+    uniforms:{},
+    vertexShader:`
+      varying vec3 vN;
+      void main(){
+        vN = normalize(normalMatrix * normal);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+      }`,
+    fragmentShader:`
+      varying vec3 vN;
+      void main(){
+        float i = pow(0.7 - dot(vN, vec3(0.,0.,1.0)), 2.0);
+        gl_FragColor = vec4(0.45,0.7,0.95,1.0) * i;
+      }`
+  });
+  const atmo = new THREE.Mesh(atmoGeo, atmoMat);
+  mesh.add(atmo);
+
+  return mesh;
+}
+
+function makeMoonMesh(radius=0.27){
+  const geo = new THREE.SphereGeometry(radius, 48, 32);
+  const mat = new THREE.MeshPhongMaterial({
+    map: MOON_TEX,
+    bumpMap: MOON_BUMP,
+    bumpScale: 0.005,
+    shininess: 2,
+  });
+  return new THREE.Mesh(geo, mat);
+}
+
+function makeStarSphere(){
+  const geo = new THREE.SphereGeometry(50, 32, 24);
+  const mat = new THREE.MeshBasicMaterial({
+    map: STARS_TEX,
+    side: THREE.BackSide,
+  });
+  return new THREE.Mesh(geo,mat);
+}
+
+function makeSun(radius=0.4, position=new THREE.Vector3(-12,1,3)){
+  const geo = new THREE.SphereGeometry(radius, 32, 24);
+  const mat = new THREE.MeshBasicMaterial({color:0xfff5d0});
+  const sun = new THREE.Mesh(geo,mat);
+  sun.position.copy(position);
+  // glow sprite
+  const glowCanvas = document.createElement('canvas');
+  glowCanvas.width = 256; glowCanvas.height = 256;
+  const gctx = glowCanvas.getContext('2d');
+  const grad = gctx.createRadialGradient(128,128,20,128,128,128);
+  grad.addColorStop(0,'rgba(255,240,200,1)');
+  grad.addColorStop(0.4,'rgba(244,200,120,0.5)');
+  grad.addColorStop(1,'rgba(244,200,120,0)');
+  gctx.fillStyle = grad; gctx.fillRect(0,0,256,256);
+  const spriteTex = new THREE.CanvasTexture(glowCanvas);
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map:spriteTex,transparent:true,depthWrite:false}));
+  sprite.scale.set(radius*5, radius*5, 1);
+  sun.add(sprite);
+  return sun;
+}
+
+// Tidal bulge envelope (transparent stretched ellipsoid around Earth)
+function makeTidalBulge(earthRadius=1, color=0x74b8c9, opacity=0.3){
+  const geo = new THREE.SphereGeometry(earthRadius*1.06, 48, 32);
+  // Stretch along x axis
+  const positions = geo.attributes.position;
+  for(let i=0;i<positions.count;i++){
+    const x = positions.getX(i);
+    const y = positions.getY(i);
+    const z = positions.getZ(i);
+    // Stretch along x by a factor; squeeze in y,z
+    positions.setX(i, x*1.18);
+    positions.setY(i, y*0.94);
+    positions.setZ(i, z*0.94);
+  }
+  positions.needsUpdate = true;
+  geo.computeVertexNormals();
+
+  const mat = new THREE.MeshBasicMaterial({
+    color: color,
+    transparent: true,
+    opacity: opacity,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  });
+  const mesh = new THREE.Mesh(geo,mat);
+  // Add wireframe overlay
+  const wireMat = new THREE.MeshBasicMaterial({
+    color: color,
+    wireframe: true,
+    transparent: true,
+    opacity: 0.25,
+  });
+  const wire = new THREE.Mesh(geo, wireMat);
+  mesh.add(wire);
+  return mesh;
+}
+
+// Standard renderer setup
+function createScene(containerId, width, height, opts={}){
+  const container = document.getElementById(containerId);
+  if(!container) return null;
+  const w = width || container.clientWidth || 600;
+  const h = height || w;
+  container.style.aspectRatio = '1/1';
+
+  const renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+  renderer.setSize(w, h);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  container.innerHTML = '';
+  container.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  if(opts.starBackground !== false){
+    scene.add(makeStarSphere());
+  }
+
+  const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
+  camera.position.set(opts.camPos?.x || 0, opts.camPos?.y || 1.2, opts.camPos?.z || 5.5);
+  camera.lookAt(0,0,0);
+
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.06;
+  controls.enablePan = false;
+  controls.minDistance = 2.5;
+  controls.maxDistance = 12;
+
+  // Lighting
+  const ambient = new THREE.AmbientLight(0x404858, 0.35);
+  scene.add(ambient);
+  const sunLight = new THREE.DirectionalLight(0xffefd0, 1.1);
+  sunLight.position.set(opts.lightPos?.x ?? -8, opts.lightPos?.y ?? 2, opts.lightPos?.z ?? 4);
+  scene.add(sunLight);
+
+  function resize(){
+    const w2 = container.clientWidth;
+    renderer.setSize(w2, w2);
+    camera.aspect = 1;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', resize);
+  setTimeout(resize, 50);
+
+  return {scene, camera, renderer, controls, container, sunLight};
+}
+
+// =========================================================
+//  SCENE 1 — HERO
+// =========================================================
+(function(){
+  const ctx = createScene('hero3d');
+  if(!ctx) return;
+  const {scene, camera, renderer, controls} = ctx;
+
+  // Earth with axial tilt 23.5°
+  const earthGroup = new THREE.Group();
+  const earth = makeEarthMesh(1);
+  earthGroup.add(earth);
+  earthGroup.rotation.z = 23.5 * Math.PI/180;
+  scene.add(earthGroup);
+
+  // Tidal bulge — leads moon by ~10° but we'll align with moon dir + lead
+  const bulge = makeTidalBulge(1, 0xd4b896, 0.18);
+  earthGroup.add(bulge);
+
+  // Moon orbit group (with 5.14° inclination)
+  const moonOrbit = new THREE.Group();
+  moonOrbit.rotation.x = 5.14 * Math.PI/180;
+  scene.add(moonOrbit);
+
+  const moon = makeMoonMesh(0.27);
+  moon.position.set(3.2, 0, 0);
+  moonOrbit.add(moon);
+
+  // Orbit ring
+  const ringGeo = new THREE.RingGeometry(3.18, 3.22, 96);
+  const ringMat = new THREE.MeshBasicMaterial({color:0xd4b896, opacity:0.18, transparent:true, side:THREE.DoubleSide});
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.rotation.x = Math.PI/2;
+  moonOrbit.add(ring);
+
+  let t = 0;
+  function animate(){
+    t += 0.005;
+    // Moon orbits
+    moon.position.x = Math.cos(t) * 3.2;
+    moon.position.z = Math.sin(t) * 3.2;
+    // Moon tidally locked: rotate to face earth always
+    moon.rotation.y = -t;
+
+    // Earth rotates faster
+    earth.rotation.y += 0.012;
+
+    // Bulge follows moon, but ahead by 10°
+    const lead = 10 * Math.PI/180;
+    // The bulge mesh is in earth group's frame. Earth group has tilt.
+    // We want bulge's long axis pointing toward (moon_position rotated forward by lead in moon's orbital direction).
+    // Since moon is in moonOrbit group, we need world position
+    const moonWorld = new THREE.Vector3();
+    moon.getWorldPosition(moonWorld);
+    // Project to earth's local frame
+    const earthWorld = new THREE.Vector3();
+    earthGroup.getWorldPosition(earthWorld);
+    const dir = moonWorld.sub(earthWorld);
+    // Get the angle in earth's local xz plane (counter axial tilt)
+    // Simplification: rotate bulge in world-y to match moon angle + lead
+    const moonAngle = Math.atan2(dir.z, dir.x);
+    bulge.rotation.set(0, -moonAngle + lead, 0); // moon orbits CCW => lead is positive (ahead)
+    // Compensate for earth group's z tilt
+    // We're in earth group local frame which has rotation.z = tilt
+    // To make bulge stay roughly horizontal in world we'd need more math; this approximation is fine visually.
+
+    controls.update();
+    renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+  }
+  animate();
+})();
+
+// =========================================================
+//  SCENE 2 — FORCE FIELD (differential vectors)
+// =========================================================
+(function(){
+  const ctx = createScene('forceField', null, null, {camPos:{x:0,y:0.8,z:5}});
+  if(!ctx) return;
+  const {scene, camera, renderer, controls} = ctx;
+
+  const earthGroup = new THREE.Group();
+  const earth = makeEarthMesh(1);
+  earthGroup.add(earth);
+  earthGroup.rotation.z = 23.5 * Math.PI/180;
+  scene.add(earthGroup);
+
+  // Moon as reference (out of frame mostly, large)
+  const moon = makeMoonMesh(0.4);
+  moon.position.set(4.2, 0, 0);
+  scene.add(moon);
+
+  // Differential force arrows — show the field
+  // Field points: net force at each test point = -GM/r² toward moon, minus the force at earth's center (-GM/r₀² in same dir)
+  // Result: arrows point outward at near and far side (along line), inward on the perpendicular sides
+  const arrowGroup = new THREE.Group();
+  scene.add(arrowGroup);
+
+  function addArrow(origin, dir, length, color){
+    const arrow = new THREE.ArrowHelper(dir.clone().normalize(), origin, length, color, length*0.3, length*0.2);
+    arrowGroup.add(arrow);
+  }
+
+  function rebuildArrows(){
+    arrowGroup.clear();
+    const moonPos = moon.position.clone();
+    const samplePoints = [];
+    // Sample on earth's surface in equatorial ring
+    const N = 16;
+    for(let i=0;i<N;i++){
+      const a = (i/N)*Math.PI*2;
+      samplePoints.push(new THREE.Vector3(Math.cos(a)*1.05, 0, Math.sin(a)*1.05));
+    }
+    // Plus polar samples
+    samplePoints.push(new THREE.Vector3(0,1.05,0));
+    samplePoints.push(new THREE.Vector3(0,-1.05,0));
+    samplePoints.push(new THREE.Vector3(0.6,0.8,0));
+    samplePoints.push(new THREE.Vector3(0.6,-0.8,0));
+    samplePoints.push(new THREE.Vector3(-0.6,0.8,0));
+    samplePoints.push(new THREE.Vector3(-0.6,-0.8,0));
+
+    samplePoints.forEach(p=>{
+      // Force at p: -GM * (p - moonPos) / |p - moonPos|^3
+      // Force at center: -GM * (-moonPos) / |moonPos|^3
+      const r1 = new THREE.Vector3().subVectors(moonPos, p);
+      const r1len = r1.length();
+      const F1 = r1.clone().multiplyScalar(1/(r1len*r1len*r1len));
+
+      const r0 = moonPos.clone();
+      const r0len = r0.length();
+      const F0 = r0.clone().multiplyScalar(1/(r0len*r0len*r0len));
+
+      // Differential
+      const Fd = F1.sub(F0);
+      const mag = Fd.length();
+      const scale = 80 * mag; // visual scale
+      if(scale > 0.05){
+        addArrow(p, Fd, Math.min(scale,0.6), 0xd4b896);
+      }
+    });
+  }
+  rebuildArrows();
+
+  // Connection line earth-moon
+  const lineGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), moon.position]);
+  const lineMat = new THREE.LineDashedMaterial({color:0xd4b896, opacity:0.4, transparent:true, dashSize:0.1, gapSize:0.08});
+  const line = new THREE.Line(lineGeo, lineMat);
+  line.computeLineDistances();
+  scene.add(line);
+
+  let t = 0;
+  function animate(){
+    t += 0.003;
+    earth.rotation.y += 0.003;
+    // Slight moon orbit motion
+    const a = t*0.3;
+    moon.position.set(Math.cos(a)*4.2, 0, Math.sin(a)*4.2);
+    // Update line
+    lineGeo.setFromPoints([new THREE.Vector3(0,0,0), moon.position]);
+    line.computeLineDistances();
+    rebuildArrows();
+
+    controls.update();
+    renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+  }
+  animate();
+})();
+
+// =========================================================
+//  SCENE 3 — BULGE LEADING MOON
+// =========================================================
+(function(){
+  const ctx = createScene('bulgeScene', null, null, {camPos:{x:0,y:1.5,z:6}});
+  if(!ctx) return;
+  const {scene, camera, renderer, controls} = ctx;
+
+  const earthGroup = new THREE.Group();
+  const earth = makeEarthMesh(1);
+  earthGroup.add(earth);
+  earthGroup.rotation.z = 23.5 * Math.PI/180;
+  scene.add(earthGroup);
+
+  // Idealized bulge (cyan, aligned with moon)
+  const idealBulge = makeTidalBulge(1, 0x74b8c9, 0.22);
+  earthGroup.add(idealBulge);
+  idealBulge.visible = true;
+
+  // Real bulge (gold, leading moon)
+  const realBulge = makeTidalBulge(1, 0xd4b896, 0.28);
+  earthGroup.add(realBulge);
+
+  // Moon orbit
+  const moonOrbit = new THREE.Group();
+  moonOrbit.rotation.x = 5.14 * Math.PI/180;
+  scene.add(moonOrbit);
+
+  const moon = makeMoonMesh(0.32);
+  moon.position.set(3.2, 0, 0);
+  moonOrbit.add(moon);
+
+  // Orbit ring
+  const ringGeo = new THREE.RingGeometry(3.18, 3.22, 96);
+  const ringMat = new THREE.MeshBasicMaterial({color:0xd4b896, opacity:0.15, transparent:true, side:THREE.DoubleSide});
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.rotation.x = Math.PI/2;
+  moonOrbit.add(ring);
+
+  // Torque visualization — small curved arrow
+  const torqueGroup = new THREE.Group();
+  scene.add(torqueGroup);
+  function makeTorqueArrow(){
+    torqueGroup.clear();
+    // Curved arrow at top of earth showing moon being pulled forward
+    const curve = new THREE.EllipseCurve(0,0, 1.6, 1.6, 0.2, 0.6, false, 0);
+    const points = curve.getPoints(20);
+    const points3 = points.map(p=>new THREE.Vector3(p.x, 1.4, p.y));
+    const geom = new THREE.BufferGeometry().setFromPoints(points3);
+    const mat = new THREE.LineBasicMaterial({color:0xc66b4a, linewidth:2});
+    const ln = new THREE.Line(geom, mat);
+    torqueGroup.add(ln);
+  }
+  makeTorqueArrow();
+
+  let leadDeg = 10;
+  const slider = document.getElementById('leadAngle');
+  const valueLabel = document.getElementById('leadValue');
+  slider?.addEventListener('input', e=>{
+    leadDeg = parseFloat(e.target.value);
+    valueLabel.textContent = leadDeg.toFixed(1) + '°';
+  });
+
+  let t = 0;
+  function animate(){
+    t += 0.004;
+    moon.position.x = Math.cos(t) * 3.2;
+    moon.position.z = Math.sin(t) * 3.2;
+    moon.rotation.y = -t;
+    earth.rotation.y += 0.014;
+
+    const moonWorld = new THREE.Vector3();
+    moon.getWorldPosition(moonWorld);
+    const angle = Math.atan2(moonWorld.z, moonWorld.x);
+
+    // Idealized: aligned with moon
+    idealBulge.rotation.set(0, -angle, 0);
+    // Real: leading by leadDeg
+    const lead = leadDeg * Math.PI/180;
+    realBulge.rotation.set(0, -angle + lead, 0);
+
+    controls.update();
+    renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+  }
+  animate();
+})();
+
+// =========================================================
+//  SCENE 4 — SPRING / NEAP
+// =========================================================
+(function(){
+  const ctx = createScene('springScene', null, null, {camPos:{x:0,y:2.5,z:7.5}, lightPos:{x:-12,y:1,z:3}});
+  if(!ctx) return;
+  const {scene, camera, renderer, controls, sunLight} = ctx;
+
+  const earthGroup = new THREE.Group();
+  const earth = makeEarthMesh(0.7);
+  earthGroup.add(earth);
+  earthGroup.rotation.z = 23.5 * Math.PI/180;
+  scene.add(earthGroup);
+
+  // Sun (off to the left)
+  const sun = makeSun(0.5, new THREE.Vector3(-9, 1.5, 2));
+  scene.add(sun);
+  // Adjust sunLight direction to match
+  sunLight.position.copy(sun.position);
+
+  // Moon orbit (5.14° inclined to ecliptic; ecliptic ≈ scene horizontal)
+  const moonOrbit = new THREE.Group();
+  moonOrbit.rotation.x = 5.14 * Math.PI/180;
+  scene.add(moonOrbit);
+
+  const moon = makeMoonMesh(0.22);
+  moonOrbit.add(moon);
+
+  const orbR = 2.6;
+  const ringGeo = new THREE.RingGeometry(orbR-0.02, orbR+0.02, 96);
+  const ringMat = new THREE.MeshBasicMaterial({color:0xc0bcb0, opacity:0.18, transparent:true, side:THREE.DoubleSide});
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.rotation.x = Math.PI/2;
+  moonOrbit.add(ring);
+
+  // Tidal envelopes — moon's bulge + sun's bulge
+  const moonBulge = makeTidalBulge(0.7, 0x74b8c9, 0.30);
+  earthGroup.add(moonBulge);
+  const sunBulge = makeTidalBulge(0.7, 0xf4c878, 0.18);
+  earthGroup.add(sunBulge);
+
+  let mode = 'spring';
+  document.querySelectorAll('.toggle').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.toggle').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      mode = btn.dataset.mode;
+    });
+  });
+
+  let t = 0;
+  function animate(){
+    t += 0.006;
+    earth.rotation.y += 0.012;
+
+    // In spring mode: moon aligned with sun (or opposite). We'll animate slow phase.
+    // In neap mode: moon at 90°
+    let moonAngle;
+    if(mode==='spring'){
+      // Switch between new and full moon slowly
+      const phase = (Math.sin(t*0.4) > 0) ? 0 : Math.PI;
+      moonAngle = phase + Math.sin(t*0.4)*0.05; // tiny wobble
+    } else {
+      moonAngle = -Math.PI/2 + Math.sin(t*0.3)*0.05;
+    }
+
+    moon.position.x = Math.cos(moonAngle) * orbR;
+    moon.position.z = Math.sin(moonAngle) * orbR;
+    moon.rotation.y = -moonAngle;
+
+    // Sun's bulge always along x (toward sun)
+    const sunDir = new THREE.Vector3().subVectors(sun.position, new THREE.Vector3(0,0,0));
+    const sunAngle = Math.atan2(sunDir.z, sunDir.x);
+    sunBulge.rotation.set(0, -sunAngle, 0);
+
+    // Moon's bulge
+    const moonWorld = new THREE.Vector3();
+    moon.getWorldPosition(moonWorld);
+    const mAngle = Math.atan2(moonWorld.z, moonWorld.x);
+    moonBulge.rotation.set(0, -mAngle, 0);
+
+    controls.update();
+    renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+  }
+  animate();
+})();
+
+// =========================================================
+//  SCENE 5/6 — TIDAL LOCKING (free vs locked)
+// =========================================================
+function makeTidalLockScene(containerId, locked){
+  const ctx = createScene(containerId, null, null, {camPos:{x:0,y:1.5,z:5.5}, starBackground:false});
+  if(!ctx) return;
+  const {scene, camera, renderer, controls} = ctx;
+
+  // Smaller star sphere for these
+  scene.add(makeStarSphere());
+
+  // Earth (small, in center)
+  const earth = makeEarthMesh(0.6);
+  scene.add(earth);
+  earth.rotation.z = 23.5*Math.PI/180;
+
+  // Moon orbit
+  const moonOrbit = new THREE.Group();
+  moonOrbit.rotation.x = 5.14 * Math.PI/180;
+  scene.add(moonOrbit);
+
+  const moon = makeMoonMesh(0.28);
+  // Add a red marker — a small sphere on moon's surface
+  const marker = new THREE.Mesh(
+    new THREE.SphereGeometry(0.035, 16, 12),
+    new THREE.MeshBasicMaterial({color:0xc66b4a})
+  );
+  marker.position.set(0.27, 0, 0); // on +x surface of moon (in moon's local)
+  moon.add(marker);
+  // Marker outline ring (to point direction)
+  const ringMarker = new THREE.Mesh(
+    new THREE.RingGeometry(0.04, 0.06, 24),
+    new THREE.MeshBasicMaterial({color:0xc66b4a, side:THREE.DoubleSide, transparent:true, opacity:0.6})
+  );
+  ringMarker.position.set(0.275, 0, 0);
+  ringMarker.rotation.y = Math.PI/2;
+  moon.add(ringMarker);
+
+  moonOrbit.add(moon);
+
+  const orbR = 2.4;
+  const ringGeo = new THREE.RingGeometry(orbR-0.015, orbR+0.015, 96);
+  const ringMat = new THREE.MeshBasicMaterial({color:0xd4b896, opacity:0.15, transparent:true, side:THREE.DoubleSide});
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.rotation.x = Math.PI/2;
+  moonOrbit.add(ring);
+
+  let t = 0;
+  function animate(){
+    t += 0.008;
+    moon.position.x = Math.cos(t) * orbR;
+    moon.position.z = Math.sin(t) * orbR;
+
+    if(locked){
+      // Moon's rotation = orbital angular velocity (synchronous)
+      // Marker at +x in local should always face origin
+      // Vector from moon to earth: -moon.position
+      // We want local +x axis to align with that direction
+      moon.rotation.y = -t + Math.PI; // marker (local +x) points toward origin
+    } else {
+      // Free rotation, faster than orbit
+      moon.rotation.y = t * 4;
+    }
+
+    earth.rotation.y += 0.005;
+    controls.update();
+    renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+  }
+  animate();
+}
+makeTidalLockScene('freeMoonScene', false);
+makeTidalLockScene('lockedMoonScene', true);
+
+// =========================================================
+//  REVEAL
+// =========================================================
+const observer = new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{ if(e.isIntersecting) e.target.classList.add('in'); });
+},{threshold:0.12});
+document.querySelectorAll('section').forEach(s=>{ s.classList.add('reveal'); observer.observe(s); });
+</script>
+</body>
+</html>
