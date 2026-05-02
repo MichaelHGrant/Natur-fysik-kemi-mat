@@ -1,0 +1,1336 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Alhambra 3D · Den Virtuelle Vandring</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Amiri:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{width:100%;height:100%;overflow:hidden;background:#0d0805;font-family:'Cormorant Garamond',serif;color:#f4ecd8;touch-action:none;user-select:none}
+  canvas{display:block;width:100%;height:100%;cursor:grab}
+  canvas:active{cursor:grabbing}
+
+  /* === LOADING SCREEN === */
+  #loader{
+    position:fixed;inset:0;
+    background:radial-gradient(ellipse at center, #2a1610 0%, #0d0805 70%);
+    display:flex;flex-direction:column;justify-content:center;align-items:center;
+    z-index:50;
+    transition:opacity 1.2s ease;
+  }
+  #loader.gone{opacity:0;pointer-events:none}
+  #loader .ar{font-family:'Amiri',serif;font-size:80px;color:#d4a574;margin-bottom:14px;text-shadow:0 0 30px rgba(212,165,116,.5);animation:pulse 2.5s ease-in-out infinite}
+  #loader h1{font-family:'Cinzel',serif;font-size:18px;letter-spacing:.5em;color:#e8dcc0;margin-bottom:50px;font-weight:500}
+  #loader .bar{width:240px;height:1px;background:rgba(212,165,116,.2);position:relative;overflow:hidden}
+  #loader .bar::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,#d4a574,transparent);width:60px;animation:slide 1.5s ease-in-out infinite}
+  #loader .lbl{margin-top:14px;font-family:'Cinzel',serif;font-size:9px;letter-spacing:.4em;color:rgba(212,165,116,.6)}
+  @keyframes pulse{0%,100%{opacity:.7}50%{opacity:1}}
+  @keyframes slide{0%{transform:translateX(-60px)}100%{transform:translateX(240px)}}
+
+  /* === START OVERLAY === */
+  #start{
+    position:fixed;inset:0;
+    background:linear-gradient(180deg, rgba(13,8,5,.4) 0%, rgba(13,8,5,.85) 100%);
+    display:flex;flex-direction:column;justify-content:center;align-items:center;
+    z-index:40;text-align:center;padding:24px;
+    transition:opacity .8s ease;
+  }
+  #start.gone{opacity:0;pointer-events:none}
+  #start .ar{font-family:'Amiri',serif;font-size:clamp(50px,9vw,110px);color:#d4a574;line-height:1;margin-bottom:6px;text-shadow:0 0 40px rgba(212,165,116,.4)}
+  #start h1{font-family:'Cinzel',serif;font-size:clamp(22px,4vw,40px);letter-spacing:.2em;color:#f4ecd8;margin-bottom:8px;font-weight:500}
+  #start .sub{font-style:italic;color:#e8dcc0;font-size:clamp(15px,1.8vw,20px);max-width:520px;margin-bottom:48px;opacity:.9}
+  #start .btn{
+    display:inline-block;padding:18px 50px;
+    border:1px solid #d4a574;background:transparent;
+    color:#f4ecd8;font-family:'Cinzel',serif;font-size:12px;letter-spacing:.4em;
+    cursor:pointer;transition:.4s;
+  }
+  #start .btn:hover{background:#d4a574;color:#1a0f08;letter-spacing:.5em}
+  #start .ctrls{
+    display:flex;gap:32px;flex-wrap:wrap;justify-content:center;
+    margin-top:50px;font-family:'Cinzel',serif;font-size:10px;letter-spacing:.3em;color:#a08868;
+  }
+  #start .ctrls span{display:flex;align-items:center;gap:10px}
+  #start .ctrls kbd{
+    background:rgba(212,165,116,.15);border:1px solid rgba(212,165,116,.4);
+    padding:4px 8px;font-family:'Cinzel',serif;color:#d4a574;letter-spacing:.1em;
+  }
+
+  /* === HUD === */
+  #hud{
+    position:fixed;top:0;left:0;right:0;
+    padding:18px 24px;
+    z-index:10;
+    pointer-events:none;
+    display:flex;justify-content:space-between;align-items:flex-start;
+    background:linear-gradient(to bottom, rgba(13,8,5,.5), transparent);
+  }
+  #hud .brand{
+    font-family:'Cinzel',serif;font-size:11px;letter-spacing:.4em;color:#d4a574;
+  }
+  #hud .brand .ar{font-family:'Amiri',serif;font-size:18px;margin-right:12px;letter-spacing:0;vertical-align:-2px}
+  #hud .compass{
+    background:rgba(13,8,5,.5);
+    border:1px solid rgba(212,165,116,.3);
+    padding:8px 16px;
+    font-family:'Cinzel',serif;font-size:10px;letter-spacing:.3em;color:#e8dcc0;
+    backdrop-filter:blur(8px);
+  }
+
+  /* === ROOM TITLE === */
+  #room-title{
+    position:fixed;bottom:36%;left:0;right:0;
+    text-align:center;z-index:9;pointer-events:none;
+    opacity:0;transition:opacity 1.5s ease;
+  }
+  #room-title.show{opacity:1}
+  #room-title .ar{font-family:'Amiri',serif;font-size:48px;color:#d4a574;margin-bottom:6px;text-shadow:0 0 30px rgba(0,0,0,.8)}
+  #room-title h2{font-family:'Cinzel',serif;font-size:28px;letter-spacing:.3em;color:#f4ecd8;font-weight:500;text-shadow:0 0 30px rgba(0,0,0,.8)}
+  #room-title em{font-style:italic;font-family:'Cormorant Garamond',serif;font-weight:300;color:#e8dcc0;font-size:18px;display:block;margin-top:6px;letter-spacing:.05em;text-transform:none}
+
+  /* === CROSSHAIR === */
+  #cross{
+    position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+    width:24px;height:24px;z-index:8;pointer-events:none;
+    opacity:0;transition:opacity .4s;
+  }
+  #cross.show{opacity:.6}
+  #cross::before,#cross::after{content:"";position:absolute;background:#d4a574}
+  #cross::before{top:50%;left:0;right:0;height:1px;transform:translateY(-50%)}
+  #cross::after{left:50%;top:0;bottom:0;width:1px;transform:translateX(-50%)}
+
+  /* === MINI MAP === */
+  #minimap{
+    position:fixed;bottom:24px;right:24px;
+    width:140px;height:100px;
+    background:rgba(13,8,5,.7);
+    border:1px solid rgba(212,165,116,.4);
+    backdrop-filter:blur(8px);
+    z-index:10;pointer-events:none;
+    padding:8px;
+  }
+  #minimap svg{width:100%;height:100%;display:block}
+  #minimap-label{
+    position:absolute;top:-22px;left:0;
+    font-family:'Cinzel',serif;font-size:9px;letter-spacing:.3em;color:#a08868;
+  }
+
+  /* === MOBILE JOYSTICK === */
+  #joystick{
+    position:fixed;left:32px;bottom:32px;
+    width:120px;height:120px;
+    border-radius:50%;
+    background:rgba(13,8,5,.4);
+    border:1px solid rgba(212,165,116,.4);
+    backdrop-filter:blur(8px);
+    z-index:10;
+    display:none;
+    touch-action:none;
+  }
+  #joystick.show{display:block}
+  #joystick-knob{
+    position:absolute;top:50%;left:50%;
+    width:50px;height:50px;
+    margin:-25px 0 0 -25px;
+    border-radius:50%;
+    background:rgba(212,165,116,.5);
+    border:1px solid #d4a574;
+    transition:transform .05s linear;
+    pointer-events:none;
+  }
+
+  /* === BANNER QUOTES === */
+  #banner{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+    max-width:600px;
+    padding:14px 28px;
+    background:rgba(13,8,5,.65);
+    border-top:1px solid rgba(212,165,116,.35);
+    border-bottom:1px solid rgba(212,165,116,.35);
+    backdrop-filter:blur(8px);
+    z-index:9;pointer-events:none;
+    text-align:center;
+    font-style:italic;font-size:16px;color:#e8dcc0;
+    opacity:0;transition:opacity 1.2s ease;
+  }
+  #banner.show{opacity:1}
+  #banner cite{display:block;font-style:normal;font-family:'Cinzel',serif;font-size:9px;letter-spacing:.3em;color:#a08868;margin-top:6px}
+
+  @media (max-width:840px){
+    #minimap{width:100px;height:70px;bottom:16px;right:16px}
+    #joystick.show{display:block;left:20px;bottom:20px;width:100px;height:100px}
+    #joystick-knob{width:40px;height:40px;margin:-20px 0 0 -20px}
+    #room-title h2{font-size:20px}
+    #room-title .ar{font-size:36px}
+    #banner{font-size:14px;padding:10px 20px;max-width:90vw}
+    #hud .brand{font-size:9px}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============= LOADING ============= -->
+<div id="loader">
+  <div class="ar">الحمراء</div>
+  <h1>ALHAMBRA</h1>
+  <div class="bar"></div>
+  <div class="lbl">BYGGER PALADSET · MOMENT</div>
+</div>
+
+<!-- ============= START ============= -->
+<div id="start" style="display:none">
+  <div class="ar">الحمراء</div>
+  <h1>ALHAMBRA</h1>
+  <p class="sub">»Den røde fæstning« — træd ind i Patio de los Arrayanes,<br>hvor sultanen modtog sine gæster i 1300-tallet.</p>
+  <button class="btn" id="enterBtn">TRÆD IND</button>
+  <div class="ctrls">
+    <span><kbd>WASD</kbd> GÅ</span>
+    <span><kbd>MUS</kbd> SE OMKRING</span>
+    <span><kbd>ESC</kbd> AFSLUT</span>
+  </div>
+</div>
+
+<!-- ============= HUD ============= -->
+<div id="hud" style="display:none">
+  <div class="brand"><span class="ar">الحمراء</span>PATIO DE LOS ARRAYANES</div>
+  <div class="compass">N</div>
+</div>
+
+<div id="cross"></div>
+
+<div id="room-title">
+  <div class="ar">بهو الريحان</div>
+  <h2>MYRTEGÅRDEN<em>Patio de los Arrayanes · 1370</em></h2>
+</div>
+
+<div id="banner">
+  <div id="banner-text">»Spejlet er paladsets ottende vidunder.«<cite>— ARABISK ORDSPROG</cite></div>
+</div>
+
+<!-- ============= MINIMAP ============= -->
+<div id="minimap" style="display:none">
+  <span id="minimap-label">PALADSET · OVENFRA</span>
+  <svg viewBox="0 0 140 100">
+    <rect x="2" y="14" width="136" height="72" fill="rgba(42,22,16,.6)" stroke="#a06a32" stroke-width=".5"/>
+    <!-- pool: long axis runs vertically since z is mapped to svg-y -->
+    <rect x="55" y="22" width="30" height="56" fill="rgba(45,72,88,.7)" stroke="#d4a574" stroke-width=".4"/>
+    <!-- arch indicators along long walls -->
+    <g stroke="#d4a574" stroke-width=".3" opacity=".5" fill="none">
+      <line x1="2" y1="20" x2="138" y2="20"/>
+      <line x1="2" y1="80" x2="138" y2="80"/>
+      <line x1="12" y1="14" x2="12" y2="86"/>
+      <line x1="128" y1="14" x2="128" y2="86"/>
+    </g>
+    <line id="player-dir" x1="70" y1="80" x2="70" y2="74" stroke="#e6c068" stroke-width="1.4"/>
+    <circle id="player-dot" cx="70" cy="80" r="3" fill="#e6c068"/>
+  </svg>
+</div>
+
+<!-- ============= JOYSTICK ============= -->
+<div id="joystick"><div id="joystick-knob"></div></div>
+
+<canvas id="canvas"></canvas>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ===================================================================
+// ALHAMBRA 3D — VIRTUEL VANDRING
+// ===================================================================
+
+const canvas = document.getElementById('canvas');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true, powerPreference:'high-performance'});
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x4a2818, 0.018);
+
+const camera = new THREE.PerspectiveCamera(72, window.innerWidth/window.innerHeight, 0.1, 200);
+camera.position.set(0, 1.7, 12);
+camera.rotation.order = 'YXZ';
+
+// ===================================================================
+// PROCEDURAL TEXTURES
+// ===================================================================
+
+function makeFloorTexture(){
+  const c = document.createElement('canvas');
+  c.width = c.height = 512;
+  const ctx = c.getContext('2d');
+  // marble base
+  const g = ctx.createRadialGradient(256, 256, 50, 256, 256, 360);
+  g.addColorStop(0, '#f4ecd8');
+  g.addColorStop(1, '#d8c4a0');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 512, 512);
+  // marble veining
+  ctx.strokeStyle = 'rgba(120, 70, 30, 0.18)';
+  ctx.lineWidth = 1;
+  for(let i = 0; i < 40; i++){
+    ctx.beginPath();
+    ctx.moveTo(Math.random()*512, Math.random()*512);
+    ctx.bezierCurveTo(
+      Math.random()*512, Math.random()*512,
+      Math.random()*512, Math.random()*512,
+      Math.random()*512, Math.random()*512
+    );
+    ctx.stroke();
+  }
+  // octagonal tile grid
+  ctx.strokeStyle = 'rgba(160, 106, 50, 0.55)';
+  ctx.lineWidth = 2;
+  for(let x = 0; x < 512; x += 128){
+    for(let y = 0; y < 512; y += 128){
+      ctx.beginPath();
+      ctx.rect(x+2, y+2, 124, 124);
+      ctx.stroke();
+    }
+  }
+  // 8-point star inlay every other tile
+  for(let row = 0; row < 4; row++){
+    for(let col = 0; col < 4; col++){
+      if((row + col) % 2 !== 0) continue;
+      const cx = col*128 + 64;
+      const cy = row*128 + 64;
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.fillStyle = '#6b2c1a';
+      ctx.strokeStyle = '#a06a32';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for(let i = 0; i < 16; i++){
+        const r = i % 2 === 0 ? 38 : 18;
+        const a = (i * Math.PI) / 8 - Math.PI/2;
+        if(i === 0) ctx.moveTo(Math.cos(a)*r, Math.sin(a)*r);
+        else ctx.lineTo(Math.cos(a)*r, Math.sin(a)*r);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#d4a574';
+      ctx.beginPath();
+      ctx.arc(0, 0, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.encoding = THREE.sRGBEncoding;
+  t.anisotropy = 8;
+  return t;
+}
+
+function makeWallTexture(){
+  const c = document.createElement('canvas');
+  c.width = c.height = 512;
+  const ctx = c.getContext('2d');
+  // ivory base with gradient
+  const g = ctx.createLinearGradient(0, 0, 0, 512);
+  g.addColorStop(0, '#f4ecd8');
+  g.addColorStop(0.5, '#e8dcc0');
+  g.addColorStop(1, '#d4c0a0');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 512, 512);
+  // arabesque interlacing
+  ctx.strokeStyle = 'rgba(160, 106, 50, 0.7)';
+  ctx.lineWidth = 1.4;
+  // 8-point stars repeated at corners
+  for(let row = 0; row < 4; row++){
+    for(let col = 0; col < 4; col++){
+      const cx = col*128 + 64;
+      const cy = row*128 + 64;
+      ctx.save();
+      ctx.translate(cx, cy);
+      // inner star fill
+      ctx.fillStyle = 'rgba(107, 44, 26, 0.35)';
+      ctx.beginPath();
+      for(let i = 0; i < 16; i++){
+        const r = i % 2 === 0 ? 28 : 12;
+        const a = (i * Math.PI) / 8 - Math.PI/2;
+        if(i === 0) ctx.moveTo(Math.cos(a)*r, Math.sin(a)*r);
+        else ctx.lineTo(Math.cos(a)*r, Math.sin(a)*r);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      // surrounding circle
+      ctx.beginPath();
+      ctx.arc(0, 0, 42, 0, Math.PI*2);
+      ctx.stroke();
+      // center
+      ctx.fillStyle = '#a06a32';
+      ctx.beginPath();
+      ctx.arc(0, 0, 5, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+  // connecting arabesque between stars
+  ctx.strokeStyle = 'rgba(160, 106, 50, 0.5)';
+  ctx.lineWidth = 1;
+  for(let row = 0; row < 4; row++){
+    for(let col = 0; col < 4; col++){
+      const cx = col*128 + 64;
+      const cy = row*128 + 64;
+      // horizontal connectors
+      ctx.beginPath();
+      ctx.moveTo(cx + 42, cy);
+      ctx.quadraticCurveTo(cx + 64, cy - 20, cx + 86, cy);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx + 42, cy);
+      ctx.quadraticCurveTo(cx + 64, cy + 20, cx + 86, cy);
+      ctx.stroke();
+      // vertical connectors
+      ctx.beginPath();
+      ctx.moveTo(cx, cy + 42);
+      ctx.quadraticCurveTo(cx - 20, cy + 64, cx, cy + 86);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx, cy + 42);
+      ctx.quadraticCurveTo(cx + 20, cy + 64, cx, cy + 86);
+      ctx.stroke();
+    }
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.encoding = THREE.sRGBEncoding;
+  t.anisotropy = 8;
+  return t;
+}
+
+function makeDadoTexture(){
+  // tile dado at base of walls — colorful zellige
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 128;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#1a0f08';
+  ctx.fillRect(0, 0, 256, 128);
+  // alternating squares & diamonds
+  const colors = ['#1e4d4b', '#6b2c1a', '#d4a574', '#2d4858', '#f4ecd8'];
+  for(let row = 0; row < 4; row++){
+    for(let col = 0; col < 8; col++){
+      const x = col * 32 + 16;
+      const y = row * 32 + 16;
+      const c1 = colors[(row + col) % colors.length];
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(Math.PI/4);
+      ctx.fillStyle = c1;
+      ctx.fillRect(-12, -12, 24, 24);
+      ctx.strokeStyle = '#d4a574';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(-12, -12, 24, 24);
+      ctx.restore();
+    }
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+}
+
+function makeCalligraphyBand(){
+  const c = document.createElement('canvas');
+  c.width = 1024; c.height = 128;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#2a1610';
+  ctx.fillRect(0, 0, 1024, 128);
+  // border lines
+  ctx.strokeStyle = '#d4a574';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, 6); ctx.lineTo(1024, 6);
+  ctx.moveTo(0, 122); ctx.lineTo(1024, 122);
+  ctx.stroke();
+  // arabic motto repeated
+  ctx.fillStyle = '#e6c068';
+  ctx.font = 'bold 60px Amiri, serif';
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'center';
+  for(let i = 0; i < 4; i++){
+    ctx.fillText('ولا غالب إلا الله', 128 + i*256, 64);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+}
+
+function makeWaterNormal(){
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#8888ff';
+  ctx.fillRect(0,0,256,256);
+  // soft ripples
+  for(let i = 0; i < 60; i++){
+    const x = Math.random() * 256;
+    const y = Math.random() * 256;
+    const r = 8 + Math.random() * 18;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, 'rgba(150,150,255,1)');
+    g.addColorStop(1, 'rgba(120,120,255,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI*2);
+    ctx.fill();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+}
+
+function makeSkyTexture(){
+  // warm gradient sky
+  const c = document.createElement('canvas');
+  c.width = 64; c.height = 512;
+  const ctx = c.getContext('2d');
+  const g = ctx.createLinearGradient(0, 0, 0, 512);
+  g.addColorStop(0, '#1a2848'); // upper sky deep
+  g.addColorStop(0.4, '#5a4a4a');
+  g.addColorStop(0.7, '#c47a48'); // sunset orange
+  g.addColorStop(0.9, '#e6a068'); // glow
+  g.addColorStop(1, '#3a1d10'); // ground horizon
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 64, 512);
+  return new THREE.CanvasTexture(c);
+}
+
+// ===================================================================
+// SKY DOME
+// ===================================================================
+const skyGeo = new THREE.SphereGeometry(120, 32, 24);
+const skyMat = new THREE.MeshBasicMaterial({
+  map: makeSkyTexture(),
+  side: THREE.BackSide,
+  fog: false,
+  depthWrite: false
+});
+scene.add(new THREE.Mesh(skyGeo, skyMat));
+
+// ===================================================================
+// FLOOR — courtyard marble with hole cut for pool
+// ===================================================================
+const COURT_LEN = 26;   // along z
+const COURT_WID = 14;   // along x
+const POOL_LEN = 17;    // along z (long axis of courtyard)
+const POOL_WID = 4;     // along x (short axis)
+
+const floorTex = makeFloorTexture();
+
+// Build floor as ShapeGeometry with pool hole
+const floorShape = new THREE.Shape();
+const fW = COURT_WID/2 + 0.6;
+const fL = COURT_LEN/2 + 0.6;
+floorShape.moveTo(-fW, -fL);
+floorShape.lineTo(fW, -fL);
+floorShape.lineTo(fW, fL);
+floorShape.lineTo(-fW, fL);
+floorShape.lineTo(-fW, -fL);
+
+const poolHole = new THREE.Path();
+poolHole.moveTo(-POOL_WID/2, -POOL_LEN/2);
+poolHole.lineTo(POOL_WID/2, -POOL_LEN/2);
+poolHole.lineTo(POOL_WID/2, POOL_LEN/2);
+poolHole.lineTo(-POOL_WID/2, POOL_LEN/2);
+poolHole.lineTo(-POOL_WID/2, -POOL_LEN/2);
+floorShape.holes.push(poolHole);
+
+const floorGeo = new THREE.ShapeGeometry(floorShape, 8);
+// Generate proper UVs based on world coords
+{
+  const pos = floorGeo.attributes.position;
+  const uvs = new Float32Array(pos.count * 2);
+  for(let i = 0; i < pos.count; i++){
+    uvs[i*2] = pos.getX(i) / 4;     // 4-meter texture repeat
+    uvs[i*2 + 1] = pos.getY(i) / 4;
+  }
+  floorGeo.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+}
+
+const floor = new THREE.Mesh(
+  floorGeo,
+  new THREE.MeshStandardMaterial({
+    map: floorTex,
+    roughness: 0.4,
+    metalness: 0.05
+  })
+);
+floor.rotation.x = -Math.PI/2;
+floor.receiveShadow = true;
+scene.add(floor);
+
+// ===================================================================
+// HORSESHOE ARCH WALL SEGMENT
+// ===================================================================
+const wallTex = makeWallTexture();
+const dadoTex = makeDadoTexture();
+const calligTex = makeCalligraphyBand();
+
+function buildArchWall(opts){
+  const {totalWidth, totalHeight, depth, archCount, archSpan, archHeight, springHeight} = opts;
+  // Build a wall as one ExtrudeGeometry with multiple horseshoe holes
+  const shape = new THREE.Shape();
+  shape.moveTo(-totalWidth/2, 0);
+  shape.lineTo(totalWidth/2, 0);
+  shape.lineTo(totalWidth/2, totalHeight);
+  shape.lineTo(-totalWidth/2, totalHeight);
+  shape.lineTo(-totalWidth/2, 0);
+
+  // arch parameters for horseshoe shape
+  // The horseshoe extends slightly past 180° at the bottom — about 200°
+  const archR = archSpan / 2;
+  const archAngle = Math.PI / 8; // 22.5° — how far below horizontal the arch extends
+  const archCenterY = springHeight + archR * Math.sin(archAngle);
+  const colMeetX = archR * Math.cos(archAngle);
+
+  const totalArchWidth = archCount * archSpan;
+  const totalGap = totalWidth - totalArchWidth;
+  const gap = totalGap / (archCount + 1);
+
+  for(let i = 0; i < archCount; i++){
+    const archCenterX = -totalWidth/2 + gap + archR + i * (archSpan + gap);
+    const hole = new THREE.Path();
+    // start at bottom-left of arch opening
+    hole.moveTo(archCenterX - colMeetX, 0);
+    // up to where horseshoe arc begins (left spring point)
+    hole.lineTo(archCenterX - colMeetX, archCenterY - archR * Math.sin(archAngle));
+    // arc from left spring point, counterclockwise (false), going through the TOP
+    // angle convention: 0 = +X, PI/2 = +Y, PI = -X
+    // left spring is at angle (PI + archAngle), right spring is at angle (-archAngle) or (2*PI - archAngle)
+    // counterclockwise from PI+archAngle to 2*PI-archAngle goes through PI/2 (top) — no, that's wrong
+    // We want to go through the TOP (angle = PI/2). From PI+archAngle, counterclockwise decreases angle through PI, PI/2, 0, ...
+    // So clockwise=false, but we go FROM PI+archAngle TO -archAngle (= 2PI-archAngle)
+    // Three's absarc with anticlockwise=false goes counterclockwise (decreasing angle if we think of it as standard)
+    // Easiest: use anticlockwise=true to ensure we sweep through the top
+    hole.absarc(
+      archCenterX, archCenterY, archR,
+      Math.PI + archAngle,    // left spring
+      -archAngle,             // right spring (= 2π - archAngle)
+      true
+    );
+    // down to bottom-right of arch opening
+    hole.lineTo(archCenterX + colMeetX, 0);
+    // close
+    hole.lineTo(archCenterX - colMeetX, 0);
+    shape.holes.push(hole);
+  }
+
+  const geo = new THREE.ExtrudeGeometry(shape, {depth, bevelEnabled:false, curveSegments:24});
+  geo.computeVertexNormals();
+  // setup UVs (default UVs from extrude are messy; we'll let texture repeat on x/y world units)
+  const tex = wallTex.clone();
+  tex.needsUpdate = true;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(totalWidth/4, totalHeight/4);
+
+  const mat = new THREE.MeshStandardMaterial({
+    map: tex,
+    roughness: 0.85,
+    metalness: 0.0,
+    side: THREE.DoubleSide
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  return mesh;
+}
+
+// ===================================================================
+// COLUMN (slender Moorish column)
+// ===================================================================
+function buildColumn(){
+  const group = new THREE.Group();
+  // base
+  const baseMat = new THREE.MeshStandardMaterial({color:0xe8dcc0, roughness:0.6});
+  const base = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.25, 0.45), baseMat);
+  base.position.y = 0.125;
+  base.castShadow = true; base.receiveShadow = true;
+  group.add(base);
+  // shaft
+  const shaft = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.16, 0.18, 2.0, 16),
+    new THREE.MeshStandardMaterial({color:0xf4ecd8, roughness:0.45, metalness:0.05})
+  );
+  shaft.position.y = 1.25;
+  shaft.castShadow = true;
+  group.add(shaft);
+  // capital
+  const cap = new THREE.Mesh(
+    new THREE.BoxGeometry(0.42, 0.35, 0.42),
+    new THREE.MeshStandardMaterial({color:0xd4a574, roughness:0.5})
+  );
+  cap.position.y = 2.42;
+  cap.castShadow = true;
+  group.add(cap);
+  // upper block
+  const upper = new THREE.Mesh(
+    new THREE.BoxGeometry(0.5, 0.18, 0.5),
+    new THREE.MeshStandardMaterial({color:0xa06a32, roughness:0.5})
+  );
+  upper.position.y = 2.7;
+  upper.castShadow = true;
+  group.add(upper);
+  return group;
+}
+
+// ===================================================================
+// BUILD COURTYARD
+// ===================================================================
+const WALL_H = 6.0;
+const WALL_T = 0.4;
+
+// Long walls (z = ±COURT_LEN/2... wait no, long walls are at x = ±COURT_WID/2)
+// Long walls run ALONG z direction, so they're at x = ±COURT_WID/2
+const longWall1 = buildArchWall({
+  totalWidth: COURT_LEN, totalHeight: WALL_H, depth: WALL_T,
+  archCount: 6, archSpan: 3.0, archHeight: 2.0, springHeight: 2.4
+});
+longWall1.rotation.y = Math.PI/2;
+longWall1.position.set(COURT_WID/2, 0, 0);
+scene.add(longWall1);
+
+const longWall2 = buildArchWall({
+  totalWidth: COURT_LEN, totalHeight: WALL_H, depth: WALL_T,
+  archCount: 6, archSpan: 3.0, archHeight: 2.0, springHeight: 2.4
+});
+longWall2.rotation.y = -Math.PI/2;
+longWall2.position.set(-COURT_WID/2, 0, 0);
+scene.add(longWall2);
+
+// Short walls (z = ±COURT_LEN/2): grand triple arch
+const shortWall1 = buildArchWall({
+  totalWidth: COURT_WID, totalHeight: WALL_H, depth: WALL_T,
+  archCount: 3, archSpan: 3.0, archHeight: 2.4, springHeight: 2.4
+});
+shortWall1.position.set(0, 0, COURT_LEN/2);
+scene.add(shortWall1);
+
+const shortWall2 = buildArchWall({
+  totalWidth: COURT_WID, totalHeight: WALL_H, depth: WALL_T,
+  archCount: 3, archSpan: 3.0, archHeight: 2.4, springHeight: 2.4
+});
+shortWall2.rotation.y = Math.PI;
+shortWall2.position.set(0, 0, -COURT_LEN/2);
+scene.add(shortWall2);
+
+// ===================================================================
+// CALLIGRAPHY BAND (above arches at height 4.5)
+// ===================================================================
+function addCalligraphyBand(width, height, posX, posY, posZ, rotY){
+  const tex = calligTex.clone();
+  tex.needsUpdate = true;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(width/3, 1);
+  const mat = new THREE.MeshStandardMaterial({map:tex, roughness:0.7, side:THREE.DoubleSide});
+  const geo = new THREE.PlaneGeometry(width, height);
+  const m = new THREE.Mesh(geo, mat);
+  m.position.set(posX, posY, posZ);
+  m.rotation.y = rotY;
+  scene.add(m);
+}
+addCalligraphyBand(COURT_LEN, 0.5, COURT_WID/2 - 0.01, 5.4, 0, -Math.PI/2);
+addCalligraphyBand(COURT_LEN, 0.5, -COURT_WID/2 + 0.01, 5.4, 0, Math.PI/2);
+addCalligraphyBand(COURT_WID, 0.5, 0, 5.4, COURT_LEN/2 - 0.01, Math.PI);
+addCalligraphyBand(COURT_WID, 0.5, 0, 5.4, -COURT_LEN/2 + 0.01, 0);
+
+// ===================================================================
+// DADO (tile band at base of walls, height 0.8)
+// ===================================================================
+function addDado(width, posX, posZ, rotY){
+  const tex = dadoTex.clone();
+  tex.needsUpdate = true;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(width/2, 1);
+  const mat = new THREE.MeshStandardMaterial({map:tex, roughness:0.4, metalness:0.1, side:THREE.DoubleSide});
+  // skip dado for now — would need to align with arch openings; instead add just at the columns/bases
+  return null;
+}
+
+// ===================================================================
+// COLUMNS in front of arches (visual depth — placed at arch-spring positions)
+// ===================================================================
+function placeColumnsForWall(axis, axisLen, perpVal, archCount, archSpan, inset){
+  const archR = archSpan / 2;
+  const totalArchWidth = archCount * archSpan;
+  const totalGap = axisLen - totalArchWidth;
+  const gap = totalGap / (archCount + 1);
+  // place columns at the boundaries between arches (and at ends)
+  for(let i = 0; i <= archCount; i++){
+    let pos;
+    if(i === 0) pos = -axisLen/2 + gap/2;
+    else if(i === archCount) pos = axisLen/2 - gap/2;
+    else pos = -axisLen/2 + gap + i * archSpan + (i - 0.5) * gap;
+    const col = buildColumn();
+    if(axis === 'z'){
+      // wall runs along z, columns sit slightly in front of wall (perpVal is x)
+      const xPos = perpVal > 0 ? perpVal - inset : perpVal + inset;
+      col.position.set(xPos, 0, pos);
+    } else {
+      // wall runs along x, columns sit slightly in front of wall (perpVal is z)
+      const zPos = perpVal > 0 ? perpVal - inset : perpVal + inset;
+      col.position.set(pos, 0, zPos);
+    }
+    scene.add(col);
+  }
+}
+// long walls: 6 arches each
+placeColumnsForWall('z', COURT_LEN,  COURT_WID/2, 6, 3.0, 0.6);
+placeColumnsForWall('z', COURT_LEN, -COURT_WID/2, 6, 3.0, 0.6);
+// short walls: 3 arches each
+placeColumnsForWall('x', COURT_WID,  COURT_LEN/2, 3, 3.0, 0.6);
+placeColumnsForWall('x', COURT_WID, -COURT_LEN/2, 3, 3.0, 0.6);
+
+// ===================================================================
+// REFLECTING POOL (along Z = long axis of courtyard)
+// ===================================================================
+const poolDepth = 0.35;
+
+// pool basin (box below floor, top at y = -0.05)
+const poolBasin = new THREE.Mesh(
+  new THREE.BoxGeometry(POOL_WID, poolDepth, POOL_LEN),
+  new THREE.MeshStandardMaterial({color:0x0a1a20, roughness:0.4})
+);
+poolBasin.position.set(0, -poolDepth/2 - 0.05, 0);
+poolBasin.receiveShadow = true;
+scene.add(poolBasin);
+
+// pool edge (raised marble lip around pool perimeter)
+const lipMat = new THREE.MeshStandardMaterial({color:0xe8dcc0, roughness:0.4});
+// long lips (along Z, on +X and -X sides of pool)
+const lipR = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.15, POOL_LEN+0.6), lipMat);
+lipR.position.set(POOL_WID/2 + 0.15, 0.075, 0);
+lipR.castShadow = true; lipR.receiveShadow = true;
+scene.add(lipR);
+const lipL = lipR.clone(); lipL.position.x = -POOL_WID/2 - 0.15; scene.add(lipL);
+// short lips (across pool ends, along X)
+const lipN = new THREE.Mesh(new THREE.BoxGeometry(POOL_WID+0.6, 0.15, 0.3), lipMat);
+lipN.position.set(0, 0.075, POOL_LEN/2 + 0.15);
+lipN.castShadow = true; lipN.receiveShadow = true;
+scene.add(lipN);
+const lipS = lipN.clone(); lipS.position.z = -POOL_LEN/2 - 0.15; scene.add(lipS);
+
+// water surface — slightly recessed, reflective
+const waterNormal = makeWaterNormal();
+const waterMat = new THREE.MeshStandardMaterial({
+  color: 0x1a3848,
+  roughness: 0.05,
+  metalness: 0.85,
+  normalMap: waterNormal,
+  envMapIntensity: 1.5,
+  transparent: true,
+  opacity: 0.92
+});
+const water = new THREE.Mesh(
+  new THREE.PlaneGeometry(POOL_WID - 0.05, POOL_LEN - 0.05, 16, 32),
+  waterMat
+);
+water.rotation.x = -Math.PI/2;
+water.position.y = -0.04;
+scene.add(water);
+
+// ===================================================================
+// SMALL FOUNTAIN BOWLS at pool ends
+// ===================================================================
+function buildFountainBowl(x, z){
+  const g = new THREE.Group();
+  const bowl = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.55, 0.7, 0.3, 16),
+    new THREE.MeshStandardMaterial({color:0xe8dcc0, roughness:0.5})
+  );
+  bowl.position.y = 0.15;
+  bowl.castShadow = true; bowl.receiveShadow = true;
+  g.add(bowl);
+  // water in bowl
+  const water = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.5, 0.5, 0.05, 16),
+    new THREE.MeshStandardMaterial({color:0x1a3848, roughness:0.1, metalness:0.6})
+  );
+  water.position.y = 0.3;
+  g.add(water);
+  // tiny stream column up
+  const stream = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.02, 0.04, 0.4, 8),
+    new THREE.MeshStandardMaterial({color:0xb8d8e8, transparent:true, opacity:0.5, roughness:0.1})
+  );
+  stream.position.y = 0.5;
+  g.add(stream);
+  g.position.set(x, 0, z);
+  return g;
+}
+scene.add(buildFountainBowl(0, -POOL_LEN/2 + 0.4));
+scene.add(buildFountainBowl(0, POOL_LEN/2 - 0.4));
+
+// ===================================================================
+// MYRTLE HEDGES around pool
+// ===================================================================
+const myrtleMat = new THREE.MeshStandardMaterial({color:0x2d5530, roughness:0.85});
+function buildMyrtle(x, z, length, axis){
+  // wavy top hedge made of small spheres
+  const g = new THREE.Group();
+  const count = Math.floor(length / 0.4);
+  for(let i = 0; i < count; i++){
+    const s = new THREE.Mesh(
+      new THREE.SphereGeometry(0.28 + Math.random()*0.05, 8, 6),
+      myrtleMat
+    );
+    s.castShadow = true;
+    if(axis === 'x'){
+      s.position.set(x - length/2 + i*0.4, 0.3, z);
+    } else {
+      s.position.set(x, 0.3, z - length/2 + i*0.4);
+    }
+    g.add(s);
+  }
+  return g;
+}
+scene.add(buildMyrtle(POOL_WID/2 + 0.6, 0, POOL_LEN, 'z'));
+scene.add(buildMyrtle(-POOL_WID/2 - 0.6, 0, POOL_LEN, 'z'));
+
+// ===================================================================
+// CYPRESS TREES outside the courtyard (visible through arches)
+// ===================================================================
+const cypressMat = new THREE.MeshStandardMaterial({color:0x1a3a1a, roughness:0.9});
+function buildCypress(x, z, h){
+  const g = new THREE.Group();
+  // tall cone shape
+  const cone = new THREE.Mesh(
+    new THREE.ConeGeometry(0.7, h, 8),
+    cypressMat
+  );
+  cone.position.y = h/2;
+  cone.castShadow = true;
+  g.add(cone);
+  // small trunk
+  const trunk = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.1, 0.12, 0.4, 6),
+    new THREE.MeshStandardMaterial({color:0x3a1d10})
+  );
+  trunk.position.y = 0.2;
+  g.add(trunk);
+  g.position.set(x, 0, z);
+  return g;
+}
+// place cypresses outside the colonnade for view through arches
+[
+  [-COURT_WID/2 - 5, COURT_LEN/2 + 4, 6],
+  [-COURT_WID/2 - 6, -COURT_LEN/2 - 4, 7],
+  [COURT_WID/2 + 5, COURT_LEN/2 + 4, 6.5],
+  [COURT_WID/2 + 6, -COURT_LEN/2 - 4, 6],
+  [-COURT_WID/2 - 8, 0, 7.5],
+  [COURT_WID/2 + 8, 4, 7],
+  [COURT_WID/2 + 9, -5, 6.5],
+  [0, COURT_LEN/2 + 8, 8],
+  [0, -COURT_LEN/2 - 8, 8],
+].forEach(c => scene.add(buildCypress(c[0], c[1], c[2])));
+
+// ===================================================================
+// OUTER TERRACE FLOOR (warmer stone color outside courtyard)
+// ===================================================================
+const outerFloor = new THREE.Mesh(
+  new THREE.PlaneGeometry(120, 120),
+  new THREE.MeshStandardMaterial({color:0x6b3d20, roughness:0.95})
+);
+outerFloor.rotation.x = -Math.PI/2;
+outerFloor.position.y = -0.02;
+outerFloor.receiveShadow = true;
+scene.add(outerFloor);
+
+// ===================================================================
+// MOUNTAINS in distance (Sierra Nevada silhouette)
+// ===================================================================
+function buildMountains(){
+  const g = new THREE.Group();
+  const mat = new THREE.MeshBasicMaterial({color:0x2a1a18, fog:false});
+  for(let i = 0; i < 8; i++){
+    const angle = (i / 8) * Math.PI * 2;
+    const r = 80;
+    const x = Math.cos(angle) * r;
+    const z = Math.sin(angle) * r;
+    const h = 12 + Math.random() * 14;
+    const cone = new THREE.Mesh(
+      new THREE.ConeGeometry(8 + Math.random()*5, h, 6),
+      mat
+    );
+    cone.position.set(x, h/2 - 2, z);
+    g.add(cone);
+  }
+  return g;
+}
+scene.add(buildMountains());
+
+// ===================================================================
+// LIGHTING — warm afternoon / golden hour
+// ===================================================================
+const ambient = new THREE.AmbientLight(0xd4a574, 0.55);
+scene.add(ambient);
+
+const sun = new THREE.DirectionalLight(0xffd89e, 1.5);
+sun.position.set(-25, 30, 18);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.near = 1;
+sun.shadow.camera.far = 80;
+sun.shadow.camera.left = -25;
+sun.shadow.camera.right = 25;
+sun.shadow.camera.top = 25;
+sun.shadow.camera.bottom = -25;
+sun.shadow.bias = -0.0005;
+scene.add(sun);
+
+// warm fill light from opposite side
+const fill = new THREE.DirectionalLight(0xc47a48, 0.35);
+fill.position.set(20, 10, -15);
+scene.add(fill);
+
+// subtle hemisphere for color richness
+const hemi = new THREE.HemisphereLight(0xc47a48, 0x3a1d10, 0.3);
+scene.add(hemi);
+
+// ===================================================================
+// DUST PARTICLES — golden motes in light beams
+// ===================================================================
+function buildDust(){
+  const count = 600;
+  const positions = new Float32Array(count * 3);
+  const sizes = new Float32Array(count);
+  for(let i = 0; i < count; i++){
+    positions[i*3]     = (Math.random() - 0.5) * 30;
+    positions[i*3 + 1] = Math.random() * 6 + 0.5;
+    positions[i*3 + 2] = (Math.random() - 0.5) * 30;
+    sizes[i] = Math.random() * 0.04 + 0.015;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+  // tiny canvas circle as point texture
+  const c = document.createElement('canvas');
+  c.width = c.height = 32;
+  const ctx = c.getContext('2d');
+  const grad = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+  grad.addColorStop(0, 'rgba(230, 192, 104, 1)');
+  grad.addColorStop(0.5, 'rgba(212, 165, 116, 0.4)');
+  grad.addColorStop(1, 'rgba(212, 165, 116, 0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 32, 32);
+  const tex = new THREE.CanvasTexture(c);
+
+  const mat = new THREE.PointsMaterial({
+    size: 0.08,
+    map: tex,
+    transparent: true,
+    opacity: 0.7,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    sizeAttenuation: true
+  });
+  return new THREE.Points(geo, mat);
+}
+const dust = buildDust();
+scene.add(dust);
+
+// ===================================================================
+// CONTROLS — POINTER LOCK + WASD + MOBILE
+// ===================================================================
+const move = {fwd:false, back:false, left:false, right:false};
+let yaw = 0;     // start looking down -Z (along the courtyard)
+let pitch = 0;
+camera.position.set(0, 1.7, 11);
+camera.rotation.set(0, yaw, 0);
+const HALF_PI = Math.PI / 2 - 0.01;
+
+let pointerLocked = false;
+
+document.addEventListener('keydown', e => {
+  if(e.code === 'KeyW' || e.code === 'ArrowUp') move.fwd = true;
+  if(e.code === 'KeyS' || e.code === 'ArrowDown') move.back = true;
+  if(e.code === 'KeyA' || e.code === 'ArrowLeft') move.left = true;
+  if(e.code === 'KeyD' || e.code === 'ArrowRight') move.right = true;
+});
+document.addEventListener('keyup', e => {
+  if(e.code === 'KeyW' || e.code === 'ArrowUp') move.fwd = false;
+  if(e.code === 'KeyS' || e.code === 'ArrowDown') move.back = false;
+  if(e.code === 'KeyA' || e.code === 'ArrowLeft') move.left = false;
+  if(e.code === 'KeyD' || e.code === 'ArrowRight') move.right = false;
+});
+document.addEventListener('mousemove', e => {
+  if(pointerLocked){
+    yaw -= e.movementX * 0.0024;
+    pitch -= e.movementY * 0.0024;
+    pitch = Math.max(-HALF_PI, Math.min(HALF_PI, pitch));
+  }
+});
+document.addEventListener('pointerlockchange', () => {
+  pointerLocked = (document.pointerLockElement === canvas);
+  document.getElementById('cross').classList.toggle('show', pointerLocked);
+});
+
+// MOBILE — joystick + touch drag
+const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth < 800;
+let joyX = 0, joyY = 0;
+const joystick = document.getElementById('joystick');
+const knob = document.getElementById('joystick-knob');
+let joyId = null, joyOX = 0, joyOY = 0;
+let lookId = null, lookLX = 0, lookLY = 0;
+
+if(isMobile){
+  joystick.addEventListener('touchstart', e => {
+    e.preventDefault();
+    const t = e.changedTouches[0];
+    joyId = t.identifier;
+    const r = joystick.getBoundingClientRect();
+    joyOX = r.left + r.width/2;
+    joyOY = r.top + r.height/2;
+  }, {passive:false});
+
+  document.addEventListener('touchstart', e => {
+    for(const t of e.changedTouches){
+      const onJoystick = joystick.contains(e.target);
+      if(!onJoystick && lookId === null){
+        lookId = t.identifier;
+        lookLX = t.clientX;
+        lookLY = t.clientY;
+      }
+    }
+  }, {passive:true});
+
+  document.addEventListener('touchmove', e => {
+    for(const t of e.changedTouches){
+      if(t.identifier === joyId){
+        const dx = t.clientX - joyOX;
+        const dy = t.clientY - joyOY;
+        const max = 35;
+        const len = Math.hypot(dx, dy) || 1;
+        const sc = Math.min(1, len / max);
+        const ndx = (dx / len) * sc * max;
+        const ndy = (dy / len) * sc * max;
+        knob.style.transform = `translate(${ndx}px, ${ndy}px)`;
+        joyX = ndx / max;
+        joyY = ndy / max;
+      }
+      if(t.identifier === lookId){
+        const dx = t.clientX - lookLX;
+        const dy = t.clientY - lookLY;
+        yaw -= dx * 0.005;
+        pitch -= dy * 0.005;
+        pitch = Math.max(-HALF_PI, Math.min(HALF_PI, pitch));
+        lookLX = t.clientX;
+        lookLY = t.clientY;
+      }
+    }
+  }, {passive:true});
+
+  document.addEventListener('touchend', e => {
+    for(const t of e.changedTouches){
+      if(t.identifier === joyId){
+        joyId = null;
+        joyX = 0; joyY = 0;
+        knob.style.transform = '';
+      }
+      if(t.identifier === lookId){
+        lookId = null;
+      }
+    }
+  }, {passive:true});
+}
+
+// ===================================================================
+// COLLISION — keep player inside courtyard bounds
+// ===================================================================
+function clampPlayer(){
+  // keep within walls (with a small margin) AND outside the pool
+  const margin = 0.5;
+  const halfW = COURT_WID/2 - margin;
+  const halfL = COURT_LEN/2 - margin;
+  camera.position.x = Math.max(-halfW, Math.min(halfW, camera.position.x));
+  camera.position.z = Math.max(-halfL, Math.min(halfL, camera.position.z));
+
+  // pool collision: if player tries to enter pool, push them out
+  const px = camera.position.x;
+  const pz = camera.position.z;
+  const poolHalfX = POOL_LEN/2 + 0.3;
+  const poolHalfZ = POOL_WID/2 + 0.3;
+  if(Math.abs(px) < poolHalfX && Math.abs(pz) < poolHalfZ){
+    // push out the shorter axis
+    const dx = poolHalfX - Math.abs(px);
+    const dz = poolHalfZ - Math.abs(pz);
+    if(dz < dx){
+      camera.position.z = pz > 0 ? poolHalfZ : -poolHalfZ;
+    } else {
+      camera.position.x = px > 0 ? poolHalfX : -poolHalfX;
+    }
+  }
+  camera.position.y = 1.7;
+}
+
+// ===================================================================
+// MINIMAP UPDATE
+// ===================================================================
+const dot = document.getElementById('player-dot');
+const dirLine = document.getElementById('player-dir');
+function updateMinimap(){
+  if(!dot) return;
+  // map x ∈ [-COURT_WID/2, COURT_WID/2] → svg x ∈ [4, 136]
+  // map z ∈ [-COURT_LEN/2, COURT_LEN/2] → svg y ∈ [16, 84]
+  const sx = ((camera.position.x + COURT_WID/2) / COURT_WID) * 132 + 4;
+  const sy = ((camera.position.z + COURT_LEN/2) / COURT_LEN) * 68 + 16;
+  dot.setAttribute('cx', sx);
+  dot.setAttribute('cy', sy);
+  // direction arrow: camera forward is (-sin(yaw), -cos(yaw)) in world XZ
+  const fx = -Math.sin(yaw);
+  const fz = -Math.cos(yaw);
+  // map world direction to svg: x axis maps directly; z axis maps to svg-y
+  dirLine.setAttribute('x1', sx);
+  dirLine.setAttribute('y1', sy);
+  dirLine.setAttribute('x2', sx + fx * 8);
+  dirLine.setAttribute('y2', sy + fz * 6);
+}
+
+// ===================================================================
+// ANIMATION LOOP
+// ===================================================================
+const clock = new THREE.Clock();
+const tmpFwd = new THREE.Vector3();
+const tmpRight = new THREE.Vector3();
+const SPEED = 3.4;
+
+function animate(){
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const t = clock.elapsedTime;
+
+  // apply rotation
+  camera.rotation.set(pitch, yaw, 0);
+
+  // movement — forward is the direction the camera is looking
+  // camera looks down -Z when yaw = 0, so forward = (-sin(yaw), 0, -cos(yaw))
+  tmpFwd.set(-Math.sin(yaw), 0, -Math.cos(yaw));
+  tmpRight.set(Math.cos(yaw), 0, -Math.sin(yaw));
+
+  let mx = 0, mz = 0;
+  if(move.fwd) mz += 1;
+  if(move.back) mz -= 1;
+  if(move.left) mx -= 1;
+  if(move.right) mx += 1;
+  // mobile joystick (joyY is positive when knob pushed down → backwards)
+  if(isMobile){ mx += joyX; mz -= joyY; }
+
+  if(mx !== 0 || mz !== 0){
+    const len = Math.hypot(mx, mz) || 1;
+    mx /= len; mz /= len;
+    camera.position.addScaledVector(tmpFwd, mz * SPEED * dt);
+    camera.position.addScaledVector(tmpRight, mx * SPEED * dt);
+    // subtle camera bob
+    camera.position.y = 1.7 + Math.sin(t * 7) * 0.04;
+  } else {
+    camera.position.y = 1.7;
+  }
+
+  clampPlayer();
+
+  // animate water
+  waterNormal.offset.x = t * 0.015;
+  waterNormal.offset.y = t * 0.01;
+
+  // animate dust
+  const positions = dust.geometry.attributes.position.array;
+  for(let i = 0; i < positions.length; i += 3){
+    positions[i + 1] += 0.005; // slow rise
+    positions[i] += Math.sin(t * 0.5 + i) * 0.001;
+    if(positions[i + 1] > 7) positions[i + 1] = 0.5;
+  }
+  dust.geometry.attributes.position.needsUpdate = true;
+
+  // update minimap
+  updateMinimap();
+
+  renderer.render(scene, camera);
+}
+
+// ===================================================================
+// RESIZE
+// ===================================================================
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ===================================================================
+// START FLOW
+// ===================================================================
+window.addEventListener('load', () => {
+  // small delay so loader is visible
+  setTimeout(() => {
+    document.getElementById('loader').classList.add('gone');
+    document.getElementById('start').style.display = 'flex';
+    animate();
+  }, 1200);
+});
+
+document.getElementById('enterBtn').addEventListener('click', () => {
+  document.getElementById('start').classList.add('gone');
+  document.getElementById('hud').style.display = 'flex';
+  document.getElementById('minimap').style.display = 'block';
+  if(isMobile){
+    document.getElementById('joystick').classList.add('show');
+  } else {
+    canvas.requestPointerLock();
+  }
+  // show room title
+  setTimeout(() => {
+    document.getElementById('room-title').classList.add('show');
+  }, 600);
+  setTimeout(() => {
+    document.getElementById('room-title').classList.remove('show');
+    document.getElementById('banner').classList.add('show');
+  }, 5000);
+  setTimeout(() => {
+    document.getElementById('banner').classList.remove('show');
+  }, 12000);
+});
+
+// click canvas to re-engage pointer lock
+canvas.addEventListener('click', () => {
+  if(!isMobile && !pointerLocked && document.getElementById('start').classList.contains('gone')){
+    canvas.requestPointerLock();
+  }
+});
+
+// rotating banner of quotes
+const quotes = [
+  ['»Spejlet er paladsets ottende vidunder.«', 'ARABISK ORDSPROG'],
+  ['»Min cuppel er en krone, mine søjler er stjerner.«', 'INSKRIPTION I COMARES-TÅRNET'],
+  ['»Der er ingen sejrherre uden Allah.«', 'NASRID-DYNASTIETS MOTTO'],
+  ['»Hvor lille bliver mennesket foran disse mure.«', 'WASHINGTON IRVING, 1832'],
+  ['»Vandet løber gennem paladset som blod.«', 'IBN ZAMRAK, HOFFETS DIGTER']
+];
+let qIdx = 0;
+setInterval(() => {
+  qIdx = (qIdx + 1) % quotes.length;
+  const el = document.getElementById('banner-text');
+  if(el && document.getElementById('banner').classList.contains('show')){
+    el.innerHTML = `${quotes[qIdx][0]}<cite>— ${quotes[qIdx][1]}</cite>`;
+  }
+}, 9000);
+// keep banner visible after first hide cycle, just rotating
+setInterval(() => {
+  if(document.getElementById('start').classList.contains('gone')){
+    document.getElementById('banner').classList.add('show');
+  }
+}, 25000);
+
+</script>
+</body>
+</html>
