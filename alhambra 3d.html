@@ -1,0 +1,1740 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Alhambra 3D · Fotorealistisk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Amiri:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{width:100%;height:100%;overflow:hidden;background:#0d0805;font-family:'Cormorant Garamond',serif;color:#f4ecd8;touch-action:none;user-select:none}
+  canvas{display:block;width:100%;height:100%;cursor:grab}
+  canvas:active{cursor:grabbing}
+
+  #loader{position:fixed;inset:0;background:radial-gradient(ellipse at center,#2a1610 0%,#0d0805 70%);display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:50;transition:opacity 1.2s ease}
+  #loader.gone{opacity:0;pointer-events:none}
+  #loader .ar{font-family:'Amiri',serif;font-size:80px;color:#d4a574;margin-bottom:14px;text-shadow:0 0 30px rgba(212,165,116,.5);animation:pulse 2.5s ease-in-out infinite}
+  #loader h1{font-family:'Cinzel',serif;font-size:18px;letter-spacing:.5em;color:#e8dcc0;margin-bottom:50px;font-weight:500}
+  #loader .bar{width:240px;height:1px;background:rgba(212,165,116,.2);position:relative;overflow:hidden}
+  #loader .bar::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,#d4a574,transparent);width:60px;animation:slide 1.5s ease-in-out infinite}
+  #loader .lbl{margin-top:14px;font-family:'Cinzel',serif;font-size:9px;letter-spacing:.4em;color:rgba(212,165,116,.6)}
+  @keyframes pulse{0%,100%{opacity:.7}50%{opacity:1}}
+  @keyframes slide{0%{transform:translateX(-60px)}100%{transform:translateX(240px)}}
+
+  #start{position:fixed;inset:0;background:linear-gradient(180deg,rgba(13,8,5,.4) 0%,rgba(13,8,5,.85) 100%);display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:40;text-align:center;padding:24px;transition:opacity .8s ease}
+  #start.gone{opacity:0;pointer-events:none}
+  #start .ar{font-family:'Amiri',serif;font-size:clamp(50px,9vw,110px);color:#d4a574;line-height:1;margin-bottom:6px;text-shadow:0 0 40px rgba(212,165,116,.4)}
+  #start h1{font-family:'Cinzel',serif;font-size:clamp(22px,4vw,40px);letter-spacing:.2em;color:#f4ecd8;margin-bottom:8px;font-weight:500}
+  #start .sub{font-style:italic;color:#e8dcc0;font-size:clamp(15px,1.8vw,20px);max-width:540px;margin-bottom:48px;opacity:.9}
+  #start .btn{display:inline-block;padding:18px 50px;border:1px solid #d4a574;background:transparent;color:#f4ecd8;font-family:'Cinzel',serif;font-size:12px;letter-spacing:.4em;cursor:pointer;transition:.4s}
+  #start .btn:hover{background:#d4a574;color:#1a0f08;letter-spacing:.5em;box-shadow: 0 0 20px rgba(212,165,116,.4)}
+  #start .ctrls{display:flex;gap:24px;flex-wrap:wrap;justify-content:center;margin-top:40px;font-family:'Cinzel',serif;font-size:10px;letter-spacing:.3em;color:#a08868}
+  #start .ctrls span{display:flex;align-items:center;gap:8px}
+  #start .ctrls kbd{background:rgba(212,165,116,.15);border:1px solid rgba(212,165,116,.4);padding:4px 8px;font-family:'Cinzel',serif;color:#d4a574;letter-spacing:.1em}
+
+  #hud{position:fixed;top:0;left:0;right:0;padding:18px 24px;z-index:10;pointer-events:none;display:flex;justify-content:space-between;align-items:flex-start;background:linear-gradient(to bottom,rgba(13,8,5,.6),transparent)}
+  #hud .brand{font-family:'Cinzel',serif;font-size:11px;letter-spacing:.4em;color:#d4a574;text-shadow: 0 2px 4px rgba(0,0,0,0.8)}
+  #hud .brand .ar{font-family:'Amiri',serif;font-size:18px;margin-right:12px;letter-spacing:0;vertical-align:-2px}
+  #hud .right-cluster{display:flex;gap:12px;align-items:center;pointer-events:auto}
+  #hud .compass,#hud .tp-btn{background:rgba(13,8,5,.5);border:1px solid rgba(212,165,116,.3);padding:8px 16px;font-family:'Cinzel',serif;font-size:10px;letter-spacing:.3em;color:#e8dcc0;backdrop-filter:blur(8px);transition:.3s}
+  #hud .tp-btn{cursor:pointer}
+  #hud .tp-btn:hover{border-color:#d4a574;color:#d4a574;background:rgba(42,22,16,.8)}
+
+  #location{position:fixed;top:60px;left:50%;transform:translateX(-50%);text-align:center;z-index:9;pointer-events:none;opacity:0;transition:opacity 1.2s ease;background:rgba(13,8,5,.6);padding:12px 36px;backdrop-filter:blur(8px);border:1px solid rgba(212,165,116,.2);border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,0.5)}
+  #location.show{opacity:1}
+  #location .ar{font-family:'Amiri',serif;font-size:24px;color:#d4a574;line-height:1;margin-bottom:4px;text-shadow: 0 2px 4px rgba(0,0,0,0.8)}
+  #location .name{font-family:'Cinzel',serif;font-size:14px;letter-spacing:.3em;color:#f4ecd8}
+
+  #cross{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:24px;height:24px;z-index:8;pointer-events:none;opacity:0;transition:opacity .4s}
+  #cross.show{opacity:.6}
+  #cross::before,#cross::after{content:"";position:absolute;background:rgba(212,165,116,.8);box-shadow: 0 0 2px rgba(0,0,0,0.8)}
+  #cross::before{top:50%;left:0;right:0;height:1px;transform:translateY(-50%)}
+  #cross::after{left:50%;top:0;bottom:0;width:1px;transform:translateX(-50%)}
+
+  #minimap{position:fixed;bottom:24px;right:24px;width:220px;height:130px;background:rgba(13,8,5,.7);border:1px solid rgba(212,165,116,.4);backdrop-filter:blur(8px);z-index:10;pointer-events:none;padding:8px}
+  #minimap svg{width:100%;height:100%;display:block}
+  #minimap-label{position:absolute;top:-22px;left:0;font-family:'Cinzel',serif;font-size:9px;letter-spacing:.3em;color:#a08868;text-shadow: 0 1px 2px rgba(0,0,0,0.8)}
+
+  #teleport{position:fixed;inset:0;background:rgba(13,8,5,.85);backdrop-filter:blur(12px);display:none;justify-content:center;align-items:center;z-index:20;padding:24px}
+  #teleport.show{display:flex}
+  #teleport-inner{max-width:820px;width:100%;text-align:center}
+  #teleport h2{font-family:'Cinzel',serif;font-weight:500;font-size:32px;letter-spacing:.2em;color:#d4a574;margin-bottom:8px}
+  #teleport .sub{font-style:italic;color:#e8dcc0;margin-bottom:36px;opacity:.8}
+  #teleport-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+  .tp-card{padding:24px 20px;border:1px solid rgba(212,165,116,.3);background:rgba(42,22,16,.5);cursor:pointer;transition:.4s;text-align:left;position:relative;overflow:hidden}
+  .tp-card::before{content:"";position:absolute;top:0;left:0;width:4px;height:100%;background:#d4a574;transform:scaleY(0);transition:transform .4s;transform-origin:bottom}
+  .tp-card:hover{border-color:#d4a574;background:rgba(42,22,16,.9);transform:translateY(-4px);box-shadow: 0 10px 20px rgba(0,0,0,0.4)}
+  .tp-card:hover::before{transform:scaleY(1)}
+  .tp-card .ar{font-family:'Amiri',serif;font-size:26px;color:#d4a574;line-height:1;margin-bottom:10px;display:block}
+  .tp-card h3{font-family:'Cinzel',serif;font-size:14px;letter-spacing:.2em;color:#f4ecd8;margin-bottom:6px;font-weight:500}
+  .tp-card .desc{font-size:14px;color:#e8dcc0;font-style:italic;opacity:.8}
+  #tp-close{position:absolute;top:24px;right:24px;background:transparent;border:1px solid rgba(212,165,116,.3);color:#d4a574;font-family:'Cinzel',serif;font-size:11px;letter-spacing:.3em;padding:12px 24px;cursor:pointer;transition:.3s}
+  #tp-close:hover{border-color:#d4a574;background:rgba(212,165,116,.1)}
+
+  #joystick{position:fixed;left:32px;bottom:32px;width:120px;height:120px;border-radius:50%;background:rgba(13,8,5,.5);border:1px solid rgba(212,165,116,.4);backdrop-filter:blur(8px);z-index:10;display:none;touch-action:none}
+  #joystick.show{display:block}
+  #joystick-knob{position:absolute;top:50%;left:50%;width:50px;height:50px;margin:-25px 0 0 -25px;border-radius:50%;background:rgba(212,165,116,.6);border:1px solid #d4a574;transition:transform .05s linear;pointer-events:none;box-shadow: 0 4px 10px rgba(0,0,0,0.5)}
+
+  #banner{position:fixed;bottom:32px;left:50%;transform:translateX(-50%);max-width:600px;padding:16px 32px;background:rgba(13,8,5,.75);border-top:1px solid rgba(212,165,116,.4);border-bottom:1px solid rgba(212,165,116,.4);backdrop-filter:blur(10px);z-index:9;pointer-events:none;text-align:center;font-style:italic;font-size:17px;color:#e8dcc0;opacity:0;transition:opacity 1.5s ease;box-shadow: 0 10px 30px rgba(0,0,0,0.6)}
+  #banner.show{opacity:1}
+  #banner cite{display:block;font-style:normal;font-family:'Cinzel',serif;font-size:10px;letter-spacing:.3em;color:#d4a574;margin-top:8px}
+
+  @media (max-width:840px){
+    #minimap{width:140px;height:90px;bottom:16px;right:16px}
+    #joystick.show{display:block;left:20px;bottom:20px;width:100px;height:100px}
+    #joystick-knob{width:40px;height:40px;margin:-20px 0 0 -20px}
+    #banner{font-size:15px;padding:12px 24px;max-width:90vw;bottom:140px}
+    #hud .brand{font-size:9px}
+    #hud .compass,#hud .tp-btn{font-size:9px;padding:6px 12px}
+    #teleport h2{font-size:24px}
+    .tp-card{padding:16px}
+  }
+</style>
+</head>
+<body>
+
+<div id="loader">
+  <div class="ar">الحمراء</div>
+  <h1>ALHAMBRA</h1>
+  <div class="bar"></div>
+  <div class="lbl">GENERERER FOTOREALISTISK FÆSTNING...</div>
+</div>
+
+<div id="start" style="display:none">
+  <div class="ar">الحمراء</div>
+  <h1>ALHAMBRA</h1>
+  <p class="sub">Den røde fæstning på Sabikahøjen — oplev det spejlblanke vand i Arrayanes, løvefontænens tolv vagter, og de sirlige zellige-mosaikker.</p>
+  <p class="sub" style="font-size:14px;opacity:.6;margin-top:-32px;margin-bottom:36px;letter-spacing:.05em">"Dale tu limosna, mujer,<br>que no hay en la vida nada<br>como la pena de ser ciego en Granada." &mdash; <em>F. García Lorca</em></p>
+  <button class="btn" id="enterBtn">TRÆD IND</button>
+  <div class="ctrls">
+    <span><kbd>WASD</kbd> GÅ</span>
+    <span><kbd>SHIFT</kbd> LØB</span>
+    <span><kbd>MUS</kbd> SE</span>
+    <span><kbd>M</kbd> KORT</span>
+    <span><kbd>T</kbd> TID</span>
+    <span><kbd>ESC</kbd> AFSLUT</span>
+  </div>
+</div>
+
+<div id="hud" style="display:none">
+  <div class="brand"><span class="ar">الحمراء</span>ALHAMBRA · GRANADA</div>
+  <div class="right-cluster">
+    <div class="compass" id="compass">N</div>
+    <div class="tp-btn" id="time-btn" title="Skift tid på dagen (T)">☀ MIDDAG</div>
+    <div class="tp-btn" id="tp-open">REJS · M</div>
+  </div>
+</div>
+
+<div id="location"><div class="ar" id="loc-ar">بهو الريحان</div><div class="name" id="loc-name">PATIO DE LOS ARRAYANES</div></div>
+<div id="cross"></div>
+<div id="banner"><div id="banner-text"></div></div>
+
+<div id="minimap" style="display:none">
+  <span id="minimap-label">FÆSTNINGEN · OVENFRA</span>
+  <svg id="minimap-svg" viewBox="-110 -32 295 64" preserveAspectRatio="xMidYMid meet">
+    <rect x="-110" y="-32" width="295" height="64" fill="rgba(42,22,16,.6)"/>
+    <g id="mm-buildings"></g>
+    <g id="mm-pools" fill="rgba(45,72,88,.8)" stroke="#5a8aa0" stroke-width=".25"></g>
+    <g id="mm-labels" font-family="Cinzel" font-size="3" letter-spacing=".4" fill="#d4a574"></g>
+    <line id="player-dir" x1="0" y1="0" x2="0" y2="-4" stroke="#ffffff" stroke-width="1.5" opacity="0.8"/>
+    <circle id="player-dot" cx="0" cy="0" r="1.8" fill="#ffffff" stroke="#000" stroke-width="0.5"/>
+  </svg>
+</div>
+
+<div id="teleport">
+  <button id="tp-close">✕ LUK</button>
+  <div id="teleport-inner">
+    <h2>REJS GENNEM PALADSET</h2>
+    <p class="sub">Vælg et sted at træde ind</p>
+    <div id="teleport-grid"></div>
+  </div>
+</div>
+
+<div id="joystick"><div id="joystick-knob"></div></div>
+
+<canvas id="canvas"></canvas>
+
+<!-- Three.js + Post-Processing — multi-CDN fallback loader -->
+<script>
+// Loader Three.js + addons. Prøver flere CDN'er i rækkefølge — hvis én blokeres
+// af firewall/DNS-blocker, prøves næste automatisk. Konsoltekst (F12) hjælper diagnose.
+(function(){
+  var BASES = [
+    'https://cdn.jsdelivr.net/npm/[email protected]',
+    'https://unpkg.com/[email protected]',
+    'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128',
+    'https://esm.sh/[email protected]',
+    'https://threejs.org',                                       // officiel three.js side
+    'https://rawcdn.githack.com/mrdoob/three.js/r128'            // GitHub via githack
+  ];
+  function url(base, kind, file){
+    if(base.indexOf('cdnjs') >= 0){
+      if(kind === 'core') return base + '/three.min.js';
+      return null; // cdnjs har ikke addons
+    }
+    if(base.indexOf('threejs.org') >= 0){
+      if(kind === 'core') return base + '/build/three.min.js';
+      return base + '/examples/js/' + file;
+    }
+    if(base.indexOf('githack') >= 0){
+      if(kind === 'core') return base + '/build/three.min.js';
+      return base + '/examples/js/' + file;
+    }
+    if(kind === 'core') return base + '/build/three.min.js';
+    return base + '/examples/js/' + file;
+  }
+
+  var EXTRAS = [
+    'postprocessing/EffectComposer.js',
+    'postprocessing/RenderPass.js',
+    'postprocessing/ShaderPass.js',
+    'postprocessing/UnrealBloomPass.js',
+    'shaders/CopyShader.js',
+    'shaders/LuminosityHighPassShader.js',
+    'shaders/FXAAShader.js'
+  ];
+
+  function loadScript(src){
+    return new Promise(function(resolve, reject){
+      if(!src){ reject(); return; }
+      var s = document.createElement('script');
+      s.src = src;
+      s.onload = function(){ console.log('[3D] ✓', src); resolve(); };
+      s.onerror = function(){ reject(); };
+      document.head.appendChild(s);
+    });
+  }
+
+  function tryCoreOnAnyCDN(idx){
+    if(idx >= BASES.length){
+      return Promise.reject(new Error('Alle Three.js CDN’er blokeret'));
+    }
+    var u = url(BASES[idx], 'core');
+    return loadScript(u).then(
+      function(){ return BASES[idx]; },
+      function(){ return tryCoreOnAnyCDN(idx+1); }
+    );
+  }
+
+  function loadExtras(coreBase){
+    // Prøv alle BASES i rækkefølge for hver extra-fil
+    return EXTRAS.reduce(function(p, file){
+      return p.then(function(){
+        return BASES.reduce(function(pp, base){
+          return pp.catch(function(){
+            var u = url(base, 'extra', file);
+            if(!u) return Promise.reject();
+            return loadScript(u);
+          });
+        }, Promise.reject()).catch(function(){
+          window.__missingExtras = (window.__missingExtras || 0) + 1;
+        });
+      });
+    }, Promise.resolve());
+  }
+
+  function showCdnError(){
+    var el = document.getElementById('loader');
+    if(!el) return;
+    el.innerHTML = '<div style="text-align:center;color:#d4a574;font-family:Cinzel,serif;padding:40px;max-width:600px"><div style="font-size:60px;margin-bottom:20px">⚠</div><h2 style="font-size:18px;letter-spacing:.3em;margin-bottom:20px">3D-BIBLIOTEK BLOKERET</h2><p style="color:#e8dcc0;font-style:italic;line-height:1.6;font-family:Cormorant Garamond,serif;font-size:17px">Dit netværk blokerer alle CDN’er, vi har prøvet at bruge til at hente Three.js. Dette skyldes typisk en DNS-blocker (Pi-Hole, NextDNS), en streng browser-udvidelse, eller et firma-/skole-firewall.<br><br>Sluk midlertidigt din DNS-blocker eller åbn siden i en anden browser uden filtrering, og indlæs siden igen.</p></div>';
+  }
+
+  tryCoreOnAnyCDN(0)
+    .then(function(coreBase){ return loadExtras(coreBase); })
+    .then(function(){
+      var missing = window.__missingExtras || 0;
+      if(missing === 0) console.log('[3D] alle moduler indlæst — bloom aktiv');
+      else console.log('[3D] core indlæst, ' + missing + ' addons manglede (kører uden bloom)');
+      window.__threeReady = true;
+      var ev = new Event('three-ready');
+      window.dispatchEvent(ev);
+    })
+    .catch(function(err){
+      console.error('[3D]', err.message);
+      showCdnError();
+    });
+})();
+</script>
+
+<script>
+// Scenens kode venter på three-ready før den begynder
+function startAlhambra(){
+// ========================================================================
+// ALHAMBRA 3D — FOTOREALISTISK OPGRADERING
+// ========================================================================
+const PALETTE = {
+  marble: 0xfffcf5, ivory: 0xeae2d0, sandstone: 0xc89060, brick: 0xa05a32,
+  redclay: 0x8a3d20, terra: 0xd4a574, gold: 0xe6c068, gold2: 0xa06a32,
+  teal: 0x1e4d4b, blue: 0x2d4858, carmine: 0x6b2c1a,
+  green: 0x2d5530, deepGreen: 0x1a3a1a, ember: 0x2a1610, ink: 0x0d0805
+};
+
+const canvas = document.getElementById('canvas');
+const renderer = new THREE.WebGLRenderer({canvas, antialias: true, powerPreference: 'high-performance'});
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+// Opgraderede skygger for fotorealisme
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0; 
+renderer.physicallyCorrectLights = true;
+
+const scene = new THREE.Scene();
+// Atmosfærisk dis
+scene.fog = new THREE.FogExp2(0x8ca8c8, 0.0035);
+
+const camera = new THREE.PerspectiveCamera(65, window.innerWidth/window.innerHeight, 0.1, 1000);
+camera.position.set(-95, 1.7, -28);
+camera.rotation.order = 'YXZ';
+
+// ========================================================================
+// MILJØ & REFLEKSIONER (HDRI / PMREM)
+// Dette skaber fotorealistiske refleksioner på vand, marmor og fliser
+// ========================================================================
+const pmremGenerator = new THREE.PMREMGenerator(renderer);
+pmremGenerator.compileEquirectangularShader();
+
+function createEnvironmentSky() {
+  const c = document.createElement('canvas');
+  c.width = 1024; c.height = 512;
+  const ctx = c.getContext('2d');
+  
+  // Fotorealistisk himmelgradient (blå top til varm horisont)
+  const grad = ctx.createLinearGradient(0, 0, 0, 512);
+  grad.addColorStop(0, '#103060');
+  grad.addColorStop(0.4, '#4a7ab0');
+  grad.addColorStop(0.5, '#c8a88a'); // Horisont
+  grad.addColorStop(0.6, '#4a3a2a'); // Jord
+  grad.addColorStop(1, '#1a100a');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 1024, 512);
+
+  // Tilføj en "sol" i HDRI'et for spejlende højlys
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  // Placering baseret på vores DirectionalLight (-80, 60, 35)
+  ctx.arc(350, 180, 15, 0, Math.PI*2); 
+  ctx.fill();
+  
+  const halo = ctx.createRadialGradient(350, 180, 15, 350, 180, 80);
+  halo.addColorStop(0, 'rgba(255, 230, 200, 0.8)');
+  halo.addColorStop(1, 'rgba(255, 230, 200, 0)');
+  ctx.fillStyle = halo;
+  ctx.beginPath();
+  ctx.arc(350, 180, 80, 0, Math.PI*2);
+  ctx.fill();
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.mapping = THREE.EquirectangularReflectionMapping;
+  tex.encoding = THREE.sRGBEncoding;
+  return tex;
+}
+const envMap = createEnvironmentSky();
+scene.environment = pmremGenerator.fromEquirectangular(envMap).texture;
+
+// Real-time refleksionskamera til Patio de los Arrayanes
+const reflectionTarget = new THREE.WebGLCubeRenderTarget(512, {
+  format: THREE.RGBAFormat, generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter, encoding: THREE.sRGBEncoding
+});
+const reflectionCamera = new THREE.CubeCamera(0.5, 300, reflectionTarget);
+reflectionCamera.position.set(0, 0.05, 0); 
+scene.add(reflectionCamera);
+let reflectionFrameCounter = 0;
+const reflectionUpdateInterval = 2; // Oftere opdatering for flydende refleksion
+let mainPoolWater = null;
+
+// ========================================================================
+// HJÆLPER: Tekstur-generering
+// ========================================================================
+function createBumpFromCanvas(canvas) {
+  const c = document.createElement('canvas');
+  c.width = canvas.width; c.height = canvas.height;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(canvas, 0, 0);
+  
+  // Simpel gråtone-konvertering til bump map
+  const imgData = ctx.getImageData(0, 0, c.width, c.height);
+  const data = imgData.data;
+  for(let i=0; i<data.length; i+=4){
+    const luma = data[i]*0.299 + data[i+1]*0.587 + data[i+2]*0.114;
+    data[i] = data[i+1] = data[i+2] = luma;
+  }
+  ctx.putImageData(imgData, 0, 0);
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+// Fotorealistisk Hæk-tekstur (Klippet Buksbom/Myrte)
+function makeHedgeTextures() {
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 512;
+  const ctx = c.getContext('2d');
+  
+  // Mørkegrøn base
+  ctx.fillStyle = '#102210';
+  ctx.fillRect(0, 0, 512, 512);
+  
+  // Tusindvis af små blade (støj)
+  for(let i=0; i<30000; i++) {
+    const x = Math.random()*512;
+    const y = Math.random()*512;
+    const r = Math.random();
+    if(r > 0.8) ctx.fillStyle = '#2d5530';
+    else if(r > 0.4) ctx.fillStyle = '#1c3d1e';
+    else ctx.fillStyle = '#0a170a';
+    ctx.fillRect(x, y, 3, 3);
+  }
+  
+  const map = new THREE.CanvasTexture(c);
+  map.wrapS = map.wrapT = THREE.RepeatWrapping;
+  map.encoding = THREE.sRGBEncoding;
+  const bumpMap = createBumpFromCanvas(c);
+  return { map, bumpMap };
+}
+
+// Opgraderet Zellige-væg (Khatem) inspireret af dit uploadede billede
+function makeKhatemTexture(){
+  const c = document.createElement('canvas');
+  c.width = 1024; c.height = 1024;
+  const ctx = c.getContext('2d');
+
+  // TOP 70%: Creme stukkatur
+  const stuccoEnd = 1024 * 0.70;
+  ctx.fillStyle = '#f2ecd8';
+  ctx.fillRect(0, 0, 1024, stuccoEnd);
+  
+  // Subtil støj i stukkatur
+  ctx.fillStyle = 'rgba(0,0,0,0.02)';
+  for(let i=0; i<5000; i++){
+    ctx.fillRect(Math.random()*1024, Math.random()*stuccoEnd, 2, 2);
+  }
+
+  // Udsmykning i stukkatur
+  ctx.strokeStyle = '#d0c4b0';
+  ctx.lineWidth = 1.5;
+  const dW = 60, dH = 80;
+  for(let row = 0; row * dH < stuccoEnd; row++){
+    for(let col = 0; col < 18; col++){
+      const cx = col * dW + (row % 2 === 0 ? 0 : dW/2);
+      const cy = row * dH;
+      ctx.strokeRect(cx - dW/4, cy - dH/4, dW/2, dH/2);
+    }
+  }
+
+  // Mellem-liste (træ/guld)
+  ctx.fillStyle = '#2a1a10';
+  ctx.fillRect(0, stuccoEnd, 1024, 6);
+  ctx.fillStyle = '#c89050';
+  ctx.fillRect(0, stuccoEnd + 6, 1024, 10);
+  ctx.fillStyle = '#2a1a10';
+  ctx.fillRect(0, stuccoEnd + 16, 1024, 4);
+
+  // BUND 30%: Mosaik / Zellige (Kopierer mønstret fra dine billeder)
+  const dadoStart = stuccoEnd + 20;
+  const dadoEnd = 1024;
+  
+  ctx.fillStyle = '#e8dcc0'; // Hvid fuge/base
+  ctx.fillRect(0, dadoStart, 1024, dadoEnd - dadoStart);
+
+  // Tegn flettede stjerner (Orange, Blå, Grøn, Hvid)
+  const cell = 60;
+  for(let row = 0; row * cell < (dadoEnd - dadoStart) + cell; row++){
+    for(let col = 0; col * cell < 1024 + cell; col++){
+      const cx = col * cell;
+      const cy = dadoStart + row * cell;
+      
+      // 8-takket stjerne mønster elementer
+      if((row + col) % 2 === 0) {
+        // Orange stjerne-kerne
+        ctx.fillStyle = '#d85a20';
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - 15); ctx.lineTo(cx + 15, cy);
+        ctx.lineTo(cx, cy + 15); ctx.lineTo(cx - 15, cy);
+        ctx.fill();
+        
+        // Hvid og sort kant (strapwork)
+        ctx.strokeStyle = '#1a0f08'; ctx.lineWidth = 1.5;
+        ctx.strokeRect(cx - 15, cy - 15, 30, 30);
+      } else {
+        // Blå kryds-kerne
+        ctx.fillStyle = '#1c4a8a';
+        ctx.fillRect(cx - 12, cy - 12, 24, 24);
+        
+        // Grønne hjørner
+        ctx.fillStyle = '#1e8050';
+        ctx.beginPath(); ctx.arc(cx, cy, 6, 0, Math.PI*2); ctx.fill();
+      }
+    }
+  }
+  
+  // Nedre kantliste
+  ctx.fillStyle = '#1a0f08';
+  ctx.fillRect(0, dadoEnd - 6, 1024, 6);
+
+  const map = new THREE.CanvasTexture(c);
+  map.wrapS = map.wrapT = THREE.RepeatWrapping;
+  map.encoding = THREE.sRGBEncoding;
+  map.anisotropy = 8;
+  const bumpMap = createBumpFromCanvas(c);
+  
+  return { map, bumpMap };
+}
+
+// Marmorgulv med bump map til fuger
+function makeMarbleFloorTextures(){
+  const c = document.createElement('canvas');
+  c.width = 1024; c.height = 1024;
+  const ctx = c.getContext('2d');
+  
+  // Ren, let varm marmor
+  ctx.fillStyle = '#faf6ed';
+  ctx.fillRect(0, 0, 1024, 1024);
+  
+  // Subtile årer for realisme
+  ctx.strokeStyle = 'rgba(0,0,0,0.03)';
+  ctx.lineWidth = 2;
+  for(let i = 0; i < 200; i++){
+    ctx.beginPath();
+    ctx.moveTo(Math.random()*1024, Math.random()*1024);
+    ctx.bezierCurveTo(Math.random()*1024, Math.random()*1024, Math.random()*1024, Math.random()*1024, Math.random()*1024, Math.random()*1024);
+    ctx.stroke();
+  }
+  
+  // Store fliselinjer
+  const cell = 256;
+  ctx.strokeStyle = '#d0c4b0';
+  ctx.lineWidth = 3;
+  for(let i = 0; i <= 4; i++){
+    ctx.beginPath();
+    ctx.moveTo(i*cell, 0); ctx.lineTo(i*cell, 1024);
+    ctx.moveTo(0, i*cell); ctx.lineTo(1024, i*cell);
+    ctx.stroke();
+  }
+  
+  const map = new THREE.CanvasTexture(c);
+  map.wrapS = map.wrapT = THREE.RepeatWrapping;
+  map.encoding = THREE.sRGBEncoding;
+  map.anisotropy = 8;
+  
+  const bumpMap = createBumpFromCanvas(c);
+  return { map, bumpMap };
+}
+
+const khatemTex = makeKhatemTexture();
+const marbleTex = makeMarbleFloorTextures();
+const hedgeTex = makeHedgeTextures();
+
+function clonedMap(base, rx, ry){
+  const t = base.clone();
+  t.needsUpdate = true;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(rx, ry);
+  return t;
+}
+
+// Fysisk baserede materialer for fotorealisme (MeshPhysicalMaterial)
+const MATS = {
+  marble: () => new THREE.MeshPhysicalMaterial({
+    map: clonedMap(marbleTex.map, 1, 1), 
+    bumpMap: clonedMap(marbleTex.bumpMap, 1, 1),
+    bumpScale: 0.005,
+    roughness: 0.15, metalness: 0.0, 
+    clearcoat: 0.8, clearcoatRoughness: 0.1, // Skaber den blanke palads-følelse
+    envMapIntensity: 1.0
+  }),
+  khatem: (rx, ry) => new THREE.MeshPhysicalMaterial({
+    map: clonedMap(khatemTex.map, rx, 1),
+    bumpMap: clonedMap(khatemTex.bumpMap, rx, 1),
+    bumpScale: 0.02,
+    roughness: 0.6, clearcoat: 0.1, side: THREE.DoubleSide
+  }),
+  hedge: () => new THREE.MeshStandardMaterial({
+    map: hedgeTex.map,
+    bumpMap: hedgeTex.bumpMap,
+    bumpScale: 0.08,
+    roughness: 0.9, color: 0xcccccc
+  }),
+  // Simple farvematerialer, opgraderet med physical properties
+  sandstone: () => new THREE.MeshStandardMaterial({color: PALETTE.sandstone, roughness: 0.95, bumpScale: 0.05}),
+  ivory: () => new THREE.MeshPhysicalMaterial({color: PALETTE.ivory, roughness: 0.3, clearcoat: 0.4}),
+  marbleSolid: () => new THREE.MeshPhysicalMaterial({color: PALETTE.marble, roughness: 0.15, clearcoat: 0.7}),
+  gold: () => new THREE.MeshPhysicalMaterial({color: PALETTE.gold2, roughness: 0.25, metalness: 0.9, clearcoat: 1.0}),
+  green: () => new THREE.MeshStandardMaterial({color: PALETTE.green, roughness: 0.85})
+};
+
+// ========================================================================
+// FOTOREALISTISK VAND-SHADER
+// Tunet til at matche det spejlblanke spejlbassin i Arrayanes
+// ========================================================================
+function buildWaterMaterial(){
+  // Vi skaber et simpelt normal-kort for krusninger, 
+  // men de holdes meget svage for at simulere det rolige spejlbassin
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#8080ff'; ctx.fillRect(0,0,256,256);
+  for(let i=0; i<40; i++){
+    const x = Math.random()*256, y = Math.random()*256, r = 10+Math.random()*20;
+    const grad = ctx.createRadialGradient(x,y,0, x,y,r);
+    grad.addColorStop(0, `rgb(${128+Math.random()*20},${128+Math.random()*20},255)`);
+    grad.addColorStop(1, 'rgba(128,128,255,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+  }
+  const waterNorm = new THREE.CanvasTexture(c);
+  waterNorm.wrapS = waterNorm.wrapT = THREE.RepeatWrapping;
+
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      uTime: { value: 0 },
+      uNormalMap: { value: waterNorm },
+      uEnvMap: { value: null }, 
+      uHasEnvMap: { value: 0.0 },
+      uCameraPos: { value: new THREE.Vector3() },
+      uSunDir: { value: new THREE.Vector3(-0.6, 0.6, 0.4).normalize() },
+      uDeepColor: { value: new THREE.Color(0x0a1c18) }, // Mørkegrøn-blå base som på billedet
+      uShallowColor: { value: new THREE.Color(0x1a3830) }
+    },
+    vertexShader: `
+      uniform float uTime;
+      varying vec3 vWorldPos;
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        vec4 wp = modelMatrix * vec4(position, 1.0);
+        
+        // Meget svage mikrobølger
+        float wave = sin(wp.x * 2.0 + uTime) * 0.002 + sin(wp.z * 1.5 - uTime * 0.8) * 0.002;
+        wp.y += wave;
+        
+        vWorldPos = wp.xyz;
+        gl_Position = projectionMatrix * viewMatrix * wp;
+      }
+    `,
+    fragmentShader: `
+      uniform float uTime;
+      uniform sampler2D uNormalMap;
+      uniform samplerCube uEnvMap;
+      uniform float uHasEnvMap;
+      uniform vec3 uCameraPos;
+      uniform vec3 uSunDir;
+      uniform vec3 uDeepColor;
+      uniform vec3 uShallowColor;
+      varying vec3 vWorldPos;
+      varying vec2 vUv;
+
+      void main() {
+        // Blide krusninger, skaleret ned for perfekt spejl
+        vec2 uv1 = vWorldPos.xz * 0.2 + vec2(uTime * 0.01, uTime * 0.01);
+        vec3 n1 = texture2D(uNormalMap, uv1).rgb * 2.0 - 1.0;
+        
+        // Overvejende flad normal for spejleffekt
+        vec3 surfNormal = normalize(vec3(0.0, 1.0, 0.0) + n1 * 0.03); 
+
+        vec3 viewDir = normalize(uCameraPos - vWorldPos);
+        float NdotV = max(dot(surfNormal, viewDir), 0.0);
+
+        // Fresnel effekt - mere reflekterende ved skarpe vinkler
+        float F0 = 0.04; 
+        float fresnel = F0 + (1.0 - F0) * pow(1.0 - NdotV, 5.0);
+
+        vec3 baseColor = mix(uDeepColor, uShallowColor, NdotV);
+
+        // Hent refleksion fra CubeCamera
+        vec3 reflectVec = reflect(-viewDir, surfNormal);
+        vec3 envReflect = textureCube(uEnvMap, reflectVec).rgb;
+        
+        // Hvis intet envMap, brug en default himmelfarve
+        vec3 fallback = vec3(0.4, 0.6, 0.8);
+        vec3 reflection = mix(fallback, envReflect, uHasEnvMap);
+
+        // Spejlblank blanding
+        vec3 color = mix(baseColor, reflection, max(fresnel, 0.75)); // Høj minimums-refleksion
+
+        // Subtilt sol-specular
+        vec3 reflectDir = reflect(-uSunDir, surfNormal);
+        float specAngle = max(dot(viewDir, reflectDir), 0.0);
+        float spec = pow(specAngle, 500.0); // Meget skarp highlight
+        color += vec3(1.0, 0.9, 0.7) * spec * 2.0;
+
+        gl_FragColor = vec4(color, 0.98);
+      }
+    `,
+    transparent: true,
+    side: THREE.DoubleSide
+  });
+}
+const allWaterMats = [];
+
+// ========================================================================
+// BYGGEFUNKTIONER
+// ========================================================================
+function buildArchWall({totalWidth, totalHeight, depth, archCount, archSpan, springHeight, material}){
+  const shape = new THREE.Shape();
+  shape.moveTo(-totalWidth/2, 0); shape.lineTo(totalWidth/2, 0);
+  shape.lineTo(totalWidth/2, totalHeight); shape.lineTo(-totalWidth/2, totalHeight);
+  shape.lineTo(-totalWidth/2, 0);
+
+  const archR = archSpan / 2;
+  const archAngle = Math.PI / 8;
+  const archCenterY = springHeight + archR * Math.sin(archAngle);
+  const colMeetX = archR * Math.cos(archAngle);
+  const gap = (totalWidth - (archCount * archSpan)) / (archCount + 1);
+
+  for(let i = 0; i < archCount; i++){
+    const archCenterX = -totalWidth/2 + gap + archR + i * (archSpan + gap);
+    const hole = new THREE.Path();
+    hole.moveTo(archCenterX - colMeetX, 0);
+    hole.lineTo(archCenterX - colMeetX, archCenterY - archR * Math.sin(archAngle));
+    hole.absarc(archCenterX, archCenterY, archR, Math.PI + archAngle, -archAngle, true);
+    hole.lineTo(archCenterX + colMeetX, 0);
+    hole.lineTo(archCenterX - colMeetX, 0);
+    shape.holes.push(hole);
+  }
+
+  const geo = new THREE.ExtrudeGeometry(shape, {depth, bevelEnabled:false, curveSegments:32});
+  const pos = geo.attributes.position;
+  const uvs = new Float32Array(pos.count * 2);
+  for(let i = 0; i < pos.count; i++){
+    uvs[i*2]   = (pos.getX(i) + totalWidth/2) / totalWidth;
+    uvs[i*2+1] = pos.getY(i) / totalHeight;
+  }
+  geo.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+  geo.computeVertexNormals();
+  const mesh = new THREE.Mesh(geo, material);
+  mesh.castShadow = true; mesh.receiveShadow = true;
+  return mesh;
+}
+
+function buildColumn(height = 2.4){
+  const g = new THREE.Group();
+  const base = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.25, 0.45), MATS.ivory());
+  base.position.y = 0.125; base.castShadow = true; base.receiveShadow = true; g.add(base);
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.18, height, 32), MATS.marbleSolid());
+  shaft.position.y = 0.25 + height/2; shaft.castShadow = true; g.add(shaft);
+  const cap = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.35, 0.42), MATS.ivory());
+  cap.position.y = 0.25 + height + 0.175; cap.castShadow = true; g.add(cap);
+  return g;
+}
+
+// FOTOREALISTISK HÆK (Rektangulær klippet myrte, som på fotoet)
+function buildTrimmedHedge(x, z, length, axis) {
+  const width = 1.1; // Hækkens tykkelse
+  const height = 1.0; // Hækkens højde
+  
+  const geoX = axis === 'x' ? length : width;
+  const geoZ = axis === 'z' ? length : width;
+  
+  const geo = new THREE.BoxGeometry(geoX, height, geoZ, Math.ceil(geoX*2), 2, Math.ceil(geoZ*2));
+  
+  // Forvrid vertikaler en smule for at få organisk kant, i stedet for perfekt skarp boks
+  const pos = geo.attributes.position;
+  for(let i=0; i<pos.count; i++) {
+    pos.setX(i, pos.getX(i) + (Math.random()-0.5)*0.05);
+    pos.setY(i, pos.getY(i) + (Math.random()-0.5)*0.05);
+    pos.setZ(i, pos.getZ(i) + (Math.random()-0.5)*0.05);
+  }
+  geo.computeVertexNormals();
+
+  const mesh = new THREE.Mesh(geo, MATS.hedge());
+  mesh.position.set(x, height/2 + 0.05, z); // Lidt hævet fra jorden
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  return mesh;
+}
+
+// ========================================================================
+// SCENEOPBYGNING - PATIO DE LOS ARRAYANES
+// ========================================================================
+const COURT_LEN = 28;
+const COURT_WID = 16;
+const POOL_LEN = 20;
+const POOL_WID = 4.5;
+const WALL_H = 6.0;
+const WALL_T = 0.4;
+
+// Spejlblankt marmorgulv med hul til poolen
+const floorShape = new THREE.Shape();
+floorShape.moveTo(-COURT_WID/2, -COURT_LEN/2);
+floorShape.lineTo(COURT_WID/2, -COURT_LEN/2);
+floorShape.lineTo(COURT_WID/2, COURT_LEN/2);
+floorShape.lineTo(-COURT_WID/2, COURT_LEN/2);
+floorShape.lineTo(-COURT_WID/2, -COURT_LEN/2);
+
+const poolHole = new THREE.Path();
+poolHole.moveTo(-POOL_WID/2, -POOL_LEN/2);
+poolHole.lineTo(POOL_WID/2, -POOL_LEN/2);
+poolHole.lineTo(POOL_WID/2, POOL_LEN/2);
+poolHole.lineTo(-POOL_WID/2, POOL_LEN/2);
+poolHole.lineTo(-POOL_WID/2, -POOL_LEN/2);
+floorShape.holes.push(poolHole);
+
+const floorGeo = new THREE.ShapeGeometry(floorShape);
+const pos = floorGeo.attributes.position;
+const uvs = new Float32Array(pos.count * 2);
+for(let i = 0; i < pos.count; i++){ uvs[i*2] = pos.getX(i)/8; uvs[i*2+1] = pos.getY(i)/8; }
+floorGeo.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+
+const floor = new THREE.Mesh(floorGeo, MATS.marble());
+floor.rotation.x = -Math.PI/2;
+floor.receiveShadow = true;
+scene.add(floor);
+
+// Arrayanes Vægge
+const lw1 = buildArchWall({totalWidth: COURT_LEN, totalHeight: WALL_H, depth: WALL_T, archCount: 7, archSpan: 2.8, springHeight: 2.6, material: MATS.khatem(COURT_LEN/6, WALL_H/6)});
+lw1.rotation.y = Math.PI/2; lw1.position.set(COURT_WID/2, 0, 0); scene.add(lw1);
+
+const lw2 = buildArchWall({totalWidth: COURT_LEN, totalHeight: WALL_H, depth: WALL_T, archCount: 7, archSpan: 2.8, springHeight: 2.6, material: MATS.khatem(COURT_LEN/6, WALL_H/6)});
+lw2.rotation.y = -Math.PI/2; lw2.position.set(-COURT_WID/2, 0, 0); scene.add(lw2);
+
+const sw1 = buildArchWall({totalWidth: COURT_WID, totalHeight: WALL_H, depth: WALL_T, archCount: 3, archSpan: 3.5, springHeight: 2.6, material: MATS.khatem(COURT_WID/6, WALL_H/6)});
+sw1.position.set(0, 0, COURT_LEN/2); scene.add(sw1);
+
+const sw2 = buildArchWall({totalWidth: COURT_WID, totalHeight: WALL_H, depth: WALL_T, archCount: 3, archSpan: 3.5, springHeight: 2.6, material: MATS.khatem(COURT_WID/6, WALL_H/6)});
+sw2.rotation.y = Math.PI; sw2.position.set(0, 0, -COURT_LEN/2); scene.add(sw2);
+
+// Søjler
+function placeColumns(axis, axisLen, perpVal, archCount, archSpan, inset){
+  const totalArchWidth = archCount * archSpan;
+  const gap = (axisLen - totalArchWidth) / (archCount + 1);
+  for(let i = 0; i <= archCount; i++){
+    let pos = -axisLen/2 + gap + i * archSpan + (i - 0.5) * gap;
+    if(i === 0) pos = -axisLen/2 + gap/2;
+    if(i === archCount) pos = axisLen/2 - gap/2;
+    const col = buildColumn(2.6);
+    const xPos = perpVal > 0 ? perpVal - inset : perpVal + inset;
+    if(axis === 'z') col.position.set(xPos, 0, pos);
+    else col.position.set(pos, 0, xPos);
+    scene.add(col);
+  }
+}
+placeColumns('x', COURT_WID, COURT_LEN/2, 3, 3.5, 0.6);
+placeColumns('x', COURT_WID, -COURT_LEN/2, 3, 3.5, 0.6);
+
+// ========================================================================
+// POOL OG HÆKKE (Præcis match med dit billede)
+// ========================================================================
+const poolBasin = new THREE.Mesh(new THREE.BoxGeometry(POOL_WID, 0.8, POOL_LEN), new THREE.MeshStandardMaterial({color: 0x05100e, roughness: 0.5}));
+poolBasin.position.set(0, -0.4, 0);
+scene.add(poolBasin);
+
+// Hvide marmorkanter flush med gulvet
+const lipMat = MATS.ivory();
+const lipW = 0.4;
+const lipR = new THREE.Mesh(new THREE.BoxGeometry(lipW, 0.1, POOL_LEN+lipW*2), lipMat);
+lipR.position.set(POOL_WID/2 + lipW/2, -0.05, 0); scene.add(lipR);
+const lipL = lipR.clone(); lipL.position.x = -POOL_WID/2 - lipW/2; scene.add(lipL);
+const lipN = new THREE.Mesh(new THREE.BoxGeometry(POOL_WID, 0.1, lipW), lipMat);
+lipN.position.set(0, -0.05, POOL_LEN/2 + lipW/2); scene.add(lipN);
+const lipS = lipN.clone(); lipS.position.z = -POOL_LEN/2 - lipW/2; scene.add(lipS);
+
+// Spejlblankt Vand
+const waterMat = buildWaterMaterial();
+allWaterMats.push(waterMat);
+const water = new THREE.Mesh(new THREE.PlaneGeometry(POOL_WID, POOL_LEN, 64, 64), waterMat);
+water.rotation.x = -Math.PI/2;
+water.position.y = -0.08; // Vandlinje lige under kanten
+scene.add(water);
+mainPoolWater = water; 
+
+// Snorlige, klippede myrtehække langs bassinet
+scene.add(buildTrimmedHedge(POOL_WID/2 + 1.2, 0, POOL_LEN, 'z'));
+scene.add(buildTrimmedHedge(-POOL_WID/2 - 1.2, 0, POOL_LEN, 'z'));
+
+
+// ============================================================================
+// LYS OG ATMOSFÆRE (Golden Hour Fotorealisme)
+// ============================================================================
+const ambient = new THREE.AmbientLight(0xfff0e0, 0.2); // Varmt, dæmpet ambient
+scene.add(ambient);
+
+// Primær Sol
+const sun = new THREE.DirectionalLight(0xffeedd, 3.5);
+sun.position.set(-60, 45, 30);
+sun.target.position.set(0, 0, 0);
+sun.castShadow = true;
+sun.shadow.mapSize.set(4096, 4096); // Højtopløselige skygger
+sun.shadow.camera.near = 1;
+sun.shadow.camera.far = 150;
+sun.shadow.camera.left = -30;
+sun.shadow.camera.right = 30;
+sun.shadow.camera.top = 30;
+sun.shadow.camera.bottom = -30;
+sun.shadow.bias = -0.0005; 
+sun.shadow.normalBias = 0.02;
+scene.add(sun);
+scene.add(sun.target);
+
+// Himmel-spredt lys (Fill Light) fra blå himmel
+const skyFill = new THREE.DirectionalLight(0xaaccff, 0.8);
+skyFill.position.set(40, 60, -30);
+scene.add(skyFill);
+
+// Hemisphere Light
+const hemi = new THREE.HemisphereLight(0xbad4ff, 0x5a4a3a, 0.4);
+scene.add(hemi);
+
+// ============================================================================
+// STYRING & KOLLISION
+// ============================================================================
+let yaw = Math.PI/2; let pitch = 0; const HALF_PI = Math.PI/2 - 0.01;
+const move = {fwd:false, back:false, left:false, right:false, sprint:false};
+let pointerLocked = false;
+
+document.addEventListener('keydown', e => {
+  if(e.code === 'KeyW' || e.code === 'ArrowUp') move.fwd = true;
+  if(e.code === 'KeyS' || e.code === 'ArrowDown') move.back = true;
+  if(e.code === 'KeyA' || e.code === 'ArrowLeft') move.left = true;
+  if(e.code === 'KeyD' || e.code === 'ArrowRight') move.right = true;
+  if(e.code === 'ShiftLeft' || e.code === 'ShiftRight') move.sprint = true;
+});
+document.addEventListener('keyup', e => {
+  if(e.code === 'KeyW' || e.code === 'ArrowUp') move.fwd = false;
+  if(e.code === 'KeyS' || e.code === 'ArrowDown') move.back = false;
+  if(e.code === 'KeyA' || e.code === 'ArrowLeft') move.left = false;
+  if(e.code === 'KeyD' || e.code === 'ArrowRight') move.right = false;
+  if(e.code === 'ShiftLeft' || e.code === 'ShiftRight') move.sprint = false;
+});
+document.addEventListener('mousemove', e => {
+  if(pointerLocked){
+    yaw -= e.movementX * 0.002;
+    pitch -= e.movementY * 0.002;
+    pitch = Math.max(-HALF_PI, Math.min(HALF_PI, pitch));
+  }
+});
+document.addEventListener('pointerlockchange', () => {
+  pointerLocked = (document.pointerLockElement === canvas);
+  document.getElementById('cross').classList.toggle('show', pointerLocked);
+});
+
+// For at holde spilleren inden for gården
+function clampPlayer(){
+  const w = COURT_WID/2 - 0.5, l = COURT_LEN/2 - 0.5;
+  camera.position.x = Math.max(-w, Math.min(w, camera.position.x));
+  camera.position.z = Math.max(-l, Math.min(l, camera.position.z));
+  
+  // Bloker for at gå i vandet
+  if(Math.abs(camera.position.x) < POOL_WID/2 + 0.3 && Math.abs(camera.position.z) < POOL_LEN/2 + 0.3) {
+    if(Math.abs(camera.position.x) > Math.abs(camera.position.z) * (POOL_WID/POOL_LEN)) {
+      camera.position.x = Math.sign(camera.position.x) * (POOL_WID/2 + 0.3);
+    } else {
+      camera.position.z = Math.sign(camera.position.z) * (POOL_LEN/2 + 0.3);
+    }
+  }
+}
+
+// ============================================================================
+// RENDER LOOP & POST-PROCESSING
+// ============================================================================
+let composer = null;
+try {
+  composer = new THREE.EffectComposer(renderer);
+  composer.addPass(new THREE.RenderPass(scene, camera));
+  // Bloom får solen og refleksioner til at gløde blødt og fotorealistisk
+  const bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.3, 0.4, 0.85);
+  composer.addPass(bloomPass);
+  const fxaa = new THREE.ShaderPass(THREE.FXAAShader);
+  fxaa.material.uniforms['resolution'].value.set(1/(window.innerWidth*renderer.getPixelRatio()), 1/(window.innerHeight*renderer.getPixelRatio()));
+  composer.addPass(fxaa);
+} catch(e) {}
+
+const clock = new THREE.Clock();
+const tmpFwd = new THREE.Vector3(); const tmpRight = new THREE.Vector3();
+
+function animate(){
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const t = clock.elapsedTime;
+
+  camera.rotation.set(pitch, yaw, 0);
+  tmpFwd.set(-Math.sin(yaw), 0, -Math.cos(yaw));
+  tmpRight.set(Math.cos(yaw), 0, -Math.sin(yaw));
+  
+  let mx = 0, mz = 0;
+  if(move.fwd) mz += 1; if(move.back) mz -= 1;
+  if(move.left) mx -= 1; if(move.right) mx += 1;
+
+  const speed = move.sprint ? 7.0 : 3.0;
+  if(mx !== 0 || mz !== 0){
+    const len = Math.hypot(mx, mz) || 1;
+    camera.position.addScaledVector(tmpFwd, (mz/len) * speed * dt);
+    camera.position.addScaledVector(tmpRight, (mx/len) * speed * dt);
+    camera.position.y = 1.7 + Math.sin(t * 12) * 0.03; // Gynge-effekt
+  } else { camera.position.y = 1.7; }
+  
+  clampPlayer();
+
+  // Opdater vand-shaders
+  allWaterMats.forEach(m => {
+    m.uniforms.uTime.value = t;
+    m.uniforms.uCameraPos.value.copy(camera.position);
+  });
+
+  // Opdater spejlbassinets HDRI præcist
+  if(mainPoolWater){
+    reflectionFrameCounter++;
+    if(reflectionFrameCounter >= reflectionUpdateInterval){
+      reflectionFrameCounter = 0;
+      mainPoolWater.visible = false; // Skjul vand under rendering
+      reflectionCamera.update(renderer, scene);
+      mainPoolWater.visible = true;
+      if(!mainPoolWater.material.uniforms.uEnvMap.value){
+        mainPoolWater.material.uniforms.uEnvMap.value = reflectionTarget.texture;
+        mainPoolWater.material.uniforms.uHasEnvMap.value = 1.0;
+      }
+    }
+  }
+
+  if(composer) composer.render(); else renderer.render(scene, camera);
+}
+
+// Opstart
+window.addEventListener('load', () => {
+  document.getElementById('loader').classList.add('gone');
+  document.getElementById('start').style.display = 'flex';
+  animate();
+});
+
+document.getElementById('enterBtn').addEventListener('click', () => {
+  document.getElementById('start').classList.add('gone');
+  document.getElementById('hud').style.display = 'flex';
+  canvas.requestPointerLock();
+  
+  setTimeout(() => {
+    document.getElementById('location').classList.add('show');
+    setTimeout(() => document.getElementById('location').classList.remove('show'), 5000);
+  }, 1000);
+});
+
+canvas.addEventListener('click', () => {
+  if(!pointerLocked && document.getElementById('start').classList.contains('gone')){
+    canvas.requestPointerLock();
+  }
+});
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  if(composer) composer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ============================================================================
+// FORBEDRINGER: DAG/NAT, TELEPORT, KOMPAS, KORT, PARTIKLER, TOUCH, BANNER
+// ============================================================================
+
+// --- 0) MANUEL GLØD-EFFEKT (når post-processing/bloom ikke kunne hentes) ---
+// Dette giver en stemningsfuld glød ved sol/måne uden EffectComposer
+const hasBloom = !!composer;
+
+// Glødende sol-sprite (synlig på himlen, følger sun.position)
+function makeSunSprite(){
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const ctx = c.getContext('2d');
+  const grad = ctx.createRadialGradient(128, 128, 10, 128, 128, 128);
+  grad.addColorStop(0, 'rgba(255,255,240,1.0)');
+  grad.addColorStop(0.15, 'rgba(255,230,180,0.75)');
+  grad.addColorStop(0.35, 'rgba(255,180,120,0.35)');
+  grad.addColorStop(0.6, 'rgba(255,140,90,0.10)');
+  grad.addColorStop(1, 'rgba(255,140,90,0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 256, 256);
+  const tex = new THREE.CanvasTexture(c);
+  return tex;
+}
+const sunTex = makeSunSprite();
+const sunSpriteMat = new THREE.SpriteMaterial({
+  map: sunTex,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+  transparent: true,
+  color: 0xffeedd
+});
+const sunSprite = new THREE.Sprite(sunSpriteMat);
+// Gør spriten større når bloom mangler — den skal selv tegne glødeffekten
+sunSprite.scale.set(hasBloom ? 30 : 80, hasBloom ? 30 : 80, 1);
+scene.add(sunSprite);
+
+// CSS vignet/atmosfæreoverlay (giver dybde uden post-processing)
+if(!hasBloom){
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `
+    position:fixed; inset:0; pointer-events:none; z-index:5;
+    background: radial-gradient(ellipse at center,
+      transparent 40%, rgba(0,0,0,0.15) 80%, rgba(0,0,0,0.35) 100%);
+    mix-blend-mode: multiply;
+  `;
+  document.body.appendChild(overlay);
+
+  // Subtil filmgrain
+  const grain = document.createElement('div');
+  grain.style.cssText = `
+    position:fixed; inset:0; pointer-events:none; z-index:6; opacity:0.06;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    mix-blend-mode: overlay;
+  `;
+  document.body.appendChild(grain);
+
+  console.log('[3D] kører uden bloom — bruger sprite-glød i stedet');
+}
+
+// --- 1) DAG/NAT-CYKLUS ---
+const TIMES = [
+  { name:'GRYNING',     ar:'الفجر',    sky:[0x462a5a, 0xb86a4a, 0xddc890], sun:0xff9966, sunInt:2.5, ambInt:0.25, ambCol:0xfde0c0, fillCol:0x8a4a6a, fillInt:0.4 },
+  { name:'MIDDAG',      ar:'الظهر',    sky:[0x4a82c0, 0x9bcae8, 0xddebf6], sun:0xfff5e8, sunInt:3.8, ambInt:0.30, ambCol:0xffeedd, fillCol:0xaaccff, fillInt:0.9 },
+  { name:'GYLDEN TIME', ar:'الذهبية',  sky:[0x6a4060, 0xe89a5a, 0xfae0a8], sun:0xffaa66, sunInt:3.2, ambInt:0.28, ambCol:0xffd0a0, fillCol:0xc06080, fillInt:0.55 },
+  { name:'TUSMØRKE',    ar:'الغسق',    sky:[0x141a3a, 0x4a2a5a, 0x6a3a4a], sun:0xff7755, sunInt:1.3, ambInt:0.20, ambCol:0xaa6a8a, fillCol:0x3a4a8a, fillInt:0.45 },
+  { name:'NAT',         ar:'الليل',    sky:[0x05080f, 0x101a30, 0x1a2545], sun:0x6080ff, sunInt:0.45, ambInt:0.18, ambCol:0x4a6090, fillCol:0x6080c0, fillInt:0.30 }
+];
+let timeIdx = 1; // Start ved middag
+const sunPositions = [
+  [-80, 18, 30],   // gryning - lavt øst (vinkel langt fra zenit)
+  [-60, 75, 30],   // middag - højt sydligt
+  [-30, 38, 50],   // gylden time - lavt sydvest
+  [10,  10, 60],   // tusmørke - meget lavt sydvest
+  [60,  55, -10]   // nat - "måne" højt nordvest
+];
+
+function applyTime(idx, animate=true){
+  const t = TIMES[idx];
+  const sp = sunPositions[idx];
+  const fromSun = sun.intensity, fromAmb = ambient.intensity, fromFill = skyFill.intensity;
+  const fromHemi = hemi.intensity;
+  const fromSunCol = sun.color.clone();
+  const fromAmbCol = ambient.color.clone();
+  const fromFillCol = skyFill.color.clone();
+  const fromSunPos = sun.position.clone();
+  const targetSunPos = new THREE.Vector3(sp[0], sp[1], sp[2]);
+  const fromFog = scene.fog.color.clone();
+  const targetFogCol = new THREE.Color(t.sky[1]).lerp(new THREE.Color(t.sky[2]), 0.4);
+  const targetSunCol = new THREE.Color(t.sun);
+  const targetAmbCol = new THREE.Color(t.ambCol);
+  const targetFillCol = new THREE.Color(t.fillCol);
+
+  const duration = animate ? 1500 : 0;
+  const t0 = performance.now();
+  function tick(){
+    const u = duration === 0 ? 1 : Math.min(1, (performance.now() - t0) / duration);
+    const k = u * u * (3 - 2 * u); // smoothstep
+    sun.intensity = fromSun + (t.sunInt - fromSun) * k;
+    ambient.intensity = fromAmb + (t.ambInt - fromAmb) * k;
+    skyFill.intensity = fromFill + (t.fillInt - fromFill) * k;
+    hemi.intensity = fromHemi + (0.4 * (idx === 4 ? 0.6 : 1) - fromHemi) * k;
+    sun.color.copy(fromSunCol).lerp(targetSunCol, k);
+    ambient.color.copy(fromAmbCol).lerp(targetAmbCol, k);
+    skyFill.color.copy(fromFillCol).lerp(targetFillCol, k);
+    sun.position.lerpVectors(fromSunPos, targetSunPos, k);
+    scene.fog.color.copy(fromFog).lerp(targetFogCol, k);
+    // Sol-sprite følger sol-positionen, men fjernere så den ser ud til at være på himlen
+    const sunDir = sun.position.clone().normalize();
+    sunSprite.position.copy(sunDir.multiplyScalar(180));
+    sunSprite.material.color.copy(sun.color);
+    // Vand-shaders skal også justere deres "sol-retning"
+    allWaterMats.forEach(m => {
+      m.uniforms.uSunDir.value.copy(sun.position).normalize();
+    });
+    if(u < 1) requestAnimationFrame(tick);
+    else regenerateSky(t);
+  }
+  tick();
+  // Opdater HUD
+  const tb = document.getElementById('time-btn');
+  if(tb){
+    const icons = ['☼','☀','☼','☾','☾'];
+    tb.textContent = icons[idx] + ' ' + t.name;
+  }
+}
+
+function regenerateSky(t){
+  // Genskab himmel-tekstur for nye farver
+  const c = document.createElement('canvas');
+  c.width = 1024; c.height = 512;
+  const ctx = c.getContext('2d');
+  const grad = ctx.createLinearGradient(0, 0, 0, 512);
+  grad.addColorStop(0, '#'+t.sky[0].toString(16).padStart(6,'0'));
+  grad.addColorStop(0.45, '#'+t.sky[1].toString(16).padStart(6,'0'));
+  grad.addColorStop(0.55, '#'+t.sky[2].toString(16).padStart(6,'0'));
+  grad.addColorStop(0.65, '#3a2a1a');
+  grad.addColorStop(1, '#1a100a');
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, 1024, 512);
+  // Sol/måne
+  ctx.fillStyle = timeIdx === 4 ? '#e8e8ff' : '#ffffff';
+  const sx = 350, sy = timeIdx === 4 ? 100 : (timeIdx === 1 ? 140 : (timeIdx === 0 || timeIdx === 3 ? 220 : 200));
+  ctx.beginPath(); ctx.arc(sx, sy, timeIdx === 4 ? 12 : 18, 0, Math.PI*2); ctx.fill();
+  // Stjerner ved nat/tusmørke
+  if(timeIdx >= 3){
+    ctx.fillStyle = '#ffffff';
+    for(let i=0;i<(timeIdx===4?180:60);i++){
+      const x = Math.random()*1024, y = Math.random()*220;
+      const r = Math.random()*1.2;
+      ctx.globalAlpha = Math.random()*0.8 + 0.2;
+      ctx.fillRect(x, y, r, r);
+    }
+    ctx.globalAlpha = 1;
+  }
+  // Halo
+  const halo = ctx.createRadialGradient(sx, sy, timeIdx === 4 ? 12 : 18, sx, sy, 100);
+  halo.addColorStop(0, timeIdx === 4 ? 'rgba(200,210,255,0.6)' : 'rgba(255,230,200,0.7)');
+  halo.addColorStop(1, 'rgba(255,230,200,0)');
+  ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(sx, sy, 100, 0, Math.PI*2); ctx.fill();
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.mapping = THREE.EquirectangularReflectionMapping;
+  tex.encoding = THREE.sRGBEncoding;
+  if(scene.environment) scene.environment.dispose();
+  scene.environment = pmremGenerator.fromEquirectangular(tex).texture;
+  scene.background = scene.environment; // Vis himlen direkte
+}
+
+// Sæt himlen på som baggrund fra start (i stedet for sort)
+scene.background = scene.environment;
+
+// --- 2) ATMOSFÆRISKE STØV-PARTIKLER (svæver i lyskeglerne) ---
+function makeDustParticles(){
+  const N = 800;
+  const geo = new THREE.BufferGeometry();
+  const positions = new Float32Array(N * 3);
+  const sizes = new Float32Array(N);
+  for(let i=0;i<N;i++){
+    positions[i*3+0] = (Math.random()-0.5) * 50;
+    positions[i*3+1] = Math.random() * 8 + 0.3;
+    positions[i*3+2] = (Math.random()-0.5) * 50;
+    sizes[i] = Math.random() * 0.04 + 0.01;
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 }, uColor: { value: new THREE.Color(0xfff0d0) } },
+    vertexShader: `
+      attribute float size;
+      uniform float uTime;
+      varying float vAlpha;
+      void main(){
+        vec3 p = position;
+        p.y += sin(uTime * 0.3 + p.x * 0.7) * 0.15;
+        p.x += cos(uTime * 0.2 + p.z * 0.5) * 0.1;
+        vec4 mv = modelViewMatrix * vec4(p, 1.0);
+        gl_Position = projectionMatrix * mv;
+        gl_PointSize = size * 300.0 / -mv.z;
+        vAlpha = clamp(1.0 - length(p.xz) / 30.0, 0.0, 0.9);
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 uColor;
+      varying float vAlpha;
+      void main(){
+        vec2 c = gl_PointCoord - 0.5;
+        float d = length(c);
+        if(d > 0.5) discard;
+        float a = (1.0 - d * 2.0) * vAlpha * 0.6;
+        gl_FragColor = vec4(uColor, a);
+      }
+    `,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending
+  });
+  return new THREE.Points(geo, mat);
+}
+const dust = makeDustParticles();
+scene.add(dust);
+
+// --- 3) FUGLE I BAGGRUNDEN (silhuetter højt på himlen) ---
+function makeBirds(){
+  const grp = new THREE.Group();
+  const birdMat = new THREE.MeshBasicMaterial({color: 0x1a1410, side: THREE.DoubleSide, transparent:true, opacity:0.7});
+  for(let i=0;i<6;i++){
+    // En simpel V-form
+    const shape = new THREE.Shape();
+    shape.moveTo(0, 0);
+    shape.lineTo(-0.5, 0.15);
+    shape.lineTo(-0.4, 0.1);
+    shape.lineTo(0, 0.05);
+    shape.lineTo(0.4, 0.1);
+    shape.lineTo(0.5, 0.15);
+    shape.lineTo(0, 0);
+    const geo = new THREE.ShapeGeometry(shape);
+    const m = new THREE.Mesh(geo, birdMat);
+    m.userData = {
+      orbit: 30 + Math.random() * 20,
+      h: 18 + Math.random() * 10,
+      speed: 0.05 + Math.random() * 0.05,
+      offset: Math.random() * Math.PI * 2,
+      flapPhase: Math.random() * Math.PI * 2
+    };
+    grp.add(m);
+  }
+  return grp;
+}
+const birds = makeBirds();
+scene.add(birds);
+
+// --- 4) FUNKTIONELT MINI-KORT ---
+const minimap = document.getElementById('minimap');
+minimap.style.display = 'block';
+const playerDot = document.getElementById('player-dot');
+const playerDir = document.getElementById('player-dir');
+const mmBuildings = document.getElementById('mm-buildings');
+const mmPools = document.getElementById('mm-pools');
+const mmLabels = document.getElementById('mm-labels');
+
+// Tegn statisk plan
+mmBuildings.innerHTML = `
+  <rect x="${-COURT_WID/2}" y="${-COURT_LEN/2}" width="${COURT_WID}" height="${COURT_LEN}" fill="rgba(212,165,116,.15)" stroke="#d4a574" stroke-width=".4"/>
+  <rect x="60" y="-12" width="24" height="24" fill="rgba(212,165,116,.15)" stroke="#d4a574" stroke-width=".4"/>
+`;
+mmPools.innerHTML = `
+  <rect x="${-POOL_WID/2}" y="${-POOL_LEN/2}" width="${POOL_WID}" height="${POOL_LEN}"/>
+  <circle cx="72" cy="0" r="2"/>
+`;
+mmLabels.innerHTML = `
+  <text x="0" y="-${COURT_LEN/2 + 2}" text-anchor="middle">ARRAYANES</text>
+  <text x="72" y="-14" text-anchor="middle">LEONES</text>
+`;
+
+// --- 5) FUNKTIONELT KOMPAS ---
+const compassEl = document.getElementById('compass');
+const compassDirs = ['N','NØ','Ø','SØ','S','SV','V','NV'];
+
+// --- 6) TELEPORT-MENU ---
+const teleportEl = document.getElementById('teleport');
+const tpGrid = document.getElementById('teleport-grid');
+const TELEPORTS = [
+  { ar:'بهو الريحان', name:'PATIO DE LOS ARRAYANES', desc:'Spejlbassinet og myrtehækkene', pos:[-6, 1.7, 0], yaw: Math.PI/2 },
+  { ar:'بهو السباع',  name:'PATIO DE LOS LEONES', desc:'Tolv løver bærer alabasterfontænen', pos:[68, 1.7, 0], yaw: 0 },
+  { ar:'الفجر',       name:'GRYNING · 06:30', desc:'Den første lyserøde stråle på muren', action:()=>{ timeIdx=0; applyTime(0); } },
+  { ar:'الظهر',       name:'MIDDAG · 13:00', desc:'Sol i zenit, skarpe skygger', action:()=>{ timeIdx=1; applyTime(1); } },
+  { ar:'الذهبية',     name:'GYLDEN TIME · 19:00', desc:'Marmoret bliver til honning', action:()=>{ timeIdx=2; applyTime(2); } },
+  { ar:'الليل',       name:'NAT · 23:00', desc:'Måne over Sierra Nevada', action:()=>{ timeIdx=4; applyTime(4); } }
+];
+
+function buildTeleportGrid(){
+  tpGrid.innerHTML = '';
+  TELEPORTS.forEach((t, i) => {
+    const card = document.createElement('div');
+    card.className = 'tp-card';
+    card.innerHTML = `<span class="ar">${t.ar}</span><h3>${t.name}</h3><div class="desc">${t.desc}</div>`;
+    card.addEventListener('click', () => {
+      if(t.pos){
+        camera.position.set(t.pos[0], t.pos[1], t.pos[2]);
+        yaw = t.yaw || 0;
+        showLocationLabel(t.ar, t.name);
+      }
+      if(t.action) t.action();
+      closeTeleport();
+    });
+    tpGrid.appendChild(card);
+  });
+}
+buildTeleportGrid();
+
+function openTeleport(){
+  teleportEl.classList.add('show');
+  if(document.exitPointerLock) document.exitPointerLock();
+}
+function closeTeleport(){
+  teleportEl.classList.remove('show');
+  if(canvas.requestPointerLock) canvas.requestPointerLock();
+}
+
+document.getElementById('tp-open').addEventListener('click', openTeleport);
+document.getElementById('tp-close').addEventListener('click', closeTeleport);
+teleportEl.addEventListener('click', e => { if(e.target === teleportEl) closeTeleport(); });
+
+// --- 7) STED-LABEL ---
+const locationEl = document.getElementById('location');
+const locArEl = document.getElementById('loc-ar');
+const locNameEl = document.getElementById('loc-name');
+function showLocationLabel(ar, name){
+  locArEl.textContent = ar;
+  locNameEl.textContent = name;
+  locationEl.classList.add('show');
+  setTimeout(() => locationEl.classList.remove('show'), 4500);
+}
+
+// --- 8) POETISK BANNER ---
+const QUOTES = [
+  { t:'Aquí los reyes nazaríes hallaron el cielo en la tierra.', c:'INSCRIPTION · 14. ÅRH.' },
+  { t:'Vandet hvisker i marmorets fuger; en hvisken på Allahs sprog.', c:'OPTEGNELSE · GRANADA' },
+  { t:'Ingen sejrherre uden Gud.', c:'WA-LĀ GHĀLIB ILLĀ ALLĀH · NASRIDIDERNES MOTTO' },
+  { t:'Giv ham din almisse, kvinde — intet i livet er som sorgen ved at være blind i Granada.', c:'F. GARCÍA LORCA' },
+  { t:'Stjernerne har bygget paladset; løvens fontæne tæller timerne i vand.', c:'IBN ZAMRAK · 14. ÅRH.' }
+];
+let quoteIdx = 0;
+const bannerEl = document.getElementById('banner');
+const bannerText = document.getElementById('banner-text');
+function showBanner(){
+  const q = QUOTES[quoteIdx % QUOTES.length];
+  quoteIdx++;
+  bannerText.innerHTML = `"${q.t}"<cite>${q.c}</cite>`;
+  bannerEl.classList.add('show');
+  setTimeout(() => bannerEl.classList.remove('show'), 7000);
+}
+
+// --- 9) BYG PATIO DE LOS LEONES (anden destination) ---
+function buildLeones(){
+  const grp = new THREE.Group();
+  grp.position.set(72, 0, 0);
+
+  const W = 18, L = 22;
+  // Gulv
+  const fGeo = new THREE.PlaneGeometry(W, L);
+  const fUv = fGeo.attributes.uv.array;
+  for(let i=0;i<fUv.length;i+=2){ fUv[i] *= 4; fUv[i+1] *= 4; }
+  const f = new THREE.Mesh(fGeo, MATS.marble());
+  f.rotation.x = -Math.PI/2;
+  f.receiveShadow = true;
+  grp.add(f);
+
+  // Fontænens piedestal — alabaster-skål
+  const bowlGeo = new THREE.CylinderGeometry(2.0, 1.6, 0.6, 24);
+  const bowl = new THREE.Mesh(bowlGeo, MATS.marbleSolid());
+  bowl.position.y = 0.9;
+  bowl.castShadow = true; bowl.receiveShadow = true;
+  grp.add(bowl);
+  // Stilk
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 0.9, 16), MATS.marbleSolid());
+  stem.position.y = 0.45; stem.castShadow = true;
+  grp.add(stem);
+
+  // 12 løver i en cirkel rundt om fontænens base
+  for(let i=0;i<12;i++){
+    const a = (i / 12) * Math.PI * 2;
+    const lion = new THREE.Group();
+    // Krop
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.5, 0.35), MATS.ivory());
+    body.position.y = 0.35; body.castShadow = true;
+    lion.add(body);
+    // Ben (4)
+    for(let j=0;j<4;j++){
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.2, 0.1), MATS.ivory());
+      leg.position.set((j%2===0?0.25:-0.25), 0.1, (j<2?0.12:-0.12));
+      leg.castShadow = true;
+      lion.add(leg);
+    }
+    // Hoved
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), MATS.ivory());
+    head.position.set(0.4, 0.45, 0); head.castShadow = true;
+    lion.add(head);
+    // Manke (cylinder)
+    const mane = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.15, 12), MATS.ivory());
+    mane.rotation.z = Math.PI/2;
+    mane.position.set(0.3, 0.42, 0);
+    lion.add(mane);
+    // Hale
+    const tail = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.08, 0.4), MATS.ivory());
+    tail.position.set(-0.4, 0.45, 0);
+    lion.add(tail);
+
+    lion.position.set(Math.cos(a) * 1.7, 0.0, Math.sin(a) * 1.7);
+    lion.rotation.y = -a;
+    grp.add(lion);
+  }
+
+  // Vand i skålen
+  const waterMatL = buildWaterMaterial();
+  allWaterMats.push(waterMatL);
+  const waterL = new THREE.Mesh(new THREE.CircleGeometry(1.92, 32), waterMatL);
+  waterL.rotation.x = -Math.PI/2;
+  waterL.position.y = 1.18;
+  grp.add(waterL);
+
+  // Søjlearkader rundt om gården
+  function archRow(rotY, posX, posZ, len){
+    const wall = buildArchWall({totalWidth: len, totalHeight: 5.0, depth: 0.3, archCount: 6, archSpan: 2.4, springHeight: 2.4, material: MATS.khatem(len/4, 5/4)});
+    wall.rotation.y = rotY;
+    wall.position.set(posX, 0, posZ);
+    grp.add(wall);
+  }
+  archRow(0, 0, -L/2, W);
+  archRow(Math.PI, 0, L/2, W);
+  archRow(Math.PI/2, W/2, 0, L);
+  archRow(-Math.PI/2, -W/2, 0, L);
+
+  // Søjler i hjørnerne (forfindelse — ikke 124 søjler men nok til indtryk)
+  for(let i=0;i<8;i++){
+    const a = (i/8) * Math.PI * 2;
+    const r = Math.min(W, L) / 2 - 0.5;
+    const col = buildColumn(2.4);
+    col.position.set(Math.cos(a) * r * 0.85, 0, Math.sin(a) * r * 0.85);
+    grp.add(col);
+  }
+
+  return grp;
+}
+const leones = buildLeones();
+scene.add(leones);
+
+// Forbindelseskorridor (simpel)
+const corridor = new THREE.Mesh(new THREE.PlaneGeometry(60, 4), MATS.marble());
+corridor.rotation.x = -Math.PI/2;
+corridor.position.set(35, 0.001, 0);
+corridor.receiveShadow = true;
+scene.add(corridor);
+
+// --- 10) TOUCH-KONTROLLER (MOBIL JOYSTICK) ---
+const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+if(isTouch){
+  document.getElementById('joystick').classList.add('show');
+}
+const joystick = document.getElementById('joystick');
+const knob = document.getElementById('joystick-knob');
+let joyActive = false, joyId = null, joyCX = 0, joyCY = 0;
+
+joystick.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const rect = joystick.getBoundingClientRect();
+  joyCX = rect.left + rect.width/2;
+  joyCY = rect.top + rect.height/2;
+  joyActive = true;
+  joyId = e.changedTouches[0].identifier;
+}, {passive:false});
+
+window.addEventListener('touchmove', e => {
+  if(!joyActive) return;
+  for(const t of e.changedTouches){
+    if(t.identifier !== joyId) continue;
+    let dx = t.clientX - joyCX;
+    let dy = t.clientY - joyCY;
+    const mag = Math.hypot(dx, dy);
+    const max = 35;
+    if(mag > max){ dx = dx / mag * max; dy = dy / mag * max; }
+    knob.style.transform = `translate(${dx}px, ${dy}px)`;
+    move.fwd = dy < -8;
+    move.back = dy > 8;
+    move.left = dx < -8;
+    move.right = dx > 8;
+    move.sprint = mag > 30;
+  }
+}, {passive:false});
+
+window.addEventListener('touchend', e => {
+  for(const t of e.changedTouches){
+    if(t.identifier === joyId){
+      joyActive = false;
+      joyId = null;
+      knob.style.transform = 'translate(0, 0)';
+      move.fwd = move.back = move.left = move.right = move.sprint = false;
+    }
+  }
+});
+
+// Touch til at se rundt
+let lookId = null, lookX = 0, lookY = 0;
+canvas.addEventListener('touchstart', e => {
+  if(joyActive) return;
+  for(const t of e.changedTouches){
+    const rect = joystick.getBoundingClientRect();
+    if(t.clientX < rect.right + 30 && t.clientY > rect.top - 30) continue;
+    if(lookId === null){
+      lookId = t.identifier;
+      lookX = t.clientX;
+      lookY = t.clientY;
+    }
+  }
+}, {passive:true});
+
+window.addEventListener('touchmove', e => {
+  for(const t of e.changedTouches){
+    if(t.identifier === lookId){
+      yaw -= (t.clientX - lookX) * 0.005;
+      pitch -= (t.clientY - lookY) * 0.005;
+      pitch = Math.max(-HALF_PI, Math.min(HALF_PI, pitch));
+      lookX = t.clientX;
+      lookY = t.clientY;
+    }
+  }
+}, {passive:true});
+
+window.addEventListener('touchend', e => {
+  for(const t of e.changedTouches){
+    if(t.identifier === lookId) lookId = null;
+  }
+});
+
+// --- 11) M-TAST OG T-TAST ---
+document.addEventListener('keydown', e => {
+  if(e.code === 'KeyM'){
+    if(teleportEl.classList.contains('show')) closeTeleport();
+    else openTeleport();
+  }
+  if(e.code === 'KeyT'){
+    timeIdx = (timeIdx + 1) % TIMES.length;
+    applyTime(timeIdx);
+  }
+});
+document.getElementById('time-btn').addEventListener('click', () => {
+  timeIdx = (timeIdx + 1) % TIMES.length;
+  applyTime(timeIdx);
+});
+
+// --- 12) UDVID clampPlayer SÅ MAN KAN BEVÆGE SIG MELLEM GÅRDENE ---
+const _origClamp = clampPlayer;
+window.clampPlayer = function(){
+  // Bestem hvilken zone spilleren er i
+  const x = camera.position.x;
+  const z = camera.position.z;
+  // Arrayanes-zone: x i [-COURT_WID/2, COURT_WID/2], z i [-COURT_LEN/2, COURT_LEN/2]
+  // Korridor-zone: x i [COURT_WID/2, 60], z i [-2, 2]
+  // Leones-zone: x i [60, 84], z i [-12, 12]
+  const inArray = x >= -COURT_WID/2 - 0.5 && x <= COURT_WID/2 + 0.5;
+  const inCorr  = x > COURT_WID/2 && x < 63;
+  const inLeo   = x >= 63;
+
+  if(inArray){
+    const w = COURT_WID/2 - 0.5, l = COURT_LEN/2 - 0.5;
+    camera.position.x = Math.max(-w, Math.min(w, x));
+    camera.position.z = Math.max(-l, Math.min(l, z));
+    if(Math.abs(camera.position.x) < POOL_WID/2 + 0.3 && Math.abs(camera.position.z) < POOL_LEN/2 + 0.3) {
+      if(Math.abs(camera.position.x) > Math.abs(camera.position.z) * (POOL_WID/POOL_LEN)) {
+        camera.position.x = Math.sign(camera.position.x) * (POOL_WID/2 + 0.3);
+      } else {
+        camera.position.z = Math.sign(camera.position.z) * (POOL_LEN/2 + 0.3);
+      }
+    }
+  } else if(inCorr){
+    camera.position.z = Math.max(-1.8, Math.min(1.8, z));
+  } else if(inLeo){
+    const w = 18/2 - 0.6, l = 22/2 - 0.6;
+    camera.position.x = Math.max(72 - w, Math.min(72 + w, x));
+    camera.position.z = Math.max(-l, Math.min(l, z));
+    // Bloker fontænen
+    const dx = x - 72, dz = z;
+    if(Math.hypot(dx, dz) < 2.3){
+      const a = Math.atan2(dz, dx);
+      camera.position.x = 72 + Math.cos(a) * 2.3;
+      camera.position.z = Math.sin(a) * 2.3;
+    }
+  } else {
+    // Tving tilbage til nærmeste zone
+    if(x < 0) camera.position.x = -COURT_WID/2 + 1;
+    else camera.position.x = 72;
+  }
+};
+
+// --- 13) UDVID animate-loopet med ekstra opdateringer ---
+const _origAnimate = animate;
+let _uiClock = 0;
+window.animate = function(){
+  requestAnimationFrame(window.animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const t = clock.elapsedTime;
+  _uiClock += dt;
+
+  camera.rotation.set(pitch, yaw, 0);
+  tmpFwd.set(-Math.sin(yaw), 0, -Math.cos(yaw));
+  tmpRight.set(Math.cos(yaw), 0, -Math.sin(yaw));
+
+  let mx = 0, mz = 0;
+  if(move.fwd) mz += 1; if(move.back) mz -= 1;
+  if(move.left) mx -= 1; if(move.right) mx += 1;
+
+  const speed = move.sprint ? 7.0 : 3.0;
+  if(mx !== 0 || mz !== 0){
+    const len = Math.hypot(mx, mz) || 1;
+    camera.position.addScaledVector(tmpFwd, (mz/len) * speed * dt);
+    camera.position.addScaledVector(tmpRight, (mx/len) * speed * dt);
+    camera.position.y = 1.7 + Math.sin(t * 12) * 0.03;
+  } else { camera.position.y = 1.7; }
+
+  window.clampPlayer();
+
+  allWaterMats.forEach(m => {
+    m.uniforms.uTime.value = t;
+    m.uniforms.uCameraPos.value.copy(camera.position);
+  });
+
+  // Opdater spejlrefleksion ved Arrayanes
+  if(mainPoolWater){
+    reflectionFrameCounter++;
+    if(reflectionFrameCounter >= reflectionUpdateInterval){
+      reflectionFrameCounter = 0;
+      mainPoolWater.visible = false;
+      reflectionCamera.update(renderer, scene);
+      mainPoolWater.visible = true;
+      if(!mainPoolWater.material.uniforms.uEnvMap.value){
+        mainPoolWater.material.uniforms.uEnvMap.value = reflectionTarget.texture;
+        mainPoolWater.material.uniforms.uHasEnvMap.value = 1.0;
+      }
+    }
+  }
+
+  // Opdater dust
+  dust.material.uniforms.uTime.value = t;
+  dust.position.x = camera.position.x;
+  dust.position.z = camera.position.z;
+
+  // Opdater fugle
+  birds.children.forEach(b => {
+    const u = b.userData;
+    const ang = u.offset + t * u.speed;
+    b.position.set(Math.cos(ang) * u.orbit, u.h, Math.sin(ang) * u.orbit);
+    b.lookAt(b.position.x + Math.cos(ang + Math.PI/2), b.position.y, b.position.z + Math.sin(ang + Math.PI/2));
+    b.scale.y = 1 + Math.sin(t * 6 + u.flapPhase) * 0.4;
+  });
+
+  // Mini-kort opdatering
+  if(playerDot && playerDir){
+    playerDot.setAttribute('cx', camera.position.x);
+    playerDot.setAttribute('cy', camera.position.z);
+    const dirX = Math.sin(yaw) * 4;
+    const dirY = Math.cos(yaw) * 4;
+    playerDir.setAttribute('x1', camera.position.x);
+    playerDir.setAttribute('y1', camera.position.z);
+    playerDir.setAttribute('x2', camera.position.x - dirX);
+    playerDir.setAttribute('y2', camera.position.z - dirY);
+  }
+
+  // Kompas-opdatering (hver 0.1s)
+  if(_uiClock > 0.1){
+    _uiClock = 0;
+    let deg = ((-yaw * 180 / Math.PI) % 360 + 360) % 360;
+    const idx = Math.round(deg / 45) % 8;
+    if(compassEl) compassEl.textContent = compassDirs[idx];
+  }
+
+  if(composer) composer.render(); else renderer.render(scene, camera);
+};
+
+// Stop det oprindelige animate-loop og start vores
+// Det oprindelige er allerede sat i gang, men det skader ikke at lade det køre
+// — vi bare overskriver `animate` så næste requestAnimationFrame bruger vores
+
+// --- 14) PERIODISK BANNER ---
+setInterval(() => {
+  if(pointerLocked || isTouch){
+    if(Math.random() < 0.55) showBanner();
+  }
+}, 25000);
+// Vis det første banner kort efter brugeren går ind
+setTimeout(() => { if(pointerLocked || isTouch) showBanner(); }, 8000);
+
+// --- 15) STED-LABEL VED ZONE-SKIFT ---
+let _lastZone = null;
+setInterval(() => {
+  const x = camera.position.x;
+  const zone = x < COURT_WID/2 + 1 ? 'arr' : (x > 60 ? 'leo' : 'corr');
+  if(zone !== _lastZone && _lastZone !== null){
+    if(zone === 'arr') showLocationLabel('بهو الريحان', 'PATIO DE LOS ARRAYANES');
+    else if(zone === 'leo') showLocationLabel('بهو السباع', 'PATIO DE LOS LEONES');
+  }
+  _lastZone = zone;
+}, 500);
+
+// Initial tid
+applyTime(1, false);
+
+} // end startAlhambra()
+
+if(window.__threeReady) startAlhambra();
+else window.addEventListener('three-ready', startAlhambra);
+
+</script>
+</body>
+</html>
