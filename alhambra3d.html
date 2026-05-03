@@ -551,6 +551,19 @@ function buildArchWall({totalWidth, totalHeight, depth, archCount, archSpan, spr
   }
 
   const geo = new THREE.ExtrudeGeometry(shape, {depth, bevelEnabled:false, curveSegments:24});
+
+  // Override UV mapping — ExtrudeGeometry uses world coordinates as UVs,
+  // which makes texture.repeat values massively over-tile across walls of size > 1.
+  // We remap front/back faces so UV goes 0..1 across the wall, then texture.repeat works as intended.
+  const pos = geo.attributes.position;
+  const uvs = new Float32Array(pos.count * 2);
+  for(let i = 0; i < pos.count; i++){
+    const x = pos.getX(i);
+    const y = pos.getY(i);
+    uvs[i*2]   = (x + totalWidth/2) / totalWidth;
+    uvs[i*2+1] = y / totalHeight;
+  }
+  geo.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
   geo.computeVertexNormals();
   const mesh = new THREE.Mesh(geo, material);
   mesh.castShadow = true;
@@ -664,11 +677,32 @@ function buildWaterMaterial(){
       uShallowColor: { value: new THREE.Color(0x1a4858) }
     },
     vertexShader: `
+      uniform float uTime;
       varying vec3 vWorldPos;
+      varying vec3 vWaveNormal;
       varying vec2 vUv;
       void main() {
         vUv = uv;
         vec4 wp = modelMatrix * vec4(position, 1.0);
+        // Animated wave displacement using sums of sines (Gerstner-like)
+        float wx = wp.x;
+        float wz = wp.z;
+        float wave = 0.0;
+        wave += sin(wx * 1.6 + uTime * 1.4) * 0.04;
+        wave += sin(wz * 2.1 + uTime * 1.7) * 0.03;
+        wave += sin((wx + wz) * 0.9 + uTime * 0.8) * 0.05;
+        wave += sin((wx - wz) * 1.3 - uTime * 1.1) * 0.025;
+        wp.y += wave;
+
+        // approximate normal from partial derivatives
+        float dx = 1.6 * cos(wx * 1.6 + uTime * 1.4) * 0.04
+                 + 0.9 * cos((wx + wz) * 0.9 + uTime * 0.8) * 0.05
+                 + 1.3 * cos((wx - wz) * 1.3 - uTime * 1.1) * 0.025;
+        float dz = 2.1 * cos(wz * 2.1 + uTime * 1.7) * 0.03
+                 + 0.9 * cos((wx + wz) * 0.9 + uTime * 0.8) * 0.05
+                 - 1.3 * cos((wx - wz) * 1.3 - uTime * 1.1) * 0.025;
+        vWaveNormal = normalize(vec3(-dx, 1.0, -dz));
+
         vWorldPos = wp.xyz;
         gl_Position = projectionMatrix * viewMatrix * wp;
       }
@@ -682,26 +716,35 @@ function buildWaterMaterial(){
       uniform vec3 uDeepColor;
       uniform vec3 uShallowColor;
       varying vec3 vWorldPos;
+      varying vec3 vWaveNormal;
       varying vec2 vUv;
       void main() {
-        vec2 uv1 = vWorldPos.xz * 0.25 + vec2(uTime * 0.022, uTime * 0.014);
-        vec2 uv2 = vWorldPos.xz * 0.55 - vec2(uTime * 0.018, uTime * -0.012);
+        // detail ripples on top of the macro wave normal
+        vec2 uv1 = vWorldPos.xz * 0.4 + vec2(uTime * 0.05, uTime * 0.035);
+        vec2 uv2 = vWorldPos.xz * 0.95 - vec2(uTime * 0.04, uTime * -0.03);
         vec3 n1 = texture2D(uNormalMap, uv1).rgb * 2.0 - 1.0;
         vec3 n2 = texture2D(uNormalMap, uv2).rgb * 2.0 - 1.0;
-        vec3 surfNormal = normalize(vec3(0.0, 1.0, 0.0) + (n1 + n2) * 0.18);
+        vec3 surfNormal = normalize(vWaveNormal + (n1 + n2) * 0.35);
+
         vec3 viewDir = normalize(uCameraPos - vWorldPos);
         float NdotV = max(dot(surfNormal, viewDir), 0.0);
         float fresnel = pow(1.0 - NdotV, 4.0);
+
         vec3 baseColor = mix(uDeepColor, uShallowColor, NdotV * 0.6 + 0.2);
         vec3 color = mix(baseColor, uSkyColor, fresnel * 0.85);
+
         vec3 reflectDir = reflect(-uSunDir, surfNormal);
         float spec = pow(max(dot(viewDir, reflectDir), 0.0), 80.0);
-        color += vec3(1.0, 0.85, 0.55) * spec * 1.5;
+        color += vec3(1.0, 0.85, 0.55) * spec * 1.8;
         float sheen = pow(max(dot(viewDir, reflectDir), 0.0), 12.0);
-        color += vec3(0.9, 0.7, 0.45) * sheen * 0.25;
-        float highlight = smoothstep(0.4, 1.0, length(n1.xy + n2.xy));
-        color += vec3(0.95, 0.9, 0.8) * highlight * 0.08;
-        gl_FragColor = vec4(color, 0.93);
+        color += vec3(0.9, 0.7, 0.45) * sheen * 0.3;
+
+        // foam highlight on wave crests (where normal tilts strongly)
+        float crest = smoothstep(0.85, 0.99, surfNormal.y);
+        crest = 1.0 - crest;
+        color += vec3(0.95, 0.9, 0.8) * crest * 0.15;
+
+        gl_FragColor = vec4(color, 0.94);
       }
     `,
     transparent: true,
@@ -713,8 +756,11 @@ const allWaterMats = [];
 function createWaterSurface(width, length){
   const mat = buildWaterMaterial();
   allWaterMats.push(mat);
+  // many segments needed so vertex wave displacement looks smooth
+  const segX = Math.max(8, Math.ceil(width * 4));
+  const segZ = Math.max(8, Math.ceil(length * 4));
   const mesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(width, length, Math.max(2, Math.ceil(width)), Math.max(2, Math.ceil(length))),
+    new THREE.PlaneGeometry(width, length, segX, segZ),
     mat
   );
   mesh.rotation.x = -Math.PI/2;
@@ -735,7 +781,7 @@ class FountainParticles {
     this.lifeMax = opts.lifeMax || 1.6;
     this.origin = opts.origin.clone();
     this.direction = (opts.direction || new THREE.Vector3(0,1,0)).clone().normalize();
-    this.size = opts.size || 0.06;
+    this.size = opts.size || 0.25;
     this.floor = opts.floor !== undefined ? opts.floor : 0;
 
     this.positions = new Float32Array(this.count * 3);
@@ -747,11 +793,11 @@ class FountainParticles {
     this.geo = new THREE.BufferGeometry();
     this.geo.setAttribute('position', new THREE.BufferAttribute(this.positions, 3));
     this.mat = new THREE.PointsMaterial({
-      color: 0xb8d8e8,
+      color: 0xeaf4fb,
       size: this.size,
-      map: makeParticleSprite('#b8d8e8'),
+      map: makeParticleSprite('#eaf4fb'),
       transparent: true,
-      opacity: 0.85,
+      opacity: 0.95,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       sizeAttenuation: true
@@ -847,12 +893,13 @@ function buildJetFountain(x, z, opts = {}){
     origin: new THREE.Vector3(x, 0.95, z),
     direction: new THREE.Vector3(0, 1, 0),
     power: power,
-    spread: 0.18,
-    spawnRate: 60,
-    count: 100,
+    spread: 0.16,
+    spawnRate: 110,
+    count: 180,
     floor: 0.3,
-    lifeMin: 0.9,
-    lifeMax: 1.4
+    lifeMin: 1.0,
+    lifeMax: 1.6,
+    size: 0.22
   });
   scene.add(fp.points);
   allFountains.push(fp);
@@ -876,98 +923,168 @@ function buildLionFountain(x, z){
   const lionDarkMat = new THREE.MeshStandardMaterial({color: 0x8a6a45, roughness:0.8});
   const lionEyeMat = new THREE.MeshStandardMaterial({color: 0x0d0405, roughness:0.4});
 
-  // Build a single lion sculpture facing local +X, then rotate into place
+  // Build a single Alhambra-style sculptural lion
+  // The real Alhambra lions are stylized stone sculptures, somewhat blocky.
+  // They face along local +X (positive X = forward, snout direction).
   function buildLion(cx, cz, ang){
     const g = new THREE.Group();
-    // Body — main barrel
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.4, 0.34), lionMat);
-    body.position.set(0, 0.5, 0);
+
+    // === BODY === long rectangular barrel — bigger than before
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.45, 0.42), lionMat);
+    body.position.set(0, 0.55, 0);
     body.castShadow = body.receiveShadow = true;
     g.add(body);
-    // Chest — slightly larger forward
-    const chest = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 10), lionMat);
-    chest.scale.set(1.0, 0.85, 0.85);
-    chest.position.set(0.30, 0.5, 0);
-    chest.castShadow = true;
-    g.add(chest);
-    // Hindquarters — rounded rump
-    const rear = new THREE.Mesh(new THREE.SphereGeometry(0.21, 12, 10), lionMat);
-    rear.scale.set(1.0, 0.95, 0.95);
-    rear.position.set(-0.32, 0.5, 0);
+    // Body underside is slightly lighter
+    const belly = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.1, 0.36),
+      new THREE.MeshStandardMaterial({color: 0xd0b890, roughness:0.75}));
+    belly.position.set(0, 0.32, 0);
+    g.add(belly);
+
+    // === HINDQUARTERS === rounded back-block
+    const rear = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.5, 0.42), lionMat);
+    rear.position.set(-0.55, 0.55, 0);
     rear.castShadow = true;
     g.add(rear);
-    // Mane — large fuzzy ball around neck
-    const mane = new THREE.Mesh(new THREE.SphereGeometry(0.32, 14, 12), lionDarkMat);
-    mane.position.set(0.43, 0.55, 0);
-    mane.castShadow = true;
-    g.add(mane);
-    // Mane texture — ring of small dark blobs
-    for(let i = 0; i < 8; i++){
-      const a = i * Math.PI/4;
-      const blob = new THREE.Mesh(new THREE.SphereGeometry(0.10, 6, 5), lionDarkMat);
-      blob.position.set(0.43 + Math.cos(a) * 0.04, 0.55 + Math.sin(a) * 0.30, Math.sin(a + 0.5) * 0.06);
-      blob.castShadow = true;
-      g.add(blob);
+
+    // === SHOULDERS === slightly raised in front
+    const shoulders = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.5, 0.46), lionMat);
+    shoulders.position.set(0.4, 0.6, 0);
+    shoulders.castShadow = true;
+    g.add(shoulders);
+
+    // === MANE === stylized like the real Alhambra lions:
+    // a thick disc/collar around the neck with carved ridge stripes (not a fluffy ball)
+    // Main mane disc — slightly oval
+    const maneCore = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.32, 0.36, 0.55, 16),
+      lionDarkMat
+    );
+    maneCore.rotation.z = Math.PI/2;
+    maneCore.position.set(0.62, 0.62, 0);
+    maneCore.scale.set(1, 1, 1.05);
+    maneCore.castShadow = true;
+    g.add(maneCore);
+    // Ridge stripes — flat bands radiating out (the carved fur strands)
+    for(let i = 0; i < 14; i++){
+      const a = i * (Math.PI*2 / 14);
+      const stripe = new THREE.Mesh(
+        new THREE.BoxGeometry(0.12, 0.07, 0.08),
+        new THREE.MeshStandardMaterial({color: 0x6a5230, roughness:0.85})
+      );
+      // Position around the mane disc
+      const r = 0.36;
+      stripe.position.set(
+        0.62 + Math.cos(a) * 0.04,
+        0.62 + Math.sin(a) * r,
+        Math.cos(a + Math.PI/14) * r * 0.9
+      );
+      stripe.rotation.set(a, 0, 0);
+      g.add(stripe);
     }
-    // Head
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.22, 0.24), lionMat);
-    head.position.set(0.66, 0.55, 0);
+
+    // === HEAD === blocky lion head (the real Alhambra ones are quite cubic)
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.36, 0.34), lionMat);
+    head.position.set(0.95, 0.68, 0);
     head.castShadow = true;
     g.add(head);
-    // Snout (cheeks)
-    const snout = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.13, 0.16), lionMat);
-    snout.position.set(0.81, 0.50, 0);
-    snout.castShadow = true;
-    g.add(snout);
-    // Mouth opening — water comes out of here
+
+    // === MUZZLE === protrudes forward
+    const muzzle = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.20, 0.26), lionMat);
+    muzzle.position.set(1.18, 0.60, 0);
+    muzzle.castShadow = true;
+    g.add(muzzle);
+    // Lower jaw — slightly open
+    const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.07, 0.24),
+      new THREE.MeshStandardMaterial({color: 0x9a8060, roughness:0.75}));
+    jaw.position.set(1.18, 0.50, 0);
+    g.add(jaw);
+    // Open mouth — water comes out here (dark cylinder)
     const mouth = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.045, 0.05, 0.05, 10),
-      new THREE.MeshStandardMaterial({color: 0x0d0405, roughness:0.4})
+      new THREE.CylinderGeometry(0.06, 0.07, 0.04, 10),
+      new THREE.MeshStandardMaterial({color: 0x080404, roughness:0.4})
     );
-    mouth.rotation.z = Math.PI / 2;
-    mouth.position.set(0.89, 0.48, 0);
+    mouth.rotation.z = Math.PI/2;
+    mouth.position.set(1.31, 0.55, 0);
     g.add(mouth);
-    // Nose — small dark triangle
-    const nose = new THREE.Mesh(new THREE.SphereGeometry(0.022, 6, 5), lionEyeMat);
-    nose.position.set(0.89, 0.55, 0);
+    // Nose bridge — shape across the snout top
+    const noseBridge = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.05, 0.1), lionMat);
+    noseBridge.position.set(1.15, 0.72, 0);
+    g.add(noseBridge);
+    // Nose
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 5),
+      new THREE.MeshStandardMaterial({color: 0x0a0606, roughness:0.5}));
+    nose.position.set(1.27, 0.71, 0);
     g.add(nose);
-    // Ears
+
+    // === EYES === almond shape with deep set
     for(let s = -1; s <= 1; s += 2){
-      const ear = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.12, 4), lionMat);
-      ear.position.set(0.62, 0.71, s * 0.07);
-      ear.rotation.x = s * 0.2;
-      ear.castShadow = true;
+      // eye socket recess
+      const socket = new THREE.Mesh(
+        new THREE.BoxGeometry(0.1, 0.08, 0.04),
+        new THREE.MeshStandardMaterial({color: 0x3a2818, roughness:0.7})
+      );
+      socket.position.set(1.07, 0.78, s * 0.13);
+      g.add(socket);
+      // pupil
+      const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 5),
+        new THREE.MeshStandardMaterial({color: 0x080404, roughness:0.4}));
+      pupil.position.set(1.10, 0.78, s * 0.13);
+      g.add(pupil);
+    }
+    // Brow ridges (carved lines above eyes)
+    for(let s = -1; s <= 1; s += 2){
+      const brow = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.04, 0.08),
+        new THREE.MeshStandardMaterial({color: 0x9a7a50, roughness:0.85}));
+      brow.position.set(1.0, 0.84, s * 0.12);
+      brow.rotation.z = -s * 0.15;
+      g.add(brow);
+    }
+
+    // === EARS === small triangular tabs flat against head
+    for(let s = -1; s <= 1; s += 2){
+      const ear = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.10, 0.10), lionMat);
+      ear.position.set(0.86, 0.92, s * 0.14);
       g.add(ear);
     }
-    // Eyes
-    for(let s = -1; s <= 1; s += 2){
-      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.022, 6, 5), lionEyeMat);
-      eye.position.set(0.76, 0.59, s * 0.075);
-      g.add(eye);
-    }
-    // 4 legs with paws
-    const legPos = [[0.25, 0.13],[0.25, -0.13],[-0.27, 0.13],[-0.27, -0.13]];
+
+    // === LEGS === thick rectangular pillars (like stone columns)
+    const legPos = [[0.40, 0.16],[0.40, -0.16],[-0.45, 0.16],[-0.45, -0.16]];
     legPos.forEach(([px, pz]) => {
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.4, 8), lionMat);
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.4, 0.16), lionMat);
       leg.position.set(px, 0.20, pz);
       leg.castShadow = true;
       g.add(leg);
-      // paw
-      const paw = new THREE.Mesh(new THREE.SphereGeometry(0.085, 8, 6), lionMat);
-      paw.scale.set(1, 0.55, 1);
-      paw.position.set(px, 0.05, pz);
+      // paw — slightly larger flat base
+      const paw = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.08, 0.20), lionMat);
+      paw.position.set(px, 0.04, pz);
       paw.castShadow = true;
       g.add(paw);
+      // toe lines (3 small grooves on top of paw)
+      for(let i = -1; i <= 1; i++){
+        const toe = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.025, 0.06),
+          new THREE.MeshStandardMaterial({color: 0x9a8060, roughness:0.8}));
+        toe.position.set(px + i * 0.06, 0.085, pz + 0.07);
+        g.add(toe);
+      }
     });
-    // Tail — curved upward over rump
-    const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.04, 0.55, 8), lionMat);
-    tail.rotation.z = -Math.PI / 4;
-    tail.position.set(-0.52, 0.68, 0);
-    tail.castShadow = true;
-    g.add(tail);
-    // Tail tuft
-    const tuft = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6), lionDarkMat);
-    tuft.position.set(-0.71, 0.88, 0);
+
+    // === TAIL === long, curving up over the rump
+    // segment 1 — near rump, going up and back
+    const tail1 = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.4, 6), lionMat);
+    tail1.rotation.z = Math.PI / 3;
+    tail1.position.set(-0.78, 0.62, 0);
+    tail1.castShadow = true;
+    g.add(tail1);
+    // segment 2 — going horizontal back
+    const tail2 = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.4, 6), lionMat);
+    tail2.rotation.z = Math.PI / 2;
+    tail2.position.set(-1.05, 0.85, 0);
+    tail2.castShadow = true;
+    g.add(tail2);
+    // tail tuft
+    const tuft = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), lionDarkMat);
+    tuft.scale.set(1.2, 0.9, 0.9);
+    tuft.position.set(-1.25, 0.85, 0);
     tuft.castShadow = true;
     g.add(tuft);
 
@@ -979,14 +1096,16 @@ function buildLionFountain(x, z){
   for(let i = 0; i < 12; i++){
     const ang = (i / 12) * Math.PI * 2;
     scene.add(buildLion(x, z, ang));
-    // water spurt from the lion's mouth (in world coords ~2.59 units from center)
-    const mouthX = x + Math.cos(ang) * 2.59;
-    const mouthZ = z + Math.sin(ang) * 2.59;
+    // water spurt from the lion's mouth — mouth is at local x=1.31, world distance from center = 1.7+1.31 = ~3.0
+    const mouthDist = 1.7 + 1.31;
+    const mouthX = x + Math.cos(ang) * mouthDist;
+    const mouthZ = z + Math.sin(ang) * mouthDist;
     const fp = new FountainParticles({
-      origin: new THREE.Vector3(mouthX, 0.48, mouthZ),
-      direction: new THREE.Vector3(Math.cos(ang) * 0.75, 0.18, Math.sin(ang) * 0.75),
-      power: 1.7, spread: 0.05, spawnRate: 16, count: 28,
-      floor: 0.05, lifeMin: 0.65, lifeMax: 0.95
+      origin: new THREE.Vector3(mouthX, 0.55, mouthZ),
+      direction: new THREE.Vector3(Math.cos(ang) * 0.85, 0.15, Math.sin(ang) * 0.85),
+      power: 2.4, spread: 0.04, spawnRate: 35, count: 60,
+      floor: 0.05, lifeMin: 0.7, lifeMax: 1.0,
+      size: 0.15
     });
     scene.add(fp.points);
     allFountains.push(fp);
@@ -1020,8 +1139,9 @@ function buildLionFountain(x, z){
   const jetFp = new FountainParticles({
     origin: new THREE.Vector3(x, 1.7, z),
     direction: new THREE.Vector3(0, 1, 0),
-    power: 5.5, spread: 0.12, spawnRate: 80, count: 120,
-    floor: 1.3, lifeMin: 1.2, lifeMax: 1.6
+    power: 6.0, spread: 0.10, spawnRate: 160, count: 250,
+    floor: 1.3, lifeMin: 1.4, lifeMax: 1.9,
+    size: 0.28
   });
   scene.add(jetFp.points);
   allFountains.push(jetFp);
@@ -1844,15 +1964,17 @@ scene.add(buildMountains());
     const fpN = new FountainParticles({
       origin: new THREE.Vector3(px, 0.2, GEN_CZ - CHANNEL_W/2 - 0.4),
       direction: new THREE.Vector3(0, 0.7, 0.7).normalize(),
-      power: 3.2, spread: 0.04, spawnRate: 22, count: 35,
-      floor: 0, lifeMin: 0.7, lifeMax: 1.0
+      power: 3.5, spread: 0.04, spawnRate: 60, count: 80,
+      floor: 0, lifeMin: 0.8, lifeMax: 1.2,
+      size: 0.18
     });
     scene.add(fpN.points); allFountains.push(fpN);
     const fpS = new FountainParticles({
       origin: new THREE.Vector3(px, 0.2, GEN_CZ + CHANNEL_W/2 + 0.4),
       direction: new THREE.Vector3(0, 0.7, -0.7).normalize(),
-      power: 3.2, spread: 0.04, spawnRate: 22, count: 35,
-      floor: 0, lifeMin: 0.7, lifeMax: 1.0
+      power: 3.5, spread: 0.04, spawnRate: 60, count: 80,
+      floor: 0, lifeMin: 0.8, lifeMax: 1.2,
+      size: 0.18
     });
     scene.add(fpS.points); allFountains.push(fpS);
   }
