@@ -1,0 +1,2410 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Alhambra 3D · Den Komplette Fæstning</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Amiri:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{width:100%;height:100%;overflow:hidden;background:#0d0805;font-family:'Cormorant Garamond',serif;color:#f4ecd8;touch-action:none;user-select:none}
+  canvas{display:block;width:100%;height:100%;cursor:grab}
+  canvas:active{cursor:grabbing}
+
+  #loader{position:fixed;inset:0;background:radial-gradient(ellipse at center,#2a1610 0%,#0d0805 70%);display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:50;transition:opacity 1.2s ease}
+  #loader.gone{opacity:0;pointer-events:none}
+  #loader .ar{font-family:'Amiri',serif;font-size:80px;color:#d4a574;margin-bottom:14px;text-shadow:0 0 30px rgba(212,165,116,.5);animation:pulse 2.5s ease-in-out infinite}
+  #loader h1{font-family:'Cinzel',serif;font-size:18px;letter-spacing:.5em;color:#e8dcc0;margin-bottom:50px;font-weight:500}
+  #loader .bar{width:240px;height:1px;background:rgba(212,165,116,.2);position:relative;overflow:hidden}
+  #loader .bar::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,#d4a574,transparent);width:60px;animation:slide 1.5s ease-in-out infinite}
+  #loader .lbl{margin-top:14px;font-family:'Cinzel',serif;font-size:9px;letter-spacing:.4em;color:rgba(212,165,116,.6)}
+  @keyframes pulse{0%,100%{opacity:.7}50%{opacity:1}}
+  @keyframes slide{0%{transform:translateX(-60px)}100%{transform:translateX(240px)}}
+
+  #start{position:fixed;inset:0;background:linear-gradient(180deg,rgba(13,8,5,.4) 0%,rgba(13,8,5,.85) 100%);display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:40;text-align:center;padding:24px;transition:opacity .8s ease}
+  #start.gone{opacity:0;pointer-events:none}
+  #start .ar{font-family:'Amiri',serif;font-size:clamp(50px,9vw,110px);color:#d4a574;line-height:1;margin-bottom:6px;text-shadow:0 0 40px rgba(212,165,116,.4)}
+  #start h1{font-family:'Cinzel',serif;font-size:clamp(22px,4vw,40px);letter-spacing:.2em;color:#f4ecd8;margin-bottom:8px;font-weight:500}
+  #start .sub{font-style:italic;color:#e8dcc0;font-size:clamp(15px,1.8vw,20px);max-width:540px;margin-bottom:48px;opacity:.9}
+  #start .btn{display:inline-block;padding:18px 50px;border:1px solid #d4a574;background:transparent;color:#f4ecd8;font-family:'Cinzel',serif;font-size:12px;letter-spacing:.4em;cursor:pointer;transition:.4s}
+  #start .btn:hover{background:#d4a574;color:#1a0f08;letter-spacing:.5em}
+  #start .ctrls{display:flex;gap:24px;flex-wrap:wrap;justify-content:center;margin-top:40px;font-family:'Cinzel',serif;font-size:10px;letter-spacing:.3em;color:#a08868}
+  #start .ctrls span{display:flex;align-items:center;gap:8px}
+  #start .ctrls kbd{background:rgba(212,165,116,.15);border:1px solid rgba(212,165,116,.4);padding:4px 8px;font-family:'Cinzel',serif;color:#d4a574;letter-spacing:.1em}
+
+  #hud{position:fixed;top:0;left:0;right:0;padding:18px 24px;z-index:10;pointer-events:none;display:flex;justify-content:space-between;align-items:flex-start;background:linear-gradient(to bottom,rgba(13,8,5,.5),transparent)}
+  #hud .brand{font-family:'Cinzel',serif;font-size:11px;letter-spacing:.4em;color:#d4a574}
+  #hud .brand .ar{font-family:'Amiri',serif;font-size:18px;margin-right:12px;letter-spacing:0;vertical-align:-2px}
+  #hud .right-cluster{display:flex;gap:12px;align-items:center;pointer-events:auto}
+  #hud .compass,#hud .tp-btn{background:rgba(13,8,5,.5);border:1px solid rgba(212,165,116,.3);padding:8px 16px;font-family:'Cinzel',serif;font-size:10px;letter-spacing:.3em;color:#e8dcc0;backdrop-filter:blur(8px);transition:.3s}
+  #hud .tp-btn{cursor:pointer}
+  #hud .tp-btn:hover{border-color:#d4a574;color:#d4a574;background:rgba(42,22,16,.8)}
+
+  #location{position:fixed;top:60px;left:50%;transform:translateX(-50%);text-align:center;z-index:9;pointer-events:none;opacity:0;transition:opacity 1.2s ease;background:rgba(13,8,5,.5);padding:10px 30px;backdrop-filter:blur(8px);border-bottom:1px solid rgba(212,165,116,.4)}
+  #location.show{opacity:1}
+  #location .ar{font-family:'Amiri',serif;font-size:22px;color:#d4a574;line-height:1;margin-bottom:2px}
+  #location .name{font-family:'Cinzel',serif;font-size:13px;letter-spacing:.3em;color:#f4ecd8}
+
+  #cross{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:24px;height:24px;z-index:8;pointer-events:none;opacity:0;transition:opacity .4s}
+  #cross.show{opacity:.5}
+  #cross::before,#cross::after{content:"";position:absolute;background:#d4a574}
+  #cross::before{top:50%;left:0;right:0;height:1px;transform:translateY(-50%)}
+  #cross::after{left:50%;top:0;bottom:0;width:1px;transform:translateX(-50%)}
+
+  #minimap{position:fixed;bottom:24px;right:24px;width:220px;height:130px;background:rgba(13,8,5,.7);border:1px solid rgba(212,165,116,.4);backdrop-filter:blur(8px);z-index:10;pointer-events:none;padding:8px}
+  #minimap svg{width:100%;height:100%;display:block}
+  #minimap-label{position:absolute;top:-22px;left:0;font-family:'Cinzel',serif;font-size:9px;letter-spacing:.3em;color:#a08868}
+
+  #teleport{position:fixed;inset:0;background:rgba(13,8,5,.85);backdrop-filter:blur(12px);display:none;justify-content:center;align-items:center;z-index:20;padding:24px}
+  #teleport.show{display:flex}
+  #teleport-inner{max-width:780px;width:100%;text-align:center}
+  #teleport h2{font-family:'Cinzel',serif;font-weight:500;font-size:32px;letter-spacing:.2em;color:#d4a574;margin-bottom:8px}
+  #teleport .sub{font-style:italic;color:#e8dcc0;margin-bottom:36px;opacity:.8}
+  #teleport-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+  .tp-card{padding:22px 20px;border:1px solid rgba(212,165,116,.3);background:rgba(42,22,16,.4);cursor:pointer;transition:.4s;text-align:left}
+  .tp-card:hover{border-color:#d4a574;background:rgba(42,22,16,.8);transform:translateY(-3px)}
+  .tp-card .ar{font-family:'Amiri',serif;font-size:24px;color:#d4a574;line-height:1;margin-bottom:8px;display:block}
+  .tp-card h3{font-family:'Cinzel',serif;font-size:13px;letter-spacing:.2em;color:#f4ecd8;margin-bottom:4px;font-weight:500}
+  .tp-card .desc{font-size:14px;color:#e8dcc0;font-style:italic;opacity:.8}
+  #tp-close{position:absolute;top:24px;right:24px;background:transparent;border:1px solid rgba(212,165,116,.3);color:#d4a574;font-family:'Cinzel',serif;font-size:11px;letter-spacing:.3em;padding:10px 20px;cursor:pointer;transition:.3s}
+  #tp-close:hover{border-color:#d4a574;background:rgba(212,165,116,.1)}
+
+  #joystick{position:fixed;left:32px;bottom:32px;width:120px;height:120px;border-radius:50%;background:rgba(13,8,5,.4);border:1px solid rgba(212,165,116,.4);backdrop-filter:blur(8px);z-index:10;display:none;touch-action:none}
+  #joystick.show{display:block}
+  #joystick-knob{position:absolute;top:50%;left:50%;width:50px;height:50px;margin:-25px 0 0 -25px;border-radius:50%;background:rgba(212,165,116,.5);border:1px solid #d4a574;transition:transform .05s linear;pointer-events:none}
+
+  #banner{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);max-width:600px;padding:14px 28px;background:rgba(13,8,5,.65);border-top:1px solid rgba(212,165,116,.35);border-bottom:1px solid rgba(212,165,116,.35);backdrop-filter:blur(8px);z-index:9;pointer-events:none;text-align:center;font-style:italic;font-size:16px;color:#e8dcc0;opacity:0;transition:opacity 1.2s ease}
+  #banner.show{opacity:1}
+  #banner cite{display:block;font-style:normal;font-family:'Cinzel',serif;font-size:9px;letter-spacing:.3em;color:#a08868;margin-top:6px}
+
+  @media (max-width:840px){
+    #minimap{width:140px;height:90px;bottom:16px;right:16px}
+    #joystick.show{display:block;left:20px;bottom:20px;width:100px;height:100px}
+    #joystick-knob{width:40px;height:40px;margin:-20px 0 0 -20px}
+    #banner{font-size:14px;padding:10px 20px;max-width:90vw;bottom:120px}
+    #hud .brand{font-size:9px}
+    #hud .compass,#hud .tp-btn{font-size:9px;padding:6px 12px}
+    #teleport h2{font-size:22px}
+    .tp-card{padding:14px}
+  }
+</style>
+</head>
+<body>
+
+<div id="loader">
+  <div class="ar">الحمراء</div>
+  <h1>ALHAMBRA</h1>
+  <div class="bar"></div>
+  <div class="lbl">BYGGER FÆSTNINGEN · MOMENT</div>
+</div>
+
+<div id="start" style="display:none">
+  <div class="ar">الحمراء</div>
+  <h1>ALHAMBRA</h1>
+  <p class="sub">Den røde fæstning på Sabikahøjen — træd ind i hele paladskomplekset:<br>Alcazaba, de Nasridiske paladser, Carlos V og Generalife.</p>
+  <button class="btn" id="enterBtn">TRÆD IND</button>
+  <div class="ctrls">
+    <span><kbd>WASD</kbd> GÅ</span>
+    <span><kbd>SHIFT</kbd> LØB</span>
+    <span><kbd>MUS</kbd> SE</span>
+    <span><kbd>M</kbd> KORT</span>
+    <span><kbd>ESC</kbd> AFSLUT</span>
+  </div>
+</div>
+
+<div id="hud" style="display:none">
+  <div class="brand"><span class="ar">الحمراء</span>ALHAMBRA · GRANADA</div>
+  <div class="right-cluster">
+    <div class="compass" id="compass">N</div>
+    <div class="tp-btn" id="tp-open">REJS · M</div>
+  </div>
+</div>
+
+<div id="location"><div class="ar" id="loc-ar">بهو الريحان</div><div class="name" id="loc-name">PATIO DE LOS ARRAYANES</div></div>
+<div id="cross"></div>
+<div id="banner"><div id="banner-text"></div></div>
+
+<div id="minimap" style="display:none">
+  <span id="minimap-label">FÆSTNINGEN · OVENFRA</span>
+  <svg id="minimap-svg" viewBox="-110 -32 295 64" preserveAspectRatio="xMidYMid meet">
+    <rect x="-110" y="-32" width="295" height="64" fill="rgba(42,22,16,.5)"/>
+    <g id="mm-buildings"></g>
+    <g id="mm-pools" fill="rgba(45,72,88,.7)" stroke="#5a8aa0" stroke-width=".25"></g>
+    <g id="mm-labels" font-family="Cinzel" font-size="3" letter-spacing=".4" fill="#a08868"></g>
+    <line id="player-dir" x1="0" y1="0" x2="0" y2="-4" stroke="#e6c068" stroke-width="1"/>
+    <circle id="player-dot" cx="0" cy="0" r="1.5" fill="#e6c068"/>
+  </svg>
+</div>
+
+<div id="teleport">
+  <button id="tp-close">✕ LUK</button>
+  <div id="teleport-inner">
+    <h2>REJS GENNEM PALADSET</h2>
+    <p class="sub">Vælg et sted at træde ind</p>
+    <div id="teleport-grid"></div>
+  </div>
+</div>
+
+<div id="joystick"><div id="joystick-knob"></div></div>
+
+<canvas id="canvas"></canvas>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ========================================================================
+// ALHAMBRA 3D — KOMPLET FÆSTNING
+// ========================================================================
+const PALETTE = {
+  marble:0xf4ecd8, ivory:0xe8dcc0, sandstone:0xc89060, brick:0xa05a32,
+  redclay:0x8a3d20, terra:0xd4a574, gold:0xe6c068, gold2:0xa06a32,
+  teal:0x1e4d4b, blue:0x2d4858, carmine:0x6b2c1a,
+  green:0x2d5530, deepGreen:0x1a3a1a, ember:0x2a1610, ink:0x0d0805
+};
+
+const canvas = document.getElementById('canvas');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true, powerPreference:'high-performance'});
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x6a4030, 0.0085);
+
+const camera = new THREE.PerspectiveCamera(72, window.innerWidth/window.innerHeight, 0.1, 800);
+camera.position.set(-95, 1.7, -28);
+camera.rotation.order = 'YXZ';
+
+// ========================================================================
+// HELPER: 8-point star polygon vertices
+// ========================================================================
+function eightPointStar(ctx, cx, cy, R, r){
+  ctx.beginPath();
+  for(let i = 0; i < 16; i++){
+    const a = i * Math.PI/8 - Math.PI/2;
+    const rad = (i % 2 === 0) ? R : r;
+    const x = cx + Math.cos(a) * rad;
+    const y = cy + Math.sin(a) * rad;
+    if(i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+}
+
+// ========================================================================
+// PROCEDURAL TEXTURES (correct Islamic patterns)
+// ========================================================================
+
+// Khatem Sulemani — classic Alhambra 8-fold star tessellation with proper zellige colors
+function makeKhatemTexture(){
+  const c = document.createElement('canvas');
+  c.width = c.height = 1024;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#f4ecd8';
+  ctx.fillRect(0, 0, 1024, 1024);
+  const cell = 256;
+  const R = cell * 0.34, r = R * 0.42;
+  const starColors = ['#1e4d4b', '#6b2c1a', '#2d4858', '#1a3a1a'];
+  for(let row = -1; row < 5; row++){
+    for(let col = -1; col < 5; col++){
+      const cx = col * cell + cell/2;
+      const cy = row * cell + cell/2;
+      ctx.fillStyle = starColors[(row + col + 8) % starColors.length];
+      ctx.strokeStyle = '#1a0f08';
+      ctx.lineWidth = 3;
+      eightPointStar(ctx, cx, cy, R, r);
+      ctx.fill(); ctx.stroke();
+      // inner small octagon
+      ctx.fillStyle = '#d4a574';
+      ctx.beginPath();
+      for(let i = 0; i < 8; i++){
+        const a = i * Math.PI/4 + Math.PI/8;
+        const x = cx + Math.cos(a) * r * 0.6;
+        const y = cy + Math.sin(a) * r * 0.6;
+        if(i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#a06a32';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.fillStyle = '#1a0f08';
+      ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI*2); ctx.fill();
+    }
+  }
+  // diagonal interlace straps connecting stars
+  ctx.strokeStyle = '#a06a32';
+  ctx.lineWidth = 4;
+  for(let row = 0; row <= 4; row++){
+    for(let col = 0; col <= 4; col++){
+      const cx = col * cell, cy = row * cell;
+      ctx.beginPath();
+      ctx.moveTo(cx - 35, cy);
+      ctx.lineTo(cx + 35, cy);
+      ctx.moveTo(cx, cy - 35);
+      ctx.lineTo(cx, cy + 35);
+      ctx.stroke();
+    }
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.encoding = THREE.sRGBEncoding;
+  t.anisotropy = 8;
+  return t;
+}
+
+// Sebka — diamond lattice common on Nasrid facades
+function makeSebkaTexture(){
+  const c = document.createElement('canvas');
+  c.width = c.height = 512;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#e8dcc0';
+  ctx.fillRect(0, 0, 512, 512);
+  ctx.strokeStyle = '#a06a32';
+  ctx.lineWidth = 2.2;
+  ctx.fillStyle = 'rgba(212,165,116,.20)';
+  const w = 64, h = 80;
+  for(let row = -1; row < 8; row++){
+    for(let col = -1; col < 9; col++){
+      const cx = col * w + (row % 2 === 0 ? 0 : w/2);
+      const cy = row * h * 0.65;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - h/2);
+      ctx.quadraticCurveTo(cx + w/2, cy - h/4, cx + w/2, cy);
+      ctx.quadraticCurveTo(cx + w/2, cy + h/4, cx, cy + h/2);
+      ctx.quadraticCurveTo(cx - w/2, cy + h/4, cx - w/2, cy);
+      ctx.quadraticCurveTo(cx - w/2, cy - h/4, cx, cy - h/2);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#a06a32';
+      ctx.beginPath(); ctx.arc(cx, cy, 2.5, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = 'rgba(212,165,116,.20)';
+    }
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.encoding = THREE.sRGBEncoding;
+  t.anisotropy = 8;
+  return t;
+}
+
+// Marble floor with octagonal tiles + 8-point star inlays
+function makeMarbleFloorTexture(){
+  const c = document.createElement('canvas');
+  c.width = c.height = 1024;
+  const ctx = c.getContext('2d');
+  const grad = ctx.createRadialGradient(512, 512, 100, 512, 512, 720);
+  grad.addColorStop(0, '#f4ecd8');
+  grad.addColorStop(1, '#d8c4a0');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 1024, 1024);
+  ctx.strokeStyle = 'rgba(120,70,30,.15)';
+  ctx.lineWidth = 1;
+  for(let i = 0; i < 80; i++){
+    ctx.beginPath();
+    ctx.moveTo(Math.random()*1024, Math.random()*1024);
+    ctx.bezierCurveTo(Math.random()*1024, Math.random()*1024, Math.random()*1024, Math.random()*1024, Math.random()*1024, Math.random()*1024);
+    ctx.stroke();
+  }
+  const cell = 256;
+  ctx.strokeStyle = 'rgba(160,106,50,.55)';
+  ctx.lineWidth = 3;
+  for(let i = 0; i <= 4; i++){
+    ctx.beginPath();
+    ctx.moveTo(i*cell, 0); ctx.lineTo(i*cell, 1024);
+    ctx.moveTo(0, i*cell); ctx.lineTo(1024, i*cell);
+    ctx.stroke();
+  }
+  for(let row = 0; row < 4; row++){
+    for(let col = 0; col < 4; col++){
+      const cx = col*cell + cell/2;
+      const cy = row*cell + cell/2;
+      const isStar = (row + col) % 2 === 0;
+      if(isStar){
+        ctx.fillStyle = '#6b2c1a';
+        ctx.strokeStyle = '#a06a32';
+        ctx.lineWidth = 3;
+        eightPointStar(ctx, cx, cy, cell*0.34, cell*0.14);
+        ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#d4a574';
+        ctx.beginPath(); ctx.arc(cx, cy, 14, 0, Math.PI*2); ctx.fill();
+      } else {
+        ctx.strokeStyle = '#a06a32';
+        ctx.fillStyle = '#1e4d4b';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for(let i = 0; i < 12; i++){
+          const a = i * Math.PI/6;
+          const x = cx + Math.cos(a) * cell*0.3;
+          const y = cy + Math.sin(a) * cell*0.3;
+          const cpx = cx + Math.cos(a + Math.PI/12) * cell*0.18;
+          const cpy = cy + Math.sin(a + Math.PI/12) * cell*0.18;
+          if(i === 0) ctx.moveTo(x, y);
+          else ctx.quadraticCurveTo(cpx, cpy, x, y);
+        }
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#d4a574';
+        ctx.beginPath(); ctx.arc(cx, cy, 10, 0, Math.PI*2); ctx.fill();
+      }
+    }
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.encoding = THREE.sRGBEncoding;
+  t.anisotropy = 8;
+  return t;
+}
+
+// Calligraphy band — Allah's motto repeated
+function makeCalligraphyTexture(){
+  const c = document.createElement('canvas');
+  c.width = 1024; c.height = 128;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#2a1610';
+  ctx.fillRect(0, 0, 1024, 128);
+  ctx.strokeStyle = '#d4a574';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, 6); ctx.lineTo(1024, 6);
+  ctx.moveTo(0, 122); ctx.lineTo(1024, 122);
+  ctx.stroke();
+  ctx.fillStyle = '#e6c068';
+  ctx.font = 'bold 60px Amiri, serif';
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'center';
+  for(let i = 0; i < 4; i++){
+    ctx.fillText('ولا غالب إلا الله', 128 + i*256, 64);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+}
+
+// Sandstone — rough warm stone for fortress walls
+function makeSandstoneTexture(){
+  const c = document.createElement('canvas');
+  c.width = c.height = 512;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#8a4d2a';
+  ctx.fillRect(0, 0, 512, 512);
+  for(let i = 0; i < 800; i++){
+    const x = Math.random() * 512;
+    const y = Math.random() * 512;
+    const r = Math.random() * 5 + 1;
+    ctx.fillStyle = `rgba(${100+Math.random()*60},${50+Math.random()*30},${20+Math.random()*15},.4)`;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.strokeStyle = 'rgba(40,20,10,.5)';
+  ctx.lineWidth = 1;
+  for(let row = 0; row < 8; row++){
+    const y = row * 64;
+    ctx.beginPath();
+    ctx.moveTo(0, y); ctx.lineTo(512, y);
+    ctx.stroke();
+    const offset = row % 2 === 0 ? 0 : 64;
+    for(let col = 0; col < 5; col++){
+      ctx.beginPath();
+      ctx.moveTo(col * 128 + offset, y);
+      ctx.lineTo(col * 128 + offset, y + 64);
+      ctx.stroke();
+    }
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.encoding = THREE.sRGBEncoding;
+  t.anisotropy = 4;
+  return t;
+}
+
+// Water normal map
+function makeWaterNormal(){
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#8080ff';
+  ctx.fillRect(0, 0, 256, 256);
+  for(let i = 0; i < 90; i++){
+    const x = Math.random()*256, y = Math.random()*256;
+    const r = 6 + Math.random()*22;
+    const ang = Math.random()*Math.PI*2;
+    const nx = 128 + Math.cos(ang)*55;
+    const ny = 128 + Math.sin(ang)*55;
+    const grad = ctx.createRadialGradient(x, y, 0, x, y, r);
+    grad.addColorStop(0, `rgb(${Math.round(nx)},${Math.round(ny)},255)`);
+    grad.addColorStop(1, 'rgba(128,128,255,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+}
+
+// Sky — gradient with horizon glow
+function makeSkyTexture(){
+  const c = document.createElement('canvas');
+  c.width = 64; c.height = 1024;
+  const ctx = c.getContext('2d');
+  const g = ctx.createLinearGradient(0, 0, 0, 1024);
+  g.addColorStop(0, '#1a2848');
+  g.addColorStop(0.35, '#5a4a4a');
+  g.addColorStop(0.62, '#c47a48');
+  g.addColorStop(0.78, '#e6a068');
+  g.addColorStop(0.92, '#a05030');
+  g.addColorStop(1, '#3a1d10');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 64, 1024);
+  return new THREE.CanvasTexture(c);
+}
+
+// Particle dot
+function makeParticleSprite(color){
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const ctx = c.getContext('2d');
+  const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+  grad.addColorStop(0, color + 'ff');
+  grad.addColorStop(0.4, color + '88');
+  grad.addColorStop(1, color + '00');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 64, 64);
+  return new THREE.CanvasTexture(c);
+}
+
+// ========================================================================
+// SHARED TEXTURES & MATERIALS
+// ========================================================================
+const TEX = {
+  marble: makeMarbleFloorTexture(),
+  khatem: makeKhatemTexture(),
+  sebka: makeSebkaTexture(),
+  callig: makeCalligraphyTexture(),
+  sandstone: makeSandstoneTexture(),
+  waterNormal: makeWaterNormal()
+};
+
+function clonedTex(base, repeatX, repeatY){
+  const t = base.clone();
+  t.needsUpdate = true;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(repeatX, repeatY);
+  return t;
+}
+
+const MATS = {
+  marble: () => new THREE.MeshStandardMaterial({map: clonedTex(TEX.marble, 1, 1), roughness:0.4, metalness:0.05}),
+  khatem: (rx, ry) => new THREE.MeshStandardMaterial({map: clonedTex(TEX.khatem, rx, ry), roughness:0.85, side:THREE.DoubleSide}),
+  sebka: (rx, ry) => new THREE.MeshStandardMaterial({map: clonedTex(TEX.sebka, rx, ry), roughness:0.85, side:THREE.DoubleSide}),
+  sandstone: (rx, ry) => new THREE.MeshStandardMaterial({map: clonedTex(TEX.sandstone, rx, ry), roughness:0.95}),
+  ivory: () => new THREE.MeshStandardMaterial({color: PALETTE.ivory, roughness:0.5}),
+  marbleSolid: () => new THREE.MeshStandardMaterial({color: PALETTE.marble, roughness:0.45, metalness:0.05}),
+  red: () => new THREE.MeshStandardMaterial({color: PALETTE.redclay, roughness:0.92}),
+  gold: () => new THREE.MeshStandardMaterial({color: PALETTE.gold2, roughness:0.5}),
+  green: () => new THREE.MeshStandardMaterial({color: PALETTE.green, roughness:0.85}),
+  deepGreen: () => new THREE.MeshStandardMaterial({color: PALETTE.deepGreen, roughness:0.9})
+};
+
+// ========================================================================
+// SKY DOME
+// ========================================================================
+const skyMesh = new THREE.Mesh(
+  new THREE.SphereGeometry(400, 32, 24),
+  new THREE.MeshBasicMaterial({map: makeSkyTexture(), side: THREE.BackSide, fog: false, depthWrite: false})
+);
+scene.add(skyMesh);
+
+// ========================================================================
+// HORSESHOE ARCH WALL BUILDER
+// ========================================================================
+function buildArchWall({totalWidth, totalHeight, depth, archCount, archSpan, springHeight, material}){
+  const shape = new THREE.Shape();
+  shape.moveTo(-totalWidth/2, 0);
+  shape.lineTo(totalWidth/2, 0);
+  shape.lineTo(totalWidth/2, totalHeight);
+  shape.lineTo(-totalWidth/2, totalHeight);
+  shape.lineTo(-totalWidth/2, 0);
+
+  const archR = archSpan / 2;
+  const archAngle = Math.PI / 8;
+  const archCenterY = springHeight + archR * Math.sin(archAngle);
+  const colMeetX = archR * Math.cos(archAngle);
+  const totalArchWidth = archCount * archSpan;
+  const totalGap = totalWidth - totalArchWidth;
+  const gap = totalGap / (archCount + 1);
+
+  for(let i = 0; i < archCount; i++){
+    const archCenterX = -totalWidth/2 + gap + archR + i * (archSpan + gap);
+    const hole = new THREE.Path();
+    hole.moveTo(archCenterX - colMeetX, 0);
+    hole.lineTo(archCenterX - colMeetX, archCenterY - archR * Math.sin(archAngle));
+    hole.absarc(archCenterX, archCenterY, archR, Math.PI + archAngle, -archAngle, true);
+    hole.lineTo(archCenterX + colMeetX, 0);
+    hole.lineTo(archCenterX - colMeetX, 0);
+    shape.holes.push(hole);
+  }
+
+  const geo = new THREE.ExtrudeGeometry(shape, {depth, bevelEnabled:false, curveSegments:24});
+  geo.computeVertexNormals();
+  const mesh = new THREE.Mesh(geo, material);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  return mesh;
+}
+
+// ========================================================================
+// COLUMN
+// ========================================================================
+function buildColumn(height = 2.4){
+  const g = new THREE.Group();
+  const base = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.25, 0.45), MATS.ivory());
+  base.position.y = 0.125; base.castShadow = base.receiveShadow = true;
+  g.add(base);
+  const shaft = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.16, 0.18, height, 16),
+    MATS.marbleSolid()
+  );
+  shaft.position.y = 0.25 + height/2; shaft.castShadow = true;
+  g.add(shaft);
+  const cap = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.35, 0.42), MATS.gold());
+  cap.position.y = 0.25 + height + 0.175; cap.castShadow = true;
+  g.add(cap);
+  const upper = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.18, 0.5),
+    new THREE.MeshStandardMaterial({color: PALETTE.gold2, roughness:0.5}));
+  upper.position.y = 0.25 + height + 0.43; upper.castShadow = true;
+  g.add(upper);
+  return g;
+}
+
+// ========================================================================
+// CRENELLATED FORTRESS WALL
+// ========================================================================
+function buildCrenellatedWall(length, height, thickness, material){
+  const g = new THREE.Group();
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(length, height, thickness), material);
+  wall.position.y = height/2;
+  wall.castShadow = wall.receiveShadow = true;
+  g.add(wall);
+  const merlonH = 0.8, merlonW = 0.6;
+  const period = merlonW + 0.4;
+  const count = Math.floor(length / period);
+  const startX = -length/2 + 0.4/2;
+  for(let i = 0; i < count; i++){
+    const m = new THREE.Mesh(new THREE.BoxGeometry(merlonW, merlonH, thickness), material);
+    m.position.set(startX + i * period + merlonW/2, height + merlonH/2, 0);
+    m.castShadow = true;
+    g.add(m);
+  }
+  return g;
+}
+
+// ========================================================================
+// FORTRESS TOWER
+// ========================================================================
+function buildTower(width, height, material){
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(width, height, width), material);
+  body.position.y = height/2;
+  body.castShadow = body.receiveShadow = true;
+  g.add(body);
+  const top = new THREE.Mesh(
+    new THREE.BoxGeometry(width + 0.4, 0.3, width + 0.4),
+    new THREE.MeshStandardMaterial({color: PALETTE.brick, roughness:0.85})
+  );
+  top.position.y = height + 0.15;
+  top.castShadow = true;
+  g.add(top);
+  const merlonH = 0.7, merlonW = 0.5;
+  const sideLen = width + 0.4;
+  const period = merlonW + 0.35;
+  const count = Math.floor(sideLen / period);
+  for(let side = 0; side < 4; side++){
+    const ang = side * Math.PI/2;
+    const sx = Math.cos(ang), sz = Math.sin(ang);
+    const px = -Math.sin(ang), pz = Math.cos(ang);
+    for(let i = 0; i < count; i++){
+      const t = -sideLen/2 + i * period + period/2;
+      const m = new THREE.Mesh(new THREE.BoxGeometry(merlonW, merlonH, 0.3), material);
+      m.position.set(sx * (sideLen/2 - 0.15) + px * t, height + 0.3 + merlonH/2, sz * (sideLen/2 - 0.15) + pz * t);
+      m.rotation.y = ang;
+      m.castShadow = true;
+      g.add(m);
+    }
+  }
+  // arrow loop slits
+  const slitMat = new THREE.MeshBasicMaterial({color: 0x000000});
+  for(let side = 0; side < 4; side++){
+    const ang = side * Math.PI/2;
+    const slit = new THREE.Mesh(new THREE.PlaneGeometry(0.15, 0.6), slitMat);
+    slit.position.set(Math.cos(ang) * (width/2 + 0.005), height * 0.6, Math.sin(ang) * (width/2 + 0.005));
+    slit.rotation.y = ang + Math.PI/2;
+    g.add(slit);
+  }
+  return g;
+}
+
+// ========================================================================
+// WATER SHADER MATERIAL
+// ========================================================================
+function buildWaterMaterial(){
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      uTime: { value: 0 },
+      uNormalMap: { value: TEX.waterNormal },
+      uCameraPos: { value: new THREE.Vector3() },
+      uSunDir: { value: new THREE.Vector3(-0.6, 0.6, 0.4).normalize() },
+      uSkyColor: { value: new THREE.Color(0xc89060) },
+      uDeepColor: { value: new THREE.Color(0x0a1822) },
+      uShallowColor: { value: new THREE.Color(0x1a4858) }
+    },
+    vertexShader: `
+      varying vec3 vWorldPos;
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        vec4 wp = modelMatrix * vec4(position, 1.0);
+        vWorldPos = wp.xyz;
+        gl_Position = projectionMatrix * viewMatrix * wp;
+      }
+    `,
+    fragmentShader: `
+      uniform float uTime;
+      uniform sampler2D uNormalMap;
+      uniform vec3 uCameraPos;
+      uniform vec3 uSunDir;
+      uniform vec3 uSkyColor;
+      uniform vec3 uDeepColor;
+      uniform vec3 uShallowColor;
+      varying vec3 vWorldPos;
+      varying vec2 vUv;
+      void main() {
+        vec2 uv1 = vWorldPos.xz * 0.25 + vec2(uTime * 0.022, uTime * 0.014);
+        vec2 uv2 = vWorldPos.xz * 0.55 - vec2(uTime * 0.018, uTime * -0.012);
+        vec3 n1 = texture2D(uNormalMap, uv1).rgb * 2.0 - 1.0;
+        vec3 n2 = texture2D(uNormalMap, uv2).rgb * 2.0 - 1.0;
+        vec3 surfNormal = normalize(vec3(0.0, 1.0, 0.0) + (n1 + n2) * 0.18);
+        vec3 viewDir = normalize(uCameraPos - vWorldPos);
+        float NdotV = max(dot(surfNormal, viewDir), 0.0);
+        float fresnel = pow(1.0 - NdotV, 4.0);
+        vec3 baseColor = mix(uDeepColor, uShallowColor, NdotV * 0.6 + 0.2);
+        vec3 color = mix(baseColor, uSkyColor, fresnel * 0.85);
+        vec3 reflectDir = reflect(-uSunDir, surfNormal);
+        float spec = pow(max(dot(viewDir, reflectDir), 0.0), 80.0);
+        color += vec3(1.0, 0.85, 0.55) * spec * 1.5;
+        float sheen = pow(max(dot(viewDir, reflectDir), 0.0), 12.0);
+        color += vec3(0.9, 0.7, 0.45) * sheen * 0.25;
+        float highlight = smoothstep(0.4, 1.0, length(n1.xy + n2.xy));
+        color += vec3(0.95, 0.9, 0.8) * highlight * 0.08;
+        gl_FragColor = vec4(color, 0.93);
+      }
+    `,
+    transparent: true,
+    side: THREE.DoubleSide
+  });
+}
+
+const allWaterMats = [];
+function createWaterSurface(width, length){
+  const mat = buildWaterMaterial();
+  allWaterMats.push(mat);
+  const mesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(width, length, Math.max(2, Math.ceil(width)), Math.max(2, Math.ceil(length))),
+    mat
+  );
+  mesh.rotation.x = -Math.PI/2;
+  return mesh;
+}
+
+// ========================================================================
+// FOUNTAIN PARTICLE SYSTEM
+// ========================================================================
+class FountainParticles {
+  constructor(opts){
+    this.count = opts.count || 80;
+    this.spawnRate = opts.spawnRate || 40;
+    this.power = opts.power || 4;
+    this.spread = opts.spread || 0.25;
+    this.gravity = opts.gravity || -9.8;
+    this.lifeMin = opts.lifeMin || 1.0;
+    this.lifeMax = opts.lifeMax || 1.6;
+    this.origin = opts.origin.clone();
+    this.direction = (opts.direction || new THREE.Vector3(0,1,0)).clone().normalize();
+    this.size = opts.size || 0.06;
+    this.floor = opts.floor !== undefined ? opts.floor : 0;
+
+    this.positions = new Float32Array(this.count * 3);
+    this.velocities = new Float32Array(this.count * 3);
+    this.lives = new Float32Array(this.count);
+    for(let i = 0; i < this.count; i++){
+      this.positions[i*3+1] = -1000;
+    }
+    this.geo = new THREE.BufferGeometry();
+    this.geo.setAttribute('position', new THREE.BufferAttribute(this.positions, 3));
+    this.mat = new THREE.PointsMaterial({
+      color: 0xb8d8e8,
+      size: this.size,
+      map: makeParticleSprite('#b8d8e8'),
+      transparent: true,
+      opacity: 0.85,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      sizeAttenuation: true
+    });
+    this.points = new THREE.Points(this.geo, this.mat);
+    this.spawnAccum = 0;
+  }
+  update(dt){
+    this.spawnAccum += this.spawnRate * dt;
+    let toSpawn = Math.floor(this.spawnAccum);
+    this.spawnAccum -= toSpawn;
+    for(let i = 0; i < this.count && toSpawn > 0; i++){
+      if(this.lives[i] <= 0){
+        this.positions[i*3]   = this.origin.x;
+        this.positions[i*3+1] = this.origin.y;
+        this.positions[i*3+2] = this.origin.z;
+        const dx = (Math.random() - 0.5) * 2 * this.spread;
+        const dz = (Math.random() - 0.5) * 2 * this.spread;
+        const dy = (Math.random() - 0.5) * this.spread * 0.5;
+        const dir = new THREE.Vector3(this.direction.x + dx, this.direction.y + dy, this.direction.z + dz).normalize();
+        const speed = this.power * (0.85 + Math.random() * 0.3);
+        this.velocities[i*3]   = dir.x * speed;
+        this.velocities[i*3+1] = dir.y * speed;
+        this.velocities[i*3+2] = dir.z * speed;
+        this.lives[i] = this.lifeMin + Math.random() * (this.lifeMax - this.lifeMin);
+        toSpawn--;
+      }
+    }
+    for(let i = 0; i < this.count; i++){
+      if(this.lives[i] > 0){
+        this.lives[i] -= dt;
+        this.velocities[i*3+1] += this.gravity * dt;
+        this.positions[i*3]   += this.velocities[i*3]   * dt;
+        this.positions[i*3+1] += this.velocities[i*3+1] * dt;
+        this.positions[i*3+2] += this.velocities[i*3+2] * dt;
+        if(this.lives[i] <= 0 || this.positions[i*3+1] < this.floor){
+          this.lives[i] = 0;
+          this.positions[i*3+1] = -1000;
+        }
+      }
+    }
+    this.geo.attributes.position.needsUpdate = true;
+  }
+}
+const allFountains = [];
+
+// ========================================================================
+// SIMPLE FOUNTAIN BOWL
+// ========================================================================
+function buildJetFountain(x, z, opts = {}){
+  const g = new THREE.Group();
+  const bowlR = opts.radius || 0.7;
+  const power = opts.power || 4.5;
+  const bowl = new THREE.Mesh(
+    new THREE.CylinderGeometry(bowlR, bowlR * 0.85, 0.35, 24),
+    MATS.ivory()
+  );
+  bowl.position.y = 0.175;
+  bowl.castShadow = bowl.receiveShadow = true;
+  g.add(bowl);
+  const ped = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.25, 0.3, 0.4, 12),
+    MATS.marbleSolid()
+  );
+  ped.position.y = 0.55;
+  ped.castShadow = true;
+  g.add(ped);
+  const upper = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.4, 0.32, 0.18, 16),
+    MATS.ivory()
+  );
+  upper.position.y = 0.84;
+  upper.castShadow = true;
+  g.add(upper);
+  const innerWaterMat = buildWaterMaterial();
+  allWaterMats.push(innerWaterMat);
+  const innerWater = new THREE.Mesh(
+    new THREE.CylinderGeometry(bowlR - 0.1, bowlR - 0.1, 0.05, 24),
+    innerWaterMat
+  );
+  innerWater.position.y = 0.31;
+  g.add(innerWater);
+  const upperWater = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.32, 0.32, 0.02, 16),
+    new THREE.MeshStandardMaterial({color: 0x1a3848, roughness:0.05, metalness:0.7})
+  );
+  upperWater.position.y = 0.94;
+  g.add(upperWater);
+  g.position.set(x, 0, z);
+  scene.add(g);
+
+  const fp = new FountainParticles({
+    origin: new THREE.Vector3(x, 0.95, z),
+    direction: new THREE.Vector3(0, 1, 0),
+    power: power,
+    spread: 0.18,
+    spawnRate: 60,
+    count: 100,
+    floor: 0.3,
+    lifeMin: 0.9,
+    lifeMax: 1.4
+  });
+  scene.add(fp.points);
+  allFountains.push(fp);
+  return g;
+}
+
+// ========================================================================
+// LION FOUNTAIN (Patio de los Leones)
+// ========================================================================
+function buildLionFountain(x, z){
+  const g = new THREE.Group();
+  const base = new THREE.Mesh(
+    new THREE.CylinderGeometry(2.0, 2.2, 0.25, 12),
+    MATS.marbleSolid()
+  );
+  base.position.y = 0.125;
+  base.castShadow = base.receiveShadow = true;
+  g.add(base);
+
+  const lionMat = new THREE.MeshStandardMaterial({color: 0xbfa57a, roughness:0.7});
+  const lionDarkMat = new THREE.MeshStandardMaterial({color: 0x8a6a45, roughness:0.8});
+  const lionEyeMat = new THREE.MeshStandardMaterial({color: 0x0d0405, roughness:0.4});
+
+  // Build a single lion sculpture facing local +X, then rotate into place
+  function buildLion(cx, cz, ang){
+    const g = new THREE.Group();
+    // Body — main barrel
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.4, 0.34), lionMat);
+    body.position.set(0, 0.5, 0);
+    body.castShadow = body.receiveShadow = true;
+    g.add(body);
+    // Chest — slightly larger forward
+    const chest = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 10), lionMat);
+    chest.scale.set(1.0, 0.85, 0.85);
+    chest.position.set(0.30, 0.5, 0);
+    chest.castShadow = true;
+    g.add(chest);
+    // Hindquarters — rounded rump
+    const rear = new THREE.Mesh(new THREE.SphereGeometry(0.21, 12, 10), lionMat);
+    rear.scale.set(1.0, 0.95, 0.95);
+    rear.position.set(-0.32, 0.5, 0);
+    rear.castShadow = true;
+    g.add(rear);
+    // Mane — large fuzzy ball around neck
+    const mane = new THREE.Mesh(new THREE.SphereGeometry(0.32, 14, 12), lionDarkMat);
+    mane.position.set(0.43, 0.55, 0);
+    mane.castShadow = true;
+    g.add(mane);
+    // Mane texture — ring of small dark blobs
+    for(let i = 0; i < 8; i++){
+      const a = i * Math.PI/4;
+      const blob = new THREE.Mesh(new THREE.SphereGeometry(0.10, 6, 5), lionDarkMat);
+      blob.position.set(0.43 + Math.cos(a) * 0.04, 0.55 + Math.sin(a) * 0.30, Math.sin(a + 0.5) * 0.06);
+      blob.castShadow = true;
+      g.add(blob);
+    }
+    // Head
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.22, 0.24), lionMat);
+    head.position.set(0.66, 0.55, 0);
+    head.castShadow = true;
+    g.add(head);
+    // Snout (cheeks)
+    const snout = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.13, 0.16), lionMat);
+    snout.position.set(0.81, 0.50, 0);
+    snout.castShadow = true;
+    g.add(snout);
+    // Mouth opening — water comes out of here
+    const mouth = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.045, 0.05, 0.05, 10),
+      new THREE.MeshStandardMaterial({color: 0x0d0405, roughness:0.4})
+    );
+    mouth.rotation.z = Math.PI / 2;
+    mouth.position.set(0.89, 0.48, 0);
+    g.add(mouth);
+    // Nose — small dark triangle
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(0.022, 6, 5), lionEyeMat);
+    nose.position.set(0.89, 0.55, 0);
+    g.add(nose);
+    // Ears
+    for(let s = -1; s <= 1; s += 2){
+      const ear = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.12, 4), lionMat);
+      ear.position.set(0.62, 0.71, s * 0.07);
+      ear.rotation.x = s * 0.2;
+      ear.castShadow = true;
+      g.add(ear);
+    }
+    // Eyes
+    for(let s = -1; s <= 1; s += 2){
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.022, 6, 5), lionEyeMat);
+      eye.position.set(0.76, 0.59, s * 0.075);
+      g.add(eye);
+    }
+    // 4 legs with paws
+    const legPos = [[0.25, 0.13],[0.25, -0.13],[-0.27, 0.13],[-0.27, -0.13]];
+    legPos.forEach(([px, pz]) => {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.4, 8), lionMat);
+      leg.position.set(px, 0.20, pz);
+      leg.castShadow = true;
+      g.add(leg);
+      // paw
+      const paw = new THREE.Mesh(new THREE.SphereGeometry(0.085, 8, 6), lionMat);
+      paw.scale.set(1, 0.55, 1);
+      paw.position.set(px, 0.05, pz);
+      paw.castShadow = true;
+      g.add(paw);
+    });
+    // Tail — curved upward over rump
+    const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.04, 0.55, 8), lionMat);
+    tail.rotation.z = -Math.PI / 4;
+    tail.position.set(-0.52, 0.68, 0);
+    tail.castShadow = true;
+    g.add(tail);
+    // Tail tuft
+    const tuft = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6), lionDarkMat);
+    tuft.position.set(-0.71, 0.88, 0);
+    tuft.castShadow = true;
+    g.add(tuft);
+
+    g.rotation.y = -ang;
+    g.position.set(cx + Math.cos(ang) * 1.7, 0, cz + Math.sin(ang) * 1.7);
+    return g;
+  }
+
+  for(let i = 0; i < 12; i++){
+    const ang = (i / 12) * Math.PI * 2;
+    scene.add(buildLion(x, z, ang));
+    // water spurt from the lion's mouth (in world coords ~2.59 units from center)
+    const mouthX = x + Math.cos(ang) * 2.59;
+    const mouthZ = z + Math.sin(ang) * 2.59;
+    const fp = new FountainParticles({
+      origin: new THREE.Vector3(mouthX, 0.48, mouthZ),
+      direction: new THREE.Vector3(Math.cos(ang) * 0.75, 0.18, Math.sin(ang) * 0.75),
+      power: 1.7, spread: 0.05, spawnRate: 16, count: 28,
+      floor: 0.05, lifeMin: 0.65, lifeMax: 0.95
+    });
+    scene.add(fp.points);
+    allFountains.push(fp);
+  }
+
+  // central column
+  const col = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.32, 0.4, 0.7, 12),
+    MATS.marbleSolid()
+  );
+  col.position.set(x, 0.6, z); col.castShadow = true;
+  g.add(col);
+  // big upper bowl
+  const upperBowl = new THREE.Mesh(
+    new THREE.CylinderGeometry(1.4, 1.0, 0.4, 24),
+    MATS.ivory()
+  );
+  upperBowl.position.set(x, 1.15, z);
+  upperBowl.castShadow = upperBowl.receiveShadow = true;
+  g.add(upperBowl);
+  // water in upper bowl
+  const ubWaterMat = buildWaterMaterial();
+  allWaterMats.push(ubWaterMat);
+  const ubWater = new THREE.Mesh(
+    new THREE.CylinderGeometry(1.3, 1.3, 0.04, 24),
+    ubWaterMat
+  );
+  ubWater.position.set(x, 1.34, z);
+  g.add(ubWater);
+  // top jet
+  const jetFp = new FountainParticles({
+    origin: new THREE.Vector3(x, 1.7, z),
+    direction: new THREE.Vector3(0, 1, 0),
+    power: 5.5, spread: 0.12, spawnRate: 80, count: 120,
+    floor: 1.3, lifeMin: 1.2, lifeMax: 1.6
+  });
+  scene.add(jetFp.points);
+  allFountains.push(jetFp);
+  scene.add(g);
+}
+
+// ========================================================================
+// VEGETATION
+// ========================================================================
+function buildMyrtleHedge(x, z, length, axis){
+  const g = new THREE.Group();
+  const count = Math.floor(length / 0.4);
+  for(let i = 0; i < count; i++){
+    const s = new THREE.Mesh(
+      new THREE.SphereGeometry(0.28 + Math.random()*0.04, 8, 6),
+      MATS.green()
+    );
+    s.castShadow = true;
+    if(axis === 'x'){ s.position.set(x - length/2 + i*0.4, 0.3, z); }
+    else { s.position.set(x, 0.3, z - length/2 + i*0.4); }
+    g.add(s);
+  }
+  return g;
+}
+function buildCypress(x, z, h){
+  const g = new THREE.Group();
+  const cone = new THREE.Mesh(new THREE.ConeGeometry(0.7, h, 8), MATS.deepGreen());
+  cone.position.y = h/2; cone.castShadow = true;
+  g.add(cone);
+  const trunk = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.1, 0.12, 0.4, 6),
+    new THREE.MeshStandardMaterial({color: 0x3a1d10})
+  );
+  trunk.position.y = 0.2;
+  g.add(trunk);
+  g.position.set(x, 0, z);
+  return g;
+}
+function buildOrangeTree(x, z){
+  const g = new THREE.Group();
+  const trunk = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.12, 0.16, 1.0, 6),
+    new THREE.MeshStandardMaterial({color: 0x4a2818})
+  );
+  trunk.position.y = 0.5; trunk.castShadow = true;
+  g.add(trunk);
+  const foliage = new THREE.Mesh(new THREE.SphereGeometry(0.85, 12, 8),
+    new THREE.MeshStandardMaterial({color: 0x2d4a25, roughness:0.85}));
+  foliage.position.y = 1.5; foliage.castShadow = true;
+  g.add(foliage);
+  for(let i = 0; i < 8; i++){
+    const orange = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4),
+      new THREE.MeshStandardMaterial({color: 0xe88030, roughness:0.5}));
+    const ang = Math.random() * Math.PI * 2;
+    const r = 0.7 + Math.random() * 0.15;
+    const ph = Math.random() * Math.PI - Math.PI/3;
+    orange.position.set(Math.cos(ang) * r * Math.cos(ph), 1.5 + Math.sin(ph) * r, Math.sin(ang) * r * Math.cos(ph));
+    g.add(orange);
+  }
+  g.position.set(x, 0, z);
+  return g;
+}
+function buildRoseBush(x, z){
+  const g = new THREE.Group();
+  const bush = new THREE.Mesh(new THREE.SphereGeometry(0.4, 8, 6), MATS.green());
+  bush.position.y = 0.4; bush.castShadow = true;
+  g.add(bush);
+  for(let i = 0; i < 5; i++){
+    const r = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 4),
+      new THREE.MeshStandardMaterial({color: 0xc83020, roughness:0.5}));
+    r.position.set((Math.random() - 0.5) * 0.6, 0.45 + Math.random() * 0.25, (Math.random() - 0.5) * 0.6);
+    g.add(r);
+  }
+  g.position.set(x, 0, z);
+  return g;
+}
+
+// ========================================================================
+// ZONES, POOLS, BUILDINGS
+// ========================================================================
+const ZONES = [];
+const POOLS = [];
+const BUILDINGS = [];
+function addZone(name, ar, xMin, xMax, zMin, zMax){ ZONES.push({name, ar, xMin, xMax, zMin, zMax}); }
+function addPool(xMin, xMax, zMin, zMax){ POOLS.push({xMin, xMax, zMin, zMax}); }
+function addBuilding(xMin, xMax, zMin, zMax){ BUILDINGS.push({xMin, xMax, zMin, zMax}); }
+
+// ========================================================================
+// GROUND TERRAIN
+// ========================================================================
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(800, 800),
+  new THREE.MeshStandardMaterial({color: 0x6b3d20, roughness:0.95})
+);
+ground.rotation.x = -Math.PI/2;
+ground.position.y = -0.05;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// distant Sierra Nevada
+function buildMountains(){
+  const g = new THREE.Group();
+  const peakMat = new THREE.MeshBasicMaterial({color: 0x2a1a18, fog: false});
+  const snowMat = new THREE.MeshBasicMaterial({color: 0xe8dcc0, fog: false});
+  for(let i = 0; i < 18; i++){
+    const ang = (i / 18) * Math.PI * 2 + Math.random() * 0.1;
+    const r = 240 + Math.random() * 50;
+    const x = Math.cos(ang) * r;
+    const z = Math.sin(ang) * r;
+    const h = 30 + Math.random() * 40;
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(15 + Math.random() * 8, h, 6), peakMat);
+    cone.position.set(x, h/2 - 5, z);
+    g.add(cone);
+    if(h > 50){
+      const cap = new THREE.Mesh(new THREE.ConeGeometry(6, h * 0.25, 6), snowMat);
+      cap.position.set(x, h - 5 - h*0.125, z);
+      g.add(cap);
+    }
+  }
+  return g;
+}
+scene.add(buildMountains());
+
+// ============================================================================
+// 1. ALCAZABA — THE MILITARY FORTRESS (westernmost)
+// ============================================================================
+{
+  const ALC_MIN_X = -92, ALC_MAX_X = -52;
+  const ALC_MIN_Z = -22, ALC_MAX_Z = 22;
+  const wallH = 8;
+  const wallMat = MATS.sandstone(8, 1);
+
+  const nWall = buildCrenellatedWall(ALC_MAX_X - ALC_MIN_X, wallH, 1.5, wallMat);
+  nWall.position.set((ALC_MIN_X + ALC_MAX_X)/2, 0, ALC_MIN_Z);
+  scene.add(nWall);
+  const sWall = buildCrenellatedWall(ALC_MAX_X - ALC_MIN_X, wallH, 1.5, wallMat);
+  sWall.position.set((ALC_MIN_X + ALC_MAX_X)/2, 0, ALC_MAX_Z);
+  scene.add(sWall);
+  const wWall = buildCrenellatedWall(ALC_MAX_Z - ALC_MIN_Z, wallH, 1.5, wallMat);
+  wWall.rotation.y = Math.PI/2;
+  wWall.position.set(ALC_MIN_X, 0, (ALC_MIN_Z + ALC_MAX_Z)/2);
+  scene.add(wWall);
+  // east gateway
+  const eGap = 6;
+  const eSegLen = (ALC_MAX_Z - ALC_MIN_Z - eGap) / 2;
+  const eN = buildCrenellatedWall(eSegLen, wallH, 1.5, wallMat);
+  eN.rotation.y = Math.PI/2;
+  eN.position.set(ALC_MAX_X, 0, ALC_MIN_Z + eSegLen/2);
+  scene.add(eN);
+  const eS = buildCrenellatedWall(eSegLen, wallH, 1.5, wallMat);
+  eS.rotation.y = Math.PI/2;
+  eS.position.set(ALC_MAX_X, 0, ALC_MAX_Z - eSegLen/2);
+  scene.add(eS);
+
+  // corner towers
+  const corners = [
+    {x: ALC_MIN_X, z: ALC_MIN_Z, w: 5, h: 12},
+    {x: ALC_MIN_X, z: ALC_MAX_Z, w: 5, h: 12},
+    {x: ALC_MAX_X, z: ALC_MIN_Z, w: 5, h: 11},
+    {x: ALC_MAX_X, z: ALC_MAX_Z, w: 5, h: 11},
+  ];
+  corners.forEach(c => {
+    const t = buildTower(c.w, c.h, MATS.sandstone(2, c.h/4));
+    t.position.set(c.x, 0, c.z);
+    scene.add(t);
+    addBuilding(c.x - c.w/2, c.x + c.w/2, c.z - c.w/2, c.z + c.w/2);
+  });
+
+  // Torre de la Vela
+  const velaW = 7, velaH = 22;
+  const vela = buildTower(velaW, velaH, MATS.sandstone(2, velaH/4));
+  vela.position.set(ALC_MIN_X - 3, 0, 0);
+  scene.add(vela);
+  addBuilding(ALC_MIN_X - 3 - velaW/2, ALC_MIN_X - 3 + velaW/2, -velaW/2, velaW/2);
+  const bell = new THREE.Mesh(new THREE.BoxGeometry(2, 3, 2), MATS.sandstone(1,1));
+  bell.position.set(ALC_MIN_X - 3, velaH + 1.5, 0);
+  bell.castShadow = true;
+  scene.add(bell);
+  const bellRoof = new THREE.Mesh(
+    new THREE.ConeGeometry(1.6, 1.2, 4),
+    new THREE.MeshStandardMaterial({color: 0x5a2818, roughness:0.85})
+  );
+  bellRoof.position.set(ALC_MIN_X - 3, velaH + 3.6, 0);
+  bellRoof.rotation.y = Math.PI/4;
+  bellRoof.castShadow = true;
+  scene.add(bellRoof);
+
+  // floor
+  const alcFloor = new THREE.Mesh(
+    new THREE.PlaneGeometry(ALC_MAX_X - ALC_MIN_X - 3, ALC_MAX_Z - ALC_MIN_Z - 3),
+    new THREE.MeshStandardMaterial({color: 0x9a7050, roughness:0.95})
+  );
+  alcFloor.rotation.x = -Math.PI/2;
+  alcFloor.position.set((ALC_MIN_X + ALC_MAX_X)/2, 0.001, (ALC_MIN_Z + ALC_MAX_Z)/2);
+  alcFloor.receiveShadow = true;
+  scene.add(alcFloor);
+  // ruined barracks foundations
+  const foundMat = new THREE.MeshStandardMaterial({color: 0x8a6040, roughness:0.95});
+  for(let i = 0; i < 6; i++){
+    const fx = ALC_MIN_X + 6 + i * 5;
+    const f1 = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.6, 0.4), foundMat);
+    f1.position.set(fx, 0.3, -8); f1.castShadow = f1.receiveShadow = true; scene.add(f1);
+    const f2 = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.6, 0.4), foundMat);
+    f2.position.set(fx, 0.3, 8); f2.castShadow = f2.receiveShadow = true; scene.add(f2);
+    const f3 = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.6, 3), foundMat);
+    f3.position.set(fx + 1.5, 0.3, -6.5); f3.castShadow = f3.receiveShadow = true; scene.add(f3);
+  }
+  // central cistern
+  const cistRing = new THREE.Mesh(
+    new THREE.TorusGeometry(0.9, 0.18, 8, 18),
+    MATS.marbleSolid()
+  );
+  cistRing.rotation.x = Math.PI/2;
+  cistRing.position.set(-72, 0.3, 0);
+  cistRing.castShadow = true;
+  scene.add(cistRing);
+
+  addZone('ALCAZABA', 'القَصبَة', ALC_MIN_X, ALC_MAX_X, ALC_MIN_Z, ALC_MAX_Z);
+}
+
+// ============================================================================
+// CONNECTING WALL: Alcazaba → Nasrid
+// ============================================================================
+{
+  const wallMat = MATS.sandstone(4, 1);
+  const conN = buildCrenellatedWall(40, 7, 1.2, wallMat);
+  conN.position.set(-32, 0, -22);
+  scene.add(conN);
+  const conS = buildCrenellatedWall(40, 7, 1.2, wallMat);
+  conS.position.set(-32, 0, 22);
+  scene.add(conS);
+  const midTow = buildTower(4, 9, MATS.sandstone(1.5, 2));
+  midTow.position.set(-35, 0, -22);
+  scene.add(midTow);
+}
+
+// ============================================================================
+// 2. PATIO DEL MEXUAR
+// ============================================================================
+{
+  const MX_LEN = 12, MX_WID = 12;
+  const MX_CX = -19, MX_CZ = 0;
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(MX_LEN, MX_WID), MATS.marble());
+  floor.material.map.repeat.set(2, 2);
+  floor.rotation.x = -Math.PI/2;
+  floor.position.set(MX_CX, 0.001, MX_CZ);
+  floor.receiveShadow = true;
+  scene.add(floor);
+
+  const wallH = 5;
+  const w1 = buildArchWall({totalWidth: MX_LEN, totalHeight: wallH, depth: 0.3, archCount: 2, archSpan: 2.5, springHeight: 2, material: MATS.khatem(MX_LEN/4, wallH/4)});
+  w1.position.set(MX_CX, 0, MX_CZ - MX_WID/2);
+  scene.add(w1);
+  const w2 = buildArchWall({totalWidth: MX_LEN, totalHeight: wallH, depth: 0.3, archCount: 2, archSpan: 2.5, springHeight: 2, material: MATS.khatem(MX_LEN/4, wallH/4)});
+  w2.rotation.y = Math.PI;
+  w2.position.set(MX_CX, 0, MX_CZ + MX_WID/2);
+  scene.add(w2);
+  const w3 = buildArchWall({totalWidth: MX_WID, totalHeight: wallH, depth: 0.3, archCount: 2, archSpan: 2.5, springHeight: 2, material: MATS.khatem(MX_WID/4, wallH/4)});
+  w3.rotation.y = Math.PI/2;
+  w3.position.set(MX_CX + MX_LEN/2, 0, MX_CZ);
+  scene.add(w3);
+
+  buildJetFountain(MX_CX, MX_CZ, {radius: 0.5, power: 3});
+  addZone('MEXUAR', 'المشور', MX_CX - MX_LEN/2, MX_CX + MX_LEN/2, MX_CZ - MX_WID/2, MX_CZ + MX_WID/2);
+}
+
+// ============================================================================
+// 3. PATIO DE LOS ARRAYANES (Myrtle Court) + COMARES TOWER
+// ============================================================================
+{
+  const COURT_LEN = 26;
+  const COURT_WID = 14;
+  const POOL_LEN = 17;
+  const POOL_WID = 4;
+  const WALL_H = 6.0;
+  const WALL_T = 0.4;
+
+  // floor with pool hole
+  const floorShape = new THREE.Shape();
+  const fW = COURT_WID/2 + 0.6;
+  const fL = COURT_LEN/2 + 0.6;
+  floorShape.moveTo(-fW, -fL);
+  floorShape.lineTo(fW, -fL);
+  floorShape.lineTo(fW, fL);
+  floorShape.lineTo(-fW, fL);
+  floorShape.lineTo(-fW, -fL);
+  const poolHole = new THREE.Path();
+  poolHole.moveTo(-POOL_WID/2, -POOL_LEN/2);
+  poolHole.lineTo(POOL_WID/2, -POOL_LEN/2);
+  poolHole.lineTo(POOL_WID/2, POOL_LEN/2);
+  poolHole.lineTo(-POOL_WID/2, POOL_LEN/2);
+  poolHole.lineTo(-POOL_WID/2, -POOL_LEN/2);
+  floorShape.holes.push(poolHole);
+  const floorGeo = new THREE.ShapeGeometry(floorShape, 8);
+  {
+    const pos = floorGeo.attributes.position;
+    const uvs = new Float32Array(pos.count * 2);
+    for(let i = 0; i < pos.count; i++){
+      uvs[i*2] = pos.getX(i) / 4;
+      uvs[i*2+1] = pos.getY(i) / 4;
+    }
+    floorGeo.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+  }
+  const floor = new THREE.Mesh(floorGeo, MATS.marble());
+  floor.material.map.repeat.set(1, 1);
+  floor.rotation.x = -Math.PI/2;
+  floor.receiveShadow = true;
+  scene.add(floor);
+
+  // 4 walls with arches
+  const lw1 = buildArchWall({totalWidth: COURT_LEN, totalHeight: WALL_H, depth: WALL_T, archCount: 6, archSpan: 3.0, springHeight: 2.4, material: MATS.khatem(COURT_LEN/4, WALL_H/4)});
+  lw1.rotation.y = Math.PI/2;
+  lw1.position.set(COURT_WID/2, 0, 0);
+  scene.add(lw1);
+  const lw2 = buildArchWall({totalWidth: COURT_LEN, totalHeight: WALL_H, depth: WALL_T, archCount: 6, archSpan: 3.0, springHeight: 2.4, material: MATS.khatem(COURT_LEN/4, WALL_H/4)});
+  lw2.rotation.y = -Math.PI/2;
+  lw2.position.set(-COURT_WID/2, 0, 0);
+  scene.add(lw2);
+  const sw1 = buildArchWall({totalWidth: COURT_WID, totalHeight: WALL_H, depth: WALL_T, archCount: 3, archSpan: 3.0, springHeight: 2.4, material: MATS.khatem(COURT_WID/4, WALL_H/4)});
+  sw1.position.set(0, 0, COURT_LEN/2);
+  scene.add(sw1);
+  const sw2 = buildArchWall({totalWidth: COURT_WID, totalHeight: WALL_H, depth: WALL_T, archCount: 3, archSpan: 3.0, springHeight: 2.4, material: MATS.khatem(COURT_WID/4, WALL_H/4)});
+  sw2.rotation.y = Math.PI;
+  sw2.position.set(0, 0, -COURT_LEN/2);
+  scene.add(sw2);
+
+  // calligraphy bands
+  function addCalligBand(width, posX, posY, posZ, rotY){
+    const tex = clonedTex(TEX.callig, width/3, 1);
+    const m = new THREE.Mesh(
+      new THREE.PlaneGeometry(width, 0.5),
+      new THREE.MeshStandardMaterial({map: tex, roughness:0.7, side: THREE.DoubleSide})
+    );
+    m.position.set(posX, posY, posZ); m.rotation.y = rotY;
+    scene.add(m);
+  }
+  addCalligBand(COURT_LEN, COURT_WID/2 - 0.01, 5.4, 0, -Math.PI/2);
+  addCalligBand(COURT_LEN, -COURT_WID/2 + 0.01, 5.4, 0, Math.PI/2);
+  addCalligBand(COURT_WID, 0, 5.4, COURT_LEN/2 - 0.01, Math.PI);
+  addCalligBand(COURT_WID, 0, 5.4, -COURT_LEN/2 + 0.01, 0);
+
+  // columns
+  function placeColumns(axis, axisLen, perpVal, archCount, archSpan, inset){
+    const totalArchWidth = archCount * archSpan;
+    const totalGap = axisLen - totalArchWidth;
+    const gap = totalGap / (archCount + 1);
+    for(let i = 0; i <= archCount; i++){
+      let pos;
+      if(i === 0) pos = -axisLen/2 + gap/2;
+      else if(i === archCount) pos = axisLen/2 - gap/2;
+      else pos = -axisLen/2 + gap + i * archSpan + (i - 0.5) * gap;
+      const col = buildColumn();
+      const xPos = perpVal > 0 ? perpVal - inset : perpVal + inset;
+      if(axis === 'z') col.position.set(xPos, 0, pos);
+      else col.position.set(pos, 0, perpVal > 0 ? perpVal - inset : perpVal + inset);
+      scene.add(col);
+    }
+  }
+  placeColumns('z', COURT_LEN, COURT_WID/2, 6, 3.0, 0.6);
+  placeColumns('z', COURT_LEN, -COURT_WID/2, 6, 3.0, 0.6);
+  placeColumns('x', COURT_WID, COURT_LEN/2, 3, 3.0, 0.6);
+  placeColumns('x', COURT_WID, -COURT_LEN/2, 3, 3.0, 0.6);
+
+  // pool
+  const poolBasin = new THREE.Mesh(
+    new THREE.BoxGeometry(POOL_WID, 0.4, POOL_LEN),
+    new THREE.MeshStandardMaterial({color: 0x0a1822, roughness:0.4})
+  );
+  poolBasin.position.set(0, -0.25, 0);
+  scene.add(poolBasin);
+  const lipMat = MATS.ivory();
+  const lipR = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.15, POOL_LEN+0.6), lipMat);
+  lipR.position.set(POOL_WID/2 + 0.15, 0.075, 0);
+  lipR.castShadow = lipR.receiveShadow = true;
+  scene.add(lipR);
+  const lipL = lipR.clone(); lipL.position.x = -POOL_WID/2 - 0.15; scene.add(lipL);
+  const lipN = new THREE.Mesh(new THREE.BoxGeometry(POOL_WID+0.6, 0.15, 0.3), lipMat);
+  lipN.position.set(0, 0.075, POOL_LEN/2 + 0.15);
+  lipN.castShadow = lipN.receiveShadow = true;
+  scene.add(lipN);
+  const lipS = lipN.clone(); lipS.position.z = -POOL_LEN/2 - 0.15; scene.add(lipS);
+  // water
+  const water = createWaterSurface(POOL_WID - 0.05, POOL_LEN - 0.05);
+  water.position.y = -0.04;
+  scene.add(water);
+  // fountains at pool ends
+  buildJetFountain(0, -POOL_LEN/2 + 0.4, {radius: 0.55, power: 3.5});
+  buildJetFountain(0, POOL_LEN/2 - 0.4, {radius: 0.55, power: 3.5});
+  scene.add(buildMyrtleHedge(POOL_WID/2 + 0.6, 0, POOL_LEN, 'z'));
+  scene.add(buildMyrtleHedge(-POOL_WID/2 - 0.6, 0, POOL_LEN, 'z'));
+
+  addPool(-POOL_WID/2 - 0.3, POOL_WID/2 + 0.3, -POOL_LEN/2 - 0.3, POOL_LEN/2 + 0.3);
+  addZone('PATIO DE LOS ARRAYANES', 'بهو الريحان', -COURT_WID/2, COURT_WID/2, -COURT_LEN/2, COURT_LEN/2);
+
+  // === COMARES TOWER ===
+  const COM_W = 14, COM_D = 12, COM_H = 16;
+  const COM_CX = 0;
+  const COM_CZ = -COURT_LEN/2 - COM_D/2 - 0.5;
+  const towerMat = MATS.sandstone(3, 4);
+  const COM_WT = 0.5; // wall thickness
+  const COM_IHX = (COM_W - 2*COM_WT) / 2; // interior half-X
+  const COM_IHZ = (COM_D - 2*COM_WT) / 2; // interior half-Z
+  const COM_ARCH_GAP = 4.5; // entrance archSpan
+
+  // South wall — horseshoe arch entrance facing the courtyard
+  const archEntrance = buildArchWall({
+    totalWidth: COM_W, totalHeight: COM_H, depth: COM_WT,
+    archCount: 1, archSpan: COM_ARCH_GAP, springHeight: 4.0,
+    material: MATS.sandstone(3, 4)
+  });
+  archEntrance.position.set(COM_CX, 0, COM_CZ + COM_IHZ);
+  scene.add(archEntrance);
+
+  // North wall — solid, with interior decoration plane
+  const nWall = new THREE.Mesh(new THREE.BoxGeometry(COM_W, COM_H, COM_WT), towerMat);
+  nWall.position.set(COM_CX, COM_H/2, COM_CZ - COM_IHZ - COM_WT/2);
+  nWall.castShadow = nWall.receiveShadow = true;
+  scene.add(nWall);
+  // West wall
+  const wWall = new THREE.Mesh(new THREE.BoxGeometry(COM_WT, COM_H, COM_D - 2*COM_WT), MATS.sandstone(3, 4));
+  wWall.position.set(COM_CX - COM_IHX - COM_WT/2, COM_H/2, COM_CZ);
+  wWall.castShadow = wWall.receiveShadow = true;
+  scene.add(wWall);
+  // East wall
+  const eWall = new THREE.Mesh(new THREE.BoxGeometry(COM_WT, COM_H, COM_D - 2*COM_WT), MATS.sandstone(3, 4));
+  eWall.position.set(COM_CX + COM_IHX + COM_WT/2, COM_H/2, COM_CZ);
+  eWall.castShadow = eWall.receiveShadow = true;
+  scene.add(eWall);
+  // Roof
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(COM_W, COM_WT, COM_D), MATS.sandstone(3, 3));
+  roof.position.set(COM_CX, COM_H + COM_WT/2, COM_CZ);
+  roof.castShadow = roof.receiveShadow = true;
+  scene.add(roof);
+
+  // Interior — marble floor with star pattern
+  const intFloor = new THREE.Mesh(
+    new THREE.PlaneGeometry(COM_W - 2*COM_WT, COM_D - 2*COM_WT),
+    MATS.marble()
+  );
+  intFloor.material.map.repeat.set(2, 2);
+  intFloor.rotation.x = -Math.PI/2;
+  intFloor.position.set(COM_CX, 0.005, COM_CZ);
+  intFloor.receiveShadow = true;
+  scene.add(intFloor);
+
+  // Interior decoration — khatem pattern panels on the 3 solid walls (north, east, west)
+  // North wall interior face
+  const nIntPanel = new THREE.Mesh(
+    new THREE.PlaneGeometry(COM_W - 2*COM_WT - 0.4, COM_H * 0.65),
+    MATS.khatem(2.5, 2)
+  );
+  nIntPanel.position.set(COM_CX, COM_H * 0.4, COM_CZ - COM_IHZ + 0.005);
+  scene.add(nIntPanel);
+  // West wall interior
+  const wIntPanel = new THREE.Mesh(
+    new THREE.PlaneGeometry(COM_D - 2*COM_WT - 0.4, COM_H * 0.65),
+    MATS.khatem(2.5, 2)
+  );
+  wIntPanel.position.set(COM_CX - COM_IHX + 0.005, COM_H * 0.4, COM_CZ);
+  wIntPanel.rotation.y = Math.PI/2;
+  scene.add(wIntPanel);
+  // East wall interior
+  const eIntPanel = new THREE.Mesh(
+    new THREE.PlaneGeometry(COM_D - 2*COM_WT - 0.4, COM_H * 0.65),
+    MATS.khatem(2.5, 2)
+  );
+  eIntPanel.position.set(COM_CX + COM_IHX - 0.005, COM_H * 0.4, COM_CZ);
+  eIntPanel.rotation.y = -Math.PI/2;
+  scene.add(eIntPanel);
+
+  // Throne alcove — small horseshoe arch on north wall (decorative, suggests the throne niche)
+  const throneNiche = buildArchWall({
+    totalWidth: 4.5, totalHeight: 5.5, depth: 0.12,
+    archCount: 1, archSpan: 2.4, springHeight: 2.4,
+    material: MATS.khatem(1.5, 1.5)
+  });
+  throneNiche.position.set(COM_CX, 0, COM_CZ - COM_IHZ + 0.05);
+  scene.add(throneNiche);
+  // The "throne" — a low marble bench inside the niche
+  const throneBench = new THREE.Mesh(
+    new THREE.BoxGeometry(2.2, 0.5, 0.6),
+    MATS.marbleSolid()
+  );
+  throneBench.position.set(COM_CX, 0.25, COM_CZ - COM_IHZ + 0.5);
+  throneBench.castShadow = throneBench.receiveShadow = true;
+  scene.add(throneBench);
+
+  // Calligraphy bands inside the tower at high level
+  function addInteriorCallig(width, posX, posY, posZ, rotY){
+    const tex = clonedTex(TEX.callig, width/3, 1);
+    const m = new THREE.Mesh(
+      new THREE.PlaneGeometry(width, 0.6),
+      new THREE.MeshStandardMaterial({map: tex, roughness:0.7, side: THREE.DoubleSide})
+    );
+    m.position.set(posX, posY, posZ); m.rotation.y = rotY;
+    scene.add(m);
+  }
+  const cyHigh = COM_H * 0.78;
+  addInteriorCallig(COM_W - 2*COM_WT - 0.3, COM_CX, cyHigh, COM_CZ - COM_IHZ + 0.02, 0);
+  addInteriorCallig(COM_D - 2*COM_WT - 0.3, COM_CX - COM_IHX + 0.02, cyHigh, COM_CZ, Math.PI/2);
+  addInteriorCallig(COM_D - 2*COM_WT - 0.3, COM_CX + COM_IHX - 0.02, cyHigh, COM_CZ, -Math.PI/2);
+
+  // External sebka panel on north face (kept from before)
+  const sebkaPanel = new THREE.Mesh(
+    new THREE.PlaneGeometry(COM_W * 0.85, 4),
+    MATS.sebka(2, 1)
+  );
+  sebkaPanel.position.set(COM_CX, COM_H * 0.55, COM_CZ - COM_D/2 - 0.005);
+  sebkaPanel.rotation.y = Math.PI;
+  scene.add(sebkaPanel);
+  // crenellated top
+  const merlonMat = MATS.sandstone(1, 1);
+  const merlonH = 0.9, merlonW = 0.7;
+  for(let side = 0; side < 4; side++){
+    const ang = side * Math.PI / 2;
+    const lenA = (side % 2 === 0) ? COM_W : COM_D;
+    const lenB = (side % 2 === 0) ? COM_D : COM_W;
+    const period = merlonW + 0.45;
+    const count = Math.floor(lenA / period);
+    for(let i = 0; i < count; i++){
+      const t = -lenA/2 + i * period + period/2 + 0.2;
+      const m = new THREE.Mesh(new THREE.BoxGeometry(merlonW, merlonH, 0.3), merlonMat);
+      const sx = Math.cos(ang), sz = Math.sin(ang);
+      const px = -Math.sin(ang), pz = Math.cos(ang);
+      m.position.set(COM_CX + sx * (lenB/2 - 0.15) + px * t,
+                     COM_H + merlonH/2,
+                     COM_CZ + sz * (lenB/2 - 0.15) + pz * t);
+      m.rotation.y = ang;
+      m.castShadow = true;
+      scene.add(m);
+    }
+  }
+  // Collision: 4 wall segments (south wall has gap for arch entrance)
+  // South wall — split into left and right of arch gap
+  addBuilding(COM_CX - COM_W/2, COM_CX - COM_ARCH_GAP/2, COM_CZ + COM_IHZ, COM_CZ + COM_D/2);
+  addBuilding(COM_CX + COM_ARCH_GAP/2, COM_CX + COM_W/2, COM_CZ + COM_IHZ, COM_CZ + COM_D/2);
+  // North wall — full width
+  addBuilding(COM_CX - COM_W/2, COM_CX + COM_W/2, COM_CZ - COM_D/2, COM_CZ - COM_IHZ);
+  // West wall
+  addBuilding(COM_CX - COM_W/2, COM_CX - COM_IHX, COM_CZ - COM_IHZ, COM_CZ + COM_IHZ);
+  // East wall
+  addBuilding(COM_CX + COM_IHX, COM_CX + COM_W/2, COM_CZ - COM_IHZ, COM_CZ + COM_IHZ);
+  addZone('SALÓN DE LOS EMBAJADORES', 'قاعة السفراء', COM_CX - COM_IHX, COM_CX + COM_IHX, COM_CZ - COM_IHZ, COM_CZ + COM_IHZ);
+}
+
+// ============================================================================
+// 4. PATIO DE LOS LEONES
+// ============================================================================
+{
+  const LION_LEN = 18;
+  const LION_WID = 14;
+  const LION_CX = 24;
+  const LION_CZ = 0;
+  const WALL_H = 5.5;
+
+  const floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(LION_LEN, LION_WID),
+    MATS.marble()
+  );
+  floor.material.map.repeat.set(2, 2);
+  floor.rotation.x = -Math.PI/2;
+  floor.position.set(LION_CX, 0.001, LION_CZ);
+  floor.receiveShadow = true;
+  scene.add(floor);
+
+  const lw1 = buildArchWall({totalWidth: LION_LEN, totalHeight: WALL_H, depth: 0.3, archCount: 7, archSpan: 2.0, springHeight: 2.2, material: MATS.khatem(LION_LEN/4, WALL_H/4)});
+  lw1.rotation.y = Math.PI/2;
+  lw1.position.set(LION_CX + LION_WID/2, 0, LION_CZ);
+  scene.add(lw1);
+  const lw2 = buildArchWall({totalWidth: LION_LEN, totalHeight: WALL_H, depth: 0.3, archCount: 7, archSpan: 2.0, springHeight: 2.2, material: MATS.khatem(LION_LEN/4, WALL_H/4)});
+  lw2.rotation.y = -Math.PI/2;
+  lw2.position.set(LION_CX - LION_WID/2, 0, LION_CZ);
+  scene.add(lw2);
+  const sw1 = buildArchWall({totalWidth: LION_WID, totalHeight: WALL_H, depth: 0.3, archCount: 5, archSpan: 2.0, springHeight: 2.2, material: MATS.khatem(LION_WID/4, WALL_H/4)});
+  sw1.position.set(LION_CX, 0, LION_CZ + LION_LEN/2);
+  scene.add(sw1);
+  const sw2 = buildArchWall({totalWidth: LION_WID, totalHeight: WALL_H, depth: 0.3, archCount: 5, archSpan: 2.0, springHeight: 2.2, material: MATS.khatem(LION_WID/4, WALL_H/4)});
+  sw2.rotation.y = Math.PI;
+  sw2.position.set(LION_CX, 0, LION_CZ - LION_LEN/2);
+  scene.add(sw2);
+
+  function placeLionColumns(axis, axisLen, perpVal, archCount, archSpan){
+    const totalArchWidth = archCount * archSpan;
+    const totalGap = axisLen - totalArchWidth;
+    const gap = totalGap / (archCount + 1);
+    for(let i = 0; i <= archCount; i++){
+      let pos;
+      if(i === 0) pos = -axisLen/2 + gap/2;
+      else if(i === archCount) pos = axisLen/2 - gap/2;
+      else pos = -axisLen/2 + gap + i * archSpan + (i - 0.5) * gap;
+      const col = buildColumn(2.2);
+      if(axis === 'z'){
+        col.position.set(LION_CX + (perpVal > 0 ? perpVal - 0.55 : perpVal + 0.55), 0, LION_CZ + pos);
+      } else {
+        col.position.set(LION_CX + pos, 0, LION_CZ + (perpVal > 0 ? perpVal - 0.55 : perpVal + 0.55));
+      }
+      scene.add(col);
+    }
+  }
+  placeLionColumns('z', LION_LEN,  LION_WID/2, 7, 2.0);
+  placeLionColumns('z', LION_LEN, -LION_WID/2, 7, 2.0);
+  placeLionColumns('x', LION_WID,  LION_LEN/2, 5, 2.0);
+  placeLionColumns('x', LION_WID, -LION_LEN/2, 5, 2.0);
+
+  // 4 paradise water channels radiating from center
+  const channelMat = new THREE.MeshStandardMaterial({color: 0x0a1822, roughness:0.3});
+  const cw = 0.3;
+  const chE = new THREE.Mesh(new THREE.BoxGeometry(LION_WID/2 - 2.5, 0.1, cw), channelMat);
+  chE.position.set(LION_CX + LION_WID/4 + 1.25, -0.04, LION_CZ);
+  scene.add(chE);
+  const chW_ = new THREE.Mesh(new THREE.BoxGeometry(LION_WID/2 - 2.5, 0.1, cw), channelMat);
+  chW_.position.set(LION_CX - LION_WID/4 - 1.25, -0.04, LION_CZ);
+  scene.add(chW_);
+  const chN = new THREE.Mesh(new THREE.BoxGeometry(cw, 0.1, LION_LEN/2 - 2.5), channelMat);
+  chN.position.set(LION_CX, -0.04, LION_CZ - LION_LEN/4 - 1.25);
+  scene.add(chN);
+  const chS = new THREE.Mesh(new THREE.BoxGeometry(cw, 0.1, LION_LEN/2 - 2.5), channelMat);
+  chS.position.set(LION_CX, -0.04, LION_CZ + LION_LEN/4 + 1.25);
+  scene.add(chS);
+
+  function addChannelWater(x, z, w, l){
+    const wm = createWaterSurface(w, l);
+    wm.position.set(x, 0.01, z);
+    scene.add(wm);
+  }
+  addChannelWater(LION_CX + LION_WID/4 + 1.25, LION_CZ, LION_WID/2 - 2.5, cw);
+  addChannelWater(LION_CX - LION_WID/4 - 1.25, LION_CZ, LION_WID/2 - 2.5, cw);
+  addChannelWater(LION_CX, LION_CZ - LION_LEN/4 - 1.25, cw, LION_LEN/2 - 2.5);
+  addChannelWater(LION_CX, LION_CZ + LION_LEN/4 + 1.25, cw, LION_LEN/2 - 2.5);
+
+  buildLionFountain(LION_CX, LION_CZ);
+
+  addZone('PATIO DE LOS LEONES', 'بهو الأسود', LION_CX - LION_WID/2, LION_CX + LION_WID/2, LION_CZ - LION_LEN/2, LION_CZ + LION_LEN/2);
+}
+
+// ============================================================================
+// 5. PALACE OF CHARLES V
+// ============================================================================
+{
+  const CV_CX = 65;
+  const CV_CZ = 0;
+  const CV_W = 38;
+  const CV_H = 13;
+  const CV_INNER_R = 14;
+
+  const cvMat = new THREE.MeshStandardMaterial({color: 0xc89060, roughness:0.85});
+  const wallT = 4;
+
+  // North wall — split with central doorway opening
+  const CV_DOOR_W = 3.5;
+  const CV_DOOR_H = 6;
+  const wNL = new THREE.Mesh(new THREE.BoxGeometry((CV_W - CV_DOOR_W) / 2, CV_H, wallT), cvMat);
+  wNL.position.set(CV_CX - (CV_W + CV_DOOR_W) / 4, CV_H/2, CV_CZ - CV_W/2 + wallT/2);
+  wNL.castShadow = wNL.receiveShadow = true;
+  scene.add(wNL);
+  const wNR = new THREE.Mesh(new THREE.BoxGeometry((CV_W - CV_DOOR_W) / 2, CV_H, wallT), cvMat);
+  wNR.position.set(CV_CX + (CV_W + CV_DOOR_W) / 4, CV_H/2, CV_CZ - CV_W/2 + wallT/2);
+  wNR.castShadow = wNR.receiveShadow = true;
+  scene.add(wNR);
+  // Lintel above doorway
+  const lintel = new THREE.Mesh(new THREE.BoxGeometry(CV_DOOR_W + 0.4, CV_H - CV_DOOR_H, wallT), cvMat);
+  lintel.position.set(CV_CX, CV_DOOR_H + (CV_H - CV_DOOR_H) / 2, CV_CZ - CV_W/2 + wallT/2);
+  lintel.castShadow = lintel.receiveShadow = true;
+  scene.add(lintel);
+  const wS = new THREE.Mesh(new THREE.BoxGeometry(CV_W, CV_H, wallT), cvMat);
+  wS.position.set(CV_CX, CV_H/2, CV_CZ + CV_W/2 - wallT/2);
+  wS.castShadow = wS.receiveShadow = true;
+  scene.add(wS);
+  const wW = new THREE.Mesh(new THREE.BoxGeometry(wallT, CV_H, CV_W - wallT*2), cvMat);
+  wW.position.set(CV_CX - CV_W/2 + wallT/2, CV_H/2, CV_CZ);
+  wW.castShadow = wW.receiveShadow = true;
+  scene.add(wW);
+  const wE = new THREE.Mesh(new THREE.BoxGeometry(wallT, CV_H, CV_W - wallT*2), cvMat);
+  wE.position.set(CV_CX + CV_W/2 - wallT/2, CV_H/2, CV_CZ);
+  wE.castShadow = wE.receiveShadow = true;
+  scene.add(wE);
+
+  // rusticated band
+  const bandMat = new THREE.MeshStandardMaterial({color: 0xa8704a, roughness:0.95});
+  for(let side = 0; side < 4; side++){
+    const ang = side * Math.PI/2;
+    const len = CV_W;
+    const band = new THREE.Mesh(new THREE.PlaneGeometry(len, 4), bandMat);
+    band.position.set(CV_CX + Math.cos(ang) * (CV_W/2 + 0.005), 2, CV_CZ + Math.sin(ang) * (CV_W/2 + 0.005));
+    band.rotation.y = ang + Math.PI/2;
+    scene.add(band);
+  }
+
+  const windowMat = new THREE.MeshStandardMaterial({color: 0x1a0808, roughness:0.5});
+  for(let side = 0; side < 4; side++){
+    const ang = side * Math.PI/2;
+    for(let i = -1; i <= 1; i++){
+      if(side === 0 && i === 0) continue;
+      const wnd = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 2.5), windowMat);
+      const offX = Math.cos(ang) * (CV_W/2 + 0.01) - Math.sin(ang) * i * 8;
+      const offZ = Math.sin(ang) * (CV_W/2 + 0.01) + Math.cos(ang) * i * 8;
+      wnd.position.set(CV_CX + offX, 8, CV_CZ + offZ);
+      wnd.rotation.y = ang + Math.PI/2;
+      scene.add(wnd);
+    }
+  }
+  // (door opening is now a real gap in the north wall — no false plane needed)
+
+  // inner circular floor
+  const innerFloor = new THREE.Mesh(
+    new THREE.CircleGeometry(CV_INNER_R, 48),
+    MATS.marbleSolid()
+  );
+  innerFloor.rotation.x = -Math.PI/2;
+  innerFloor.position.set(CV_CX, 0.002, CV_CZ);
+  innerFloor.receiveShadow = true;
+  scene.add(innerFloor);
+  const ctrDeco = new THREE.Mesh(
+    new THREE.CircleGeometry(3, 32),
+    new THREE.MeshStandardMaterial({color: 0x6b2c1a, roughness:0.5})
+  );
+  ctrDeco.rotation.x = -Math.PI/2;
+  ctrDeco.position.set(CV_CX, 0.003, CV_CZ);
+  scene.add(ctrDeco);
+
+  // 32 columns ring
+  const colCount = 32;
+  const ringR = CV_INNER_R + 0.7;
+  for(let i = 0; i < colCount; i++){
+    const ang = (i / colCount) * Math.PI * 2;
+    const cx = CV_CX + Math.cos(ang) * ringR;
+    const cz = CV_CZ + Math.sin(ang) * ringR;
+    const lower = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.32, 0.36, 5.5, 12),
+      MATS.marbleSolid()
+    );
+    lower.position.set(cx, 2.75, cz); lower.castShadow = true;
+    scene.add(lower);
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.4, 0.85), MATS.marbleSolid());
+    cap.position.set(cx, 5.7, cz); cap.castShadow = true;
+    scene.add(cap);
+    const upper = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.27, 0.30, 4.5, 12),
+      MATS.marbleSolid()
+    );
+    upper.position.set(cx, 8.25, cz); upper.castShadow = true;
+    scene.add(upper);
+    const upCap = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.3, 0.7), MATS.gold());
+    upCap.position.set(cx, 10.65, cz); upCap.castShadow = true;
+    scene.add(upCap);
+  }
+  // gallery annulus
+  const galleryShape = new THREE.Shape();
+  galleryShape.absarc(0, 0, CV_INNER_R + 2, 0, Math.PI * 2, false);
+  const innerHole = new THREE.Path();
+  innerHole.absarc(0, 0, CV_INNER_R + 0.5, 0, Math.PI * 2, true);
+  galleryShape.holes.push(innerHole);
+  const galleryGeo = new THREE.ShapeGeometry(galleryShape, 48);
+  const gallery = new THREE.Mesh(galleryGeo, new THREE.MeshStandardMaterial({color: 0xa8704a, roughness:0.85, side: THREE.DoubleSide}));
+  gallery.rotation.x = -Math.PI/2;
+  gallery.position.set(CV_CX, 6.0, CV_CZ);
+  scene.add(gallery);
+  const topEnt = new THREE.Mesh(
+    new THREE.RingGeometry(CV_INNER_R + 0.3, CV_INNER_R + 1.5, 48),
+    new THREE.MeshStandardMaterial({color: 0xa8704a, roughness:0.85, side: THREE.DoubleSide})
+  );
+  topEnt.rotation.x = -Math.PI/2;
+  topEnt.position.set(CV_CX, 11, CV_CZ);
+  scene.add(topEnt);
+
+  addBuilding(CV_CX - CV_W/2, CV_CX - CV_INNER_R - 1, CV_CZ - CV_W/2, CV_CZ + CV_W/2);
+  addBuilding(CV_CX + CV_INNER_R + 1, CV_CX + CV_W/2, CV_CZ - CV_W/2, CV_CZ + CV_W/2);
+  // North strip — split with doorway gap
+  addBuilding(CV_CX - CV_INNER_R - 1, CV_CX - CV_DOOR_W/2, CV_CZ - CV_W/2, CV_CZ - CV_INNER_R - 1);
+  addBuilding(CV_CX + CV_DOOR_W/2, CV_CX + CV_INNER_R + 1, CV_CZ - CV_W/2, CV_CZ - CV_INNER_R - 1);
+  addBuilding(CV_CX - CV_INNER_R - 1, CV_CX + CV_INNER_R + 1, CV_CZ + CV_INNER_R + 1, CV_CZ + CV_W/2);
+  addZone('PALACIO DE CARLOS V', 'قصر كارلوس الخامس', CV_CX - CV_INNER_R, CV_CX + CV_INNER_R, CV_CZ - CV_INNER_R, CV_CZ + CV_INNER_R);
+}
+
+// ============================================================================
+// 6. GENERALIFE
+// ============================================================================
+{
+  const GEN_CX = 130;
+  const GEN_CZ = 0;
+  const GEN_LEN = 50;
+  const GEN_WID = 30;
+
+  const gardenFloor = new THREE.Mesh(
+    new THREE.PlaneGeometry(GEN_LEN, GEN_WID),
+    new THREE.MeshStandardMaterial({color: 0x8a5a3a, roughness:0.95})
+  );
+  gardenFloor.rotation.x = -Math.PI/2;
+  gardenFloor.position.set(GEN_CX, 0.001, GEN_CZ);
+  gardenFloor.receiveShadow = true;
+  scene.add(gardenFloor);
+
+  // central water channel
+  const CHANNEL_LEN = 40;
+  const CHANNEL_W = 1.5;
+  const channelBasin = new THREE.Mesh(
+    new THREE.BoxGeometry(CHANNEL_LEN, 0.3, CHANNEL_W),
+    new THREE.MeshStandardMaterial({color: 0x0a1822, roughness:0.4})
+  );
+  channelBasin.position.set(GEN_CX, -0.2, GEN_CZ);
+  scene.add(channelBasin);
+  const lipMat = MATS.ivory();
+  const cN = new THREE.Mesh(new THREE.BoxGeometry(CHANNEL_LEN + 0.4, 0.18, 0.25), lipMat);
+  cN.position.set(GEN_CX, 0.09, GEN_CZ - CHANNEL_W/2 - 0.125);
+  cN.castShadow = cN.receiveShadow = true; scene.add(cN);
+  const cS = cN.clone(); cS.position.z = GEN_CZ + CHANNEL_W/2 + 0.125; scene.add(cS);
+  const cW = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.18, CHANNEL_W + 0.5), lipMat);
+  cW.position.set(GEN_CX - CHANNEL_LEN/2 - 0.125, 0.09, GEN_CZ);
+  cW.castShadow = cW.receiveShadow = true; scene.add(cW);
+  const cE = cW.clone(); cE.position.x = GEN_CX + CHANNEL_LEN/2 + 0.125; scene.add(cE);
+  const channelWater = createWaterSurface(CHANNEL_LEN - 0.05, CHANNEL_W - 0.05);
+  channelWater.position.set(GEN_CX, -0.02, GEN_CZ);
+  scene.add(channelWater);
+  addPool(GEN_CX - CHANNEL_LEN/2, GEN_CX + CHANNEL_LEN/2, GEN_CZ - CHANNEL_W/2, GEN_CZ + CHANNEL_W/2);
+
+  // arching jets crossing the channel
+  const jetCount = 8;
+  for(let i = 0; i < jetCount; i++){
+    const px = GEN_CX - CHANNEL_LEN/2 + 4 + i * (CHANNEL_LEN - 8) / (jetCount - 1);
+    const fpN = new FountainParticles({
+      origin: new THREE.Vector3(px, 0.2, GEN_CZ - CHANNEL_W/2 - 0.4),
+      direction: new THREE.Vector3(0, 0.7, 0.7).normalize(),
+      power: 3.2, spread: 0.04, spawnRate: 22, count: 35,
+      floor: 0, lifeMin: 0.7, lifeMax: 1.0
+    });
+    scene.add(fpN.points); allFountains.push(fpN);
+    const fpS = new FountainParticles({
+      origin: new THREE.Vector3(px, 0.2, GEN_CZ + CHANNEL_W/2 + 0.4),
+      direction: new THREE.Vector3(0, 0.7, -0.7).normalize(),
+      power: 3.2, spread: 0.04, spawnRate: 22, count: 35,
+      floor: 0, lifeMin: 0.7, lifeMax: 1.0
+    });
+    scene.add(fpS.points); allFountains.push(fpS);
+  }
+
+  // garden quadrants
+  function plantQuadrant(qx, qz, w, d){
+    const borderMat = MATS.ivory();
+    const eN = new THREE.Mesh(new THREE.BoxGeometry(w, 0.15, 0.15), borderMat);
+    eN.position.set(qx, 0.075, qz - d/2); eN.receiveShadow = true; scene.add(eN);
+    const eS = new THREE.Mesh(new THREE.BoxGeometry(w, 0.15, 0.15), borderMat);
+    eS.position.set(qx, 0.075, qz + d/2); eS.receiveShadow = true; scene.add(eS);
+    const eW = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, d), borderMat);
+    eW.position.set(qx - w/2, 0.075, qz); eW.receiveShadow = true; scene.add(eW);
+    const eE = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, d), borderMat);
+    eE.position.set(qx + w/2, 0.075, qz); eE.receiveShadow = true; scene.add(eE);
+    const grass = new THREE.Mesh(
+      new THREE.PlaneGeometry(w - 0.3, d - 0.3),
+      new THREE.MeshStandardMaterial({color: 0x3a5a25, roughness:0.95})
+    );
+    grass.rotation.x = -Math.PI/2;
+    grass.position.set(qx, 0.08, qz);
+    scene.add(grass);
+    for(let i = 0; i < 4; i++){
+      scene.add(buildRoseBush(qx + (Math.random() - 0.5) * (w - 1.5), qz + (Math.random() - 0.5) * (d - 1.5)));
+    }
+  }
+  const bedW = (CHANNEL_LEN - 1) / 3;
+  const bedD = (GEN_WID - CHANNEL_W - 4) / 2;
+  for(let i = 0; i < 3; i++){
+    const bx = GEN_CX - CHANNEL_LEN/2 + bedW/2 + i * bedW + i * 0.2;
+    plantQuadrant(bx, GEN_CZ - CHANNEL_W/2 - bedD/2 - 0.6, bedW - 0.3, bedD);
+    plantQuadrant(bx, GEN_CZ + CHANNEL_W/2 + bedD/2 + 0.6, bedW - 0.3, bedD);
+  }
+
+  // cypresses & oranges
+  for(let i = 0; i < 6; i++){
+    const px = GEN_CX - GEN_LEN/2 + 5 + i * (GEN_LEN - 10) / 5;
+    scene.add(buildCypress(px, GEN_CZ - GEN_WID/2 + 1, 5 + Math.random() * 1.5));
+    scene.add(buildCypress(px, GEN_CZ + GEN_WID/2 - 1, 5 + Math.random() * 1.5));
+  }
+  scene.add(buildOrangeTree(GEN_CX - GEN_LEN/2 + 2, GEN_CZ - GEN_WID/2 + 4));
+  scene.add(buildOrangeTree(GEN_CX - GEN_LEN/2 + 2, GEN_CZ + GEN_WID/2 - 4));
+  scene.add(buildOrangeTree(GEN_CX + GEN_LEN/2 - 2, GEN_CZ - GEN_WID/2 + 4));
+  scene.add(buildOrangeTree(GEN_CX + GEN_LEN/2 - 2, GEN_CZ + GEN_WID/2 - 4));
+
+  // pavilion at east end
+  const PAV_CX = GEN_CX + GEN_LEN/2 + 6;
+  const PAV_W = 8, PAV_D = 8, PAV_H = 5;
+  const pw1 = buildArchWall({totalWidth: PAV_W, totalHeight: PAV_H, depth: 0.3, archCount: 1, archSpan: 4, springHeight: 2.5, material: MATS.khatem(2, 1.5)});
+  pw1.position.set(PAV_CX, 0, GEN_CZ - PAV_D/2);
+  scene.add(pw1);
+  const pw2 = buildArchWall({totalWidth: PAV_W, totalHeight: PAV_H, depth: 0.3, archCount: 1, archSpan: 4, springHeight: 2.5, material: MATS.khatem(2, 1.5)});
+  pw2.rotation.y = Math.PI;
+  pw2.position.set(PAV_CX, 0, GEN_CZ + PAV_D/2);
+  scene.add(pw2);
+  const pw3 = buildArchWall({totalWidth: PAV_D, totalHeight: PAV_H, depth: 0.3, archCount: 1, archSpan: 4, springHeight: 2.5, material: MATS.khatem(2, 1.5)});
+  pw3.rotation.y = -Math.PI/2;
+  pw3.position.set(PAV_CX - PAV_W/2, 0, GEN_CZ);
+  scene.add(pw3);
+  const pw4 = buildArchWall({totalWidth: PAV_D, totalHeight: PAV_H, depth: 0.3, archCount: 1, archSpan: 4, springHeight: 2.5, material: MATS.khatem(2, 1.5)});
+  pw4.rotation.y = Math.PI/2;
+  pw4.position.set(PAV_CX + PAV_W/2, 0, GEN_CZ);
+  scene.add(pw4);
+  const pavRoof = new THREE.Mesh(
+    new THREE.ConeGeometry(PAV_W * 0.75, 2.5, 4),
+    new THREE.MeshStandardMaterial({color: 0x5a2818, roughness:0.85})
+  );
+  pavRoof.position.set(PAV_CX, PAV_H + 1.25, GEN_CZ);
+  pavRoof.rotation.y = Math.PI/4;
+  pavRoof.castShadow = true;
+  scene.add(pavRoof);
+  buildJetFountain(PAV_CX, GEN_CZ, {radius: 0.6, power: 3.5});
+
+  addZone('GENERALIFE', 'جنة العريف', GEN_CX - GEN_LEN/2 - 2, GEN_CX + GEN_LEN/2 + 12, GEN_CZ - GEN_WID/2, GEN_CZ + GEN_WID/2);
+}
+
+// ============================================================================
+// EXTERIOR FORTRESS WALLS
+// ============================================================================
+{
+  const wallMat = MATS.sandstone(10, 1);
+  const nw1 = buildCrenellatedWall(50, 6, 1.2, wallMat);
+  nw1.position.set(35, 0, -28); scene.add(nw1);
+  const nw2 = buildCrenellatedWall(40, 6, 1.2, wallMat);
+  nw2.position.set(95, 0, -28); scene.add(nw2);
+  const nw3 = buildCrenellatedWall(40, 6, 1.2, wallMat);
+  nw3.position.set(155, 0, -28); scene.add(nw3);
+  const sw1 = buildCrenellatedWall(50, 6, 1.2, wallMat);
+  sw1.position.set(35, 0, 28); scene.add(sw1);
+  const sw2 = buildCrenellatedWall(40, 6, 1.2, wallMat);
+  sw2.position.set(95, 0, 28); scene.add(sw2);
+  const sw3 = buildCrenellatedWall(40, 6, 1.2, wallMat);
+  sw3.position.set(155, 0, 28); scene.add(sw3);
+  const ew = buildCrenellatedWall(56, 6, 1.2, wallMat);
+  ew.rotation.y = Math.PI/2;
+  ew.position.set(180, 0, 0);
+  scene.add(ew);
+
+  const towerSpots = [
+    {x: 5, z: -28}, {x: 60, z: -28}, {x: 120, z: -28}, {x: 175, z: -28},
+    {x: 5, z: 28}, {x: 60, z: 28}, {x: 120, z: 28}, {x: 175, z: 28},
+    {x: 180, z: -22}, {x: 180, z: 22}
+  ];
+  towerSpots.forEach(s => {
+    const t = buildTower(4, 9, MATS.sandstone(1.5, 2));
+    t.position.set(s.x, 0, s.z);
+    scene.add(t);
+  });
+}
+
+// ============================================================================
+// DUST PARTICLES
+// ============================================================================
+function buildDust(){
+  const count = 1200;
+  const positions = new Float32Array(count * 3);
+  for(let i = 0; i < count; i++){
+    positions[i*3]     = (Math.random() - 0.5) * 350;
+    positions[i*3 + 1] = Math.random() * 8 + 0.5;
+    positions[i*3 + 2] = (Math.random() - 0.5) * 70;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const mat = new THREE.PointsMaterial({
+    size: 0.12, map: makeParticleSprite('#e6c068'),
+    transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending,
+    depthWrite: false, sizeAttenuation: true
+  });
+  return new THREE.Points(geo, mat);
+}
+const dust = buildDust();
+scene.add(dust);
+
+// ============================================================================
+// LIGHTING
+// ============================================================================
+const ambient = new THREE.AmbientLight(0xd4a574, 0.55);
+scene.add(ambient);
+const sun = new THREE.DirectionalLight(0xffd89e, 1.5);
+sun.position.set(-60, 50, 30);
+sun.target.position.set(40, 0, 0);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.near = 1;
+sun.shadow.camera.far = 200;
+sun.shadow.camera.left = -120;
+sun.shadow.camera.right = 220;
+sun.shadow.camera.top = 60;
+sun.shadow.camera.bottom = -60;
+sun.shadow.bias = -0.0005;
+scene.add(sun);
+scene.add(sun.target);
+const fill = new THREE.DirectionalLight(0xc47a48, 0.4);
+fill.position.set(60, 25, -30);
+scene.add(fill);
+const hemi = new THREE.HemisphereLight(0xc47a48, 0x3a1d10, 0.35);
+scene.add(hemi);
+
+// ============================================================================
+// CONTROLS
+// ============================================================================
+const move = {fwd:false, back:false, left:false, right:false, sprint:false};
+let yaw = Math.PI/2; // start looking east
+let pitch = 0;
+const HALF_PI = Math.PI / 2 - 0.01;
+let pointerLocked = false;
+
+document.addEventListener('keydown', e => {
+  if(e.code === 'KeyW' || e.code === 'ArrowUp') move.fwd = true;
+  if(e.code === 'KeyS' || e.code === 'ArrowDown') move.back = true;
+  if(e.code === 'KeyA' || e.code === 'ArrowLeft') move.left = true;
+  if(e.code === 'KeyD' || e.code === 'ArrowRight') move.right = true;
+  if(e.code === 'ShiftLeft' || e.code === 'ShiftRight') move.sprint = true;
+  if(e.code === 'KeyM') openTeleport();
+});
+document.addEventListener('keyup', e => {
+  if(e.code === 'KeyW' || e.code === 'ArrowUp') move.fwd = false;
+  if(e.code === 'KeyS' || e.code === 'ArrowDown') move.back = false;
+  if(e.code === 'KeyA' || e.code === 'ArrowLeft') move.left = false;
+  if(e.code === 'KeyD' || e.code === 'ArrowRight') move.right = false;
+  if(e.code === 'ShiftLeft' || e.code === 'ShiftRight') move.sprint = false;
+});
+document.addEventListener('mousemove', e => {
+  if(pointerLocked){
+    yaw -= e.movementX * 0.0024;
+    pitch -= e.movementY * 0.0024;
+    pitch = Math.max(-HALF_PI, Math.min(HALF_PI, pitch));
+  }
+});
+document.addEventListener('pointerlockchange', () => {
+  pointerLocked = (document.pointerLockElement === canvas);
+  document.getElementById('cross').classList.toggle('show', pointerLocked);
+});
+
+const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth < 800;
+let joyX = 0, joyY = 0;
+const joystick = document.getElementById('joystick');
+const knob = document.getElementById('joystick-knob');
+let joyId = null, joyOX = 0, joyOY = 0;
+let lookId = null, lookLX = 0, lookLY = 0;
+
+if(isMobile){
+  joystick.addEventListener('touchstart', e => {
+    e.preventDefault();
+    const t = e.changedTouches[0];
+    joyId = t.identifier;
+    const r = joystick.getBoundingClientRect();
+    joyOX = r.left + r.width/2;
+    joyOY = r.top + r.height/2;
+  }, {passive:false});
+
+  document.addEventListener('touchstart', e => {
+    for(const t of e.changedTouches){
+      const onJoystick = joystick.contains(e.target);
+      if(!onJoystick && lookId === null){
+        lookId = t.identifier;
+        lookLX = t.clientX;
+        lookLY = t.clientY;
+      }
+    }
+  }, {passive:true});
+
+  document.addEventListener('touchmove', e => {
+    for(const t of e.changedTouches){
+      if(t.identifier === joyId){
+        const dx = t.clientX - joyOX;
+        const dy = t.clientY - joyOY;
+        const max = 35;
+        const len = Math.hypot(dx, dy) || 1;
+        const sc = Math.min(1, len / max);
+        const ndx = (dx / len) * sc * max;
+        const ndy = (dy / len) * sc * max;
+        knob.style.transform = `translate(${ndx}px, ${ndy}px)`;
+        joyX = ndx / max;
+        joyY = ndy / max;
+      }
+      if(t.identifier === lookId){
+        const dx = t.clientX - lookLX;
+        const dy = t.clientY - lookLY;
+        yaw -= dx * 0.005;
+        pitch -= dy * 0.005;
+        pitch = Math.max(-HALF_PI, Math.min(HALF_PI, pitch));
+        lookLX = t.clientX;
+        lookLY = t.clientY;
+      }
+    }
+  }, {passive:true});
+
+  document.addEventListener('touchend', e => {
+    for(const t of e.changedTouches){
+      if(t.identifier === joyId){
+        joyId = null;
+        joyX = 0; joyY = 0;
+        knob.style.transform = '';
+      }
+      if(t.identifier === lookId){ lookId = null; }
+    }
+  }, {passive:true});
+}
+
+// ============================================================================
+// COLLISION
+// ============================================================================
+function clampPlayer(){
+  for(const p of POOLS){
+    if(camera.position.x > p.xMin && camera.position.x < p.xMax && camera.position.z > p.zMin && camera.position.z < p.zMax){
+      const dxL = Math.abs(camera.position.x - p.xMin), dxR = Math.abs(camera.position.x - p.xMax);
+      const dzN = Math.abs(camera.position.z - p.zMin), dzS = Math.abs(camera.position.z - p.zMax);
+      const m = Math.min(dxL, dxR, dzN, dzS);
+      if(m === dxL) camera.position.x = p.xMin;
+      else if(m === dxR) camera.position.x = p.xMax;
+      else if(m === dzN) camera.position.z = p.zMin;
+      else camera.position.z = p.zMax;
+    }
+  }
+  for(const b of BUILDINGS){
+    if(camera.position.x > b.xMin && camera.position.x < b.xMax && camera.position.z > b.zMin && camera.position.z < b.zMax){
+      const dxL = Math.abs(camera.position.x - b.xMin), dxR = Math.abs(camera.position.x - b.xMax);
+      const dzN = Math.abs(camera.position.z - b.zMin), dzS = Math.abs(camera.position.z - b.zMax);
+      const m = Math.min(dxL, dxR, dzN, dzS);
+      if(m === dxL) camera.position.x = b.xMin;
+      else if(m === dxR) camera.position.x = b.xMax;
+      else if(m === dzN) camera.position.z = b.zMin;
+      else camera.position.z = b.zMax;
+    }
+  }
+  camera.position.x = Math.max(-100, Math.min(178, camera.position.x));
+  camera.position.z = Math.max(-26, Math.min(26, camera.position.z));
+}
+
+// ============================================================================
+// LOCATION DETECTION
+// ============================================================================
+let currentZone = null;
+function detectZone(){
+  for(const z of ZONES){
+    if(camera.position.x > z.xMin && camera.position.x < z.xMax && camera.position.z > z.zMin && camera.position.z < z.zMax){
+      if(z !== currentZone){
+        currentZone = z;
+        document.getElementById('loc-ar').textContent = z.ar;
+        document.getElementById('loc-name').textContent = z.name;
+        const el = document.getElementById('location');
+        el.classList.add('show');
+        clearTimeout(window._locTimer);
+        window._locTimer = setTimeout(() => el.classList.remove('show'), 4000);
+      }
+      return;
+    }
+  }
+  if(currentZone !== null){
+    currentZone = null;
+    document.getElementById('location').classList.remove('show');
+  }
+}
+
+// ============================================================================
+// COMPASS
+// ============================================================================
+function updateCompass(){
+  const compass = document.getElementById('compass');
+  if(!compass) return;
+  const fz = -Math.cos(yaw);
+  const fx = -Math.sin(yaw);
+  let label;
+  let bearing = (Math.atan2(fx, -fz) * 180 / Math.PI + 360) % 360;
+  if(bearing < 22.5 || bearing >= 337.5) label = 'N';
+  else if(bearing < 67.5) label = 'NØ';
+  else if(bearing < 112.5) label = 'Ø';
+  else if(bearing < 157.5) label = 'SØ';
+  else if(bearing < 202.5) label = 'S';
+  else if(bearing < 247.5) label = 'SV';
+  else if(bearing < 292.5) label = 'V';
+  else label = 'NV';
+  compass.textContent = label;
+}
+
+// ============================================================================
+// MINIMAP
+// ============================================================================
+function setupMinimap(){
+  const buildings = document.getElementById('mm-buildings');
+  const pools = document.getElementById('mm-pools');
+  const labels = document.getElementById('mm-labels');
+  function rect(x1, z1, x2, z2, fill='rgba(108,68,42,.5)'){
+    const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    r.setAttribute('x', x1); r.setAttribute('y', z1);
+    r.setAttribute('width', x2 - x1); r.setAttribute('height', z2 - z1);
+    r.setAttribute('fill', fill);
+    r.setAttribute('stroke', '#a06a32');
+    r.setAttribute('stroke-width', '.3');
+    return r;
+  }
+  buildings.appendChild(rect(-92, -22, -52, 22, 'rgba(120,75,45,.55)'));
+  buildings.appendChild(rect(-25, -6, -13, 6, 'rgba(168,108,68,.5)'));
+  buildings.appendChild(rect(-7, -13, 7, 13, 'rgba(168,108,68,.4)'));
+  buildings.appendChild(rect(-7, -25, 7, -13, 'rgba(140,90,55,.7)'));
+  buildings.appendChild(rect(17, -9, 31, 9, 'rgba(168,108,68,.4)'));
+  buildings.appendChild(rect(46, -19, 84, 19, 'rgba(200,144,96,.5)'));
+  buildings.appendChild(rect(105, -15, 155, 15, 'rgba(70,110,50,.4)'));
+
+  function poolRect(x1, z1, x2, z2){
+    const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    r.setAttribute('x', x1); r.setAttribute('y', z1);
+    r.setAttribute('width', x2-x1); r.setAttribute('height', z2-z1);
+    return r;
+  }
+  pools.appendChild(poolRect(-2, -8.5, 2, 8.5));
+  pools.appendChild(poolRect(110, -0.75, 150, 0.75));
+
+  function lbl(x, z, txt){
+    const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    t.setAttribute('x', x); t.setAttribute('y', z);
+    t.setAttribute('text-anchor', 'middle');
+    t.textContent = txt;
+    return t;
+  }
+  labels.appendChild(lbl(-72, 0, 'ALCAZABA'));
+  labels.appendChild(lbl(0, -2, 'ARRAY.'));
+  labels.appendChild(lbl(24, 0, 'LEONES'));
+  labels.appendChild(lbl(65, 0, 'CARLOS V'));
+  labels.appendChild(lbl(130, 0, 'GENERALIFE'));
+}
+setupMinimap();
+
+const playerDot = document.getElementById('player-dot');
+const playerDir = document.getElementById('player-dir');
+function updateMinimap(){
+  if(!playerDot) return;
+  playerDot.setAttribute('cx', camera.position.x);
+  playerDot.setAttribute('cy', camera.position.z);
+  const fx = -Math.sin(yaw) * 4;
+  const fz = -Math.cos(yaw) * 4;
+  playerDir.setAttribute('x1', camera.position.x);
+  playerDir.setAttribute('y1', camera.position.z);
+  playerDir.setAttribute('x2', camera.position.x + fx);
+  playerDir.setAttribute('y2', camera.position.z + fz);
+}
+
+// ============================================================================
+// TELEPORT MENU
+// ============================================================================
+const TELEPORT_LOCATIONS = [
+  {ar: 'القَصبَة', name: 'ALCAZABA', desc: 'Den militære fæstning fra 1100-tallet', x: -72, z: 0, yaw: Math.PI/2},
+  {ar: 'بهو الريحان', name: 'PATIO DE LOS ARRAYANES', desc: 'Myrtegården med spejlbassinet', x: 0, z: 11, yaw: 0},
+  {ar: 'قاعة السفراء', name: 'COMARES-TÅRNET', desc: 'Tronsalen, nord for Myrtegården', x: 0, z: -15, yaw: 0},
+  {ar: 'بهو الأسود', name: 'PATIO DE LOS LEONES', desc: 'Løvegården med fontænen', x: 24, z: 7, yaw: 0},
+  {ar: 'قصر كارلوس', name: 'PALACIO DE CARLOS V', desc: 'Renæssance-palads med rund gård', x: 65, z: 0, yaw: 0},
+  {ar: 'جنة العريف', name: 'GENERALIFE', desc: 'Sommerhaverne og vandkanalen', x: 110, z: 0, yaw: Math.PI/2}
+];
+function buildTeleport(){
+  const grid = document.getElementById('teleport-grid');
+  TELEPORT_LOCATIONS.forEach(loc => {
+    const c = document.createElement('div');
+    c.className = 'tp-card';
+    c.innerHTML = `<span class="ar">${loc.ar}</span><h3>${loc.name}</h3><div class="desc">${loc.desc}</div>`;
+    c.addEventListener('click', () => {
+      camera.position.set(loc.x, 1.7, loc.z);
+      yaw = loc.yaw; pitch = 0;
+      closeTeleport();
+    });
+    grid.appendChild(c);
+  });
+}
+buildTeleport();
+function openTeleport(){
+  document.getElementById('teleport').classList.add('show');
+  if(pointerLocked) document.exitPointerLock();
+}
+function closeTeleport(){
+  document.getElementById('teleport').classList.remove('show');
+  if(!isMobile) canvas.requestPointerLock();
+}
+document.getElementById('tp-open').addEventListener('click', openTeleport);
+document.getElementById('tp-close').addEventListener('click', closeTeleport);
+
+// ============================================================================
+// ANIMATION LOOP
+// ============================================================================
+const clock = new THREE.Clock();
+const tmpFwd = new THREE.Vector3();
+const tmpRight = new THREE.Vector3();
+
+function animate(){
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const t = clock.elapsedTime;
+
+  camera.rotation.set(pitch, yaw, 0);
+
+  tmpFwd.set(-Math.sin(yaw), 0, -Math.cos(yaw));
+  tmpRight.set(Math.cos(yaw), 0, -Math.sin(yaw));
+  let mx = 0, mz = 0;
+  if(move.fwd) mz += 1;
+  if(move.back) mz -= 1;
+  if(move.left) mx -= 1;
+  if(move.right) mx += 1;
+  if(isMobile){ mx += joyX; mz -= joyY; }
+
+  const speed = move.sprint ? 10.5 : 4.5;
+  if(mx !== 0 || mz !== 0){
+    const len = Math.hypot(mx, mz) || 1;
+    mx /= len; mz /= len;
+    camera.position.addScaledVector(tmpFwd, mz * speed * dt);
+    camera.position.addScaledVector(tmpRight, mx * speed * dt);
+    camera.position.y = 1.7 + Math.sin(t * (move.sprint ? 11 : 7)) * 0.04;
+  } else {
+    camera.position.y = 1.7;
+  }
+  clampPlayer();
+  camera.position.y = 1.7;
+
+  for(const m of allWaterMats){
+    m.uniforms.uTime.value = t;
+    m.uniforms.uCameraPos.value.copy(camera.position);
+  }
+
+  for(const fp of allFountains){
+    fp.update(dt);
+  }
+
+  const positions = dust.geometry.attributes.position.array;
+  for(let i = 0; i < positions.length; i += 3){
+    positions[i + 1] += 0.005;
+    positions[i] += Math.sin(t * 0.5 + i) * 0.001;
+    if(positions[i + 1] > 9) positions[i + 1] = 0.5;
+  }
+  dust.geometry.attributes.position.needsUpdate = true;
+
+  detectZone();
+  updateCompass();
+  updateMinimap();
+
+  renderer.render(scene, camera);
+}
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ============================================================================
+// START FLOW
+// ============================================================================
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    document.getElementById('loader').classList.add('gone');
+    document.getElementById('start').style.display = 'flex';
+    animate();
+  }, 1400);
+});
+
+document.getElementById('enterBtn').addEventListener('click', () => {
+  document.getElementById('start').classList.add('gone');
+  document.getElementById('hud').style.display = 'flex';
+  document.getElementById('minimap').style.display = 'block';
+  if(isMobile){
+    document.getElementById('joystick').classList.add('show');
+  } else {
+    canvas.requestPointerLock();
+  }
+});
+
+canvas.addEventListener('click', () => {
+  if(!isMobile && !pointerLocked && document.getElementById('start').classList.contains('gone') && !document.getElementById('teleport').classList.contains('show')){
+    canvas.requestPointerLock();
+  }
+});
+
+// ============================================================================
+// QUOTES
+// ============================================================================
+const QUOTES = [
+  ['»Spejlet er paladsets ottende vidunder.«', 'ARABISK ORDSPROG'],
+  ['»Min cuppel er en krone, mine søjler er stjerner.«', 'INSKRIPTION I COMARES-TÅRNET'],
+  ['»Der er ingen sejrherre uden Allah.«', 'NASRID-DYNASTIETS MOTTO'],
+  ['»Hvor lille bliver mennesket foran disse mure.«', 'WASHINGTON IRVING, 1832'],
+  ['»Vandet løber gennem løverne som blod gennem en levende krop.«', 'IBN ZAMRAK'],
+  ['»Giv ham almisse — for intet er så grusomt som at være blind i Granada.«', 'F.A. DE ICAZA'],
+  ['»Haven er en bog skrevet med vand og skygge.«', 'FEDERICO GARCÍA LORCA']
+];
+let qIdx = 0;
+function showNextQuote(){
+  qIdx = (qIdx + 1) % QUOTES.length;
+  const el = document.getElementById('banner-text');
+  el.innerHTML = `${QUOTES[qIdx][0]}<cite>— ${QUOTES[qIdx][1]}</cite>`;
+  document.getElementById('banner').classList.add('show');
+  setTimeout(() => document.getElementById('banner').classList.remove('show'), 7500);
+}
+setTimeout(showNextQuote, 6000);
+setInterval(showNextQuote, 18000);
+
+</script>
+</body>
+</html>
