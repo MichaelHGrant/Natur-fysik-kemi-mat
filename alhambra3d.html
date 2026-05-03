@@ -152,6 +152,13 @@
 <canvas id="canvas"></canvas>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/FXAAShader.js"></script>
 <script>
 // ========================================================================
 // ALHAMBRA 3D — KOMPLET FÆSTNING
@@ -171,14 +178,31 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
+renderer.toneMappingExposure = 1.15;
+renderer.physicallyCorrectLights = true;
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x6a4030, 0.0085);
+scene.fog = new THREE.FogExp2(0x6a4030, 0.0065);
 
 const camera = new THREE.PerspectiveCamera(72, window.innerWidth/window.innerHeight, 0.1, 800);
 camera.position.set(-95, 1.7, -28);
 camera.rotation.order = 'YXZ';
+
+// ========================================================================
+// REAL-TIME REFLECTION CAMERA (for the main Arrayanes pool)
+// ========================================================================
+const reflectionTarget = new THREE.WebGLCubeRenderTarget(256, {
+  format: THREE.RGBAFormat,
+  generateMipmaps: true,
+  minFilter: THREE.LinearMipmapLinearFilter,
+  encoding: THREE.sRGBEncoding
+});
+const reflectionCamera = new THREE.CubeCamera(0.5, 300, reflectionTarget);
+reflectionCamera.position.set(0, 0.05, 0);  // center of the main pool
+scene.add(reflectionCamera);
+let reflectionFrameCounter = 0;
+const reflectionUpdateInterval = 4;  // update every N frames
+let mainPoolWater = null;  // assigned later when the pool is built
 
 // ========================================================================
 // HELPER: 8-point star polygon vertices
@@ -200,56 +224,184 @@ function eightPointStar(ctx, cx, cy, R, r){
 // PROCEDURAL TEXTURES (correct Islamic patterns)
 // ========================================================================
 
-// Khatem Sulemani — classic Alhambra 8-fold star tessellation with proper zellige colors
+// Alhambra wall texture: layered design matching the real walls of Patio de los Arrayanes.
+//   Top 70%: cream/white carved stucco with sebka-like relief pattern
+//   Middle: gold molding band
+//   Bottom 30%: colorful Nazari-comma zellige dado (the iconic interlocking teardrop tiles)
 function makeKhatemTexture(){
+  const c = document.createElement('canvas');
+  c.width = 1024; c.height = 1024;
+  const ctx = c.getContext('2d');
+
+  // ===== TOP 70%: cream stucco with carved relief =====
+  const stuccoEnd = 1024 * 0.70;
+  ctx.fillStyle = '#f0e2c0';
+  ctx.fillRect(0, 0, 1024, stuccoEnd);
+
+  // subtle veining in the stucco
+  ctx.strokeStyle = 'rgba(180,140,90,.12)';
+  ctx.lineWidth = 1;
+  for(let i = 0; i < 80; i++){
+    ctx.beginPath();
+    ctx.moveTo(Math.random()*1024, Math.random()*stuccoEnd);
+    ctx.bezierCurveTo(
+      Math.random()*1024, Math.random()*stuccoEnd,
+      Math.random()*1024, Math.random()*stuccoEnd,
+      Math.random()*1024, Math.random()*stuccoEnd
+    );
+    ctx.stroke();
+  }
+
+  // sebka diamond lattice in carved relief
+  ctx.strokeStyle = '#b48848';
+  ctx.lineWidth = 2.5;
+  ctx.fillStyle = 'rgba(200,160,110,.30)';
+  const dW = 90, dH = 110;
+  for(let row = -1; row * dH * 0.62 < stuccoEnd + dH; row++){
+    for(let col = -1; col < 13; col++){
+      const cx = col * dW + (row % 2 === 0 ? 0 : dW/2);
+      const cy = row * dH * 0.62;
+      if(cy < -dH/2 || cy > stuccoEnd) continue;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - dH/2);
+      ctx.quadraticCurveTo(cx + dW/2, cy - dH/4, cx + dW/2, cy);
+      ctx.quadraticCurveTo(cx + dW/2, cy + dH/4, cx, cy + dH/2);
+      ctx.quadraticCurveTo(cx - dW/2, cy + dH/4, cx - dW/2, cy);
+      ctx.quadraticCurveTo(cx - dW/2, cy - dH/4, cx, cy - dH/2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      // inner small star
+      ctx.fillStyle = '#b48848';
+      ctx.beginPath();
+      for(let k = 0; k < 8; k++){
+        const a = k * Math.PI/4;
+        const r = (k % 2 === 0) ? 14 : 6;
+        const x = cx + Math.cos(a) * r;
+        const y = cy + Math.sin(a) * r;
+        if(k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = 'rgba(200,160,110,.30)';
+    }
+  }
+
+  // ===== MOLDING band between stucco and dado =====
+  ctx.fillStyle = '#1a0f08';
+  ctx.fillRect(0, stuccoEnd, 1024, 4);
+  ctx.fillStyle = '#9a6a30';
+  ctx.fillRect(0, stuccoEnd + 4, 1024, 14);
+  ctx.fillStyle = '#d4a574';
+  ctx.fillRect(0, stuccoEnd + 8, 1024, 4);
+  ctx.fillStyle = '#1a0f08';
+  ctx.fillRect(0, stuccoEnd + 18, 1024, 3);
+
+  // ===== BOTTOM 30%: Nazari comma-tile zellige dado =====
+  const dadoStart = stuccoEnd + 21;
+  const dadoEnd = 1024;
+
+  // dark grout/background
+  ctx.fillStyle = '#1a0f08';
+  ctx.fillRect(0, dadoStart, 1024, dadoEnd - dadoStart);
+
+  // Authentic Nazari "lazo" comma tile colors (from real Alhambra zellige)
+  const tileColors = ['#0e2d52', '#1e4d4b', '#a04a18', '#cc8838', '#ecdcb8', '#5a1a18'];
+  // Pattern: 4-fold rotational tessellation of comma/teardrop shapes
+  const mod = 110;
+  for(let row = 0; row * mod < (dadoEnd - dadoStart) + mod; row++){
+    for(let col = -1; col * mod < 1024 + mod; col++){
+      const mx = col * mod + mod/2;
+      const my = dadoStart + row * mod + mod/2;
+      // 4 commas radiating from center
+      for(let k = 0; k < 4; k++){
+        const ang = k * Math.PI / 2 + ((row + col) % 2 === 0 ? 0 : Math.PI/4);
+        ctx.save();
+        ctx.translate(mx, my);
+        ctx.rotate(ang);
+        ctx.fillStyle = tileColors[(row * 3 + col * 2 + k) % tileColors.length];
+        ctx.strokeStyle = '#0a0604';
+        ctx.lineWidth = 1.5;
+        // Comma/teardrop shape — round head, tapering tail
+        const s = mod * 0.45;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.bezierCurveTo(s * 0.4, -s * 0.5, s * 1.0, -s * 0.2, s * 0.95, s * 0.15);
+        ctx.bezierCurveTo(s * 0.85, s * 0.55, s * 0.45, s * 0.7, s * 0.2, s * 0.5);
+        ctx.bezierCurveTo(s * 0.05, s * 0.35, s * 0.0, s * 0.15, 0, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+      // tiny center dot
+      ctx.fillStyle = '#ecdcb8';
+      ctx.beginPath();
+      ctx.arc(mx, my, 4, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  // bottom skirting line
+  ctx.fillStyle = '#1a0f08';
+  ctx.fillRect(0, dadoEnd - 4, 1024, 4);
+
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.encoding = THREE.sRGBEncoding;
+  t.anisotropy = 8;
+  return t;
+}
+
+// 8-point star pinwheel pattern (image 4 — orange/blue interlocking stars)
+// Used for floor tile bands and decorative panels
+function makeStarPinwheelTexture(){
   const c = document.createElement('canvas');
   c.width = c.height = 1024;
   const ctx = c.getContext('2d');
-  ctx.fillStyle = '#f4ecd8';
+  // background — cream grout
+  ctx.fillStyle = '#ecdcb8';
   ctx.fillRect(0, 0, 1024, 1024);
+  // alternating star squares — orange and dark blue
   const cell = 256;
-  const R = cell * 0.34, r = R * 0.42;
-  const starColors = ['#1e4d4b', '#6b2c1a', '#2d4858', '#1a3a1a'];
+  const colors = ['#c85820', '#0e2d52', '#1e4d4b'];
   for(let row = -1; row < 5; row++){
     for(let col = -1; col < 5; col++){
       const cx = col * cell + cell/2;
       const cy = row * cell + cell/2;
-      ctx.fillStyle = starColors[(row + col + 8) % starColors.length];
+      const isOrange = (row + col) % 2 === 0;
+      const fill = isOrange ? colors[0] : colors[1];
+      // Rotated 45° square
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(Math.PI / 4);
+      ctx.fillStyle = fill;
       ctx.strokeStyle = '#1a0f08';
       ctx.lineWidth = 3;
-      eightPointStar(ctx, cx, cy, R, r);
-      ctx.fill(); ctx.stroke();
-      // inner small octagon
-      ctx.fillStyle = '#d4a574';
-      ctx.beginPath();
-      for(let i = 0; i < 8; i++){
-        const a = i * Math.PI/4 + Math.PI/8;
-        const x = cx + Math.cos(a) * r * 0.6;
-        const y = cy + Math.sin(a) * r * 0.6;
-        if(i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      }
-      ctx.closePath();
-      ctx.fill();
-      ctx.strokeStyle = '#a06a32';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-      ctx.fillStyle = '#1a0f08';
-      ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI*2); ctx.fill();
+      const sz = cell * 0.62;
+      ctx.fillRect(-sz/2, -sz/2, sz, sz);
+      ctx.strokeRect(-sz/2, -sz/2, sz, sz);
+      ctx.restore();
+      // Axis-aligned smaller square in contrasting color on top
+      const sz2 = cell * 0.40;
+      ctx.fillStyle = isOrange ? colors[1] : colors[0];
+      ctx.strokeStyle = '#1a0f08';
+      ctx.lineWidth = 2.5;
+      ctx.fillRect(cx - sz2/2, cy - sz2/2, sz2, sz2);
+      ctx.strokeRect(cx - sz2/2, cy - sz2/2, sz2, sz2);
+      // green dot in the very center
+      ctx.fillStyle = colors[2];
+      ctx.fillRect(cx - sz2*0.18, cy - sz2*0.18, sz2*0.36, sz2*0.36);
     }
   }
-  // diagonal interlace straps connecting stars
-  ctx.strokeStyle = '#a06a32';
-  ctx.lineWidth = 4;
-  for(let row = 0; row <= 4; row++){
-    for(let col = 0; col <= 4; col++){
-      const cx = col * cell, cy = row * cell;
-      ctx.beginPath();
-      ctx.moveTo(cx - 35, cy);
-      ctx.lineTo(cx + 35, cy);
-      ctx.moveTo(cx, cy - 35);
-      ctx.lineTo(cx, cy + 35);
-      ctx.stroke();
-    }
+  // grid lines connecting the cells
+  ctx.strokeStyle = 'rgba(26,15,8,.5)';
+  ctx.lineWidth = 1.5;
+  for(let i = 0; i <= 4; i++){
+    ctx.beginPath();
+    ctx.moveTo(i * cell, 0); ctx.lineTo(i * cell, 1024);
+    ctx.moveTo(0, i * cell); ctx.lineTo(1024, i * cell);
+    ctx.stroke();
   }
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
@@ -487,7 +639,8 @@ const TEX = {
   sebka: makeSebkaTexture(),
   callig: makeCalligraphyTexture(),
   sandstone: makeSandstoneTexture(),
-  waterNormal: makeWaterNormal()
+  waterNormal: makeWaterNormal(),
+  starPinwheel: makeStarPinwheelTexture()
 };
 
 function clonedTex(base, repeatX, repeatY){
@@ -499,14 +652,16 @@ function clonedTex(base, repeatX, repeatY){
 }
 
 const MATS = {
-  marble: () => new THREE.MeshStandardMaterial({map: clonedTex(TEX.marble, 1, 1), roughness:0.4, metalness:0.05}),
-  khatem: (rx, ry) => new THREE.MeshStandardMaterial({map: clonedTex(TEX.khatem, rx, ry), roughness:0.85, side:THREE.DoubleSide}),
+  marble: () => new THREE.MeshPhysicalMaterial({map: clonedTex(TEX.marble, 1, 1), roughness:0.32, metalness:0.0, clearcoat:0.4, clearcoatRoughness:0.2}),
+  // Layered Alhambra wall texture must keep ry=1 to preserve the dado-stucco vertical layering.
+  khatem: (rx, ry) => new THREE.MeshStandardMaterial({map: clonedTex(TEX.khatem, rx, 1), roughness:0.85, side:THREE.DoubleSide}),
   sebka: (rx, ry) => new THREE.MeshStandardMaterial({map: clonedTex(TEX.sebka, rx, ry), roughness:0.85, side:THREE.DoubleSide}),
+  starPinwheel: (rx, ry) => new THREE.MeshPhysicalMaterial({map: clonedTex(TEX.starPinwheel, rx, ry), roughness:0.45, side:THREE.DoubleSide, clearcoat:0.3, clearcoatRoughness:0.25}),
   sandstone: (rx, ry) => new THREE.MeshStandardMaterial({map: clonedTex(TEX.sandstone, rx, ry), roughness:0.95}),
-  ivory: () => new THREE.MeshStandardMaterial({color: PALETTE.ivory, roughness:0.5}),
-  marbleSolid: () => new THREE.MeshStandardMaterial({color: PALETTE.marble, roughness:0.45, metalness:0.05}),
+  ivory: () => new THREE.MeshPhysicalMaterial({color: PALETTE.ivory, roughness:0.45, clearcoat:0.3, clearcoatRoughness:0.3}),
+  marbleSolid: () => new THREE.MeshPhysicalMaterial({color: PALETTE.marble, roughness:0.32, metalness:0.0, clearcoat:0.4, clearcoatRoughness:0.2}),
   red: () => new THREE.MeshStandardMaterial({color: PALETTE.redclay, roughness:0.92}),
-  gold: () => new THREE.MeshStandardMaterial({color: PALETTE.gold2, roughness:0.5}),
+  gold: () => new THREE.MeshPhysicalMaterial({color: PALETTE.gold2, roughness:0.4, metalness:0.6, clearcoat:0.5}),
   green: () => new THREE.MeshStandardMaterial({color: PALETTE.green, roughness:0.85}),
   deepGreen: () => new THREE.MeshStandardMaterial({color: PALETTE.deepGreen, roughness:0.9})
 };
@@ -670,10 +825,13 @@ function buildWaterMaterial(){
     uniforms: {
       uTime: { value: 0 },
       uNormalMap: { value: TEX.waterNormal },
+      uEnvMap: { value: null },  // cube envmap from CubeCamera (set per-frame)
+      uHasEnvMap: { value: 0.0 },
       uCameraPos: { value: new THREE.Vector3() },
       uSunDir: { value: new THREE.Vector3(-0.6, 0.6, 0.4).normalize() },
       uSkyColor: { value: new THREE.Color(0xc89060) },
-      uDeepColor: { value: new THREE.Color(0x0a1822) },
+      uHorizonColor: { value: new THREE.Color(0xa56830) },
+      uDeepColor: { value: new THREE.Color(0x081522) },
       uShallowColor: { value: new THREE.Color(0x1a4858) }
     },
     vertexShader: `
@@ -681,28 +839,72 @@ function buildWaterMaterial(){
       varying vec3 vWorldPos;
       varying vec3 vWaveNormal;
       varying vec2 vUv;
+      varying float vDropRipple;
+
+      // expanding drop ripples — 3 drop centers cycling at different periods
+      float dropEffect(vec2 worldXZ, float time) {
+        float total = 0.0;
+        for(int i = 0; i < 3; i++) {
+          float fi = float(i);
+          // each drop has its own period (4-6 seconds) and offset
+          float period = 4.5 + fi * 0.7;
+          float t = mod(time + fi * 1.9, period);
+          // drop center moves slowly within bounds
+          vec2 center = vec2(
+            sin(time * 0.13 + fi * 2.1) * 4.5,
+            cos(time * 0.11 + fi * 1.7) * 1.4
+          );
+          float dist = length(worldXZ - center);
+          float radius = t * 1.4; // expanding ring at 1.4 m/s
+          float ringWidth = 0.35;
+          // ring intensity peaks at radius and decays with age
+          float ring = exp(-pow((dist - radius) / ringWidth, 2.0));
+          float fade = max(0.0, 1.0 - t / period);
+          // ripple wave inside the ring
+          total += sin((dist - radius) * 22.0) * ring * fade * 0.012;
+        }
+        return total;
+      }
+
       void main() {
         vUv = uv;
         vec4 wp = modelMatrix * vec4(position, 1.0);
-        // Animated wave displacement using sums of sines (Gerstner-like)
         float wx = wp.x;
         float wz = wp.z;
+
+        // Multi-scale wave displacement — calm reflecting pool look
+        // Macro waves (low amplitude, long wavelength)
         float wave = 0.0;
-        wave += sin(wx * 1.6 + uTime * 1.4) * 0.04;
-        wave += sin(wz * 2.1 + uTime * 1.7) * 0.03;
-        wave += sin((wx + wz) * 0.9 + uTime * 0.8) * 0.05;
-        wave += sin((wx - wz) * 1.3 - uTime * 1.1) * 0.025;
+        wave += sin(wx * 0.9  + uTime * 0.8) * 0.012;
+        wave += sin(wz * 1.2  + uTime * 1.1) * 0.010;
+        // Medium swells
+        wave += sin((wx + wz * 0.6) * 2.4 + uTime * 1.6) * 0.006;
+        wave += sin((wx * 0.7 - wz) * 3.1 - uTime * 1.9) * 0.005;
+        // Small ripples (high frequency, very small)
+        wave += sin((wx * 1.3 + wz * 0.8) * 6.5 + uTime * 3.0) * 0.0025;
+        wave += sin((wx * 0.6 - wz * 1.1) * 7.8 - uTime * 3.4) * 0.0020;
+
+        // expanding drop ripples
+        float drop = dropEffect(vec2(wx, wz), uTime);
+        wave += drop;
+        vDropRipple = drop;
+
         wp.y += wave;
 
-        // approximate normal from partial derivatives
-        float dx = 1.6 * cos(wx * 1.6 + uTime * 1.4) * 0.04
-                 + 0.9 * cos((wx + wz) * 0.9 + uTime * 0.8) * 0.05
-                 + 1.3 * cos((wx - wz) * 1.3 - uTime * 1.1) * 0.025;
-        float dz = 2.1 * cos(wz * 2.1 + uTime * 1.7) * 0.03
-                 + 0.9 * cos((wx + wz) * 0.9 + uTime * 0.8) * 0.05
-                 - 1.3 * cos((wx - wz) * 1.3 - uTime * 1.1) * 0.025;
-        vWaveNormal = normalize(vec3(-dx, 1.0, -dz));
+        // Compute approximate surface normal from partial derivatives
+        float dx = 0.0, dz = 0.0;
+        dx += 0.9 * cos(wx * 0.9 + uTime * 0.8) * 0.012;
+        dz += 1.2 * cos(wz * 1.2 + uTime * 1.1) * 0.010;
+        dx += 2.4 * cos((wx + wz * 0.6) * 2.4 + uTime * 1.6) * 0.006;
+        dz += 0.6 * 2.4 * cos((wx + wz * 0.6) * 2.4 + uTime * 1.6) * 0.006;
+        dx += 0.7 * 3.1 * cos((wx * 0.7 - wz) * 3.1 - uTime * 1.9) * 0.005;
+        dz += -3.1 * cos((wx * 0.7 - wz) * 3.1 - uTime * 1.9) * 0.005;
+        dx += 1.3 * 6.5 * cos((wx * 1.3 + wz * 0.8) * 6.5 + uTime * 3.0) * 0.0025;
+        dz += 0.8 * 6.5 * cos((wx * 1.3 + wz * 0.8) * 6.5 + uTime * 3.0) * 0.0025;
+        dx += 0.6 * 7.8 * cos((wx * 0.6 - wz * 1.1) * 7.8 - uTime * 3.4) * 0.0020;
+        dz += -1.1 * 7.8 * cos((wx * 0.6 - wz * 1.1) * 7.8 - uTime * 3.4) * 0.0020;
 
+        vWaveNormal = normalize(vec3(-dx, 1.0, -dz));
         vWorldPos = wp.xyz;
         gl_Position = projectionMatrix * viewMatrix * wp;
       }
@@ -710,41 +912,81 @@ function buildWaterMaterial(){
     fragmentShader: `
       uniform float uTime;
       uniform sampler2D uNormalMap;
+      uniform samplerCube uEnvMap;
+      uniform float uHasEnvMap;
       uniform vec3 uCameraPos;
       uniform vec3 uSunDir;
       uniform vec3 uSkyColor;
+      uniform vec3 uHorizonColor;
       uniform vec3 uDeepColor;
       uniform vec3 uShallowColor;
       varying vec3 vWorldPos;
       varying vec3 vWaveNormal;
       varying vec2 vUv;
+      varying float vDropRipple;
+
       void main() {
-        // detail ripples on top of the macro wave normal
-        vec2 uv1 = vWorldPos.xz * 0.4 + vec2(uTime * 0.05, uTime * 0.035);
-        vec2 uv2 = vWorldPos.xz * 0.95 - vec2(uTime * 0.04, uTime * -0.03);
+        // Multi-scale normal map sampling
+        vec2 uv1 = vWorldPos.xz * 0.18 + vec2(uTime * 0.018, uTime * 0.012);
+        vec2 uv2 = vWorldPos.xz * 0.55 - vec2(uTime * 0.035, uTime * -0.022);
+        vec2 uv3 = vWorldPos.xz * 1.6  + vec2(uTime * 0.08, uTime * -0.06);
+        vec2 uv4 = vWorldPos.xz * 3.2  - vec2(uTime * 0.11, uTime * 0.13);
         vec3 n1 = texture2D(uNormalMap, uv1).rgb * 2.0 - 1.0;
         vec3 n2 = texture2D(uNormalMap, uv2).rgb * 2.0 - 1.0;
-        vec3 surfNormal = normalize(vWaveNormal + (n1 + n2) * 0.35);
+        vec3 n3 = texture2D(uNormalMap, uv3).rgb * 2.0 - 1.0;
+        vec3 n4 = texture2D(uNormalMap, uv4).rgb * 2.0 - 1.0;
+        vec3 surfNormal = normalize(
+          vWaveNormal
+          + n1 * 0.20
+          + n2 * 0.30
+          + n3 * 0.18
+          + n4 * 0.10
+        );
 
         vec3 viewDir = normalize(uCameraPos - vWorldPos);
         float NdotV = max(dot(surfNormal, viewDir), 0.0);
-        float fresnel = pow(1.0 - NdotV, 4.0);
 
-        vec3 baseColor = mix(uDeepColor, uShallowColor, NdotV * 0.6 + 0.2);
-        vec3 color = mix(baseColor, uSkyColor, fresnel * 0.85);
+        // Schlick Fresnel
+        float F0 = 0.02;
+        float fresnel = F0 + (1.0 - F0) * pow(1.0 - NdotV, 5.0);
 
+        // Base water color
+        vec3 baseColor = mix(uDeepColor, uShallowColor, smoothstep(0.0, 0.6, NdotV));
+
+        // Reflection: blend between cube envmap (real architecture reflections)
+        // and the procedural sky gradient (used for non-envmap water surfaces)
+        vec3 reflectVec = reflect(-viewDir, surfNormal);
+        vec3 envReflect = textureCube(uEnvMap, reflectVec).rgb;
+        float verticality = max(0.0, surfNormal.y);
+        vec3 proceduralSky = mix(uHorizonColor, uSkyColor, verticality * 0.6 + 0.4);
+        vec3 reflectedColor = mix(proceduralSky, envReflect, uHasEnvMap);
+
+        // Combine through fresnel
+        vec3 color = mix(baseColor, reflectedColor, fresnel);
+
+        // Sun specular
         vec3 reflectDir = reflect(-uSunDir, surfNormal);
-        float spec = pow(max(dot(viewDir, reflectDir), 0.0), 80.0);
-        color += vec3(1.0, 0.85, 0.55) * spec * 1.8;
-        float sheen = pow(max(dot(viewDir, reflectDir), 0.0), 12.0);
-        color += vec3(0.9, 0.7, 0.45) * sheen * 0.3;
+        float specAngle = max(dot(viewDir, reflectDir), 0.0);
+        float spec = pow(specAngle, 180.0);
+        color += vec3(1.0, 0.95, 0.75) * spec * 4.0;
+        float halo = pow(specAngle, 20.0);
+        color += vec3(1.0, 0.85, 0.55) * halo * 0.3;
+        float sheen = pow(specAngle, 5.0);
+        color += vec3(0.9, 0.7, 0.45) * sheen * 0.1;
 
-        // foam highlight on wave crests (where normal tilts strongly)
-        float crest = smoothstep(0.85, 0.99, surfNormal.y);
-        crest = 1.0 - crest;
-        color += vec3(0.95, 0.9, 0.8) * crest * 0.15;
+        // Drop ripple highlights
+        color += vec3(1.0, 0.95, 0.85) * abs(vDropRipple) * 8.0;
 
-        gl_FragColor = vec4(color, 0.94);
+        // Subtle caustics
+        float caustic = sin(vWorldPos.x * 8.0 + uTime * 1.5) * sin(vWorldPos.z * 7.0 - uTime * 1.2);
+        caustic = max(0.0, caustic);
+        color += vec3(0.5, 0.7, 0.8) * caustic * 0.04 * (1.0 - fresnel);
+
+        // Foam highlight on wave crests
+        float tilt = 1.0 - smoothstep(0.85, 0.98, surfNormal.y);
+        color += vec3(0.95, 0.92, 0.85) * tilt * 0.06;
+
+        gl_FragColor = vec4(color, 0.96);
       }
     `,
     transparent: true,
@@ -756,9 +998,9 @@ const allWaterMats = [];
 function createWaterSurface(width, length){
   const mat = buildWaterMaterial();
   allWaterMats.push(mat);
-  // many segments needed so vertex wave displacement looks smooth
-  const segX = Math.max(8, Math.ceil(width * 4));
-  const segZ = Math.max(8, Math.ceil(length * 4));
+  // High segment density needed so fine vertex displacement appears smooth
+  const segX = Math.max(16, Math.ceil(width * 6));
+  const segZ = Math.max(16, Math.ceil(length * 6));
   const mesh = new THREE.Mesh(
     new THREE.PlaneGeometry(width, length, segX, segZ),
     mat
@@ -929,162 +1171,182 @@ function buildLionFountain(x, z){
   function buildLion(cx, cz, ang){
     const g = new THREE.Group();
 
-    // === BODY === long rectangular barrel — bigger than before
-    const body = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.45, 0.42), lionMat);
+    // === BODY === stretched ellipsoid (long ovoid)
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.32, 20, 14), lionMat);
+    body.scale.set(2.0, 0.85, 1.05);
     body.position.set(0, 0.55, 0);
     body.castShadow = body.receiveShadow = true;
     g.add(body);
-    // Body underside is slightly lighter
-    const belly = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.1, 0.36),
+    // Belly — slightly lighter underside
+    const belly = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 10),
       new THREE.MeshStandardMaterial({color: 0xd0b890, roughness:0.75}));
-    belly.position.set(0, 0.32, 0);
+    belly.scale.set(2.0, 0.5, 0.95);
+    belly.position.set(0, 0.36, 0);
     g.add(belly);
 
-    // === HINDQUARTERS === rounded back-block
-    const rear = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.5, 0.42), lionMat);
-    rear.position.set(-0.55, 0.55, 0);
+    // === HINDQUARTERS === rounded back hump
+    const rear = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 12), lionMat);
+    rear.scale.set(1.1, 1.0, 1.0);
+    rear.position.set(-0.6, 0.62, 0);
     rear.castShadow = true;
     g.add(rear);
 
-    // === SHOULDERS === slightly raised in front
-    const shoulders = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.5, 0.46), lionMat);
-    shoulders.position.set(0.4, 0.6, 0);
+    // === SHOULDERS === slightly raised front bump
+    const shoulders = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 12), lionMat);
+    shoulders.scale.set(1.0, 1.0, 1.05);
+    shoulders.position.set(0.45, 0.66, 0);
     shoulders.castShadow = true;
     g.add(shoulders);
 
-    // === MANE === stylized like the real Alhambra lions:
-    // a thick disc/collar around the neck with carved ridge stripes (not a fluffy ball)
-    // Main mane disc — slightly oval
-    const maneCore = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.32, 0.36, 0.55, 16),
-      lionDarkMat
-    );
-    maneCore.rotation.z = Math.PI/2;
-    maneCore.position.set(0.62, 0.62, 0);
-    maneCore.scale.set(1, 1, 1.05);
-    maneCore.castShadow = true;
-    g.add(maneCore);
-    // Ridge stripes — flat bands radiating out (the carved fur strands)
-    for(let i = 0; i < 14; i++){
-      const a = i * (Math.PI*2 / 14);
-      const stripe = new THREE.Mesh(
-        new THREE.BoxGeometry(0.12, 0.07, 0.08),
-        new THREE.MeshStandardMaterial({color: 0x6a5230, roughness:0.85})
+    // === MANE === thick ribbed cylinder (vertex displacement gives smooth carved ribbing)
+    const maneGeo = new THREE.CylinderGeometry(0.34, 0.32, 0.55, 32, 8);
+    {
+      const mPos = maneGeo.attributes.position;
+      for(let i = 0; i < mPos.count; i++){
+        const xx = mPos.getX(i), zz = mPos.getZ(i);
+        const aRot = Math.atan2(zz, xx);
+        const rib = 1 + 0.10 * Math.sin(aRot * 14);
+        mPos.setX(i, xx * rib);
+        mPos.setZ(i, zz * rib);
+      }
+      maneGeo.computeVertexNormals();
+    }
+    const mane = new THREE.Mesh(maneGeo, lionDarkMat);
+    mane.rotation.z = Math.PI / 2;
+    mane.position.set(0.7, 0.66, 0);
+    mane.castShadow = true;
+    g.add(mane);
+    // Radial fur tufts on the outer (forward) face of the mane
+    for(let i = 0; i < 12; i++){
+      const a = i * (Math.PI*2 / 12);
+      const tuftS = new THREE.Mesh(
+        new THREE.ConeGeometry(0.05, 0.18, 8),
+        new THREE.MeshStandardMaterial({color: 0x6a4a28, roughness:0.85})
       );
-      // Position around the mane disc
-      const r = 0.36;
-      stripe.position.set(
-        0.62 + Math.cos(a) * 0.04,
-        0.62 + Math.sin(a) * r,
-        Math.cos(a + Math.PI/14) * r * 0.9
-      );
-      stripe.rotation.set(a, 0, 0);
-      g.add(stripe);
+      tuftS.position.set(0.95, 0.66 + Math.sin(a) * 0.36, Math.cos(a) * 0.36);
+      tuftS.rotation.z = -a + Math.PI/2;
+      tuftS.castShadow = true;
+      g.add(tuftS);
     }
 
-    // === HEAD === blocky lion head (the real Alhambra ones are quite cubic)
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.36, 0.34), lionMat);
-    head.position.set(0.95, 0.68, 0);
+    // === HEAD === ovoid (slightly elongated sphere)
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.20, 18, 14), lionMat);
+    head.scale.set(1.3, 1.1, 1.05);
+    head.position.set(1.05, 0.74, 0);
     head.castShadow = true;
     g.add(head);
 
-    // === MUZZLE === protrudes forward
-    const muzzle = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.20, 0.26), lionMat);
-    muzzle.position.set(1.18, 0.60, 0);
+    // === MUZZLE === protruding rounded shape
+    const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.14, 14, 10), lionMat);
+    muzzle.scale.set(1.4, 0.85, 1.0);
+    muzzle.position.set(1.27, 0.65, 0);
     muzzle.castShadow = true;
     g.add(muzzle);
     // Lower jaw — slightly open
-    const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.07, 0.24),
+    const jaw = new THREE.Mesh(new THREE.SphereGeometry(0.11, 12, 8),
       new THREE.MeshStandardMaterial({color: 0x9a8060, roughness:0.75}));
-    jaw.position.set(1.18, 0.50, 0);
+    jaw.scale.set(1.5, 0.5, 0.95);
+    jaw.position.set(1.27, 0.52, 0);
     g.add(jaw);
-    // Open mouth — water comes out here (dark cylinder)
+    // Mouth opening
     const mouth = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.06, 0.07, 0.04, 10),
+      new THREE.CylinderGeometry(0.06, 0.07, 0.05, 14),
       new THREE.MeshStandardMaterial({color: 0x080404, roughness:0.4})
     );
     mouth.rotation.z = Math.PI/2;
-    mouth.position.set(1.31, 0.55, 0);
+    mouth.position.set(1.40, 0.58, 0);
     g.add(mouth);
-    // Nose bridge — shape across the snout top
-    const noseBridge = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.05, 0.1), lionMat);
-    noseBridge.position.set(1.15, 0.72, 0);
-    g.add(noseBridge);
     // Nose
-    const nose = new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 5),
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6),
       new THREE.MeshStandardMaterial({color: 0x0a0606, roughness:0.5}));
-    nose.position.set(1.27, 0.71, 0);
+    nose.scale.set(1.1, 0.85, 1.0);
+    nose.position.set(1.39, 0.72, 0);
     g.add(nose);
 
-    // === EYES === almond shape with deep set
+    // === EYES === almond shape with brow ridge
     for(let s = -1; s <= 1; s += 2){
-      // eye socket recess
       const socket = new THREE.Mesh(
-        new THREE.BoxGeometry(0.1, 0.08, 0.04),
+        new THREE.SphereGeometry(0.06, 10, 8),
         new THREE.MeshStandardMaterial({color: 0x3a2818, roughness:0.7})
       );
-      socket.position.set(1.07, 0.78, s * 0.13);
+      socket.scale.set(1.2, 0.7, 0.5);
+      socket.position.set(1.13, 0.80, s * 0.12);
       g.add(socket);
-      // pupil
-      const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 5),
+      const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 6),
         new THREE.MeshStandardMaterial({color: 0x080404, roughness:0.4}));
-      pupil.position.set(1.10, 0.78, s * 0.13);
+      pupil.position.set(1.16, 0.80, s * 0.12);
       g.add(pupil);
-    }
-    // Brow ridges (carved lines above eyes)
-    for(let s = -1; s <= 1; s += 2){
-      const brow = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.04, 0.08),
-        new THREE.MeshStandardMaterial({color: 0x9a7a50, roughness:0.85}));
-      brow.position.set(1.0, 0.84, s * 0.12);
-      brow.rotation.z = -s * 0.15;
+      // brow ridge — curved torus arc
+      const brow = new THREE.Mesh(
+        new THREE.TorusGeometry(0.07, 0.02, 6, 12, Math.PI),
+        new THREE.MeshStandardMaterial({color: 0x9a7a50, roughness:0.85})
+      );
+      brow.position.set(1.10, 0.86, s * 0.12);
+      brow.rotation.x = -Math.PI/2;
+      brow.rotation.z = -s * 0.2;
       g.add(brow);
     }
 
-    // === EARS === small triangular tabs flat against head
+    // === EARS === rounded cones with inner ear
     for(let s = -1; s <= 1; s += 2){
-      const ear = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.10, 0.10), lionMat);
-      ear.position.set(0.86, 0.92, s * 0.14);
+      const ear = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.14, 14), lionMat);
+      ear.position.set(0.92, 0.95, s * 0.14);
+      ear.rotation.x = -0.2;
+      ear.rotation.z = -s * 0.35;
+      ear.castShadow = true;
       g.add(ear);
+      const innerEar = new THREE.Mesh(
+        new THREE.ConeGeometry(0.04, 0.08, 10),
+        new THREE.MeshStandardMaterial({color: 0x6a3018, roughness:0.85})
+      );
+      innerEar.position.set(0.95, 0.93, s * 0.15);
+      innerEar.rotation.x = -0.2;
+      innerEar.rotation.z = -s * 0.35;
+      g.add(innerEar);
     }
 
-    // === LEGS === thick rectangular pillars (like stone columns)
-    const legPos = [[0.40, 0.16],[0.40, -0.16],[-0.45, 0.16],[-0.45, -0.16]];
+    // === LEGS === tapered cylinders (thinner top, thicker bottom)
+    const legPos = [[0.45, 0.18],[0.45, -0.18],[-0.5, 0.18],[-0.5, -0.18]];
     legPos.forEach(([px, pz]) => {
-      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.4, 0.16), lionMat);
-      leg.position.set(px, 0.20, pz);
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.10, 0.42, 12), lionMat);
+      leg.position.set(px, 0.21, pz);
       leg.castShadow = true;
       g.add(leg);
-      // paw — slightly larger flat base
-      const paw = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.08, 0.20), lionMat);
-      paw.position.set(px, 0.04, pz);
+      // paw — flat ovoid
+      const paw = new THREE.Mesh(new THREE.SphereGeometry(0.10, 12, 8), lionMat);
+      paw.scale.set(1.2, 0.55, 1.2);
+      paw.position.set(px, 0.05, pz);
       paw.castShadow = true;
       g.add(paw);
-      // toe lines (3 small grooves on top of paw)
+      // 3 toes (small ovoids)
       for(let i = -1; i <= 1; i++){
-        const toe = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.025, 0.06),
-          new THREE.MeshStandardMaterial({color: 0x9a8060, roughness:0.8}));
-        toe.position.set(px + i * 0.06, 0.085, pz + 0.07);
+        const toe = new THREE.Mesh(
+          new THREE.SphereGeometry(0.025, 6, 5),
+          new THREE.MeshStandardMaterial({color: 0x9a8060, roughness:0.8})
+        );
+        toe.scale.set(1, 0.5, 1.5);
+        toe.position.set(px + i * 0.05, 0.09, pz + 0.075);
         g.add(toe);
       }
     });
 
-    // === TAIL === long, curving up over the rump
-    // segment 1 — near rump, going up and back
-    const tail1 = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.4, 6), lionMat);
-    tail1.rotation.z = Math.PI / 3;
-    tail1.position.set(-0.78, 0.62, 0);
-    tail1.castShadow = true;
-    g.add(tail1);
-    // segment 2 — going horizontal back
-    const tail2 = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.4, 6), lionMat);
-    tail2.rotation.z = Math.PI / 2;
-    tail2.position.set(-1.05, 0.85, 0);
-    tail2.castShadow = true;
-    g.add(tail2);
-    // tail tuft
-    const tuft = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), lionDarkMat);
-    tuft.scale.set(1.2, 0.9, 0.9);
-    tuft.position.set(-1.25, 0.85, 0);
+    // === TAIL === smooth curve via TubeGeometry along a CatmullRom curve
+    const tailCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(-0.62, 0.65, 0),
+      new THREE.Vector3(-0.85, 0.86, 0),
+      new THREE.Vector3(-1.10, 0.95, 0.05),
+      new THREE.Vector3(-1.32, 0.86, 0)
+    ]);
+    const tail = new THREE.Mesh(
+      new THREE.TubeGeometry(tailCurve, 20, 0.04, 10, false),
+      lionMat
+    );
+    tail.castShadow = true;
+    g.add(tail);
+    // Tail tuft — fluffy ovoid at end
+    const tuft = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 8), lionDarkMat);
+    tuft.scale.set(1.3, 0.85, 0.9);
+    tuft.position.set(-1.40, 0.86, 0);
     tuft.castShadow = true;
     g.add(tuft);
 
@@ -1096,12 +1358,12 @@ function buildLionFountain(x, z){
   for(let i = 0; i < 12; i++){
     const ang = (i / 12) * Math.PI * 2;
     scene.add(buildLion(x, z, ang));
-    // water spurt from the lion's mouth — mouth is at local x=1.31, world distance from center = 1.7+1.31 = ~3.0
-    const mouthDist = 1.7 + 1.31;
+    // water from lion's mouth — mouth is at local x=1.40 → world distance from center 1.7+1.40 = 3.10
+    const mouthDist = 1.7 + 1.40;
     const mouthX = x + Math.cos(ang) * mouthDist;
     const mouthZ = z + Math.sin(ang) * mouthDist;
     const fp = new FountainParticles({
-      origin: new THREE.Vector3(mouthX, 0.55, mouthZ),
+      origin: new THREE.Vector3(mouthX, 0.58, mouthZ),
       direction: new THREE.Vector3(Math.cos(ang) * 0.85, 0.15, Math.sin(ang) * 0.85),
       power: 2.4, spread: 0.04, spawnRate: 35, count: 60,
       floor: 0.05, lifeMin: 0.7, lifeMax: 1.0,
@@ -1230,16 +1492,130 @@ function addPool(xMin, xMax, zMin, zMax){ POOLS.push({xMin, xMax, zMin, zMax}); 
 function addBuilding(xMin, xMax, zMin, zMax){ BUILDINGS.push({xMin, xMax, zMin, zMax}); }
 
 // ========================================================================
-// GROUND TERRAIN
+// GROUND TERRAIN — Sabika hill with Alhambra plateau on top
 // ========================================================================
+// Heightmap function: Alhambra plateau at y=0, steep slopes around it,
+// Granada valley at lower elevation to the north and west, Sierra Nevada beyond.
+function getTerrainHeight(x, z){
+  // Plateau where complex sits — slightly larger than building footprint
+  const PLATEAU_X_MIN = -110, PLATEAU_X_MAX = 195;
+  const PLATEAU_Z_MIN = -34, PLATEAU_Z_MAX = 34;
+
+  // Distance from plateau edges (negative if inside)
+  let dx = 0;
+  if(x < PLATEAU_X_MIN) dx = PLATEAU_X_MIN - x;
+  else if(x > PLATEAU_X_MAX) dx = x - PLATEAU_X_MAX;
+  let dz = 0;
+  if(z < PLATEAU_Z_MIN) dz = PLATEAU_Z_MIN - z;
+  else if(z > PLATEAU_Z_MAX) dz = z - PLATEAU_Z_MAX;
+
+  // Total horizontal distance from the plateau boundary
+  const distFromEdge = Math.max(dx, dz);
+  if(distFromEdge <= 0) return 0; // on plateau
+
+  // The Alhambra sits about 25-30m above the Granada valley.
+  // Use exponential decay for steep cliff that gradually flattens
+  let h = -28 * (1 - Math.exp(-distFromEdge / 22));
+  // Beyond ~70m flatten out to a low valley/foothill level
+  if(distFromEdge > 70){
+    h = -28 - 0.04 * (distFromEdge - 70);
+  }
+  // Add gentle terrain noise
+  h += Math.sin(x * 0.04) * Math.cos(z * 0.05) * 1.6;
+  h += Math.sin(x * 0.11 + 2.0) * Math.cos(z * 0.09 + 1.0) * 0.8;
+  h += Math.sin((x + z) * 0.18) * 0.4;
+  return h;
+}
+
+// Build the terrain as a grid of vertices
+const groundSize = 600;
+const groundSegs = 200;
+const groundGeo = new THREE.PlaneGeometry(groundSize, groundSize, groundSegs, groundSegs);
+{
+  // Vertex grid — set Z (becomes Y after rotation) based on terrain function
+  const pos = groundGeo.attributes.position;
+  const colors = new Float32Array(pos.count * 3);
+  for(let i = 0; i < pos.count; i++){
+    const x = pos.getX(i);
+    const y = pos.getY(i);  // before rotation, this is the Z axis
+    const h = getTerrainHeight(x, y);
+    pos.setZ(i, h);
+    // Vertex colors based on elevation: dark earthy red on plateau (Alhambra red),
+    // ochre/sandy on slopes, green-brown in valley, gray/snow in mountains
+    let r, g, b;
+    if(h > -2){
+      // plateau / near-plateau red earth
+      r = 0.42; g = 0.24; b = 0.13;
+    } else if(h > -20){
+      // upper slope — tan/ochre
+      const t = (h + 20) / 18;
+      r = 0.42 - t * 0.12;
+      g = 0.24 + t * 0.06;
+      b = 0.13;
+    } else if(h > -32){
+      // lower slope — green-brown
+      const t = (h + 32) / 12;
+      r = 0.30 - t * 0.1;
+      g = 0.30 + t * 0.05;
+      b = 0.13 + t * 0.05;
+    } else {
+      // valley floor — green
+      r = 0.20; g = 0.32; b = 0.18;
+    }
+    // Add some color variation
+    const noise = (Math.sin(x * 0.7) * Math.cos(y * 0.8) + Math.sin(x * 1.3 + y) * 0.5) * 0.08;
+    colors[i*3]   = Math.max(0, r + noise);
+    colors[i*3+1] = Math.max(0, g + noise);
+    colors[i*3+2] = Math.max(0, b + noise);
+  }
+  groundGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  groundGeo.computeVertexNormals();
+}
 const ground = new THREE.Mesh(
-  new THREE.PlaneGeometry(800, 800),
-  new THREE.MeshStandardMaterial({color: 0x6b3d20, roughness:0.95})
+  groundGeo,
+  new THREE.MeshStandardMaterial({vertexColors: true, roughness:0.95})
 );
 ground.rotation.x = -Math.PI/2;
 ground.position.y = -0.05;
 ground.receiveShadow = true;
 scene.add(ground);
+
+// Granada city — clusters of small buildings down in the valley to the north and west
+function buildGranadaCity(){
+  const g = new THREE.Group();
+  const buildingMat = new THREE.MeshStandardMaterial({color: 0xb89878, roughness:0.9});
+  const roofMat = new THREE.MeshStandardMaterial({color: 0x6a3a28, roughness:0.85});
+  // City placement: north of plateau (z < -50) and west (x < -130) at low elevation
+  const placements = [];
+  // North district
+  for(let i = 0; i < 80; i++){
+    const x = -130 + Math.random() * 260;
+    const z = -50 - Math.random() * 80;
+    placements.push([x, z]);
+  }
+  // West district
+  for(let i = 0; i < 50; i++){
+    const x = -180 - Math.random() * 60;
+    const z = -50 + Math.random() * 100;
+    placements.push([x, z]);
+  }
+  placements.forEach(([x, z]) => {
+    const w = 2.5 + Math.random() * 2.5;
+    const d = 2.5 + Math.random() * 2.5;
+    const h = 2 + Math.random() * 4;
+    const yBase = getTerrainHeight(x, z);
+    const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), buildingMat);
+    b.position.set(x, yBase + h/2, z);
+    g.add(b);
+    // simple pitched roof
+    const r = new THREE.Mesh(new THREE.ConeGeometry(Math.max(w, d) * 0.7, 1.2, 4), roofMat);
+    r.rotation.y = Math.PI/4;
+    r.position.set(x, yBase + h + 0.6, z);
+    g.add(r);
+  });
+  return g;
+}
+scene.add(buildGranadaCity());
 
 // distant Sierra Nevada
 function buildMountains(){
@@ -1384,8 +1760,7 @@ scene.add(buildMountains());
 {
   const MX_LEN = 12, MX_WID = 12;
   const MX_CX = -19, MX_CZ = 0;
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(MX_LEN, MX_WID), MATS.marble());
-  floor.material.map.repeat.set(2, 2);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(MX_LEN, MX_WID), MATS.starPinwheel(3, 3));
   floor.rotation.x = -Math.PI/2;
   floor.position.set(MX_CX, 0.001, MX_CZ);
   floor.receiveShadow = true;
@@ -1527,6 +1902,7 @@ scene.add(buildMountains());
   const water = createWaterSurface(POOL_WID - 0.05, POOL_LEN - 0.05);
   water.position.y = -0.04;
   scene.add(water);
+  mainPoolWater = water;  // for cube camera reflection updates
   // fountains at pool ends
   buildJetFountain(0, -POOL_LEN/2 + 0.4, {radius: 0.55, power: 3.5});
   buildJetFountain(0, POOL_LEN/2 - 0.4, {radius: 0.55, power: 3.5});
@@ -1587,28 +1963,30 @@ scene.add(buildMountains());
   intFloor.receiveShadow = true;
   scene.add(intFloor);
 
-  // Interior decoration — khatem pattern panels on the 3 solid walls (north, east, west)
+  // Interior decoration — layered Alhambra wall texture, panels positioned from floor up
+  // so the zellige dado appears at floor level and stucco appears above it.
+  const intPanelH = COM_H - 1.0; // up to ceiling minus a small gap
   // North wall interior face
   const nIntPanel = new THREE.Mesh(
-    new THREE.PlaneGeometry(COM_W - 2*COM_WT - 0.4, COM_H * 0.65),
-    MATS.khatem(2.5, 2)
+    new THREE.PlaneGeometry(COM_W - 2*COM_WT - 0.4, intPanelH),
+    MATS.khatem(2.5, 1)
   );
-  nIntPanel.position.set(COM_CX, COM_H * 0.4, COM_CZ - COM_IHZ + 0.005);
+  nIntPanel.position.set(COM_CX, intPanelH/2, COM_CZ - COM_IHZ + 0.005);
   scene.add(nIntPanel);
   // West wall interior
   const wIntPanel = new THREE.Mesh(
-    new THREE.PlaneGeometry(COM_D - 2*COM_WT - 0.4, COM_H * 0.65),
-    MATS.khatem(2.5, 2)
+    new THREE.PlaneGeometry(COM_D - 2*COM_WT - 0.4, intPanelH),
+    MATS.khatem(2.5, 1)
   );
-  wIntPanel.position.set(COM_CX - COM_IHX + 0.005, COM_H * 0.4, COM_CZ);
+  wIntPanel.position.set(COM_CX - COM_IHX + 0.005, intPanelH/2, COM_CZ);
   wIntPanel.rotation.y = Math.PI/2;
   scene.add(wIntPanel);
   // East wall interior
   const eIntPanel = new THREE.Mesh(
-    new THREE.PlaneGeometry(COM_D - 2*COM_WT - 0.4, COM_H * 0.65),
-    MATS.khatem(2.5, 2)
+    new THREE.PlaneGeometry(COM_D - 2*COM_WT - 0.4, intPanelH),
+    MATS.khatem(2.5, 1)
   );
-  eIntPanel.position.set(COM_CX + COM_IHX - 0.005, COM_H * 0.4, COM_CZ);
+  eIntPanel.position.set(COM_CX + COM_IHX - 0.005, intPanelH/2, COM_CZ);
   eIntPanel.rotation.y = -Math.PI/2;
   scene.add(eIntPanel);
 
@@ -2109,29 +2487,56 @@ const dust = buildDust();
 scene.add(dust);
 
 // ============================================================================
-// LIGHTING
+// LIGHTING — golden hour with realistic intensity
 // ============================================================================
-const ambient = new THREE.AmbientLight(0xd4a574, 0.55);
+const ambient = new THREE.AmbientLight(0xc8a87a, 0.35);
 scene.add(ambient);
-const sun = new THREE.DirectionalLight(0xffd89e, 1.5);
-sun.position.set(-60, 50, 30);
+
+// Main sun — warm low-angle golden light
+const sun = new THREE.DirectionalLight(0xfde0a8, 3.5);
+sun.position.set(-80, 60, 35);
 sun.target.position.set(40, 0, 0);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(4096, 4096);
 sun.shadow.camera.near = 1;
-sun.shadow.camera.far = 200;
+sun.shadow.camera.far = 250;
 sun.shadow.camera.left = -120;
 sun.shadow.camera.right = 220;
 sun.shadow.camera.top = 60;
 sun.shadow.camera.bottom = -60;
-sun.shadow.bias = -0.0005;
+sun.shadow.bias = -0.0003;
+sun.shadow.normalBias = 0.04;
+sun.shadow.radius = 4;
 scene.add(sun);
 scene.add(sun.target);
-const fill = new THREE.DirectionalLight(0xc47a48, 0.4);
-fill.position.set(60, 25, -30);
+
+// Fill light from opposite side — cooler, simulates sky bounce
+const fill = new THREE.DirectionalLight(0x8ca8c8, 0.6);
+fill.position.set(70, 35, -40);
 scene.add(fill);
-const hemi = new THREE.HemisphereLight(0xc47a48, 0x3a1d10, 0.35);
+
+// Rim light for golden hour edge glow
+const rim = new THREE.DirectionalLight(0xff9050, 0.8);
+rim.position.set(40, 12, 80);
+scene.add(rim);
+
+// Hemisphere — sky/ground gradient
+const hemi = new THREE.HemisphereLight(0xa0b8c8, 0x3a1d10, 0.25);
 scene.add(hemi);
+
+// Visible sun disc — bright sphere at sun direction (will bloom dramatically)
+const sunDiscMat = new THREE.MeshBasicMaterial({color: 0xffe4a8, fog: false, transparent: true, opacity: 0.95});
+const sunDisc = new THREE.Mesh(new THREE.SphereGeometry(8, 24, 16), sunDiscMat);
+const sunDir = new THREE.Vector3(-80, 60, 35).normalize();
+sunDisc.position.copy(sunDir).multiplyScalar(280);
+scene.add(sunDisc);
+// Glow halo around the sun
+const sunGlow = new THREE.Mesh(
+  new THREE.SphereGeometry(16, 24, 16),
+  new THREE.MeshBasicMaterial({color: 0xffc070, fog: false, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false})
+);
+sunGlow.position.copy(sunDisc.position);
+scene.add(sunGlow);
 
 // ============================================================================
 // CONTROLS
@@ -2467,13 +2872,78 @@ function animate(){
   updateCompass();
   updateMinimap();
 
-  renderer.render(scene, camera);
+  // Update real-time reflections for the main pool every N frames
+  if(mainPoolWater){
+    reflectionFrameCounter++;
+    if(reflectionFrameCounter >= reflectionUpdateInterval){
+      reflectionFrameCounter = 0;
+      mainPoolWater.visible = false;
+      reflectionCamera.update(renderer, scene);
+      mainPoolWater.visible = true;
+      // Apply the captured envmap to the main pool water
+      if(!mainPoolWater.material.uniforms.uEnvMap.value){
+        mainPoolWater.material.uniforms.uEnvMap.value = reflectionTarget.texture;
+        mainPoolWater.material.uniforms.uHasEnvMap.value = 1.0;
+      }
+    }
+  }
+
+  if(composer){
+    composer.render();
+  } else {
+    renderer.render(scene, camera);
+  }
+}
+
+// ============================================================================
+// POST-PROCESSING (bloom + FXAA antialiasing)
+// ============================================================================
+let composer = null;
+let bloomPass = null;
+try {
+  if(typeof THREE.EffectComposer !== 'undefined' &&
+     typeof THREE.RenderPass !== 'undefined' &&
+     typeof THREE.UnrealBloomPass !== 'undefined'){
+    composer = new THREE.EffectComposer(renderer);
+    composer.setSize(window.innerWidth, window.innerHeight);
+    composer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    composer.addPass(new THREE.RenderPass(scene, camera));
+
+    // Bloom — gives sun specular and bright surfaces a realistic glow
+    bloomPass = new THREE.UnrealBloomPass(
+      new THREE.Vector2(window.innerWidth, window.innerHeight),
+      0.55,  // strength
+      0.5,   // radius
+      0.78   // threshold (only pixels brighter than this bloom)
+    );
+    composer.addPass(bloomPass);
+
+    // FXAA antialiasing pass
+    if(typeof THREE.ShaderPass !== 'undefined' && typeof THREE.FXAAShader !== 'undefined'){
+      const fxaa = new THREE.ShaderPass(THREE.FXAAShader);
+      const pixelRatio = renderer.getPixelRatio();
+      fxaa.material.uniforms['resolution'].value.x = 1 / (window.innerWidth * pixelRatio);
+      fxaa.material.uniforms['resolution'].value.y = 1 / (window.innerHeight * pixelRatio);
+      composer.addPass(fxaa);
+    }
+
+    console.log('[ALHAMBRA] Post-processing enabled with bloom + FXAA');
+  } else {
+    console.log('[ALHAMBRA] Post-processing not available, using direct rendering');
+  }
+} catch(e){
+  console.warn('[ALHAMBRA] Post-processing setup failed:', e);
+  composer = null;
 }
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  if(composer){
+    composer.setSize(window.innerWidth, window.innerHeight);
+  }
 });
 
 // ============================================================================
