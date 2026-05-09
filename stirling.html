@@ -626,6 +626,11 @@
         <!-- Displacer rod going up through lid -->
         <line id="displacerRod" x1="150" y1="260" x2="150" y2="120" stroke="#3a3530" stroke-width="1.4"/>
 
+        <!-- Stand post (drawn before flywheel so wheel covers most of it) -->
+        <rect x="217" y="105" width="6" height="90" fill="#9a958c" stroke="#5a564e" stroke-width="0.4"/>
+        <!-- Base where post meets lid -->
+        <rect x="213" y="192" width="14" height="4" fill="#7e7a72" stroke="#5a564e" stroke-width="0.4"/>
+
         <!-- ===== FLYWHEEL ===== -->
         <g id="flywheel" transform-origin="220 105">
           <!-- Outer rim -->
@@ -645,9 +650,6 @@
         </g>
 
         <!-- Connecting rods overlay (drawn dynamically too — but we'll keep simple) -->
-
-        <!-- Stand bar holding flywheel axle -->
-        <rect x="190" y="195" width="6" height="30" fill="#9a958c" stroke="#5a564e" stroke-width="0.4"/>
 
         <!-- Heat arrows from below -->
         <g id="heatArrows" opacity="0.7">
@@ -783,8 +785,9 @@
           <line x1="150" y1="265" x2="150" y2="120" stroke="#3a3530" stroke-width="1.4"/>
           <line x1="150" y1="120" x2="220" y2="80" stroke="#3a3530" stroke-width="1.4"/>
 
-          <!-- Stand -->
-          <rect x="190" y="195" width="6" height="30" fill="#9a958c"/>
+          <!-- Stand post (correctly oriented up to flywheel) -->
+          <rect x="217" y="105" width="6" height="90" fill="#9a958c"/>
+          <rect x="213" y="192" width="14" height="4" fill="#7e7a72"/>
 
           <!-- Flywheel -->
           <circle cx="220" cy="105" r="40" fill="url(#metalGrad2)" stroke="#5a564e"/>
@@ -942,14 +945,17 @@
     pistonRod.setAttribute('x2', crankPinX);
     pistonRod.setAttribute('y2', crankPinY);
 
-    // Displacer: 90° ahead, so use sin(angle + 90°) = cos(angle)
-    const displacerY = displacerRest + Math.cos(angle) * displacerStroke;
+    // Displacer: 90° ahead. Pin starts at TOP of wheel (y=80), so its angle is -π/2.
+    // After flywheel rotates by `angle`, pin position is at (-π/2 + angle).
+    // displacerY needs to be HIGH (small cy) when pin is at top: cy = rest - cos(angle)*stroke
+    const displacerY = displacerRest - Math.cos(angle) * displacerStroke;
     displacer.setAttribute('cy', displacerY);
 
-    // Displacer rod: from (150, displacerY) up through lid to displacer crank pin
-    // Displacer crank pin is at wheelCx + crankR*cos(angle + 90°), wheelCy + crankR*sin(angle + 90°)
-    const dCrankX = wheelCx + crankR * Math.cos(angle + Math.PI/2);
-    const dCrankY = wheelCy + crankR * Math.sin(angle + Math.PI/2);
+    // Displacer rod: from (150, displacerY) up to displacer crank pin.
+    // Pin position = center + crankR * (cos(angle - π/2), sin(angle - π/2))
+    //              = center + crankR * (sin(angle), -cos(angle))
+    const dCrankX = wheelCx + crankR * Math.sin(angle);
+    const dCrankY = wheelCy - crankR * Math.cos(angle);
     // Two-segment rod: vertical from displacer up to top of lid, then angled to crank pin
     // Simpler: draw as straight line from displacer to crank pin
     displacerRod.setAttribute('x1', 150);
