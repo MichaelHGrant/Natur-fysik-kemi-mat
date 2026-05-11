@@ -1,0 +1,1654 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Damplokomotivet · 3D Mekanik & Termodynamik</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Lora:ital,wght@0,400;0,500;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep: #1a1410;
+    --bg-mid:  #221c16;
+    --bg-soft: #2d251c;
+    --line:    #3d3528;
+    --text:    #e8dfd2;
+    --muted:   #9a8e7e;
+    --brass:   #c9a25a;
+    --copper:  #b87333;
+    --fire:    #ff7a3d;
+    --steam:   #d4dde4;
+    --rust:    #8b4513;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--bg-deep);
+    color: var(--text);
+    font-family: 'Lora', Georgia, serif;
+    font-size: 17px;
+    line-height: 1.7;
+    overflow-x: hidden;
+    scroll-behavior: smooth;
+  }
+
+  /* Subtle grain texture */
+  body::before {
+    content: "";
+    position: fixed; inset: 0;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.08 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    opacity: 0.6;
+    z-index: 1000;
+    mix-blend-mode: overlay;
+  }
+
+  h1, h2, h3 {
+    font-family: 'Abril Fatface', 'Playfair Display', Georgia, serif;
+    font-weight: 400;
+    letter-spacing: 0.01em;
+    line-height: 1.1;
+  }
+
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* ============ HEADER ============ */
+  .topbar {
+    position: fixed; top: 0; left: 0; right: 0;
+    padding: 14px 28px;
+    display: flex; align-items: center; justify-content: space-between;
+    background: linear-gradient(180deg, rgba(26,20,16,0.92), rgba(26,20,16,0.6));
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+    z-index: 100;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .topbar .brand { color: var(--brass); }
+  .topbar nav a {
+    color: var(--muted);
+    text-decoration: none;
+    margin-left: 22px;
+    transition: color 0.2s;
+  }
+  .topbar nav a:hover { color: var(--text); }
+
+  /* ============ HERO ============ */
+  .hero {
+    position: relative;
+    min-height: 100vh;
+    padding: 90px 28px 40px;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    gap: 24px;
+  }
+
+  .hero-title {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: end;
+    gap: 40px;
+    padding: 0 8px;
+  }
+  .hero-title h1 {
+    font-size: clamp(48px, 9vw, 128px);
+    color: var(--text);
+    line-height: 0.92;
+  }
+  .hero-title h1 .accent {
+    color: var(--brass);
+    font-style: italic;
+    display: inline-block;
+  }
+  .hero-meta {
+    text-align: right;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    line-height: 1.9;
+  }
+  .hero-meta strong { color: var(--brass); font-weight: 500; }
+
+  /* ============ 3D STAGE ============ */
+  .stage {
+    position: relative;
+    background: radial-gradient(ellipse at center, #2a2218 0%, #14100c 80%);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    overflow: hidden;
+    min-height: 70vh;
+    box-shadow:
+      inset 0 0 120px rgba(0,0,0,0.6),
+      0 30px 80px rgba(0,0,0,0.4);
+  }
+  #scene-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+  }
+  #scene-canvas:active { cursor: grabbing; }
+
+  /* Corner brackets - editorial detail */
+  .stage::before, .stage::after {
+    content: "";
+    position: absolute;
+    width: 24px; height: 24px;
+    border-color: var(--brass);
+    pointer-events: none;
+    z-index: 5;
+  }
+  .stage::before {
+    top: 12px; left: 12px;
+    border-top: 1px solid; border-left: 1px solid;
+  }
+  .stage::after {
+    bottom: 12px; right: 12px;
+    border-bottom: 1px solid; border-right: 1px solid;
+  }
+
+  /* ============ HUD / CONTROLS ============ */
+  .hud {
+    position: absolute;
+    bottom: 24px; left: 24px; right: 24px;
+    display: flex; gap: 16px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    pointer-events: none;
+    z-index: 10;
+  }
+  .panel {
+    background: rgba(20, 16, 12, 0.85);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--line);
+    padding: 14px 18px;
+    pointer-events: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .panel-title {
+    color: var(--brass);
+    margin-bottom: 10px;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+  }
+
+  .controls { display: flex; flex-direction: column; gap: 10px; min-width: 240px; }
+  .ctrl-row { display: flex; align-items: center; gap: 12px; }
+  .ctrl-row label { color: var(--muted); flex: 0 0 80px; }
+  .ctrl-row input[type="range"] {
+    flex: 1; -webkit-appearance: none; appearance: none;
+    background: var(--bg-soft); height: 2px; outline: none;
+  }
+  .ctrl-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px; background: var(--brass);
+    border-radius: 0; cursor: pointer;
+    border: 1px solid var(--bg-deep);
+  }
+  .ctrl-row input[type="range"]::-moz-range-thumb {
+    width: 14px; height: 14px; background: var(--brass);
+    border-radius: 0; cursor: pointer;
+    border: 1px solid var(--bg-deep);
+  }
+  .ctrl-row .val { color: var(--text); min-width: 36px; text-align: right; }
+
+  .btn-group { display: flex; gap: 6px; flex-wrap: wrap; }
+  .btn {
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--muted);
+    padding: 6px 10px;
+    cursor: pointer;
+    font-family: inherit; font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    transition: all 0.2s;
+  }
+  .btn:hover { border-color: var(--brass); color: var(--text); }
+  .btn.active {
+    border-color: var(--brass);
+    background: rgba(201, 162, 90, 0.12);
+    color: var(--brass);
+  }
+
+  .readout { display: flex; flex-direction: column; gap: 6px; min-width: 180px; }
+  .readout-row { display: flex; justify-content: space-between; }
+  .readout-row .v { color: var(--text); }
+  .readout-row .v.fire { color: var(--fire); }
+  .readout-row .v.steam { color: var(--steam); }
+
+  /* ============ CONTENT SECTIONS ============ */
+  main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 80px 28px;
+  }
+
+  section { margin-bottom: 120px; }
+
+  .section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--brass);
+    margin-bottom: 14px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .section-label::before {
+    content: ""; width: 32px; height: 1px;
+    background: var(--brass);
+  }
+
+  h2 {
+    font-size: clamp(36px, 5.5vw, 64px);
+    margin-bottom: 32px;
+    max-width: 18ch;
+  }
+  h2 em { color: var(--brass); font-style: italic; }
+
+  .lead {
+    font-size: 22px;
+    line-height: 1.55;
+    color: var(--text);
+    max-width: 38ch;
+    margin-bottom: 48px;
+    font-style: italic;
+  }
+
+  .prose { max-width: 64ch; }
+  .prose p { margin-bottom: 1.2em; color: var(--text); }
+  .prose p + p { text-indent: 1.5em; }
+
+  /* Two-column layouts */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 60px;
+  }
+  @media (max-width: 800px) {
+    .grid-2 { grid-template-columns: 1fr; }
+  }
+
+  /* Drop caps */
+  .prose p:first-of-type::first-letter {
+    font-family: 'Abril Fatface', serif;
+    font-size: 4.2em;
+    float: left;
+    line-height: 0.85;
+    padding-right: 10px;
+    padding-top: 6px;
+    color: var(--brass);
+  }
+
+  /* Cycle steps */
+  .cycle {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--line);
+    margin: 40px 0;
+  }
+  .cycle-step {
+    background: var(--bg-mid);
+    padding: 28px 22px;
+    position: relative;
+  }
+  .cycle-step .n {
+    font-family: 'Abril Fatface', serif;
+    font-size: 56px;
+    line-height: 1;
+    color: var(--brass);
+    opacity: 0.7;
+    margin-bottom: 14px;
+  }
+  .cycle-step h4 {
+    font-family: 'Lora', serif;
+    font-weight: 500;
+    font-style: italic;
+    font-size: 18px;
+    margin-bottom: 10px;
+    color: var(--text);
+  }
+  .cycle-step p {
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  @media (max-width: 900px) {
+    .cycle { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 500px) {
+    .cycle { grid-template-columns: 1fr; }
+  }
+
+  /* Efficiency chart */
+  .eff-block {
+    background: var(--bg-mid);
+    border: 1px solid var(--line);
+    padding: 36px;
+    margin: 40px 0;
+  }
+  .eff-bars { display: flex; flex-direction: column; gap: 18px; margin-top: 26px; }
+  .eff-bar { display: grid; grid-template-columns: 200px 1fr 60px; align-items: center; gap: 16px; }
+  .eff-bar .lbl { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  .eff-bar .track {
+    background: var(--bg-deep);
+    height: 6px;
+    position: relative;
+    overflow: hidden;
+  }
+  .eff-bar .fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--copper), var(--brass));
+    width: 0;
+    transition: width 1.4s cubic-bezier(.2,.7,.2,1);
+  }
+  .eff-bar.theoretical .fill { background: linear-gradient(90deg, #4a6b7c, var(--steam)); }
+  .eff-bar.peak .fill { background: linear-gradient(90deg, var(--copper), var(--fire)); }
+  .eff-bar .pct {
+    text-align: right;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text);
+    font-size: 14px;
+  }
+
+  /* Loss table */
+  .loss {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 1px;
+    background: var(--line);
+    margin-top: 40px;
+  }
+  .loss > div {
+    background: var(--bg-mid);
+    padding: 16px 20px;
+  }
+  .loss .h {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--brass);
+  }
+  .loss .pct-cell {
+    font-family: 'JetBrains Mono', monospace;
+    text-align: right;
+    color: var(--text);
+  }
+
+  /* Pullquote */
+  blockquote {
+    border-left: 2px solid var(--brass);
+    padding: 24px 0 24px 32px;
+    margin: 48px 0;
+    font-family: 'Abril Fatface', serif;
+    font-size: 28px;
+    line-height: 1.3;
+    color: var(--text);
+    max-width: 24ch;
+  }
+  blockquote cite {
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-style: normal;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 16px;
+  }
+
+  /* Footer */
+  footer {
+    border-top: 1px solid var(--line);
+    padding: 40px 28px;
+    text-align: center;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+  footer .brass { color: var(--brass); }
+
+  /* Annotations on 3D */
+  .annotation {
+    position: absolute;
+    pointer-events: none;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--brass);
+    padding: 4px 8px;
+    background: rgba(20,16,12,0.7);
+    border-left: 1px solid var(--brass);
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+  .annotation.show { opacity: 1; }
+
+  @media (max-width: 700px) {
+    .hero-title { grid-template-columns: 1fr; }
+    .hero-meta { text-align: left; }
+    .hud { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">∴ Damplokomotivet</div>
+  <nav>
+    <a href="#mekanik">Mekanik</a>
+    <a href="#cyklus">Cyklus</a>
+    <a href="#effektivitet">Effektivitet</a>
+  </nav>
+</header>
+
+<!-- ============ HERO ============ -->
+<section class="hero">
+  <div class="hero-title">
+    <h1>Damp,<br>stål &amp;<br><span class="accent">tryk.</span></h1>
+    <div class="hero-meta">
+      <strong>Termodynamisk maskine</strong><br>
+      Rankine-cyklus · Stempelekspansion<br>
+      Kedeltryk · 12–17 bar<br>
+      Drej · zoom · træk for at udforske
+    </div>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="scene-canvas"></canvas>
+
+    <!-- Floating annotations -->
+    <div class="annotation" id="anno-boiler">↗ Kedel · 200°C damp</div>
+    <div class="annotation" id="anno-firebox">↘ Fyrkasse · forbrænding</div>
+    <div class="annotation" id="anno-piston">↑ Stempel &amp; cylinder</div>
+    <div class="annotation" id="anno-wheel">↓ Drivhjul &amp; krumtap</div>
+    <div class="annotation" id="anno-stack">↑ Skorsten · udstødning</div>
+
+    <div class="hud">
+      <div class="panel controls">
+        <div class="panel-title">Kontrol</div>
+
+        <div class="ctrl-row">
+          <label>Fart</label>
+          <input type="range" id="speed" min="0" max="100" value="35" />
+          <span class="val mono" id="speedVal">35</span>
+        </div>
+
+        <div class="ctrl-row">
+          <label>Tryk</label>
+          <input type="range" id="pressure" min="0" max="100" value="60" />
+          <span class="val mono" id="pressureVal">60</span>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn" data-view="side">Side</button>
+          <button class="btn active" data-view="three">¾</button>
+          <button class="btn" data-view="top">Top</button>
+          <button class="btn" data-view="detail">Detalje</button>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn" id="cutaway">Gennemskåret</button>
+          <button class="btn active" id="annoToggle">Mærker</button>
+        </div>
+      </div>
+
+      <div class="panel readout">
+        <div class="panel-title">Tilstand</div>
+        <div class="readout-row"><span>Hjul-omdr.</span><span class="v" id="rpm">0</span></div>
+        <div class="readout-row"><span>Kedel</span><span class="v fire" id="boilT">180°C</span></div>
+        <div class="readout-row"><span>Damp</span><span class="v steam" id="steamP">14 bar</span></div>
+        <div class="readout-row"><span>Effektivitet</span><span class="v" id="eta">7,2%</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<main>
+
+  <!-- ============ MEKANIK ============ -->
+  <section id="mekanik">
+    <div class="section-label">01 — Maskinen</div>
+    <h2>Hvordan en flamme bliver til <em>bevægelse</em>.</h2>
+    <p class="lead">Et damplokomotiv er et stykke termodynamik på hjul — en lukket forhandling mellem ild, vand, metal og tryk, hvor varme omdannes til mekanisk arbejde gennem et enkelt princip: dampen ekspanderer.</p>
+
+    <div class="grid-2">
+      <div class="prose">
+        <p>Forbrændingen i fyrkassen — kul, koks eller olie — frigør varme der ledes gennem snesevis af tynde rør gennem kedlen. Vandet rundt om rørene koger ved højt tryk, typisk mellem 12 og 17 bar, hvilket hæver kogepunktet til omkring 190–210 °C. Dette er ikke længere blot damp, men <em>mættet damp</em> med betydelig indre energi.</p>
+
+        <p>Dampen samles i dampdomen øverst på kedlen og styres derfra af regulatoren — førerens primære gashåndtag — gennem dampledninger frem til cylindrene foran. I mere avancerede konstruktioner ledes dampen først tilbage gennem overhederrørene, hvor temperaturen hæves yderligere til 350–400 °C uden at trykket stiger. Den <em>overhedede damp</em> er tør, energirig og betydeligt mere effektiv.</p>
+      </div>
+      <div class="prose">
+        <p>I cylinderen møder dampen stemplet. En skydeventil — styret mekanisk af samme hjuls bevægelse — slipper dampen ind på den ene side af stemplet, mens den brugte damp på den anden side ledes ud. Trykforskellen skubber stemplet, og en stempelstang overfører kraften ud af cylinderen.</p>
+
+        <p>Den lineære bevægelse omdannes til rotation gennem en <em>krumtap-mekanisme</em>: drivstangen forbinder stempelstangen med en krumtap-tap monteret excentrisk på drivhjulet. Når stemplet skydes frem og tilbage, tvinges hjulet rundt. Koblestænger overfører den samme rotation til de øvrige drivhjul, så lokomotivets samlede kraft hviler på flere aksler.</p>
+
+        <p>Den udstødte damp ledes ikke bort — den sendes opad gennem skorstenen, hvor den skaber et kraftigt sug i fyrkassen og dermed forstærker forbrændingen. Hver eneste damppuf er samtidig en pumpestation for ilden. Det er denne synergi mellem damp og fyr der gør lokomotivet selvforstærkende.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CYKLUS ============ -->
+  <section id="cyklus">
+    <div class="section-label">02 — Termodynamikken</div>
+    <h2>Rankine-cyklussen, <em>fire takter</em>.</h2>
+    <p class="lead">Den termodynamiske cyklus bag enhver dampmaskine — fra Stephensons Rocket til moderne kraftværker — følger fire faser af tryk, varme og ekspansion.</p>
+
+    <div class="cycle">
+      <div class="cycle-step">
+        <div class="n">01</div>
+        <h4>Pumpning</h4>
+        <p>Fødevand presses ind i kedlen mod kedeltrykket. På lokomotiver gøres dette af en injektor — paradoksalt nok drevet af dampen selv. Volumen næsten konstant.</p>
+      </div>
+      <div class="cycle-step">
+        <div class="n">02</div>
+        <h4>Opvarmning</h4>
+        <p>Vandet opvarmes ved konstant højt tryk indtil det fordamper. Forbrændingsgassen passerer gennem rør i kedlen og overdrager sin varme. Entalpien stiger drastisk.</p>
+      </div>
+      <div class="cycle-step">
+        <div class="n">03</div>
+        <h4>Ekspansion</h4>
+        <p>Den højtrykte damp ekspanderer adiabatisk mod stemplet og udfører mekanisk arbejde. Tryk og temperatur falder; det er her bevægelsen opstår.</p>
+      </div>
+      <div class="cycle-step">
+        <div class="n">04</div>
+        <h4>Udstødning</h4>
+        <p>Den brugte damp slippes ud — i lokomotivet direkte til atmosfæren via skorstenen. Cyklussen er åben: vand spildes, men sug genereres til fyret.</p>
+      </div>
+    </div>
+
+    <blockquote>
+      Hver eneste damppuf er en termodynamisk transaktion — varme omsat til kraft, og det resterende afgivet til himlen.
+      <cite>— om den åbne Rankine-cyklus</cite>
+    </blockquote>
+  </section>
+
+  <!-- ============ EFFEKTIVITET ============ -->
+  <section id="effektivitet">
+    <div class="section-label">03 — Effektivitet</div>
+    <h2>Hvorfor lokomotivet sjældent når <em>over 8%</em>.</h2>
+    <p class="lead">Carnots sætning sætter en øvre grænse for enhver varmemaskine. Et damplokomotiv arbejder mellem forbrændingens temperatur og atmosfæren — i teorien godt; i praksis frustrerende langt fra.</p>
+
+    <div class="prose">
+      <p>Carnot-virkningsgraden bestemmes alene af temperaturforholdet mellem varm og kold reservoir: η<sub>Carnot</sub> = 1 − T<sub>kold</sub>/T<sub>varm</sub>. Med en damptemperatur på 400 °C (673 K) og udledning til atmosfæren ved 100 °C (373 K) bliver det teoretiske maksimum omkring <span class="mono">44,5%</span>. Det er den ufravigelige termodynamiske grænse — og ingen damplokomotiv har nogensinde nærmet sig den.</p>
+
+      <p>I praksis topper konventionelle lokomotiver omkring <span class="mono">6–8%</span> samlet brændsels-til-træk effektivitet. De mest forfinede konstruktioner — André Chapelons modificerede franske maskiner i 1930'erne og 40'erne med tredobbelt ekspansion, lange overhedere og forbedrede gennemstrømninger — nåede op til <span class="mono">12–13%</span>. Det er rekorden.</p>
+    </div>
+
+    <div class="eff-block">
+      <div class="section-label" style="margin-bottom: 4px;">Sammenligning</div>
+      <div class="eff-bars">
+        <div class="eff-bar theoretical" data-pct="44.5">
+          <span class="lbl">Carnot · teoretisk</span>
+          <div class="track"><div class="fill"></div></div>
+          <span class="pct">44,5%</span>
+        </div>
+        <div class="eff-bar peak" data-pct="13">
+          <span class="lbl">Chapelon · rekord</span>
+          <div class="track"><div class="fill"></div></div>
+          <span class="pct">13%</span>
+        </div>
+        <div class="eff-bar" data-pct="7">
+          <span class="lbl">Typisk lokomotiv</span>
+          <div class="track"><div class="fill"></div></div>
+          <span class="pct">7%</span>
+        </div>
+        <div class="eff-bar" data-pct="4">
+          <span class="lbl">Tidlige maskiner</span>
+          <div class="track"><div class="fill"></div></div>
+          <span class="pct">4%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="prose">
+      <p>Forskellen mellem teori og praksis skyldes en kaskade af tab. Hvor bliver energien af?</p>
+    </div>
+
+    <div class="loss">
+      <div class="h">Tabskilde</div>
+      <div class="h">Årsag</div>
+      <div class="h pct-cell">Andel</div>
+
+      <div>Skorstenstab</div>
+      <div>Varme i udstødningsgassen forlader kedlen uudnyttet</div>
+      <div class="pct-cell">~20%</div>
+
+      <div>Stråling &amp; konvektion</div>
+      <div>Varmetab fra kedlen til omgivelserne trods isolering</div>
+      <div class="pct-cell">~5%</div>
+
+      <div>Ufuldstændig forbrænding</div>
+      <div>Ikke alt kulstof oxideres; sod og uforbrændt gas</div>
+      <div class="pct-cell">~10%</div>
+
+      <div>Kondensation i cylinder</div>
+      <div>Damp kondenserer på kolde cylindervægge og spilder energi</div>
+      <div class="pct-cell">~15%</div>
+
+      <div>Udstødnings­damp</div>
+      <div>Damp slippes ud før fuld ekspansion — drev til skorstenssug</div>
+      <div class="pct-cell">~35%</div>
+
+      <div>Mekanisk friktion</div>
+      <div>Stempler, lejer, koblestænger</div>
+      <div class="pct-cell">~5%</div>
+
+      <div class="h">→ Tilbage som trækkraft</div>
+      <div></div>
+      <div class="pct-cell h">~7%</div>
+    </div>
+
+    <blockquote>
+      En typisk damp-fyret hurtigtog brændte omkring et ton kul i timen — for at levere arbejde svarende til mindre end et moderne elbil-batteri.
+      <cite>— et perspektiv på praksis</cite>
+    </blockquote>
+
+    <div class="prose">
+      <p>Chapelons innovationer pegede mod en mere effektiv fremtid for dampen, men diesellokomotivet (~30% effektivitet) og elektrisk drift (~80% når energikilden iberegnes) overhalede teknologien i 1950'erne. Tilbage står damplokomotivet som en næsten poetisk maskine: hørbar, synlig, lugtbar termodynamik — og en påmindelse om hvor svært det er at oversætte varme til arbejde.</p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <span class="brass">∴</span> &nbsp; Termodynamik &amp; mekanik · interaktiv illustration &nbsp; <span class="brass">∴</span>
+</footer>
+
+<!-- Three.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+<script>
+/* =========================================================================
+   DAMPLOKOMOTIV — 3D SCENE
+   Krumtap-mekanisme, koblestænger, damppartikler, fyrglød.
+   ========================================================================= */
+
+(() => {
+  const canvas = document.getElementById('scene-canvas');
+  const stage  = document.getElementById('stage');
+
+  // Renderer
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.0;
+
+  // Scene
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x14100c);
+  scene.fog = new THREE.Fog(0x14100c, 14, 36);
+
+  // Camera
+  const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 200);
+  camera.position.set(7, 4.5, 9);
+  camera.lookAt(0, 1.2, 0);
+
+  // Controls
+  const controls = new THREE.OrbitControls(camera, canvas);
+  controls.target.set(0, 1.2, 0);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.minDistance = 4;
+  controls.maxDistance = 24;
+  controls.maxPolarAngle = Math.PI * 0.49;
+
+  // Lights
+  const hemi = new THREE.HemisphereLight(0x6b5a45, 0x1a1208, 0.35);
+  scene.add(hemi);
+
+  const keyLight = new THREE.DirectionalLight(0xfff0d8, 0.95);
+  keyLight.position.set(8, 12, 6);
+  keyLight.castShadow = true;
+  keyLight.shadow.mapSize.set(2048, 2048);
+  keyLight.shadow.camera.left   = -10;
+  keyLight.shadow.camera.right  =  10;
+  keyLight.shadow.camera.top    =  10;
+  keyLight.shadow.camera.bottom = -10;
+  keyLight.shadow.camera.near = 0.5;
+  keyLight.shadow.camera.far = 40;
+  keyLight.shadow.bias = -0.0008;
+  scene.add(keyLight);
+
+  const fillLight = new THREE.DirectionalLight(0x88aac8, 0.18);
+  fillLight.position.set(-6, 4, -4);
+  scene.add(fillLight);
+
+  const rimLight = new THREE.DirectionalLight(0xc9a25a, 0.28);
+  rimLight.position.set(-3, 3, 8);
+  scene.add(rimLight);
+
+  // Firebox glow (point light inside firebox)
+  const fireLight = new THREE.PointLight(0xff5a1f, 1.2, 5, 2);
+  fireLight.position.set(-2.4, 0.7, 0);
+  scene.add(fireLight);
+
+  // Ground plane (track bed)
+  const groundGeo = new THREE.PlaneGeometry(60, 30);
+  const groundMat = new THREE.MeshStandardMaterial({
+    color: 0x1c1611, roughness: 0.95, metalness: 0.05
+  });
+  const ground = new THREE.Mesh(groundGeo, groundMat);
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -0.35;
+  ground.receiveShadow = true;
+  scene.add(ground);
+
+  // Rails
+  function makeRail(zOffset) {
+    const railGeo = new THREE.BoxGeometry(40, 0.06, 0.08);
+    const railMat = new THREE.MeshStandardMaterial({
+      color: 0x6a5544, metalness: 0.7, roughness: 0.45
+    });
+    const rail = new THREE.Mesh(railGeo, railMat);
+    rail.position.set(0, -0.32, zOffset);
+    rail.castShadow = true; rail.receiveShadow = true;
+    scene.add(rail);
+  }
+  makeRail(0.9);
+  makeRail(-0.9);
+
+  // Sleepers (svejler)
+  const sleeperMat = new THREE.MeshStandardMaterial({
+    color: 0x2a1f15, roughness: 0.95
+  });
+  for (let i = -20; i <= 20; i += 0.8) {
+    const s = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.08, 2.3), sleeperMat);
+    s.position.set(i, -0.36, 0);
+    s.receiveShadow = true;
+    scene.add(s);
+  }
+
+  /* ==========================================================
+     MATERIALS
+     ========================================================== */
+  const matBoiler = new THREE.MeshStandardMaterial({
+    color: 0x1f1c18, metalness: 0.85, roughness: 0.35,
+    envMapIntensity: 0.6
+  });
+  const matBlackMetal = new THREE.MeshStandardMaterial({
+    color: 0x161310, metalness: 0.7, roughness: 0.5
+  });
+  const matBrass = new THREE.MeshStandardMaterial({
+    color: 0xc9a25a, metalness: 0.9, roughness: 0.25, envMapIntensity: 1.0
+  });
+  const matCopper = new THREE.MeshStandardMaterial({
+    color: 0xb87333, metalness: 0.85, roughness: 0.32
+  });
+  const matRust = new THREE.MeshStandardMaterial({
+    color: 0x5a3622, metalness: 0.5, roughness: 0.8
+  });
+  const matCab = new THREE.MeshStandardMaterial({
+    color: 0x3a2418, metalness: 0.3, roughness: 0.7
+  });
+  const matFire = new THREE.MeshStandardMaterial({
+    color: 0xff5a1f, emissive: 0xff3300, emissiveIntensity: 1.6
+  });
+  const matWindow = new THREE.MeshStandardMaterial({
+    color: 0x12181c, metalness: 0.2, roughness: 0.1, transparent: true, opacity: 0.85
+  });
+
+  /* ==========================================================
+     LOCOMOTIVE
+     X axis = length (front +X), Y = up, Z = side
+     ========================================================== */
+  const loco = new THREE.Group();
+  scene.add(loco);
+
+  // ==== Frame / chassis ====
+  const frameGeo = new THREE.BoxGeometry(7.2, 0.18, 1.5);
+  const frame = new THREE.Mesh(frameGeo, matBlackMetal);
+  frame.position.set(0, 0.3, 0);
+  frame.castShadow = true;
+  loco.add(frame);
+
+  // Side frames (longitudinal beams)
+  for (const z of [0.85, -0.85]) {
+    const beam = new THREE.Mesh(
+      new THREE.BoxGeometry(6.8, 0.35, 0.12),
+      matBlackMetal
+    );
+    beam.position.set(0, 0.42, z);
+    beam.castShadow = true;
+    loco.add(beam);
+  }
+
+  // ==== Boiler (main cylindrical body) ====
+  const boilerGroup = new THREE.Group();
+  loco.add(boilerGroup);
+
+  const boilerGeo = new THREE.CylinderGeometry(0.95, 0.95, 4.4, 48, 1, false);
+  const boiler = new THREE.Mesh(boilerGeo, matBoiler);
+  boiler.rotation.z = Math.PI / 2;
+  boiler.position.set(0.3, 1.65, 0);
+  boiler.castShadow = true;
+  boilerGroup.add(boiler);
+
+  // Boiler bands (rings around the boiler)
+  for (const x of [-1.5, -0.5, 0.5, 1.5]) {
+    const bandGeo = new THREE.TorusGeometry(0.96, 0.04, 8, 32);
+    const band = new THREE.Mesh(bandGeo, matBrass);
+    band.rotation.y = Math.PI / 2;
+    band.position.set(x + 0.3, 1.65, 0);
+    boilerGroup.add(band);
+  }
+
+  // Smokebox (front of boiler - slightly larger, dull)
+  const smokeboxGeo = new THREE.CylinderGeometry(1.0, 1.0, 1.2, 48);
+  const smokebox = new THREE.Mesh(smokeboxGeo, matBlackMetal);
+  smokebox.rotation.z = Math.PI / 2;
+  smokebox.position.set(3.1, 1.65, 0);
+  smokebox.castShadow = true;
+  loco.add(smokebox);
+
+  // Smokebox door (front circular plate with handle)
+  const doorGeo = new THREE.CircleGeometry(1.0, 48);
+  const door = new THREE.Mesh(doorGeo, matBlackMetal);
+  door.rotation.y = Math.PI / 2;
+  door.position.set(3.71, 1.65, 0);
+  loco.add(door);
+
+  // Door handle (centered)
+  const handleGeo = new THREE.TorusGeometry(0.18, 0.025, 8, 24);
+  const handle = new THREE.Mesh(handleGeo, matBrass);
+  handle.position.set(3.72, 1.65, 0);
+  handle.rotation.y = Math.PI / 2;
+  loco.add(handle);
+  const handleCross = new THREE.Mesh(
+    new THREE.BoxGeometry(0.02, 0.42, 0.04),
+    matBrass
+  );
+  handleCross.position.set(3.72, 1.65, 0);
+  loco.add(handleCross);
+  const handleCross2 = handleCross.clone();
+  handleCross2.rotation.x = Math.PI / 2;
+  loco.add(handleCross2);
+
+  // ==== Chimney / smokestack ====
+  const chimneyGroup = new THREE.Group();
+  chimneyGroup.position.set(2.9, 2.6, 0);
+  loco.add(chimneyGroup);
+
+  const chimneyBaseGeo = new THREE.CylinderGeometry(0.32, 0.4, 0.15, 24);
+  const chimneyBase = new THREE.Mesh(chimneyBaseGeo, matBlackMetal);
+  chimneyBase.position.y = 0;
+  chimneyGroup.add(chimneyBase);
+
+  const chimneyGeo = new THREE.CylinderGeometry(0.26, 0.3, 0.7, 24);
+  const chimney = new THREE.Mesh(chimneyGeo, matBlackMetal);
+  chimney.position.y = 0.45;
+  chimneyGroup.add(chimney);
+
+  const chimneyCapGeo = new THREE.CylinderGeometry(0.34, 0.28, 0.1, 24);
+  const chimneyCap = new THREE.Mesh(chimneyCapGeo, matBrass);
+  chimneyCap.position.y = 0.85;
+  chimneyGroup.add(chimneyCap);
+
+  // ==== Steam dome ====
+  const domeGroup = new THREE.Group();
+  domeGroup.position.set(0.8, 2.6, 0);
+  loco.add(domeGroup);
+
+  const domeBase = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.45, 0.5, 0.2, 24),
+    matBlackMetal
+  );
+  domeGroup.add(domeBase);
+
+  const dome = new THREE.Mesh(
+    new THREE.SphereGeometry(0.42, 24, 16, 0, Math.PI*2, 0, Math.PI*0.55),
+    matBrass
+  );
+  dome.position.y = 0.15;
+  domeGroup.add(dome);
+
+  // ==== Sand dome (smaller, in front of steam dome) ====
+  const sandDome = new THREE.Mesh(
+    new THREE.SphereGeometry(0.32, 20, 12, 0, Math.PI*2, 0, Math.PI*0.55),
+    matBlackMetal
+  );
+  sandDome.position.set(-0.6, 2.7, 0);
+  loco.add(sandDome);
+
+  // ==== Headlight ====
+  const headlightHousing = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.18, 0.18, 0.25, 16),
+    matBrass
+  );
+  headlightHousing.rotation.z = Math.PI / 2;
+  headlightHousing.position.set(3.82, 2.4, 0);
+  loco.add(headlightHousing);
+
+  const headlightLens = new THREE.Mesh(
+    new THREE.CircleGeometry(0.15, 16),
+    new THREE.MeshStandardMaterial({
+      color: 0xfff2c8, emissive: 0xfff0a0, emissiveIntensity: 0.7
+    })
+  );
+  headlightLens.rotation.y = Math.PI / 2;
+  headlightLens.position.set(3.95, 2.4, 0);
+  loco.add(headlightLens);
+
+  // Headlight glow
+  const headLightPoint = new THREE.PointLight(0xfff0c0, 0.5, 4, 2);
+  headLightPoint.position.set(4.2, 2.4, 0);
+  loco.add(headLightPoint);
+
+  // ==== Cab ====
+  const cabGroup = new THREE.Group();
+  cabGroup.position.set(-2.9, 2.0, 0);
+  loco.add(cabGroup);
+
+  // Cab body
+  const cab = new THREE.Mesh(
+    new THREE.BoxGeometry(1.5, 1.5, 1.9),
+    matCab
+  );
+  cab.castShadow = true;
+  cabGroup.add(cab);
+
+  // Cab roof (slightly larger)
+  const cabRoof = new THREE.Mesh(
+    new THREE.BoxGeometry(1.7, 0.08, 2.05),
+    matBlackMetal
+  );
+  cabRoof.position.y = 0.78;
+  cabGroup.add(cabRoof);
+
+  // Cab side windows
+  for (const z of [0.96, -0.96]) {
+    const win = new THREE.Mesh(
+      new THREE.BoxGeometry(0.55, 0.55, 0.04),
+      matWindow
+    );
+    win.position.set(0.1, 0.25, z);
+    cabGroup.add(win);
+  }
+
+  // Cab front window (looking forward into boiler)
+  const cabFront = new THREE.Mesh(
+    new THREE.BoxGeometry(0.04, 0.4, 0.7),
+    matWindow
+  );
+  cabFront.position.set(0.76, 0.25, 0);
+  cabGroup.add(cabFront);
+
+  // ==== Firebox (visible behind cab, below) ====
+  const fireboxGroup = new THREE.Group();
+  fireboxGroup.position.set(-2.4, 0.85, 0);
+  loco.add(fireboxGroup);
+
+  const firebox = new THREE.Mesh(
+    new THREE.BoxGeometry(1.2, 1.1, 1.7),
+    matBlackMetal
+  );
+  firebox.castShadow = true;
+  fireboxGroup.add(firebox);
+
+  // Fire glow inside (visible through small gap at bottom)
+  const fireGlowGeo = new THREE.BoxGeometry(1.0, 0.2, 1.5);
+  const fireGlow = new THREE.Mesh(fireGlowGeo, matFire);
+  fireGlow.position.set(0, -0.45, 0);
+  fireboxGroup.add(fireGlow);
+
+  // ==== Pilot (cowcatcher) at front ====
+  const pilotGroup = new THREE.Group();
+  pilotGroup.position.set(3.9, 0.1, 0);
+  loco.add(pilotGroup);
+
+  // Pilot bars (angled forward)
+  for (let i = 0; i < 5; i++) {
+    const bar = new THREE.Mesh(
+      new THREE.BoxGeometry(0.6, 0.06, 0.06),
+      matBlackMetal
+    );
+    const offset = (i - 2) * 0.18;
+    bar.position.set(0.18, 0.08 + Math.abs(offset) * 0.15, offset);
+    bar.rotation.z = -0.25;
+    pilotGroup.add(bar);
+  }
+  // Pilot frame
+  const pilotFrame = new THREE.Mesh(
+    new THREE.BoxGeometry(0.08, 0.5, 1.0),
+    matBlackMetal
+  );
+  pilotFrame.position.set(0.45, 0.25, 0);
+  pilotGroup.add(pilotFrame);
+
+  // Buffer / coupler at front
+  const buffer = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.1, 0.1, 0.3, 16),
+    matBrass
+  );
+  buffer.rotation.z = Math.PI / 2;
+  buffer.position.set(0.5, 0.55, 0);
+  pilotGroup.add(buffer);
+
+  /* ==========================================================
+     WHEELS — driving wheels + pilot truck
+     ========================================================== */
+  function createWheel(radius, color = 0x141210, hasCrank = false, crankAngle = 0) {
+    const wheel = new THREE.Group();
+    const wheelMat = new THREE.MeshStandardMaterial({
+      color, metalness: 0.7, roughness: 0.4
+    });
+
+    // Outer tire (torus) - the rim that contacts the rail
+    const tire = new THREE.Mesh(
+      new THREE.TorusGeometry(radius, radius * 0.13, 10, 36),
+      wheelMat
+    );
+    tire.castShadow = true;
+    wheel.add(tire);
+
+    // Inner rim band - thin ring inside the tire
+    const innerRim = new THREE.Mesh(
+      new THREE.TorusGeometry(radius * 0.85, radius * 0.04, 6, 32),
+      wheelMat
+    );
+    wheel.add(innerRim);
+
+    // Hub
+    const hub = new THREE.Mesh(
+      new THREE.CylinderGeometry(radius * 0.22, radius * 0.22, 0.22, 18),
+      matBrass
+    );
+    hub.rotation.x = Math.PI / 2;
+    wheel.add(hub);
+
+    // Spokes - thin radial bars from hub to inner rim
+    const numSpokes = 10;
+    for (let i = 0; i < numSpokes; i++) {
+      const ang = (i / numSpokes) * Math.PI * 2;
+      const spokeLen = radius * 0.85;
+      const spoke = new THREE.Mesh(
+        new THREE.BoxGeometry(spokeLen, radius * 0.07, 0.04),
+        wheelMat
+      );
+      // place spoke so it goes from center outward (centered on its midpoint)
+      spoke.position.x = Math.cos(ang) * spokeLen * 0.5;
+      spoke.position.y = Math.sin(ang) * spokeLen * 0.5;
+      spoke.rotation.z = ang;
+      wheel.add(spoke);
+    }
+
+    // Crank pin (offset from center) - this is where the connecting rod attaches
+    if (hasCrank) {
+      const crankR = radius * 0.65;
+      const pinGroup = new THREE.Group();
+      pinGroup.rotation.z = crankAngle; // initial phase
+      wheel.add(pinGroup);
+
+      const pin = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.07, 0.07, 0.25, 12),
+        matBrass
+      );
+      pin.rotation.x = Math.PI / 2;
+      pin.position.set(crankR, 0, 0.15);
+      pinGroup.add(pin);
+
+      // Counterweight - heavy crescent opposite the crank pin (real locos have this for balance)
+      const counterMat = new THREE.MeshStandardMaterial({
+        color: 0x141210, metalness: 0.7, roughness: 0.45
+      });
+      const counter = new THREE.Mesh(
+        new THREE.BoxGeometry(radius * 0.9, radius * 0.5, 0.06),
+        counterMat
+      );
+      // place opposite to the crank pin
+      counter.position.set(-crankR * 0.7, 0, 0.05);
+      pinGroup.add(counter);
+
+      wheel.userData.crankR = crankR;
+      wheel.userData.pin = pin;
+    }
+
+    return wheel;
+  }
+
+  // Driving wheels (large) - two pairs
+  const drivingRadius = 0.7;
+  const drivingWheels = []; // we'll store {group, side, x}
+
+  const drivingPositions = [
+    { x: -1.0 },
+    { x:  0.8 }
+  ];
+
+  for (const dp of drivingPositions) {
+    for (const side of [1, -1]) {
+      const wheel = createWheel(drivingRadius, 0x141210, true, 0);
+      wheel.position.set(dp.x, drivingRadius - 0.35, side * 1.0);
+      loco.add(wheel);
+      drivingWheels.push({ group: wheel, side, x: dp.x });
+    }
+  }
+
+  // Pilot wheels (small) at front
+  const pilotRadius = 0.35;
+  const pilotWheels = [];
+  for (const side of [1, -1]) {
+    const w = createWheel(pilotRadius, 0x141210, false);
+    w.position.set(3.0, pilotRadius - 0.35, side * 1.0);
+    loco.add(w);
+    pilotWheels.push(w);
+  }
+  // Trailing wheel pair (small) under cab
+  for (const side of [1, -1]) {
+    const w = createWheel(pilotRadius, 0x141210, false);
+    w.position.set(-2.6, pilotRadius - 0.35, side * 1.0);
+    loco.add(w);
+    pilotWheels.push(w);
+  }
+
+  /* ==========================================================
+     CYLINDER, PISTON & CONNECTING ROD
+     The actual mechanism. One per side.
+     ========================================================== */
+  const cylinderX = 2.4;       // cylinder center X
+  const cylinderY = drivingRadius - 0.35; // align with driving wheel axis
+  const pistonGroups = [];
+
+  for (const side of [1, -1]) {
+    const zPos = side * 1.05;
+
+    // Cylinder housing (box wrapping around)
+    const cylHousing = new THREE.Mesh(
+      new THREE.BoxGeometry(1.0, 0.55, 0.45),
+      matBlackMetal
+    );
+    cylHousing.position.set(cylinderX, cylinderY, zPos);
+    cylHousing.castShadow = true;
+    loco.add(cylHousing);
+
+    // Cylinder end caps (brass)
+    for (const dx of [-0.51, 0.51]) {
+      const cap = new THREE.Mesh(
+        new THREE.BoxGeometry(0.03, 0.5, 0.4),
+        matBrass
+      );
+      cap.position.set(cylinderX + dx, cylinderY, zPos);
+      loco.add(cap);
+    }
+
+    // Visible piston rod emerging from rear of cylinder toward driving wheels
+    const pistonRod = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.04, 0.04, 0.6, 12),
+      matBrass
+    );
+    pistonRod.rotation.z = Math.PI / 2;
+    // we will position this dynamically
+    loco.add(pistonRod);
+
+    // Crosshead (small block that slides at end of piston rod)
+    const crosshead = new THREE.Mesh(
+      new THREE.BoxGeometry(0.18, 0.16, 0.12),
+      matBrass
+    );
+    loco.add(crosshead);
+
+    // Connecting rod (from crosshead to crank pin on second driving wheel)
+    const connRod = new THREE.Mesh(
+      new THREE.BoxGeometry(1.0, 0.08, 0.05),
+      matBrass
+    );
+    loco.add(connRod);
+
+    pistonGroups.push({
+      side, zPos,
+      pistonRod, crosshead, connRod,
+      targetWheelX: 0.8 // the wheel this connects to
+    });
+  }
+
+  /* ==========================================================
+     COUPLING RODS — connect both driving wheels per side
+     These are parallel to wheel motion, attached at crank pins
+     ========================================================== */
+  const couplingRods = [];
+  for (const side of [1, -1]) {
+    const rod = new THREE.Mesh(
+      new THREE.BoxGeometry(1.8, 0.06, 0.04),
+      matBrass
+    );
+    loco.add(rod);
+    couplingRods.push({ side, mesh: rod, zPos: side * 1.13 });
+  }
+
+  /* ==========================================================
+     STEAM PARTICLES (chimney puffs)
+     ========================================================== */
+  const NUM_PUFFS = 60;
+  const puffs = [];
+  const puffGeo = new THREE.SphereGeometry(0.18, 8, 6);
+
+  for (let i = 0; i < NUM_PUFFS; i++) {
+    const mat = new THREE.MeshStandardMaterial({
+      color: 0xd4dde4,
+      transparent: true,
+      opacity: 0,
+      emissive: 0xfff0e0,
+      emissiveIntensity: 0.05,
+      roughness: 1,
+      metalness: 0
+    });
+    const m = new THREE.Mesh(puffGeo, mat);
+    m.visible = false;
+    scene.add(m);
+    puffs.push({
+      mesh: m,
+      life: 0,
+      maxLife: 0,
+      vx: 0, vy: 0, vz: 0,
+      scale: 1
+    });
+  }
+
+  function emitPuff() {
+    // find a dead puff
+    for (const p of puffs) {
+      if (p.life <= 0) {
+        // chimney top in world space
+        const worldPos = new THREE.Vector3();
+        chimneyCap.getWorldPosition(worldPos);
+        p.mesh.position.copy(worldPos);
+        p.mesh.position.y += 0.15;
+        p.mesh.position.x += (Math.random() - 0.5) * 0.1;
+        p.mesh.position.z += (Math.random() - 0.5) * 0.1;
+        p.maxLife = 2.5 + Math.random() * 1.5;
+        p.life = p.maxLife;
+        p.vx = -0.4 + (Math.random() - 0.5) * 0.4; // drift backward
+        p.vy = 1.6 + Math.random() * 0.8;
+        p.vz = (Math.random() - 0.5) * 0.3;
+        p.scale = 0.3;
+        p.mesh.scale.setScalar(p.scale);
+        p.mesh.material.opacity = 0;
+        p.mesh.visible = true;
+        return;
+      }
+    }
+  }
+
+  /* ==========================================================
+     FIRE FLICKER particles inside firebox
+     ========================================================== */
+  const fireParticles = [];
+  for (let i = 0; i < 8; i++) {
+    const m = new THREE.Mesh(
+      new THREE.SphereGeometry(0.12, 6, 4),
+      new THREE.MeshBasicMaterial({
+        color: 0xff5a1f,
+        transparent: true,
+        opacity: 0.7
+      })
+    );
+    m.position.set(
+      -2.4 + (Math.random() - 0.5) * 0.8,
+      0.5 + Math.random() * 0.2,
+      (Math.random() - 0.5) * 1.3
+    );
+    scene.add(m);
+    fireParticles.push({ mesh: m, phase: Math.random() * Math.PI * 2 });
+  }
+
+  /* ==========================================================
+     ANIMATION STATE
+     ========================================================== */
+  const state = {
+    speed: 0.35,            // 0..1
+    pressure: 0.6,          // 0..1 (affects steam emission)
+    wheelAngle: 0,
+    puffTimer: 0,
+    cutaway: false,
+    showAnnotations: true,
+    boilerVisible: true
+  };
+
+  /* ==========================================================
+     UPDATE MECHANISM EACH FRAME
+     ========================================================== */
+  function updateMechanism(dt) {
+    // Rotation speed scales with speed setting
+    const omega = state.speed * 6.0; // radians per second at max
+    state.wheelAngle += omega * dt;
+
+    // Wheel rotation
+    for (const d of drivingWheels) {
+      d.group.rotation.z = -state.wheelAngle;
+    }
+    // Pilot wheels rotate proportionally to maintain ground-roll illusion
+    // (but they're a different radius, so scale)
+    const pilotOmegaRatio = drivingRadius / pilotRadius;
+    for (const w of pilotWheels) {
+      w.rotation.z = -state.wheelAngle * pilotOmegaRatio;
+    }
+
+    // Crank-slider mechanism per side
+    const crankR = drivingRadius * 0.65;
+    const rodL = 1.95; // connecting rod length (must be > distance from wheel to crosshead at any angle)
+
+    for (const pg of pistonGroups) {
+      // Crank pin position relative to driving wheel (wheel at targetWheelX, cylinderY)
+      const theta = -state.wheelAngle; // wheel angle
+      const wheelCX = pg.targetWheelX;
+      const wheelCY = cylinderY;
+
+      // Pin position in world (locomotive local)
+      const pinX = wheelCX + Math.cos(theta) * crankR;
+      const pinY = wheelCY + Math.sin(theta) * crankR;
+
+      // The crosshead slides horizontally at the same Y as wheel center (idealized)
+      // Solve: distance from crosshead to pin = rodL
+      // crosshead at (crossX, wheelCY)
+      // crossX = pinX + sqrt(rodL^2 - (pinY - wheelCY)^2)
+      const dy = pinY - wheelCY;
+      const dx = Math.sqrt(Math.max(0, rodL*rodL - dy*dy));
+      const crossX = pinX + dx;
+      const crossY = wheelCY;
+
+      // Position crosshead
+      pg.crosshead.position.set(crossX, crossY, pg.zPos);
+
+      // Piston rod: from crosshead back into cylinder
+      // cylinder rear face is at cylinderX - 0.5
+      // piston rod center: midway between crosshead and (cylinderX - 0.3)
+      const rodRearX = cylinderX - 0.45;
+      const rodCenterX = (crossX + rodRearX) / 2;
+      const rodLen = Math.abs(crossX - rodRearX);
+      pg.pistonRod.position.set(rodCenterX, crossY, pg.zPos);
+      pg.pistonRod.scale.x = Math.max(0.01, rodLen / 0.6);
+
+      // Connecting rod: from crosshead to pin
+      const midX = (crossX + pinX) / 2;
+      const midY = (crossY + pinY) / 2;
+      const connLen = Math.hypot(crossX - pinX, crossY - pinY);
+      const angle = Math.atan2(pinY - crossY, pinX - crossX);
+      // Rod is on the OUTER side of the wheel (push it outward in Z)
+      pg.connRod.position.set(midX, midY, pg.zPos + 0.06);
+      pg.connRod.rotation.z = angle;
+      pg.connRod.scale.x = connLen / 1.0;
+    }
+
+    // Coupling rods: connect both driving wheel crank pins on each side
+    // For simplicity assume both wheels rotate in phase (real locos do this)
+    for (const cr of couplingRods) {
+      const theta = -state.wheelAngle;
+      const w1x = drivingPositions[0].x + Math.cos(theta) * crankR;
+      const w1y = cylinderY + Math.sin(theta) * crankR;
+      const w2x = drivingPositions[1].x + Math.cos(theta) * crankR;
+      const w2y = cylinderY + Math.sin(theta) * crankR;
+
+      const midX = (w1x + w2x) / 2;
+      const midY = (w1y + w2y) / 2;
+      const len = Math.hypot(w2x - w1x, w2y - w1y);
+      const ang = Math.atan2(w2y - w1y, w2x - w1x);
+
+      cr.mesh.position.set(midX, midY, cr.zPos);
+      cr.mesh.rotation.z = ang;
+      cr.mesh.scale.x = len / 1.8;
+    }
+  }
+
+  /* ==========================================================
+     STEAM PUFF UPDATE
+     ========================================================== */
+  function updateSteam(dt) {
+    // Emit puffs at regular intervals when running
+    // Real loco: 4 puffs per wheel revolution (2 cylinders × 2 strokes)
+    // Frequency = 4 * omega / (2*PI) = 2*omega/PI per second
+    const omega = state.speed * 6.0;
+    const puffFreq = 2 * omega / Math.PI; // puffs per second
+    state.puffTimer += dt;
+
+    if (state.speed > 0.02 && puffFreq > 0) {
+      const interval = 1 / puffFreq;
+      while (state.puffTimer >= interval) {
+        state.puffTimer -= interval;
+        // Number of puffs scales with pressure
+        const count = 1 + Math.floor(state.pressure * 2);
+        for (let i = 0; i < count; i++) emitPuff();
+      }
+    } else {
+      state.puffTimer = 0;
+    }
+
+    // Update existing puffs
+    for (const p of puffs) {
+      if (p.life > 0) {
+        p.life -= dt;
+        const t = 1 - (p.life / p.maxLife); // 0 to 1
+        p.mesh.position.x += p.vx * dt;
+        p.mesh.position.y += p.vy * dt;
+        p.mesh.position.z += p.vz * dt;
+        p.vy *= 0.992; // slow rise
+        p.vx *= 0.998;
+
+        // Grow
+        p.scale = 0.3 + t * 1.4;
+        p.mesh.scale.setScalar(p.scale);
+
+        // Fade in then out
+        let op;
+        if (t < 0.2) op = t / 0.2 * 0.85;
+        else op = (1 - t) * 0.85;
+        p.mesh.material.opacity = op;
+
+        if (p.life <= 0) {
+          p.mesh.visible = false;
+        }
+      }
+    }
+  }
+
+  /* ==========================================================
+     FIRE FLICKER UPDATE
+     ========================================================== */
+  function updateFire(t) {
+    for (const f of fireParticles) {
+      const ph = t * 3 + f.phase;
+      const flicker = 0.5 + 0.5 * Math.sin(ph) + 0.3 * Math.sin(ph * 2.7);
+      f.mesh.material.opacity = 0.4 + flicker * 0.4;
+      f.mesh.scale.setScalar(0.8 + flicker * 0.4);
+    }
+    // Modulate firebox light
+    fireLight.intensity = 0.9 + Math.sin(t * 8) * 0.2 + Math.sin(t * 13.3) * 0.15;
+
+    // Fire glow brightness depends on pressure
+    fireGlow.material.emissiveIntensity = 1.0 + state.pressure * 1.2 + Math.sin(t * 6) * 0.3;
+  }
+
+  /* ==========================================================
+     ANIMATION LOOP
+     ========================================================== */
+  const clock = new THREE.Clock();
+
+  function animate() {
+    requestAnimationFrame(animate);
+    const dt = Math.min(clock.getDelta(), 0.05);
+    const t = clock.getElapsedTime();
+
+    updateMechanism(dt);
+    updateSteam(dt);
+    updateFire(t);
+
+    // Update readouts
+    const rpm = Math.round(state.speed * 6.0 / (2 * Math.PI) * 60);
+    document.getElementById('rpm').textContent = rpm;
+    const boilT = Math.round(120 + state.pressure * 110);
+    document.getElementById('boilT').textContent = boilT + '°C';
+    const steamP = (8 + state.pressure * 12).toFixed(1);
+    document.getElementById('steamP').textContent = steamP + ' bar';
+    // Efficiency estimate (heuristic)
+    const eta = Math.min(8.5, 2 + state.pressure * 6.5 + state.speed * 1.5 - Math.abs(state.speed - 0.6) * 2).toFixed(1);
+    document.getElementById('eta').textContent = eta + '%';
+
+    controls.update();
+    updateAnnotations();
+    renderer.render(scene, camera);
+  }
+
+  /* ==========================================================
+     RESIZE HANDLING
+     ========================================================== */
+  function resize() {
+    const w = stage.clientWidth;
+    const h = stage.clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  /* ==========================================================
+     UI CONTROLS
+     ========================================================== */
+  const speedEl = document.getElementById('speed');
+  const speedVal = document.getElementById('speedVal');
+  speedEl.addEventListener('input', () => {
+    state.speed = speedEl.value / 100;
+    speedVal.textContent = speedEl.value;
+  });
+  state.speed = speedEl.value / 100;
+
+  const pressureEl = document.getElementById('pressure');
+  const pressureVal = document.getElementById('pressureVal');
+  pressureEl.addEventListener('input', () => {
+    state.pressure = pressureEl.value / 100;
+    pressureVal.textContent = pressureEl.value;
+  });
+  state.pressure = pressureEl.value / 100;
+
+  // View presets
+  const viewBtns = document.querySelectorAll('[data-view]');
+  const views = {
+    side:   { pos: [0, 1.6, 11], tgt: [0, 1.2, 0] },
+    three:  { pos: [7, 4.5, 9],  tgt: [0, 1.2, 0] },
+    top:    { pos: [0, 11, 0.1], tgt: [0, 0.5, 0] },
+    detail: { pos: [2.2, 1.4, 4.5], tgt: [0.5, 0.5, 0.8] }
+  };
+
+  function animateCameraTo(v) {
+    const startPos = camera.position.clone();
+    const startTgt = controls.target.clone();
+    const endPos = new THREE.Vector3(...v.pos);
+    const endTgt = new THREE.Vector3(...v.tgt);
+    const dur = 800;
+    const start = performance.now();
+    function step() {
+      const now = performance.now();
+      let p = Math.min(1, (now - start) / dur);
+      // ease
+      p = 1 - Math.pow(1 - p, 3);
+      camera.position.lerpVectors(startPos, endPos, p);
+      controls.target.lerpVectors(startTgt, endTgt, p);
+      if (p < 1) requestAnimationFrame(step);
+    }
+    step();
+  }
+
+  viewBtns.forEach(b => {
+    b.addEventListener('click', () => {
+      viewBtns.forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      animateCameraTo(views[b.dataset.view]);
+    });
+  });
+
+  // Cutaway: hide the boiler so user can see inside
+  const cutawayBtn = document.getElementById('cutaway');
+  cutawayBtn.addEventListener('click', () => {
+    state.cutaway = !state.cutaway;
+    cutawayBtn.classList.toggle('active', state.cutaway);
+    boilerGroup.visible = !state.cutaway;
+    smokebox.visible = !state.cutaway;
+    door.visible = !state.cutaway;
+  });
+
+  // Annotations toggle
+  const annoBtn = document.getElementById('annoToggle');
+  annoBtn.addEventListener('click', () => {
+    state.showAnnotations = !state.showAnnotations;
+    annoBtn.classList.toggle('active', state.showAnnotations);
+  });
+
+  /* ==========================================================
+     ANNOTATIONS — project 3D points to screen
+     ========================================================== */
+  const annoTargets = [
+    { id: 'anno-boiler',  pos: new THREE.Vector3( 0.3, 2.7, 0) },
+    { id: 'anno-firebox', pos: new THREE.Vector3(-2.4, 0.6, 0) },
+    { id: 'anno-piston',  pos: new THREE.Vector3( 2.4, 0.6, 1.05) },
+    { id: 'anno-wheel',   pos: new THREE.Vector3( 0.8, 0.0, 1.0) },
+    { id: 'anno-stack',   pos: new THREE.Vector3( 2.9, 3.6, 0) }
+  ];
+
+  function updateAnnotations() {
+    const rect = canvas.getBoundingClientRect();
+    for (const a of annoTargets) {
+      const el = document.getElementById(a.id);
+      if (!el) continue;
+      if (!state.showAnnotations) {
+        el.classList.remove('show');
+        continue;
+      }
+      const v = a.pos.clone();
+      v.project(camera);
+      const x = (v.x * 0.5 + 0.5) * rect.width;
+      const y = (-v.y * 0.5 + 0.5) * rect.height;
+      const inFront = v.z < 1;
+      if (inFront && x > 20 && x < rect.width - 100 && y > 20 && y < rect.height - 80) {
+        el.style.left = x + 'px';
+        el.style.top  = y + 'px';
+        el.classList.add('show');
+      } else {
+        el.classList.remove('show');
+      }
+    }
+  }
+
+  /* ==========================================================
+     EFFICIENCY BARS — animate when scrolled into view
+     ========================================================== */
+  const effBars = document.querySelectorAll('.eff-bar');
+  const observer = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (e.isIntersecting) {
+        const bar = e.target;
+        const pct = parseFloat(bar.dataset.pct);
+        // scale: 44.5% max → 100% width
+        const width = (pct / 44.5) * 100;
+        bar.querySelector('.fill').style.width = width + '%';
+        observer.unobserve(bar);
+      }
+    }
+  }, { threshold: 0.3 });
+  effBars.forEach(b => observer.observe(b));
+
+  // Kick off
+  animate();
+})();
+</script>
+</body>
+</html>
