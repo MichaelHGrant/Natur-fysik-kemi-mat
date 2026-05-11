@@ -1,0 +1,1872 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Turbiner · Vind, vand og gas — fysikken bag og brugen i Danmark</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@400;600;800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Base palette — cool industrial */
+    --bg-deep:   #0e1a23;
+    --bg-mid:    #142331;
+    --bg-soft:   #1c2e3d;
+    --line:      #2a3f52;
+    --line-soft: #1f3245;
+    --text:      #e6edf3;
+    --text-dim:  #b8c5d1;
+    --muted:     #8395a6;
+
+    /* Accent palette */
+    --steel:   #5a7d9a;
+    --aqua:    #4dc4d3;
+    --sky:     #7fb5dc;
+    --copper:  #d97a3f;
+    --brass:   #c89e5a;
+    --ember:   #ff8c47;
+    --flame:   #ffb05e;
+
+    /* Type-specific tints */
+    --wind:    #7fb5dc;
+    --water:   #4dc4d3;
+    --gas:     #e89455;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 64px;
+  }
+
+  body {
+    background: var(--bg-deep);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', -apple-system, system-ui, sans-serif;
+    font-size: 16.5px;
+    line-height: 1.65;
+    font-weight: 300;
+    overflow-x: hidden;
+  }
+
+  /* Background atmosphere */
+  body::before {
+    content: "";
+    position: fixed; inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse at 15% 10%, rgba(127, 181, 220, 0.06), transparent 50%),
+      radial-gradient(ellipse at 85% 70%, rgba(217, 122, 63, 0.05), transparent 50%),
+      radial-gradient(ellipse at 50% 100%, rgba(77, 196, 211, 0.04), transparent 60%);
+    z-index: -1;
+  }
+
+  /* Subtle grain */
+  body::after {
+    content: "";
+    position: fixed; inset: 0;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    opacity: 0.5;
+    z-index: 1000;
+    mix-blend-mode: overlay;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: 'Big Shoulders Display', 'Oswald', sans-serif;
+    font-weight: 800;
+    letter-spacing: 0.005em;
+    line-height: 1.05;
+    color: var(--text);
+  }
+
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+
+  /* ============ TOP BAR ============ */
+  .topbar {
+    position: fixed; top: 0; left: 0; right: 0;
+    height: 56px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 32px;
+    background: rgba(14, 26, 35, 0.88);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line);
+    z-index: 100;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .topbar .brand {
+    color: var(--brass);
+    font-weight: 500;
+  }
+  .topbar .brand .mark { color: var(--aqua); margin-right: 6px; }
+  .topbar nav {
+    display: flex;
+    gap: 24px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .topbar nav a {
+    color: var(--muted);
+    text-decoration: none;
+    transition: color 0.2s;
+    white-space: nowrap;
+  }
+  .topbar nav a:hover { color: var(--text); }
+  .topbar .back {
+    color: var(--muted);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  .topbar .back:hover { color: var(--aqua); }
+
+  @media (max-width: 720px) {
+    .topbar { padding: 0 16px; }
+    .topbar .back { display: none; }
+    .topbar nav { gap: 16px; font-size: 10px; }
+  }
+
+  /* ============ HERO ============ */
+  .hero {
+    padding: 140px 32px 80px;
+    max-width: 1200px;
+    margin: 0 auto;
+    position: relative;
+  }
+  .hero-meta {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--aqua);
+    margin-bottom: 22px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .hero-meta::before {
+    content: "";
+    display: inline-block;
+    width: 36px;
+    height: 1px;
+    background: var(--aqua);
+  }
+  .hero h1 {
+    font-size: clamp(48px, 8vw, 108px);
+    line-height: 0.92;
+    letter-spacing: -0.01em;
+    margin-bottom: 28px;
+  }
+  .hero h1 .accent { color: var(--aqua); }
+  .hero h1 .accent-w { color: var(--wind); }
+  .hero h1 .accent-g { color: var(--gas); }
+  .hero .lead {
+    font-size: clamp(17px, 1.5vw, 21px);
+    max-width: 720px;
+    color: var(--text-dim);
+    font-weight: 300;
+    line-height: 1.55;
+  }
+  .hero .lead em {
+    color: var(--brass);
+    font-style: normal;
+    font-weight: 500;
+  }
+
+  /* ============ SECTIONS ============ */
+  section {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 80px 32px;
+    position: relative;
+  }
+  @media (max-width: 720px) {
+    section { padding: 60px 18px; }
+    .hero { padding: 110px 18px 50px; }
+  }
+
+  .section-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .section-label .dot {
+    width: 8px; height: 8px;
+    background: var(--steel);
+    border-radius: 50%;
+  }
+  .section-label.wind .dot { background: var(--wind); box-shadow: 0 0 10px var(--wind); }
+  .section-label.water .dot { background: var(--water); box-shadow: 0 0 10px var(--water); }
+  .section-label.gas .dot { background: var(--gas); box-shadow: 0 0 10px var(--gas); }
+
+  section h2 {
+    font-size: clamp(40px, 6vw, 68px);
+    margin-bottom: 24px;
+    letter-spacing: -0.005em;
+  }
+  section h2 .accent { color: var(--aqua); }
+
+  section .lead {
+    font-size: 18px;
+    color: var(--text-dim);
+    max-width: 760px;
+    margin-bottom: 40px;
+    font-weight: 300;
+  }
+
+  section h3 {
+    font-size: 26px;
+    margin: 36px 0 14px;
+    color: var(--text);
+  }
+
+  section p {
+    color: var(--text-dim);
+    margin-bottom: 16px;
+    max-width: 720px;
+  }
+  section p em {
+    color: var(--brass);
+    font-style: normal;
+    font-weight: 500;
+  }
+
+  /* ============ TWO COLUMN ============ */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 60px;
+    align-items: start;
+  }
+  @media (max-width: 920px) {
+    .two-col { grid-template-columns: 1fr; gap: 30px; }
+  }
+
+  /* ============ FORMULA ============ */
+  .formula {
+    background: linear-gradient(135deg, var(--bg-mid), var(--bg-soft));
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--brass);
+    padding: 24px 28px;
+    margin: 24px 0;
+    border-radius: 2px;
+    font-family: 'IBM Plex Mono', monospace;
+    position: relative;
+  }
+  .formula .lbl {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .formula .eq {
+    font-size: 20px;
+    color: var(--brass);
+    font-weight: 500;
+    margin-bottom: 10px;
+  }
+  .formula .where {
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.7;
+  }
+  .formula sup, .formula sub {
+    font-size: 0.7em;
+  }
+
+  /* ============ STAGE / VISUALIZATION ============ */
+  .stage {
+    background: linear-gradient(180deg, #0a1620 0%, #122131 100%);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 28px;
+    margin: 32px 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .stage::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(rgba(45, 64, 80, 0.15) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(45, 64, 80, 0.15) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    opacity: 0.35;
+  }
+  .stage > * { position: relative; z-index: 1; }
+  .stage-canvas {
+    width: 100%;
+    height: 360px;
+    display: block;
+    margin: 0 auto;
+  }
+  @media (max-width: 600px) {
+    .stage-canvas { height: 280px; }
+  }
+  .stage-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .stage-title {
+    font-family: 'IBM Shoulders Display', sans-serif;
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-weight: 600;
+    font-size: 22px;
+    color: var(--text);
+    letter-spacing: 0.02em;
+  }
+  .stage-meta {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* ============ CONTROLS ============ */
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    align-items: center;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px dashed var(--line);
+  }
+  .control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    min-width: 180px;
+  }
+  .control-group label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+  }
+  .control-group label .val {
+    color: var(--aqua);
+    font-weight: 500;
+  }
+  .controls input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    background: var(--line);
+    border-radius: 2px;
+    outline: none;
+  }
+  .controls input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px; height: 16px;
+    background: var(--aqua);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(77, 196, 211, 0.5);
+    transition: transform 0.15s;
+  }
+  .controls input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+  .controls input[type="range"]::-moz-range-thumb {
+    width: 16px; height: 16px;
+    background: var(--aqua);
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 0 8px rgba(77, 196, 211, 0.5);
+  }
+
+  /* ============ READOUT ============ */
+  .readout {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 18px;
+    margin-top: 20px;
+    padding: 16px 20px;
+    background: rgba(0,0,0,0.25);
+    border-radius: 2px;
+    border: 1px solid var(--line-soft);
+  }
+  .readout-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .readout-item .lbl {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .readout-item .v {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 20px;
+    color: var(--text);
+    font-weight: 500;
+    transition: color 0.3s;
+  }
+  .readout-item .v.aqua { color: var(--aqua); }
+  .readout-item .v.brass { color: var(--brass); }
+  .readout-item .v.ember { color: var(--ember); }
+
+  /* ============ TOGGLE BUTTONS ============ */
+  .toggle-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+  }
+  .toggle-btn {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 9px 18px;
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--line);
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: 1px;
+  }
+  .toggle-btn:hover {
+    color: var(--text);
+    border-color: var(--steel);
+  }
+  .toggle-btn.active {
+    color: var(--bg-deep);
+    background: var(--water);
+    border-color: var(--water);
+  }
+
+  /* ============ CASE CARD ============ */
+  .case-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 20px;
+    margin: 30px 0;
+  }
+  .case-card {
+    background: linear-gradient(135deg, var(--bg-mid) 0%, rgba(20, 35, 49, 0.6) 100%);
+    border: 1px solid var(--line);
+    padding: 20px 22px;
+    border-radius: 2px;
+    position: relative;
+    transition: border-color 0.3s, transform 0.3s;
+  }
+  .case-card:hover {
+    border-color: var(--steel);
+    transform: translateY(-2px);
+  }
+  .case-card.wind { border-top: 2px solid var(--wind); }
+  .case-card.water { border-top: 2px solid var(--water); }
+  .case-card.gas { border-top: 2px solid var(--gas); }
+
+  .case-card .case-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .case-card h4 {
+    font-size: 22px;
+    margin-bottom: 8px;
+    color: var(--text);
+  }
+  .case-card .case-meta {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--brass);
+    margin-bottom: 10px;
+  }
+  .case-card p {
+    font-size: 14px;
+    color: var(--text-dim);
+    margin: 0;
+    line-height: 1.55;
+  }
+
+  /* ============ COMPARISON CHART ============ */
+  .eff-chart {
+    margin: 30px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .eff-row {
+    display: grid;
+    grid-template-columns: 200px 1fr 90px;
+    align-items: center;
+    gap: 18px;
+  }
+  @media (max-width: 600px) {
+    .eff-row { grid-template-columns: 1fr; gap: 6px; }
+  }
+  .eff-label {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-weight: 500;
+    color: var(--text);
+    font-size: 15px;
+  }
+  .eff-label .sub {
+    display: block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-top: 2px;
+    font-weight: 400;
+  }
+  .eff-bar-track {
+    height: 10px;
+    background: var(--line-soft);
+    border-radius: 1px;
+    position: relative;
+    overflow: hidden;
+  }
+  .eff-bar {
+    height: 100%;
+    border-radius: 1px;
+    transform-origin: left;
+    transform: scaleX(0);
+    transition: transform 1.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+  }
+  .eff-bar.fill { transform: scaleX(1); }
+  .eff-bar.wind { background: linear-gradient(90deg, var(--wind), #a4ceea); }
+  .eff-bar.water { background: linear-gradient(90deg, var(--water), #76dbe8); }
+  .eff-bar.gas { background: linear-gradient(90deg, var(--gas), #f5b27f); }
+  .eff-bar.steam { background: linear-gradient(90deg, var(--brass), #e0bf8a); }
+  .eff-bar.combined { background: linear-gradient(90deg, var(--ember), var(--flame)); }
+  .eff-val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text);
+    text-align: right;
+  }
+
+  /* ============ ENERGY MIX ============ */
+  .mix-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 18px;
+    margin: 30px 0;
+  }
+  .mix-card {
+    background: rgba(28, 46, 61, 0.5);
+    border: 1px solid var(--line);
+    padding: 24px 22px;
+    border-radius: 2px;
+    text-align: left;
+  }
+  .mix-card .mix-num {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-weight: 800;
+    font-size: 56px;
+    line-height: 1;
+    color: var(--aqua);
+    margin-bottom: 6px;
+  }
+  .mix-card.wind .mix-num { color: var(--wind); }
+  .mix-card.water .mix-num { color: var(--water); }
+  .mix-card.gas .mix-num { color: var(--gas); }
+  .mix-card .mix-num .unit {
+    font-size: 22px;
+    color: var(--muted);
+    font-weight: 600;
+    margin-left: 4px;
+  }
+  .mix-card .mix-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+  .mix-card p {
+    font-size: 14px;
+    margin: 0;
+    color: var(--text-dim);
+    line-height: 1.55;
+  }
+
+  /* ============ DIVIDER ============ */
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--line), transparent);
+    margin: 60px 0;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* ============ FOOTER ============ */
+  footer {
+    text-align: center;
+    padding: 60px 20px 40px;
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    border-top: 1px solid var(--line);
+    margin-top: 40px;
+  }
+  footer .brass { color: var(--brass); }
+  footer a { color: var(--aqua); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
+  /* ============ SVG ANIMATIONS ============ */
+  @keyframes rotate-cw {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  @keyframes rotate-ccw {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(-360deg); }
+  }
+  @keyframes flow-dash {
+    to { stroke-dashoffset: -40; }
+  }
+  @keyframes flow-dash-fast {
+    to { stroke-dashoffset: -80; }
+  }
+  @keyframes pulse-glow {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+  @keyframes bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+  }
+
+  .wind-streamline {
+    stroke-dasharray: 6 10;
+    animation: flow-dash 1.4s linear infinite;
+  }
+  .water-particle {
+    animation: pulse-glow 1.5s ease-in-out infinite;
+  }
+  .hot-gas {
+    animation: flow-dash-fast 0.9s linear infinite;
+  }
+
+  /* Spinning elements set their animation duration via JS or inline */
+  .rotor-blades {
+    transform-origin: center;
+  }
+  .shaft-spin {
+    transform-origin: center;
+  }
+
+  /* Highlight word styles for in-text emphasis */
+  .ink-wind { color: var(--wind); font-weight: 500; }
+  .ink-water { color: var(--water); font-weight: 500; }
+  .ink-gas { color: var(--gas); font-weight: 500; }
+  .ink-brass { color: var(--brass); font-weight: 500; }
+</style>
+</head>
+<body>
+
+<!-- ============ TOP BAR ============ -->
+<header class="topbar">
+  <div class="brand"><span class="mark">∴</span> Turbiner</div>
+  <nav aria-label="Sektioner">
+    <a href="#princip">Princip</a>
+    <a href="#vind">Vind</a>
+    <a href="#vand">Vand</a>
+    <a href="#gas">Gas</a>
+    <a href="#effektivitet">Effektivitet</a>
+    <a href="#danmark">Danmark</a>
+  </nav>
+  <a class="back" href="index.html">← Tilbage</a>
+</header>
+
+<!-- ============ HERO ============ -->
+<section class="hero">
+  <div class="hero-meta">Energi · Mekanik · Termodynamik</div>
+  <h1>
+    <span class="accent-w">Vind.</span>
+    <span class="accent">Vand.</span>
+    <span class="accent-g">Gas.</span><br>
+    Maskiner der<br>høster bevægelse.
+  </h1>
+  <p class="lead">
+    En turbine er en af menneskets mest elegante opfindelser: en roterende maskine der trækker
+    energi ud af en <em>strømmende fluid</em> — luft, vand eller varm gas — og leverer den som
+    rotation. Princippet er det samme overalt, men <em>fysikken</em> bag, <em>geometrien</em> og
+    <em>effektiviteten</em> varierer drastisk. Her er hvordan de virker — illustreret, animeret
+    og krydret med danske eksempler.
+  </p>
+</section>
+
+<!-- ============ 01 — PRINCIPPET ============ -->
+<section id="princip">
+  <div class="section-label"><span class="dot"></span>01 — Det fælles princip</div>
+  <h2>En <span class="accent">strøm</span> møder et <span class="accent">blad</span>.</h2>
+  <p class="lead">
+    Hver eneste turbine i verden bygger på den samme ide: en fluid passerer et sæt blade
+    formet sådan, at fluidet enten skubber bladene (impuls) eller løfter dem som flyvinger
+    (reaktion). Resultatet er rotation — og rotation er den nemmeste energiform at konvertere
+    videre til elektricitet.
+  </p>
+
+  <div class="two-col">
+    <div>
+      <h3>Energi i bevægelse</h3>
+      <p>
+        Den grundlæggende energi i en strømmende fluid er <em>kinetisk</em>: ½mv². Når massen
+        er en konstant strøm — luft, vand eller forbrændingsgas — bliver effekten det vi
+        høster: effekt = ½ × massestrøm × v². Massestrømmen afhænger af fluidets densitet og
+        det areal turbinen "fanger" — derfor er vindturbiner enorme, og vandturbiner små:
+        vand er ca. 800 gange tættere end luft.
+      </p>
+      <div class="formula">
+        <div class="lbl">Effekt fra en strømmende fluid</div>
+        <div class="eq">P = ½ · ρ · A · v³ · η</div>
+        <div class="where">
+          ρ — fluidets densitet (kg/m³)<br>
+          A — gennemstrømningsareal (m²)<br>
+          v — strømningshastighed (m/s)<br>
+          η — turbinens virkningsgrad (0–1)
+        </div>
+      </div>
+    </div>
+    <div>
+      <h3>Impuls vs. reaktion</h3>
+      <p>
+        Der findes to grundlæggende familier. En <span class="ink-brass">impulsturbine</span>
+        får al sin energi fra fluidets fart: en højtryksjet rammer en kop og afleverer sit
+        moment (Pelton, klassisk gasturbine). En <span class="ink-brass">reaktionsturbine</span>
+        bruger flyvingeløft: bladet sidder helt nedsænket i fluidet og høster løft langs hele
+        sin krop (vindturbine, Kaplan, dampturbine).
+      </p>
+      <p>
+        Forskellen lyder akademisk, men er praktisk: impulsturbiner er enkle og robuste, men
+        kræver høj fart i fluidet. Reaktionsturbiner kan høste fra langsomme, store
+        strømme — derfor er moderne vindturbiner blevet kæmper.
+      </p>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ============ 02 — VINDTURBINER ============ -->
+<section id="vind">
+  <div class="section-label wind"><span class="dot"></span>02 — Vindturbiner</div>
+  <h2>Bladet er en <span style="color:var(--wind)">flyvinge</span>.</h2>
+  <p class="lead">
+    En moderne vindmølle er ikke en mølle. Den er en omvendt flymotor: tre vridvinklede
+    flyvinger der drejer fordi luftens forbipassage skaber løft. Træk i slideren og se hvordan
+    den høstede effekt vokser med kuben af vindhastigheden — den enkelte regel der gør
+    vindkraft til en højstakeskonkurrence mod vejret.
+  </p>
+
+  <div class="stage">
+    <div class="stage-header">
+      <div class="stage-title">Vindturbine · live</div>
+      <div class="stage-meta">Rotor Ø 100 m · Onshore-klasse</div>
+    </div>
+
+    <svg class="stage-canvas" viewBox="0 0 800 360" preserveAspectRatio="xMidYMid meet" aria-label="Animeret vindturbine">
+      <!-- Sky gradient backdrop -->
+      <defs>
+        <linearGradient id="skyGrad" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0" stop-color="#15293a"/>
+          <stop offset="1" stop-color="#0f1e2c"/>
+        </linearGradient>
+        <linearGradient id="towerGrad" x1="0" x2="1" y1="0" y2="0">
+          <stop offset="0" stop-color="#3a4d5e"/>
+          <stop offset="0.5" stop-color="#7b91a4"/>
+          <stop offset="1" stop-color="#3a4d5e"/>
+        </linearGradient>
+        <linearGradient id="bladeGrad" x1="0" x2="1" y1="0" y2="0">
+          <stop offset="0" stop-color="#dde6ef"/>
+          <stop offset="1" stop-color="#9fb3c4"/>
+        </linearGradient>
+        <radialGradient id="hubGrad" cx="0.4" cy="0.4">
+          <stop offset="0" stop-color="#e8eef4"/>
+          <stop offset="1" stop-color="#5a7186"/>
+        </radialGradient>
+      </defs>
+      <rect width="800" height="360" fill="url(#skyGrad)"/>
+
+      <!-- Animated wind streamlines (left to right) -->
+      <g stroke="#7fb5dc" stroke-width="1.2" fill="none" opacity="0.55">
+        <path class="wind-streamline" d="M 0 60 Q 200 50 400 60 T 800 60"/>
+        <path class="wind-streamline" d="M 0 110 Q 200 130 400 110 T 800 110" style="animation-duration:1.8s"/>
+        <path class="wind-streamline" d="M 0 170 Q 200 155 400 175 T 800 170" style="animation-duration:1.2s"/>
+        <path class="wind-streamline" d="M 0 230 Q 200 245 400 235 T 800 230" style="animation-duration:1.6s"/>
+        <path class="wind-streamline" d="M 0 290 Q 200 270 400 290 T 800 290" style="animation-duration:1.4s"/>
+      </g>
+
+      <!-- Ground -->
+      <rect x="0" y="320" width="800" height="40" fill="#162635"/>
+      <line x1="0" y1="320" x2="800" y2="320" stroke="#2a3f52" stroke-width="1"/>
+
+      <!-- Tower -->
+      <polygon points="380,320 388,140 412,140 420,320" fill="url(#towerGrad)" stroke="#2a3f52" stroke-width="0.5"/>
+
+      <!-- Nacelle -->
+      <rect x="370" y="118" width="80" height="32" rx="6" fill="#5a7186" stroke="#2a3f52"/>
+      <rect x="438" y="125" width="14" height="18" rx="3" fill="#3a4d5e"/>
+
+      <!-- Rotor assembly -->
+      <g id="rotorGroup" style="transform-origin: 400px 134px;">
+        <g class="rotor-blades" id="rotorBlades" style="transform-origin: 400px 134px; animation: rotate-cw 4s linear infinite;">
+          <!-- 3 blades at 0, 120, 240 degrees -->
+          <g>
+            <path d="M 400 134 L 396 -8 Q 400 -12 404 -8 L 408 134 Z" fill="url(#bladeGrad)" stroke="#4a5e72" stroke-width="0.6"/>
+          </g>
+          <g transform="rotate(120 400 134)">
+            <path d="M 400 134 L 396 -8 Q 400 -12 404 -8 L 408 134 Z" fill="url(#bladeGrad)" stroke="#4a5e72" stroke-width="0.6"/>
+          </g>
+          <g transform="rotate(240 400 134)">
+            <path d="M 400 134 L 396 -8 Q 400 -12 404 -8 L 408 134 Z" fill="url(#bladeGrad)" stroke="#4a5e72" stroke-width="0.6"/>
+          </g>
+        </g>
+        <!-- Hub -->
+        <circle cx="400" cy="134" r="11" fill="url(#hubGrad)" stroke="#2a3f52" stroke-width="0.8"/>
+        <circle cx="397" cy="131" r="3" fill="#e8eef4" opacity="0.7"/>
+      </g>
+
+      <!-- Subtle ground shadow -->
+      <ellipse cx="400" cy="322" rx="50" ry="4" fill="#000" opacity="0.35"/>
+
+      <!-- Annotations -->
+      <g font-family="IBM Plex Mono, monospace" font-size="10" fill="#8395a6" letter-spacing="1.5">
+        <text x="50" y="50" fill="#7fb5dc">→ VIND</text>
+        <line x1="50" y1="58" x2="120" y2="58" stroke="#7fb5dc" stroke-width="0.8" stroke-dasharray="2 3"/>
+        <text x="500" y="170" fill="#7fb5dc">ROTOR</text>
+        <line x1="498" y1="167" x2="463" y2="155" stroke="#7fb5dc" stroke-width="0.6"/>
+        <text x="500" y="195" fill="#8395a6">NACELLE · GEARKASSE · GENERATOR</text>
+        <line x1="498" y1="192" x2="455" y2="138" stroke="#8395a6" stroke-width="0.6"/>
+        <text x="500" y="290" fill="#8395a6">TÅRN · 80–120 M</text>
+        <line x1="498" y1="287" x2="425" y2="260" stroke="#8395a6" stroke-width="0.6"/>
+      </g>
+    </svg>
+
+    <div class="controls">
+      <div class="control-group">
+        <label>Vindhastighed <span class="val" id="windV">10 m/s</span></label>
+        <input type="range" id="windSlider" min="0" max="25" value="10" step="0.5">
+      </div>
+      <div class="control-group">
+        <label>Cut-in 3 m/s · Rated 12 m/s · Cut-out 25 m/s</label>
+        <input type="range" id="windSliderBack" min="0" max="25" value="10" step="0.5" disabled style="opacity:0.3;pointer-events:none;">
+      </div>
+    </div>
+
+    <div class="readout">
+      <div class="readout-item"><span class="lbl">Effekt</span><span class="v aqua" id="windPower">2,16 MW</span></div>
+      <div class="readout-item"><span class="lbl">Rotor-omdr.</span><span class="v" id="windRpm">15 o/min</span></div>
+      <div class="readout-item"><span class="lbl">Bladspids</span><span class="v" id="windTip">78 m/s</span></div>
+      <div class="readout-item"><span class="lbl">η · høstet</span><span class="v brass" id="windEta">45 %</span></div>
+      <div class="readout-item"><span class="lbl">Betz · maks</span><span class="v" id="windBetz">59,3 %</span></div>
+    </div>
+  </div>
+
+  <h3>Fysikken: hvorfor v³?</h3>
+  <p>
+    Kinetisk energi i vinden er ½mv². Men <em>massestrømmen</em> gennem rotorens areal er
+    også proportional med v — jo hurtigere vinden blæser, jo mere luft passerer i sekundet.
+    Energi pr. sekund (effekt) bliver derfor proportional med v² × v = <em>v³</em>. Det er
+    vindkraftens vigtigste regel: en fordobling af vindhastigheden giver <em>otte gange</em>
+    så meget effekt. Derfor er gode vindplaceringer milliarder værd — og derfor placeres
+    moderne vindmøller i Nordsøen, hvor vinden er stærk og stabil.
+  </p>
+
+  <div class="formula">
+    <div class="lbl">Vindeffekt med Betz-grænse</div>
+    <div class="eq">P = ½ · ρ · π·r² · v³ · C<sub>p</sub></div>
+    <div class="where">
+      ρ ≈ 1,225 kg/m³ (luft ved havoverfladen) · r — rotor-radius · v — vindhastighed<br>
+      C<sub>p</sub> — kraftkoefficient, fundamentalt begrænset af <em>Betz' lov</em> til 16/27 ≈ 59,3 %<br>
+      Moderne møller: C<sub>p</sub> ≈ 45–50 % i optimalt arbejdspunkt
+    </div>
+  </div>
+
+  <h3>Betz' lov — den ufravigelige grænse</h3>
+  <p>
+    Albert Betz beviste i 1919, at ingen vindturbine kan høste mere end <em>16/27 ≈ 59,3 %</em>
+    af vindens energi. Logikken er enkel: hvis turbinen tog al energi ud af vinden, ville
+    luften stoppe bag rotoren — og så ville der ikke være plads til ny luft at strømme ind.
+    For at vinden kan blive ved med at flyde igennem, må noget af dens energi forblive
+    bagefter. Den optimale balance — hvor produktet af strøm og afbremsning er størst — giver
+    eksakt 16/27. Det er fysikkens svar på "hvor meget kan du spise og stadig invitere flere
+    til bords."
+  </p>
+
+  <h3>Danske eksempler</h3>
+  <div class="case-grid">
+    <div class="case-card wind">
+      <div class="case-tag">Case · Industri</div>
+      <h4>Vestas</h4>
+      <div class="case-meta">Aarhus · grundlagt 1945 · Lem</div>
+      <p>
+        Verdens største vindmølleproducent, med rødder i en jysk smedie der byggede
+        landbrugsmaskiner. Den nyeste V236-15.0 MW har et rotor på 236 m i diameter — bredere
+        end Storebæltsbroens centerspand er høj.
+      </p>
+    </div>
+    <div class="case-card wind">
+      <div class="case-tag">Case · Offshore</div>
+      <h4>Kriegers Flak</h4>
+      <div class="case-meta">Østersøen · 605 MW · idriftsat 2021</div>
+      <p>
+        Danmarks største offshore-park. 72 Siemens Gamesa-møller (SG 8.0-167 DD) i Østersøen
+        syd for Møn. Producerer årligt ca. 2,5 TWh — nok til omkring 600.000 husstande.
+      </p>
+    </div>
+    <div class="case-card wind">
+      <div class="case-tag">Case · Pionér</div>
+      <h4>Horns Rev 1, 2 og 3</h4>
+      <div class="case-meta">Nordsøen · 160 + 209 + 407 MW</div>
+      <p>
+        Horns Rev 1 var verdens første store offshore-park (2002). Tre generationer ud for
+        Esbjerg, der tilsammen dækker over 100 km² hav. Vinden her er blandt Europas mest
+        konstante.
+      </p>
+    </div>
+    <div class="case-card wind">
+      <div class="case-tag">Case · Forskning</div>
+      <h4>DTU Wind Energy · Risø</h4>
+      <div class="case-meta">Roskilde · siden 1970'erne</div>
+      <p>
+        Hvor de tekniske grundlag for den moderne 3-bladede stall-regulerede mølle blev lagt
+        — den såkaldte <em>danske koncept</em>. Risøs vindatlas-metode er stadig industristandard
+        verden over.
+      </p>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ============ 03 — VANDTURBINER ============ -->
+<section id="vand">
+  <div class="section-label water"><span class="dot"></span>03 — Vandturbiner</div>
+  <h2>Tyngdekraften gør det <span style="color:var(--water)">hårde arbejde</span>.</h2>
+  <p class="lead">
+    En vandturbine udnytter potentiel energi: vand der er løftet op af regn og fordampning,
+    og som via et fald får hastighed. Vand er næsten 1.000 gange tættere end luft, så
+    selv små vandmængder kan høstes med høj effekt. Tre hovedtyper dominerer — vælg én
+    nedenfor:
+  </p>
+
+  <div class="stage">
+    <div class="stage-header">
+      <div class="stage-title">Vandturbine · vælg type</div>
+      <div class="stage-meta" id="waterMeta">Pelton · høj fald · lav volumen</div>
+    </div>
+
+    <div class="toggle-row">
+      <button class="toggle-btn active" data-type="pelton">Pelton</button>
+      <button class="toggle-btn" data-type="francis">Francis</button>
+      <button class="toggle-btn" data-type="kaplan">Kaplan</button>
+    </div>
+
+    <!-- Container that holds the three turbine SVGs -->
+    <div id="waterStage">
+
+      <!-- PELTON -->
+      <svg class="stage-canvas water-svg" id="svgPelton" viewBox="0 0 800 360" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <linearGradient id="penstockGrad" x1="0" x2="1" y1="0" y2="0">
+            <stop offset="0" stop-color="#2a3f52"/>
+            <stop offset="0.5" stop-color="#5a7d9a"/>
+            <stop offset="1" stop-color="#2a3f52"/>
+          </linearGradient>
+          <linearGradient id="wheelGrad" x1="0" x2="1" y1="0" y2="1">
+            <stop offset="0" stop-color="#8a9eb2"/>
+            <stop offset="1" stop-color="#3a4d5e"/>
+          </linearGradient>
+          <linearGradient id="bucketGrad" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0" stop-color="#b8c5d1"/>
+            <stop offset="1" stop-color="#5a7186"/>
+          </linearGradient>
+        </defs>
+        <rect width="800" height="360" fill="#0d1c28"/>
+
+        <!-- Reservoir up top suggestion (left) -->
+        <text x="40" y="40" font-family="IBM Plex Mono, monospace" font-size="10" fill="#4dc4d3" letter-spacing="1.5">↗ FALD · 500–2000 M</text>
+
+        <!-- Penstock (large pipe coming from upper left) -->
+        <path d="M -10 60 L 280 240 L 320 220 L 30 40 Z" fill="url(#penstockGrad)" stroke="#1f3245"/>
+
+        <!-- Nozzle at end of penstock -->
+        <path d="M 270 230 L 360 215 L 360 250 L 270 245 Z" fill="#3a4d5e" stroke="#2a3f52"/>
+        <path d="M 350 218 L 380 222 L 380 244 L 350 248 Z" fill="#c89e5a" stroke="#8a6e3a"/>
+
+        <!-- Water jet -->
+        <g class="water-jet">
+          <rect x="375" y="226" width="120" height="12" fill="url(#waterJetGrad)" opacity="0.95"/>
+          <defs>
+            <linearGradient id="waterJetGrad" x1="0" x2="1" y1="0" y2="0">
+              <stop offset="0" stop-color="#76dbe8"/>
+              <stop offset="1" stop-color="#4dc4d3"/>
+            </linearGradient>
+          </defs>
+          <!-- Jet droplets animation -->
+          <circle cx="400" cy="232" r="3" fill="#76dbe8" class="water-particle" style="animation-delay:0s"/>
+          <circle cx="430" cy="230" r="2.5" fill="#76dbe8" class="water-particle" style="animation-delay:0.2s"/>
+          <circle cx="460" cy="234" r="3" fill="#76dbe8" class="water-particle" style="animation-delay:0.4s"/>
+        </g>
+
+        <!-- Pelton wheel -->
+        <g id="peltonWheel" style="transform-origin: 580px 232px; animation: rotate-ccw 2.5s linear infinite;">
+          <circle cx="580" cy="232" r="85" fill="url(#wheelGrad)" stroke="#1f3245" stroke-width="2"/>
+          <circle cx="580" cy="232" r="20" fill="#3a4d5e" stroke="#1f3245"/>
+          <!-- Buckets (16 around the rim) -->
+          <g id="peltonBuckets"></g>
+        </g>
+
+        <!-- Shaft -->
+        <rect x="580" y="228" width="180" height="8" rx="2" fill="#5a7186" stroke="#2a3f52"/>
+        <rect x="755" y="220" width="30" height="24" rx="2" fill="#c89e5a" stroke="#8a6e3a"/>
+
+        <!-- Splash water at bottom -->
+        <g opacity="0.5">
+          <circle cx="600" cy="330" r="2" fill="#76dbe8" class="water-particle"/>
+          <circle cx="615" cy="335" r="1.5" fill="#76dbe8" class="water-particle" style="animation-delay:0.3s"/>
+          <circle cx="585" cy="335" r="2" fill="#76dbe8" class="water-particle" style="animation-delay:0.6s"/>
+        </g>
+
+        <!-- Annotations -->
+        <g font-family="IBM Plex Mono, monospace" font-size="10" fill="#8395a6" letter-spacing="1.5">
+          <text x="200" y="270" fill="#5a7d9a">PENSTOCK</text>
+          <text x="320" y="200" fill="#c89e5a">DYSE</text>
+          <text x="410" y="218" fill="#4dc4d3">JET ~ 100 m/s</text>
+          <text x="600" y="140" fill="#b8c5d1">PELTON-HJUL · 16 KOPPER</text>
+          <text x="730" y="280" fill="#c89e5a">→ GENERATOR</text>
+        </g>
+      </svg>
+
+      <!-- FRANCIS -->
+      <svg class="stage-canvas water-svg" id="svgFrancis" viewBox="0 0 800 360" preserveAspectRatio="xMidYMid meet" style="display:none;">
+        <defs>
+          <radialGradient id="francisVolute" cx="0.5" cy="0.5">
+            <stop offset="0" stop-color="#1c2e3d"/>
+            <stop offset="0.7" stop-color="#243240"/>
+            <stop offset="1" stop-color="#5a7d9a"/>
+          </radialGradient>
+          <radialGradient id="francisRunner" cx="0.5" cy="0.5">
+            <stop offset="0" stop-color="#c89e5a"/>
+            <stop offset="0.7" stop-color="#8a6e3a"/>
+            <stop offset="1" stop-color="#5a4925"/>
+          </radialGradient>
+        </defs>
+        <rect width="800" height="360" fill="#0d1c28"/>
+
+        <!-- Spiral case (volute) - draw as a spiral -->
+        <path d="M 400 180
+                 m 0 -130
+                 a 130 130 0 1 0 0.1 0
+                 a 110 110 0 1 1 -0.1 -0.1
+                 a 90 90 0 1 0 0.1 0
+                 a 70 70 0 1 1 -0.1 -0.1"
+              stroke="#5a7d9a" stroke-width="2" fill="none" opacity="0.6"/>
+
+        <!-- Outer volute body -->
+        <circle cx="400" cy="180" r="140" fill="url(#francisVolute)" stroke="#2a3f52" stroke-width="2"/>
+        <circle cx="400" cy="180" r="110" fill="#142331" stroke="#2a3f52"/>
+
+        <!-- Guide vanes (stationary) -->
+        <g id="francisGuides"></g>
+
+        <!-- Runner (rotating) -->
+        <g id="francisRunnerGroup" style="transform-origin: 400px 180px; animation: rotate-cw 1.8s linear infinite;">
+          <circle cx="400" cy="180" r="80" fill="url(#francisRunner)" stroke="#5a4925" stroke-width="1.5"/>
+          <g id="francisRunnerBlades"></g>
+          <circle cx="400" cy="180" r="22" fill="#3a4d5e" stroke="#1f3245"/>
+        </g>
+
+        <!-- Inlet pipe from top -->
+        <rect x="385" y="0" width="30" height="60" fill="url(#penstockGrad)" stroke="#1f3245"/>
+        <!-- Water particles in inlet -->
+        <circle cx="400" cy="20" r="2.5" fill="#76dbe8" class="water-particle"/>
+        <circle cx="395" cy="40" r="2" fill="#76dbe8" class="water-particle" style="animation-delay:0.3s"/>
+
+        <!-- Draft tube (exit pipe down) -->
+        <path d="M 380 250 L 360 350 L 440 350 L 420 250 Z" fill="#1c2e3d" stroke="#2a3f52"/>
+        <!-- Exit water flow -->
+        <g opacity="0.7">
+          <circle cx="400" cy="290" r="2" fill="#4dc4d3" class="water-particle"/>
+          <circle cx="390" cy="320" r="2" fill="#4dc4d3" class="water-particle" style="animation-delay:0.4s"/>
+        </g>
+
+        <!-- Shaft going down to generator -->
+        <rect x="395" y="170" width="10" height="200" fill="#8a9eb2" opacity="0.4"/>
+
+        <!-- Annotations -->
+        <g font-family="IBM Plex Mono, monospace" font-size="10" fill="#8395a6" letter-spacing="1.5">
+          <text x="40" y="50" fill="#4dc4d3">↓ VAND IND</text>
+          <text x="40" y="180" fill="#5a7d9a">SPIRALHUS · radial-aksial flow</text>
+          <text x="560" y="180" fill="#c89e5a">LØBEHJUL</text>
+          <line x1="558" y1="178" x2="490" y2="178" stroke="#c89e5a" stroke-width="0.5"/>
+          <text x="200" y="340" fill="#4dc4d3">SUGRØR · vand ud</text>
+        </g>
+      </svg>
+
+      <!-- KAPLAN -->
+      <svg class="stage-canvas water-svg" id="svgKaplan" viewBox="0 0 800 360" preserveAspectRatio="xMidYMid meet" style="display:none;">
+        <defs>
+          <linearGradient id="kaplanTube" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0" stop-color="#243240"/>
+            <stop offset="1" stop-color="#1c2e3d"/>
+          </linearGradient>
+        </defs>
+        <rect width="800" height="360" fill="#0d1c28"/>
+
+        <!-- Tube housing (axial flow, viewed from side) -->
+        <rect x="80" y="80" width="640" height="200" rx="40" fill="url(#kaplanTube)" stroke="#2a3f52" stroke-width="2"/>
+        <rect x="80" y="80" width="640" height="200" rx="40" fill="none" stroke="#5a7d9a" stroke-width="0.5" opacity="0.5"/>
+
+        <!-- Water flowing left to right (streamlines) -->
+        <g stroke="#4dc4d3" stroke-width="1.4" fill="none" opacity="0.6">
+          <line x1="100" y1="120" x2="700" y2="120" class="wind-streamline" style="animation-duration:1.0s"/>
+          <line x1="100" y1="150" x2="700" y2="150" class="wind-streamline" style="animation-duration:1.2s"/>
+          <line x1="100" y1="180" x2="700" y2="180" class="wind-streamline" style="animation-duration:1.4s"/>
+          <line x1="100" y1="210" x2="700" y2="210" class="wind-streamline" style="animation-duration:1.1s"/>
+          <line x1="100" y1="240" x2="700" y2="240" class="wind-streamline" style="animation-duration:1.3s"/>
+        </g>
+
+        <!-- Guide vanes -->
+        <g stroke="#5a7d9a" stroke-width="2" fill="#3a4d5e">
+          <line x1="240" y1="100" x2="260" y2="135"/>
+          <line x1="240" y1="140" x2="260" y2="170"/>
+          <line x1="240" y1="190" x2="260" y2="220"/>
+          <line x1="240" y1="225" x2="260" y2="260"/>
+        </g>
+
+        <!-- Hub & shaft (horizontal) -->
+        <rect x="400" y="175" width="320" height="10" fill="#5a7186" stroke="#2a3f52"/>
+        <circle cx="400" cy="180" r="32" fill="#3a4d5e" stroke="#1f3245"/>
+
+        <!-- Propeller blades (Kaplan) -->
+        <g id="kaplanProp" style="transform-origin: 400px 180px; animation: rotate-cw 1.4s linear infinite;">
+          <circle cx="400" cy="180" r="32" fill="#3a4d5e" stroke="#1f3245"/>
+          <!-- 4 propeller-like blades drawn as ellipses extending from hub -->
+          <ellipse cx="400" cy="120" rx="14" ry="55" fill="url(#francisRunner)" stroke="#5a4925" stroke-width="0.8" transform="rotate(0 400 180)"/>
+          <ellipse cx="400" cy="120" rx="14" ry="55" fill="url(#francisRunner)" stroke="#5a4925" stroke-width="0.8" transform="rotate(90 400 180)"/>
+          <ellipse cx="400" cy="120" rx="14" ry="55" fill="url(#francisRunner)" stroke="#5a4925" stroke-width="0.8" transform="rotate(180 400 180)"/>
+          <ellipse cx="400" cy="120" rx="14" ry="55" fill="url(#francisRunner)" stroke="#5a4925" stroke-width="0.8" transform="rotate(270 400 180)"/>
+          <circle cx="400" cy="180" r="10" fill="#c89e5a"/>
+        </g>
+
+        <!-- Generator suggestion (right side) -->
+        <rect x="720" y="160" width="50" height="40" rx="3" fill="#c89e5a" stroke="#8a6e3a"/>
+
+        <!-- Annotations -->
+        <g font-family="IBM Plex Mono, monospace" font-size="10" fill="#8395a6" letter-spacing="1.5">
+          <text x="100" y="60" fill="#4dc4d3">→ STORE VANDMÆNGDER · lavt fald</text>
+          <text x="220" y="305" fill="#5a7d9a">LEDESKOVL · drejelig</text>
+          <text x="380" y="60" fill="#c89e5a">PROPELLER-LØBEHJUL</text>
+          <text x="380" y="76" fill="#8395a6">DREJELIGE BLADE</text>
+          <text x="720" y="155" fill="#c89e5a">GEN.</text>
+        </g>
+      </svg>
+    </div>
+
+    <div class="readout" id="waterReadout">
+      <div class="readout-item"><span class="lbl">Type</span><span class="v aqua" id="waterType">Pelton</span></div>
+      <div class="readout-item"><span class="lbl">Fald · H</span><span class="v" id="waterHead">500 m</span></div>
+      <div class="readout-item"><span class="lbl">Volumen · Q</span><span class="v" id="waterQ">2 m³/s</span></div>
+      <div class="readout-item"><span class="lbl">Effekt · P</span><span class="v brass" id="waterPower">8,8 MW</span></div>
+      <div class="readout-item"><span class="lbl">η · typisk</span><span class="v" id="waterEta">90 %</span></div>
+    </div>
+  </div>
+
+  <h3>Pelton, Francis, Kaplan — én formel, tre geometrier</h3>
+  <p>
+    Alle tre turbiner følger samme formel: effekten er produktet af faldhøjde, vandmængde,
+    densitet, tyngdekraft og virkningsgrad. Men de tre geometrier dækker hver sin
+    driftsdomæne. <em>Pelton</em> er en impulsturbine — bedst når faldhøjden er ekstrem
+    (hundreder eller tusinder af meter) og vandmængden moderat: en koncentreret højhastighedsjet
+    rammer skålformede kopper. <em>Francis</em> er en blandet radial-aksial reaktionsturbine
+    der dominerer mellemområdet (40–600 m fald, store anlæg). <em>Kaplan</em> ligner en
+    skibspropel og er bygget til lavt fald og høje vandmængder — som de fleste danske
+    vandløb ville give.
+  </p>
+
+  <div class="formula">
+    <div class="lbl">Vandturbinens effekt</div>
+    <div class="eq">P = η · ρ · g · Q · H</div>
+    <div class="where">
+      ρ = 1000 kg/m³ (vand) · g = 9,81 m/s² · Q — volumenstrøm (m³/s) · H — netto fald (m)<br>
+      η — turbinens virkningsgrad, typisk 85–95 % (Francis kan ramme 96 % i optimalt punkt)
+    </div>
+  </div>
+
+  <h3>Danske eksempler</h3>
+  <p>
+    Danmark er en pandekage — det højeste punkt, Møllehøj, er 170,86 m. Med så lille en
+    højdeforskel og så få vandløb med stor volumen er dansk vandkraft minimal: <em>omkring
+    17 MW total installeret effekt, &lt; 0,1 %</em> af elproduktionen. Men det er ikke nul:
+  </p>
+  <div class="case-grid">
+    <div class="case-card water">
+      <div class="case-tag">Case · Vandkraft</div>
+      <h4>Tangeværket</h4>
+      <div class="case-meta">Gudenåen · 1921 · ~3,7 MW</div>
+      <p>
+        Danmarks største vandkraftværk. Tre Francis-turbiner, 10 meters fald, oprindelig
+        bygget 1918–21. Tangeværket forsyner stadig nettet — og er centrum for en lang debat
+        om at fjerne opstemningen og genskabe Gudenåens naturlige løb.
+      </p>
+    </div>
+    <div class="case-card water">
+      <div class="case-tag">Case · Klassisk</div>
+      <h4>Karlsgårde Vandkraftværk</h4>
+      <div class="case-meta">Varde Å · 1921 · 4 × Francis</div>
+      <p>
+        Et af de andre oprindelige værker fra interbellum-perioden. Stadig i drift med
+        originale Francis-turbiner, og udgør et levende industrimuseum.
+      </p>
+    </div>
+    <div class="case-card water">
+      <div class="case-tag">Case · Internationalt</div>
+      <h4>Ørsteds Avedøreværk</h4>
+      <div class="case-meta">Hvidovre — pumpelagring (planlagt)</div>
+      <p>
+        Danmark har ingen klassiske pumpkraftsmagasiner, men forsøg med <em>komprimeret luft</em>
+        og kemisk lagring kan på sigt erstatte pumpekraftens rolle som balanceenhed for
+        vindkraft. Norge er stadig vores "vandbatteri".
+      </p>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ============ 04 — GASTURBINER ============ -->
+<section id="gas">
+  <div class="section-label gas"><span class="dot"></span>04 — Gasturbiner</div>
+  <h2>Forbrænding på <span style="color:var(--gas)">akslen</span>.</h2>
+  <p class="lead">
+    En gasturbine er i princippet en jetmotor stationært placeret. Luft suges ind,
+    komprimeres af mange små vingeskovle, blandes med brændsel, antændes — og den varme
+    højtryksgas ekspanderer gennem turbinen, der både trækker kompressoren og leverer
+    overskydende arbejde til generatoren. Hele cyklussen er kendt som <em>Brayton-cyklen</em>.
+  </p>
+
+  <div class="stage">
+    <div class="stage-header">
+      <div class="stage-title">Gasturbine · Brayton-cyklen</div>
+      <div class="stage-meta">Indløb · kompressor · brændkammer · turbine · udløb</div>
+    </div>
+
+    <svg class="stage-canvas" viewBox="0 0 800 360" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <linearGradient id="caseGrad" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0" stop-color="#3a4d5e"/>
+          <stop offset="0.5" stop-color="#5a7186"/>
+          <stop offset="1" stop-color="#2a3f52"/>
+        </linearGradient>
+        <linearGradient id="coldGas" x1="0" x2="1" y1="0" y2="0">
+          <stop offset="0" stop-color="#7fb5dc"/>
+          <stop offset="1" stop-color="#a4ceea"/>
+        </linearGradient>
+        <linearGradient id="hotGas" x1="0" x2="1" y1="0" y2="0">
+          <stop offset="0" stop-color="#ff8c47"/>
+          <stop offset="0.5" stop-color="#ffb05e"/>
+          <stop offset="1" stop-color="#e89455"/>
+        </linearGradient>
+        <radialGradient id="combFire" cx="0.5" cy="0.5">
+          <stop offset="0" stop-color="#fff2cc"/>
+          <stop offset="0.4" stop-color="#ffb05e"/>
+          <stop offset="1" stop-color="#d97a3f"/>
+        </radialGradient>
+      </defs>
+      <rect width="800" height="360" fill="#0d1c28"/>
+
+      <!-- Engine main casing -->
+      <path d="M 60 130 L 240 130 L 280 100 L 480 100 L 520 130 L 720 130
+               L 720 230 L 520 230 L 480 260 L 280 260 L 240 230 L 60 230 Z"
+            fill="url(#caseGrad)" stroke="#1f3245" stroke-width="1.5"/>
+
+      <!-- Inlet (left) -->
+      <g>
+        <rect x="40" y="160" width="40" height="40" fill="#243240"/>
+        <!-- Cold gas streamlines flowing in -->
+        <g stroke="#7fb5dc" stroke-width="1.4" fill="none" opacity="0.75">
+          <line x1="20" y1="170" x2="240" y2="170" class="wind-streamline" style="animation-duration:1.2s"/>
+          <line x1="20" y1="180" x2="240" y2="180" class="wind-streamline" style="animation-duration:1.4s"/>
+          <line x1="20" y1="190" x2="240" y2="190" class="wind-streamline" style="animation-duration:1.1s"/>
+        </g>
+      </g>
+
+      <!-- Compressor section (left half) - many stages of blades -->
+      <g id="compressorGroup" style="transform-origin: 175px 180px; animation: rotate-cw 0.6s linear infinite;">
+        <g id="compStage1"></g>
+      </g>
+
+      <!-- Static stator blades between rotor stages (drawn separately, NOT spinning) -->
+      <g stroke="#8a9eb2" stroke-width="0.8" fill="#5a7186">
+        <!-- We'll fill via JS for clean stages -->
+      </g>
+
+      <!-- Combustion chamber (middle, glowing) -->
+      <g>
+        <ellipse cx="380" cy="180" rx="80" ry="60" fill="url(#combFire)" opacity="0.9"/>
+        <ellipse cx="380" cy="180" rx="80" ry="60" fill="none" stroke="#d97a3f" stroke-width="2"/>
+        <!-- Inner flame texture -->
+        <ellipse cx="380" cy="180" rx="55" ry="35" fill="#fff2cc" opacity="0.6"/>
+        <ellipse cx="380" cy="180" rx="30" ry="18" fill="#fff" opacity="0.5"/>
+
+        <!-- Fuel injector lines -->
+        <g stroke="#c89e5a" stroke-width="1.5" fill="none">
+          <line x1="380" y1="100" x2="380" y2="135"/>
+          <circle cx="380" cy="100" r="3" fill="#c89e5a"/>
+          <line x1="350" y1="100" x2="355" y2="140"/>
+          <line x1="410" y1="100" x2="405" y2="140"/>
+        </g>
+
+        <!-- "BRÆNDSTOF" label -->
+        <text x="370" y="92" font-family="IBM Plex Mono, monospace" font-size="9" fill="#c89e5a" letter-spacing="1.5">BRÆNDSTOF</text>
+      </g>
+
+      <!-- Turbine section (right half) - bigger blades for expansion -->
+      <g id="turbineGroup" style="transform-origin: 600px 180px; animation: rotate-cw 0.6s linear infinite;">
+        <g id="turbStage1"></g>
+      </g>
+
+      <!-- Exhaust (right) -->
+      <g>
+        <rect x="720" y="160" width="40" height="40" fill="#243240"/>
+        <!-- Hot gas streamlines exiting -->
+        <g stroke="#ff8c47" stroke-width="1.4" fill="none" opacity="0.85">
+          <line x1="520" y1="170" x2="780" y2="170" class="hot-gas"/>
+          <line x1="520" y1="180" x2="780" y2="180" class="hot-gas" style="animation-duration:0.7s"/>
+          <line x1="520" y1="190" x2="780" y2="190" class="hot-gas" style="animation-duration:0.85s"/>
+        </g>
+      </g>
+
+      <!-- Central shaft -->
+      <rect x="60" y="175" width="660" height="10" fill="#3a4d5e" stroke="#1f3245"/>
+      <rect x="60" y="175" width="660" height="3" fill="#8a9eb2" opacity="0.5"/>
+
+      <!-- Generator coupling on far right -->
+      <rect x="730" y="155" width="50" height="50" rx="3" fill="#c89e5a" stroke="#8a6e3a"/>
+      <text x="745" y="186" font-family="IBM Plex Mono, monospace" font-size="9" fill="#1a1410" letter-spacing="1.5" font-weight="500">GEN</text>
+
+      <!-- Annotations -->
+      <g font-family="IBM Plex Mono, monospace" font-size="10" fill="#8395a6" letter-spacing="1.5">
+        <text x="50" y="115" fill="#7fb5dc">LUFT · 15°C · 1 BAR</text>
+        <text x="135" y="295" fill="#7fb5dc">KOMPRESSOR</text>
+        <line x1="160" y1="290" x2="175" y2="245" stroke="#7fb5dc" stroke-width="0.5"/>
+        <text x="340" y="290" fill="#d97a3f">BRÆNDKAMMER · 1500°C</text>
+        <text x="555" y="295" fill="#ff8c47">TURBINE</text>
+        <line x1="585" y1="290" x2="600" y2="245" stroke="#ff8c47" stroke-width="0.5"/>
+        <text x="640" y="115" fill="#ff8c47">UDSTØDNING · ~600°C</text>
+      </g>
+
+      <!-- Pressure ratio indicator below -->
+      <g font-family="IBM Plex Mono, monospace" font-size="10" letter-spacing="1.5">
+        <text x="60" y="340" fill="#7fb5dc">p₁ = 1 bar</text>
+        <text x="240" y="340" fill="#a4ceea">p₂ ≈ 15 bar</text>
+        <text x="360" y="340" fill="#ffb05e">T₃ = 1500°C</text>
+        <text x="510" y="340" fill="#ff8c47">T₄ ≈ 600°C</text>
+        <text x="680" y="340" fill="#8395a6">→ røggas</text>
+      </g>
+    </svg>
+
+    <div class="readout">
+      <div class="readout-item"><span class="lbl">Trykforhold</span><span class="v aqua">15 : 1</span></div>
+      <div class="readout-item"><span class="lbl">T · indløb</span><span class="v">15 °C</span></div>
+      <div class="readout-item"><span class="lbl">T · efter brænd.</span><span class="v ember">1500 °C</span></div>
+      <div class="readout-item"><span class="lbl">η · simpel cyklus</span><span class="v brass">38 %</span></div>
+      <div class="readout-item"><span class="lbl">η · combined cycle</span><span class="v ember">60 %</span></div>
+    </div>
+  </div>
+
+  <h3>Brayton-cyklen — fire skridt på akslen</h3>
+  <p>
+    Cyklen består af fire processer der løber kontinuerligt: <em>(1) Indsugning og kompression</em> —
+    luft suges ind og presses sammen til 15–30 gange atmosfæretrykket, hvilket
+    naturligt opvarmer den. <em>(2) Forbrænding ved konstant tryk</em> — naturgas eller
+    biobrændsel indsprøjtes og antændes, så temperaturen stiger til 1400–1600 °C.
+    <em>(3) Ekspansion gennem turbinen</em> — den varme højtryksgas ekspanderer over flere
+    trin med store blade og afleverer arbejde til akslen. <em>(4) Udstødning</em> —
+    røggassen forlader maskinen ved omkring 600 °C, stadig fuld af brugbar varme.
+  </p>
+
+  <div class="formula">
+    <div class="lbl">Ideel Brayton-virkningsgrad</div>
+    <div class="eq">η = 1 − (1 / r<sup>(γ−1)/γ</sup>)</div>
+    <div class="where">
+      r — trykforhold (typisk 15–30 i industriel anvendelse)<br>
+      γ — adiabatisk eksponent for luft ≈ 1,4<br>
+      Ved r = 15 giver formlen η ≈ 53 % teoretisk — virkelige tab giver 35–40 % i simpel cyklus
+    </div>
+  </div>
+
+  <h3>Combined cycle — varmen får et andet liv</h3>
+  <p>
+    Udstødningen ved 600 °C er en termodynamisk skandale hvis den smides ud. Et
+    <em>combined cycle power plant</em> (CCGT) opfanger denne varme i en kedel, koger vand
+    og driver en klassisk dampturbine bagefter. Resultatet: <em>op til 62 %</em> samlet
+    virkningsgrad — den højeste i industriel praksis. Det er Brayton-cyklen + Rankine-cyklen
+    i serie.
+  </p>
+
+  <h3>Danske eksempler</h3>
+  <div class="case-grid">
+    <div class="case-card gas">
+      <div class="case-tag">Case · Centralkraft</div>
+      <h4>Avedøreværket</h4>
+      <div class="case-meta">Hvidovre · blok 2 · Ørsted</div>
+      <p>
+        Et af verdens mest effektive kraftvarmeværker. Blok 2 kører multibrændsel (naturgas,
+        olie, halm, træpiller) og opnår op mod 49 % elvirkningsgrad eller 94 % når
+        fjernvarmen tælles med — combined heat and power.
+      </p>
+    </div>
+    <div class="case-card gas">
+      <div class="case-tag">Case · Reservekraft</div>
+      <h4>Anholt Havvind · backup-gas</h4>
+      <div class="case-meta">Hurtigstartende reservekraft</div>
+      <p>
+        Vindkrafts svaghed er stille dage. Hurtigstartende gasturbiner i kompakt-ramme
+        bruges som reservekraft — de kan være på fuld effekt på under 10 minutter.
+        Skærbækværket og Esbjergværket er begge konverteret til den rolle.
+      </p>
+    </div>
+    <div class="case-card gas">
+      <div class="case-tag">Case · Konvertering</div>
+      <h4>Studstrupværket</h4>
+      <div class="case-meta">Aarhus Bugt · oprindeligt kul, nu træpiller</div>
+      <p>
+        Et eksempel på dansk omstilling: bygget som kulkraftværk i 1968–84, nu konverteret
+        til træpiller og biomasse. Selv om brændstoffet ændres, er dampturbinen og hele
+        infrastrukturen den samme — modulær termodynamik.
+      </p>
+    </div>
+    <div class="case-card gas">
+      <div class="case-tag">Case · Fremtid</div>
+      <h4>Brint og Power-to-X</h4>
+      <div class="case-meta">Esbjerg · planlagt 1 GW</div>
+      <p>
+        Dansk vindstrøm omdannes til <em>grøn brint</em> via elektrolyse, der bagefter kan
+        brænde i tilpassede gasturbiner — eller danne grundlag for ammoniak og e-brændsler.
+        Gasturbinens fremtid bliver formentlig grøn.
+      </p>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ============ 05 — EFFEKTIVITET ============ -->
+<section id="effektivitet">
+  <div class="section-label"><span class="dot"></span>05 — Effektivitet i sammenligning</div>
+  <h2>Hvad bliver der <span class="accent">tilbage</span>?</h2>
+  <p class="lead">
+    Hver turbinetype har en termodynamisk loftgrænse og en praktisk virkningsgrad.
+    Sammenlignet med en moderne combined-cycle-anlæg eller et vandkraftværk er en
+    klassisk dampmaskine næsten poesi-effektiv. Tallene fortæller historien:
+  </p>
+
+  <div class="eff-chart" id="effChart">
+    <div class="eff-row">
+      <div class="eff-label">Vandturbine · Francis<span class="sub">P = η · ρ · g · Q · H</span></div>
+      <div class="eff-bar-track"><div class="eff-bar water" data-pct="95"></div></div>
+      <div class="eff-val">90–95 %</div>
+    </div>
+    <div class="eff-row">
+      <div class="eff-label">Vandturbine · Pelton<span class="sub">impulsturbine · høj fald</span></div>
+      <div class="eff-bar-track"><div class="eff-bar water" data-pct="92"></div></div>
+      <div class="eff-val">85–92 %</div>
+    </div>
+    <div class="eff-row">
+      <div class="eff-label">Gasturbine · combined cycle<span class="sub">Brayton + Rankine i serie</span></div>
+      <div class="eff-bar-track"><div class="eff-bar combined" data-pct="62"></div></div>
+      <div class="eff-val">55–62 %</div>
+    </div>
+    <div class="eff-row">
+      <div class="eff-label">Vindturbine · moderne<span class="sub">Cp ≈ 45–50 % · loft 59,3 %</span></div>
+      <div class="eff-bar-track"><div class="eff-bar wind" data-pct="50"></div></div>
+      <div class="eff-val">45–50 %</div>
+    </div>
+    <div class="eff-row">
+      <div class="eff-label">Gasturbine · simpel cyklus<span class="sub">kun Brayton</span></div>
+      <div class="eff-bar-track"><div class="eff-bar gas" data-pct="40"></div></div>
+      <div class="eff-val">35–40 %</div>
+    </div>
+    <div class="eff-row">
+      <div class="eff-label">Dampturbine · kondens<span class="sub">Rankine-cyklus</span></div>
+      <div class="eff-bar-track"><div class="eff-bar steam" data-pct="42"></div></div>
+      <div class="eff-val">38–42 %</div>
+    </div>
+    <div class="eff-row">
+      <div class="eff-label">Damplokomotiv (til ref.)<span class="sub">åbent system · ingen kondensering</span></div>
+      <div class="eff-bar-track"><div class="eff-bar steam" data-pct="13" style="opacity:0.6"></div></div>
+      <div class="eff-val">6–13 %</div>
+    </div>
+  </div>
+
+  <p>
+    Vandkraft topper næsten altid — fluiden er tæt, tabet i bladene er minimalt, og der er
+    ingen termodynamisk Carnot-grænse i vejen. Combined-cycle gas kommer i anden række
+    fordi den kombinerer to cykler. Vind topper ved Betz-loftet på 59,3 %, men taber kun lidt
+    i selve maskinen — derudover er <em>brændslet gratis og ubegrænset</em>, så den lavere
+    virkningsgrad er irrelevant økonomisk og klimamæssigt.
+  </p>
+</section>
+
+<div class="divider"></div>
+
+<!-- ============ 06 — DANMARK ============ -->
+<section id="danmark">
+  <div class="section-label"><span class="dot"></span>06 — Turbiner i Danmark</div>
+  <h2>Hvor <span class="accent">strømmer</span> det fra?</h2>
+  <p class="lead">
+    Danmark er et af verdens mest turbinebrugte lande — næsten alt elproduktion sker via
+    en eller anden roterende maskine, og fordelingen fortæller om grøn omstilling og
+    geografi:
+  </p>
+
+  <div class="mix-grid">
+    <div class="mix-card wind">
+      <div class="mix-num">55<span class="unit">%</span></div>
+      <div class="mix-label">Vindkraft · 2024</div>
+      <p>
+        Mere end halvdelen af dansk elproduktion. Cirka 6.300 vindmøller på land og 600
+        offshore. Verdensrekord pr. indbygger.
+      </p>
+    </div>
+    <div class="mix-card gas">
+      <div class="mix-num">~22<span class="unit">%</span></div>
+      <div class="mix-label">Termiske turbiner</div>
+      <p>
+        Damp- og gasturbiner på biomasse, naturgas og affald. Mest kraftvarme — el og
+        fjernvarme i kombination.
+      </p>
+    </div>
+    <div class="mix-card">
+      <div class="mix-num">~18<span class="unit">%</span></div>
+      <div class="mix-label">Solceller (uden turbine!)</div>
+      <p>
+        Den eneste store elkilde i Danmark <em>uden</em> en roterende del. Voksende
+        kraftigt — direkte fotovoltaisk konvertering.
+      </p>
+    </div>
+    <div class="mix-card water">
+      <div class="mix-num">&lt;0,1<span class="unit">%</span></div>
+      <div class="mix-label">Vandkraft</div>
+      <p>
+        17 MW total. Tangeværket og Karlsgårde holder traditionen i live, men topografien
+        sætter en hård grænse.
+      </p>
+    </div>
+  </div>
+
+  <h3>Det grønne paradoks: vinden er ujævn</h3>
+  <p>
+    Med 55 % vind i nettet bliver elprisen meget volatil — den falder mod nul når det
+    blæser stærkt og stiger når det er stille. Det har gjort Danmark til en pioner i
+    <em>sektorintegration</em>: når der er for meget vindstrøm, omdannes overskuddet til
+    fjernvarme via store eldrevne varmepumper, til brint via elektrolyse, eller eksporteres
+    via søkabler til Norge (vandkraft som batteri), Tyskland og Holland.
+  </p>
+
+  <h3>Hvorfor turbiner stadig vinder</h3>
+  <p>
+    Selv om solceller vokser eksplosivt, vil <em>roterende turbiner</em> stå for hovedparten
+    af dansk elproduktion i mange årtier endnu. Grunden er fysisk: en turbine producerer
+    også <em>rotationel inerti</em> — store roterende masser der stabiliserer netfrekvensen
+    på 50 Hz. Solceller har ingen inerti og leverer kun jævnstrøm gennem inverter. Den
+    grønne fremtid bliver med stor sandsynlighed en blanding: vindturbiner ude, gasturbiner
+    på brint som reservekraft, og synkronkompensatorer der efterligner turbineinertien
+    elektronisk.
+  </p>
+</section>
+
+<footer>
+  <span class="brass">∴</span> &nbsp; Vind · Vand · Gas — fysik og praksis &nbsp; <span class="brass">∴</span><br>
+  <span style="margin-top:14px; display:inline-block;">
+    <a href="index.html">← Tilbage til oversigten</a>
+  </span>
+</footer>
+
+<script>
+  // ===========================================================
+  // BUILD PELTON BUCKETS
+  // ===========================================================
+  (function buildPeltonBuckets() {
+    const group = document.getElementById('peltonBuckets');
+    if (!group) return;
+    const cx = 580, cy = 232, r = 75;
+    const n = 16;
+    for (let i = 0; i < n; i++) {
+      const ang = (i / n) * 2 * Math.PI;
+      const x = cx + Math.cos(ang) * r;
+      const y = cy + Math.sin(ang) * r;
+      const rot = (ang * 180 / Math.PI) + 90;
+      const bucket = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      bucket.setAttribute('transform', `translate(${x},${y}) rotate(${rot})`);
+      bucket.innerHTML = `
+        <ellipse cx="0" cy="0" rx="12" ry="8" fill="url(#bucketGrad)" stroke="#1f3245" stroke-width="0.8"/>
+        <ellipse cx="0" cy="-2" rx="9" ry="4" fill="#243240" opacity="0.6"/>
+      `;
+      group.appendChild(bucket);
+    }
+  })();
+
+  // ===========================================================
+  // BUILD FRANCIS GUIDE VANES AND RUNNER BLADES
+  // ===========================================================
+  (function buildFrancis() {
+    const guides = document.getElementById('francisGuides');
+    if (guides) {
+      const cx = 400, cy = 180;
+      const n = 14;
+      for (let i = 0; i < n; i++) {
+        const ang = (i / n) * 360;
+        const vane = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        vane.setAttribute('transform', `rotate(${ang} ${cx} ${cy})`);
+        vane.innerHTML = `
+          <path d="M ${cx-3} ${cy-105} Q ${cx+4} ${cy-95} ${cx+1} ${cy-82} Z"
+                fill="#5a7d9a" stroke="#2a3f52" stroke-width="0.5"/>
+        `;
+        guides.appendChild(vane);
+      }
+    }
+    const blades = document.getElementById('francisRunnerBlades');
+    if (blades) {
+      const cx = 400, cy = 180;
+      const n = 12;
+      for (let i = 0; i < n; i++) {
+        const ang = (i / n) * 360;
+        const blade = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        blade.setAttribute('transform', `rotate(${ang} ${cx} ${cy})`);
+        blade.innerHTML = `
+          <path d="M ${cx-2} ${cy-75} Q ${cx+10} ${cy-50} ${cx+2} ${cy-28}"
+                stroke="#e8dfd2" stroke-width="2" fill="none" stroke-linecap="round"/>
+        `;
+        blades.appendChild(blade);
+      }
+    }
+  })();
+
+  // ===========================================================
+  // BUILD COMPRESSOR AND TURBINE STAGES (gas)
+  // ===========================================================
+  (function buildGasTurbine() {
+    const compStage = document.getElementById('compStage1');
+    if (compStage) {
+      // 6 compressor stages, blades growing slightly smaller (compression)
+      const stages = 6;
+      const startX = 100;
+      const endX = 270;
+      const cy = 180;
+      for (let s = 0; s < stages; s++) {
+        const x = startX + (endX - startX) * (s / (stages - 1));
+        const halfH = 45 - s * 2.5;
+        // Two blades (top and bottom) per stage
+        const stage = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        stage.innerHTML = `
+          <rect x="${x-4}" y="${cy - halfH}" width="8" height="${halfH - 6}" fill="#b8c5d1" stroke="#3a4d5e" stroke-width="0.5" rx="1"/>
+          <rect x="${x-4}" y="${cy + 6}" width="8" height="${halfH - 6}" fill="#b8c5d1" stroke="#3a4d5e" stroke-width="0.5" rx="1"/>
+        `;
+        compStage.appendChild(stage);
+      }
+    }
+    const turbStage = document.getElementById('turbStage1');
+    if (turbStage) {
+      // 4 turbine stages, blades growing larger (expansion)
+      const stages = 4;
+      const startX = 510;
+      const endX = 700;
+      const cy = 180;
+      for (let s = 0; s < stages; s++) {
+        const x = startX + (endX - startX) * (s / (stages - 1));
+        const halfH = 38 + s * 6;
+        const stage = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        stage.innerHTML = `
+          <rect x="${x-5}" y="${cy - halfH}" width="10" height="${halfH - 6}" fill="#ffb05e" stroke="#8a6e3a" stroke-width="0.5" rx="1.5"/>
+          <rect x="${x-5}" y="${cy + 6}" width="10" height="${halfH - 6}" fill="#ffb05e" stroke="#8a6e3a" stroke-width="0.5" rx="1.5"/>
+        `;
+        turbStage.appendChild(stage);
+      }
+    }
+  })();
+
+  // ===========================================================
+  // WIND TURBINE — INTERACTIVE
+  // ===========================================================
+  (function () {
+    const slider = document.getElementById('windSlider');
+    const vLabel = document.getElementById('windV');
+    const powerEl = document.getElementById('windPower');
+    const rpmEl = document.getElementById('windRpm');
+    const tipEl = document.getElementById('windTip');
+    const etaEl = document.getElementById('windEta');
+    const blades = document.getElementById('rotorBlades');
+
+    const rho = 1.225;     // air density
+    const radius = 50;     // m
+    const area = Math.PI * radius * radius;
+    const cutIn = 3, cutOut = 25, rated = 12;
+    const ratedPower = 2.5e6; // W
+
+    function update() {
+      const v = parseFloat(slider.value);
+      vLabel.textContent = v.toFixed(1) + ' m/s';
+
+      // Cp model: peaks around 0.47 at TSR optimum, drops near cut-in
+      let cp;
+      if (v < cutIn) cp = 0;
+      else if (v >= cutOut) cp = 0;
+      else if (v <= rated) {
+        // ramp Cp up to 0.47 around rated; very simplified
+        const x = (v - cutIn) / (rated - cutIn);
+        cp = 0.47 * (1 - Math.pow(1 - x, 2));
+      } else {
+        // pitch regulation: power held at rated -> Cp drops
+        cp = (ratedPower) / (0.5 * rho * area * Math.pow(v, 3));
+      }
+
+      // Power
+      let P = 0.5 * rho * area * Math.pow(v, 3) * cp;
+      if (P > ratedPower) P = ratedPower;
+      if (v < cutIn || v >= cutOut) P = 0;
+
+      // Rotor RPM — modern wind turbines: ~6 RPM at cut-in to ~18 RPM at rated, then constant
+      let rpm = 0;
+      if (v >= cutIn && v < cutOut) {
+        rpm = Math.min(18, 6 + (v - cutIn) * 1.2);
+      }
+
+      // Tip speed
+      const tip = (rpm / 60) * 2 * Math.PI * radius;
+
+      // Update text
+      powerEl.textContent = (P / 1e6).toFixed(2).replace('.', ',') + ' MW';
+      rpmEl.textContent = rpm.toFixed(1).replace('.', ',') + ' o/min';
+      tipEl.textContent = tip.toFixed(0) + ' m/s';
+      etaEl.textContent = (cp * 100).toFixed(0).replace('.', ',') + ' %';
+
+      // Update blade rotation speed
+      if (rpm > 0) {
+        const periodSec = 60 / rpm;
+        // Slow down visually so it stays watchable
+        const visualPeriod = Math.max(1.0, periodSec * 0.5);
+        blades.style.animationDuration = visualPeriod + 's';
+        blades.style.animationPlayState = 'running';
+      } else {
+        blades.style.animationPlayState = 'paused';
+      }
+
+      // Color shift on power readout
+      if (P >= ratedPower * 0.9) {
+        powerEl.style.color = 'var(--ember)';
+      } else if (P > 0) {
+        powerEl.style.color = 'var(--aqua)';
+      } else {
+        powerEl.style.color = 'var(--muted)';
+      }
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // ===========================================================
+  // WATER TURBINE — TOGGLE TYPES
+  // ===========================================================
+  (function () {
+    const buttons = document.querySelectorAll('.toggle-btn');
+    const svgs = {
+      pelton: document.getElementById('svgPelton'),
+      francis: document.getElementById('svgFrancis'),
+      kaplan: document.getElementById('svgKaplan')
+    };
+    const meta = document.getElementById('waterMeta');
+    const tEl = document.getElementById('waterType');
+    const hEl = document.getElementById('waterHead');
+    const qEl = document.getElementById('waterQ');
+    const pEl = document.getElementById('waterPower');
+    const etaEl = document.getElementById('waterEta');
+
+    const profiles = {
+      pelton:  { label: 'Pelton',  meta: 'Pelton · høj fald · lav volumen',   H: 500, Q: 2,    eta: 0.90 },
+      francis: { label: 'Francis', meta: 'Francis · mellem fald · mellem volumen', H: 100, Q: 25,  eta: 0.94 },
+      kaplan:  { label: 'Kaplan',  meta: 'Kaplan · lavt fald · høj volumen',  H: 10,  Q: 300, eta: 0.91 }
+    };
+
+    function setType(type) {
+      buttons.forEach(b => b.classList.toggle('active', b.dataset.type === type));
+      Object.keys(svgs).forEach(k => svgs[k].style.display = (k === type ? 'block' : 'none'));
+      const p = profiles[type];
+      meta.textContent = p.meta;
+      tEl.textContent = p.label;
+      hEl.textContent = p.H >= 100 ? p.H + ' m' : p.H + ' m';
+      qEl.textContent = p.Q + ' m³/s';
+      etaEl.textContent = (p.eta * 100).toFixed(0).replace('.', ',') + ' %';
+
+      // P = eta * rho * g * Q * H
+      const P = p.eta * 1000 * 9.81 * p.Q * p.H;
+      const mw = P / 1e6;
+      pEl.textContent = mw.toFixed(1).replace('.', ',') + ' MW';
+    }
+    buttons.forEach(btn => btn.addEventListener('click', () => setType(btn.dataset.type)));
+    setType('pelton');
+  })();
+
+  // ===========================================================
+  // EFFICIENCY BARS — animate when scrolled into view
+  // ===========================================================
+  (function () {
+    const bars = document.querySelectorAll('.eff-bar');
+    function animate() {
+      bars.forEach(bar => {
+        const pct = parseFloat(bar.dataset.pct);
+        bar.style.transform = `scaleX(${pct / 100})`;
+        bar.classList.add('fill');
+      });
+    }
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          animate();
+          observer.disconnect();
+        }
+      });
+    }, { threshold: 0.2 });
+    const chart = document.getElementById('effChart');
+    if (chart) observer.observe(chart);
+  })();
+</script>
+</body>
+</html>
