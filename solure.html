@@ -7,9 +7,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=Manrope:wght@200;300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script defer src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
 <script>
   window.MathJax = {
     tex: {
@@ -20,7 +20,7 @@
     loader: {load: ['[tex]/html', '[tex]/color']}
   };
 </script>
-<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script defer id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 <style>
   :root{
     --void:#0a0806;
@@ -902,15 +902,15 @@
 
     <div class="vatican-gallery">
       <div class="ph hero">
-        <img src="images/peterspladsen-5.jpg" alt="Peterspladsen i aftensol med obelisken og basilikaen"/>
+        <img src="images/peterspladsen-5.jpg" loading="lazy" alt="Peterspladsen i aftensol med obelisken og basilikaen"/>
         <div class="cap">Aftensol · obelisk og basilika</div>
       </div>
       <div class="ph tall">
-        <img src="images/peterspladsen-2.jpg" alt="Peterspladsen set fra Michelangelos kuppel"/>
+        <img src="images/peterspladsen-2.jpg" loading="lazy" alt="Peterspladsen set fra Michelangelos kuppel"/>
         <div class="cap">Fra kuplen · pladsens fulde geometri</div>
       </div>
       <div class="ph tall">
-        <img src="images/peterspladsen-4.jpg" alt="Aerial view of St. Peter's Square colonnade and obelisk"/>
+        <img src="images/peterspladsen-4.jpg" loading="lazy" alt="Aerial view of St. Peter's Square colonnade and obelisk"/>
         <div class="cap">Bernini's kolonnader fra oven</div>
       </div>
       <div class="ph">
@@ -918,7 +918,7 @@
         <div class="cap">Modlys · obelisken som silhuet</div>
       </div>
       <div class="ph">
-        <img src="images/peterspladsen-1.jpg" alt="Foran St. Peter's Basilica"/>
+        <img src="images/peterspladsen-1.jpg" loading="lazy" alt="Foran St. Peter's Basilica"/>
         <div class="cap">Menneskelig skala</div>
       </div>
     </div>
@@ -1378,8 +1378,13 @@ function createScene(containerId, opts={}){
   }
   window.addEventListener('resize', resize);
   setTimeout(resize, 50);
+let isVisible = false;
+const observer = new IntersectionObserver((entries) => {
+  isVisible = entries[0].isIntersecting;
+}, { threshold: 0.01 }); 
+observer.observe(container);
 
-  return {scene, camera, renderer, controls, sunLight, fill};
+ return {scene, camera, renderer, controls, sunLight, fill, get isVisible() { return isVisible; }};
 }
 
 // =========================================================
@@ -1514,29 +1519,19 @@ function makeShadow(){
   // Animation
   let t = 0;
   function animate(){
+    requestAnimationFrame(animate); 
+    if (!ctx.isVisible) return;     
+
     t += 0.006;
-    // Sun's position: it moves in a circle around the gnomon axis (parallel to celestial equator)
-    // Sun's hour angle H, declination δ = 0 (equator for simplicity)
-    // In dial's local frame (dial is celestial equator plane), sun moves in a circle in XZ plane
-    // World position: tilt the (cos H, 0, sin H) circle by dial's tilt
     const H = t;
     const sunDistance = 5;
-    // Local position of sun (in dial frame)
     const sunLocal = new THREE.Vector3(Math.cos(H)*sunDistance, 0.0*sunDistance, Math.sin(H)*sunDistance);
-    // Add slight elevation oscillation to simulate declination through year
-    sunLocal.y = Math.sin(t*0.3) * 1.2; // gentle declination wobble
-    // Apply dial's rotation to convert to world position
+    sunLocal.y = Math.sin(t*0.3) * 1.2; 
     const sunWorld = sunLocal.clone().applyEuler(new THREE.Euler(-(Math.PI/2 - lat), 0, 0));
-    sunWorld.y += 0.45; // dial center height
+    sunWorld.y += 0.45; 
     sun.position.copy(sunWorld);
-
-    // Sun light follows sun
     sunLight.position.copy(sunWorld).multiplyScalar(0.6);
 
-    // Shadow line direction in dial frame: opposite of sun's projection onto dial plane
-    // In dial local frame, dial plane is Y=0 plane. Sun's xz projection points in (cos H, sin H) direction
-    // Shadow points opposite: (-cos H, -sin H)
-    // In Three.js dial frame, X and Z are the dial plane axes. So shadow direction = (-cos H, 0, -sin H)
     const shadowDir = new THREE.Vector3(-Math.cos(H), 0, -Math.sin(H));
     const shadowLen = 1.35;
     shadowGeo.setFromPoints([
@@ -1546,7 +1541,6 @@ function makeShadow(){
 
     controls.update();
     renderer.render(scene, camera);
-    requestAnimationFrame(animate);
   }
   animate();
 })();
@@ -1904,38 +1898,34 @@ const TYPE_INFO = {
   // Animation
   let t = 0;
   function animate(){
+    requestAnimationFrame(animate); 
+    if (!ctx.isVisible) return;     
+
     t += 0.005;
-    // Sun moves in arc — circle around polar axis
     const H = t;
     const sunDist = 5;
-    // In world coords, polar axis is (0, sin lat, -cos lat). Sun travels in plane perpendicular to this.
-    // Build basis: u = (1,0,0) (east), v = (0, cos lat, sin lat) (perp to polar axis in vertical plane through east)
     const u = new THREE.Vector3(1, 0, 0);
     const v = new THREE.Vector3(0, Math.cos(lat), Math.sin(lat));
     const sunPos = new THREE.Vector3()
       .addScaledVector(u, Math.cos(H)*sunDist)
       .addScaledVector(v, Math.sin(H)*sunDist);
-    // Add slight declination
+
     const polarAxis = new THREE.Vector3(0, Math.sin(lat), -Math.cos(lat));
     sunPos.addScaledVector(polarAxis, Math.sin(t*0.3)*0.8);
     sun.position.copy(sunPos);
-    // Sun hide when below horizon
+
     if(sunPos.y < -0.2) sun.visible = false; else sun.visible = true;
     sunLight.position.copy(sunPos).multiplyScalar(0.5);
 
-    // Shadow line — from gnomon tip in direction opposite of sun, projected onto ground (y=0)
     if(setup && sun.visible){
       const tip = setup.gnomonTipLocal.clone();
       const dirToSun = new THREE.Vector3().subVectors(sunPos, tip).normalize();
-      // Project shadow onto horizontal ground (y=0)
-      // shadow ray: tip + t*(-dirToSun); find t such that y = 0
       const denom = -dirToSun.y;
       if(Math.abs(denom) > 0.01){
         const tParam = tip.y / denom;
         const shadowEnd = new THREE.Vector3()
           .copy(tip)
           .addScaledVector(dirToSun, -tParam);
-        // Set shadow line from tip to shadowEnd, but only if shadow points away from sun and falls within reasonable distance
         const len = shadowEnd.distanceTo(tip);
         if(len < 5){
           shadowLine.visible = true;
@@ -1948,7 +1938,6 @@ const TYPE_INFO = {
 
     controls.update();
     renderer.render(scene, camera);
-    requestAnimationFrame(animate);
   }
   animate();
 })();
@@ -2153,33 +2142,29 @@ const TYPE_INFO = {
   // Animation
   let t = Math.PI/4; // start mid-morning
   function animate(){
+    requestAnimationFrame(animate); 
+    if (!ctx.isVisible) return;     
+
     t += 0.004;
-    // Sun moves in arc around celestial pole, at declination ~0
-    const H = t; // hour angle
+    const H = t; 
     const sunDist = 12;
-    // Build basis vectors for sun's circular motion
-    // Polar axis = (0, sin lat, -cos lat)
-    // East axis = (1, 0, 0)
-    // North-perpendicular-to-polar in vertical plane = (0, cos lat, sin lat) (south-up)
     const u = new THREE.Vector3(1, 0, 0);
     const v = new THREE.Vector3(0, Math.cos(lat), Math.sin(lat));
     const sunPos = new THREE.Vector3()
       .addScaledVector(u, Math.cos(H)*sunDist)
       .addScaledVector(v, Math.sin(H)*sunDist);
-    // Add small declination wobble
+
     const polar = new THREE.Vector3(0, Math.sin(lat), -Math.cos(lat));
     sunPos.addScaledVector(polar, Math.sin(t*0.2)*1.5);
     sun.position.copy(sunPos);
     sunLight.position.copy(sunPos).multiplyScalar(0.4);
-    // Hide if below horizon
+
     sun.visible = sunPos.y > 0;
 
     controls.update();
     renderer.render(scene, camera);
-    requestAnimationFrame(animate);
   }
   animate();
-})();
 
 // =========================================================
 //  ANALEMMA SVG — figure-8 path
