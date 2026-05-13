@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Solur på Peterspladsen</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #87CEEB; }
+        canvas { display: block; }
+        #info {
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            text-align: center;
+            color: #333;
+            font-family: sans-serif;
+            pointer-events: none;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+        }
+    </style>
+    <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+</head>
+<body>
+    <div id="info">Peterspladsens Obelisk - Interaktivt Solur<br><small>Solen (lyskilden) bevæger sig for at simulere skyggens vandring over pladsen</small></div>
+    
+    <script>
+        // 1. Opsætning af scene, kamera og renderer
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true; // Aktiverer skygger for at simulere soluret
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        // 2. Peterspladsen (Jorden/gulvet hvor markørerne ville ligge)
+        const planeGeometry = new THREE.PlaneGeometry(100, 100);
+        const planeMaterial = new THREE.MeshStandardMaterial({ color: 0xcccccc });
+        const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+        plane.rotation.x = -Math.PI / 2;
+        plane.receiveShadow = true;
+        scene.add(plane);
+
+        // 3. Obelisken (fungerer som Gnomon/viser for soluret)
+        const obeliskGeometry = new THREE.BoxGeometry(2, 25, 2);
+        const obeliskMaterial = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
+        const obelisk = new THREE.Mesh(obeliskGeometry, obeliskMaterial);
+        obelisk.position.y = 12.5; // Halvdelen af højden så den står korrekt på jorden
+        obelisk.castShadow = true;
+        scene.add(obelisk);
+
+        // 4. Lyskilde (Solen)
+        const sunLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        sunLight.castShadow = true;
+        
+        // Optimerer skyggens præcision
+        sunLight.shadow.camera.left = -50;
+        sunLight.shadow.camera.right = 50;
+        sunLight.shadow.camera.top = 50;
+        sunLight.shadow.camera.bottom = -50;
+        scene.add(sunLight);
+
+        // Ambient blødt lys for at pladsen ikke bliver kulsort
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.7);
+        scene.add(ambientLight);
+
+        camera.position.set(0, 30, 40);
+        camera.lookAt(0, 5, 0);
+
+        // 5. Animation (Solens bevægelse over himlen)
+        let time = 0;
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Animerer solen i en bue over obelisken for at flytte obeliskens skygge
+            time += 0.005; 
+            sunLight.position.x = Math.cos(time) * 50;
+            sunLight.position.y = Math.max(Math.sin(time) * 50, 5); // Forhindrer lyset i at gå ned under gulvet
+            sunLight.position.z = 20;
+
+            renderer.render(scene, camera);
+        }
+
+        // Automatisk justering af lærredet, hvis vinduet ændrer størrelse
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Start 3D animationen
+        animate();
+    </script>
+</body>
+</html>
