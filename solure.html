@@ -2826,8 +2826,23 @@ const TYPE_INFO = {
 // =========================================================
 const observer = new IntersectionObserver((entries)=>{
   entries.forEach(e=>{ if(e.isIntersecting) e.target.classList.add('in'); });
-},{threshold:0.12});
+},{threshold:0, rootMargin:'0px 0px -10% 0px'});
 document.querySelectorAll('section').forEach(s=>{ s.classList.add('reveal'); observer.observe(s); });
+
+// Safety net: reveal any section already in (or near) the viewport on load.
+// IntersectionObserver can miss very tall sections, so we check geometry directly.
+function revealVisible(){
+  const vh = window.innerHeight || document.documentElement.clientHeight;
+  document.querySelectorAll('section.reveal').forEach(s=>{
+    const r = s.getBoundingClientRect();
+    if(r.top < vh && r.bottom > 0) s.classList.add('in');
+  });
+}
+revealVisible();
+window.addEventListener('load', revealVisible);
+// If the page was opened with a hash, the browser scrolls after our initial check.
+setTimeout(revealVisible, 50);
+setTimeout(revealVisible, 300);
 
 (function(){
   const navLinks = document.querySelectorAll('.nav-links a[data-target]');
