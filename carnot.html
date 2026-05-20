@@ -1,0 +1,1454 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Carnot-cyklussen — interaktiv illustration</title>
+<style>
+:root {
+  --space-black: #0b0d17;
+  --space-deep: #050608;
+  --aurora-green: #39ff14;
+  --aurora-purple: #a020f0;
+  --aurora-blue: #4cc9f0;
+  --text-light: #e0e0e0;
+  --text-dim: #a0a0a8;
+  --hot: #ff5e3a;
+  --hot-glow: rgba(255, 94, 58, 0.55);
+  --hot-soft: rgba(255, 94, 58, 0.15);
+  --cold: #4cc9f0;
+  --cold-glow: rgba(76, 201, 240, 0.55);
+  --cold-soft: rgba(76, 201, 240, 0.15);
+  --insulation: #c9a96e;
+  --card-bg: rgba(255, 255, 255, 0.04);
+  --card-border: rgba(57, 255, 20, 0.18);
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: var(--space-black);
+  background-image:
+    radial-gradient(circle at 15% 8%, rgba(255, 94, 58, 0.06), transparent 40%),
+    radial-gradient(circle at 85% 70%, rgba(76, 201, 240, 0.05), transparent 40%),
+    radial-gradient(circle at 50% 95%, rgba(57, 255, 20, 0.04), transparent 50%);
+  color: var(--text-light);
+  line-height: 1.6;
+  margin: 0;
+  min-height: 100vh;
+}
+
+/* === BACK LINK === */
+.back-link {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(11, 13, 23, 0.92);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(57, 255, 20, 0.25);
+  padding: 0.7rem 1.2rem;
+}
+.back-link a {
+  color: var(--text-dim);
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: color 0.2s ease;
+}
+.back-link a:hover { color: var(--aurora-green); }
+
+/* === HEADER === */
+header {
+  text-align: center;
+  padding: 3.5rem 1.5rem 2.5rem;
+  background: linear-gradient(to bottom, #1a1a2e, var(--space-black));
+  border-bottom: 1px solid rgba(160, 32, 240, 0.15);
+}
+header h1 {
+  font-size: clamp(1.9rem, 5vw, 3rem);
+  color: var(--aurora-green);
+  text-shadow: 0 0 25px rgba(57, 255, 20, 0.4);
+  margin: 0 0 0.6rem 0;
+  letter-spacing: 0.5px;
+}
+header .subtitle {
+  font-size: 1rem;
+  color: var(--text-dim);
+  max-width: 720px;
+  margin: 0 auto;
+  line-height: 1.7;
+}
+header .eyebrow {
+  font-size: 0.75rem;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: var(--aurora-purple);
+  margin-bottom: 0.8rem;
+}
+
+/* === LAYOUT === */
+main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+}
+
+section {
+  margin-bottom: 3rem;
+}
+
+h2 {
+  font-size: 1.5rem;
+  color: var(--aurora-green);
+  border-left: 4px solid var(--aurora-purple);
+  padding-left: 0.9rem;
+  margin: 2rem 0 1rem;
+}
+
+h3 {
+  color: #fff;
+  margin-top: 1.5rem;
+  font-size: 1.15rem;
+}
+
+p { color: var(--text-light); }
+
+/* === MAIN ANIMATION PANEL === */
+.animation-panel {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(320px, 1.3fr);
+  gap: 1.5rem;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  padding: 1.5rem;
+  margin-bottom: 1.2rem;
+}
+
+@media (max-width: 760px) {
+  .animation-panel {
+    grid-template-columns: 1fr;
+  }
+}
+
+.piston-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.piston-svg {
+  width: 100%;
+  max-width: 340px;
+  height: auto;
+}
+
+.pv-stage {
+  display: flex;
+  flex-direction: column;
+}
+
+.pv-canvas-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1.2 / 1;
+}
+
+#pvCanvas {
+  width: 100%;
+  height: 100%;
+  background: rgba(5, 6, 8, 0.6);
+  border-radius: 10px;
+  border: 1px solid rgba(160, 32, 240, 0.15);
+}
+
+/* === STAGE INDICATORS === */
+.stages {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.6rem;
+  margin: 0 0 1rem;
+}
+.stage-card {
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  padding: 0.7rem 0.8rem;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+.stage-card .stage-num {
+  display: block;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  margin-bottom: 0.3rem;
+  color: var(--aurora-purple);
+}
+.stage-card .stage-name {
+  display: block;
+  color: var(--text-light);
+  font-weight: 500;
+  font-size: 0.85rem;
+  margin-bottom: 0.2rem;
+}
+.stage-card .stage-tag {
+  font-size: 0.7rem;
+  font-family: monospace;
+  opacity: 0.75;
+}
+.stage-card.active {
+  border-color: var(--aurora-green);
+  background: rgba(57, 255, 20, 0.08);
+  box-shadow: 0 0 14px rgba(57, 255, 20, 0.15);
+}
+.stage-card.active .stage-name { color: var(--aurora-green); }
+.stage-card.s1.active { border-color: var(--hot); background: rgba(255,94,58,0.10); box-shadow: 0 0 14px var(--hot-soft); }
+.stage-card.s1.active .stage-name { color: var(--hot); }
+.stage-card.s3.active { border-color: var(--cold); background: rgba(76,201,240,0.10); box-shadow: 0 0 14px var(--cold-soft); }
+.stage-card.s3.active .stage-name { color: var(--cold); }
+
+/* === CONTROLS === */
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.8rem;
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  padding: 0.8rem 1rem;
+  margin-bottom: 1rem;
+}
+.btn {
+  background: rgba(160, 32, 240, 0.12);
+  border: 1px solid rgba(160, 32, 240, 0.5);
+  color: var(--aurora-purple);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+.btn:hover {
+  background: rgba(160, 32, 240, 0.25);
+  color: #fff;
+}
+.btn.primary {
+  background: rgba(57, 255, 20, 0.12);
+  border-color: var(--aurora-green);
+  color: var(--aurora-green);
+}
+.btn.primary:hover {
+  background: rgba(57, 255, 20, 0.25);
+  color: #fff;
+}
+.speed-label {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  margin-left: auto;
+}
+.speed-select {
+  background: var(--space-black);
+  color: var(--text-light);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 6px;
+  padding: 0.3rem 0.5rem;
+  font-family: inherit;
+  font-size: 0.85rem;
+}
+
+/* === LIVE VALUES === */
+.live-values {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.8rem;
+  margin-bottom: 1.4rem;
+}
+.value-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px;
+  padding: 0.8rem 1rem;
+}
+.value-card .label {
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  display: block;
+  margin-bottom: 0.3rem;
+}
+.value-card .value {
+  font-size: 1.15rem;
+  color: var(--aurora-green);
+  font-family: 'Consolas', 'Monaco', monospace;
+}
+.value-card.hot .value { color: var(--hot); }
+.value-card.cold .value { color: var(--cold); }
+.value-card.purple .value { color: var(--aurora-purple); }
+.value-card.blue .value { color: var(--aurora-blue); }
+
+/* === PARAMETER SLIDERS === */
+.params {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  padding: 1.4rem 1.5rem;
+  margin-top: 1rem;
+}
+.params h3 {
+  margin-top: 0;
+  color: var(--aurora-purple);
+  font-size: 1.05rem;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  padding-bottom: 0.5rem;
+}
+.slider-row {
+  display: grid;
+  grid-template-columns: 1fr 2fr auto;
+  gap: 1rem;
+  align-items: center;
+  margin: 0.8rem 0;
+}
+@media (max-width: 600px) {
+  .slider-row { grid-template-columns: 1fr; gap: 0.4rem; }
+}
+.slider-row label {
+  color: var(--text-light);
+  font-size: 0.9rem;
+}
+.slider-row input[type=range] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: linear-gradient(to right, var(--cold), var(--hot));
+  height: 4px;
+  border-radius: 2px;
+  outline: none;
+}
+.slider-row input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--aurora-green);
+  border: 2px solid var(--space-black);
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(57,255,20,0.5);
+}
+.slider-row input[type=range]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--aurora-green);
+  border: 2px solid var(--space-black);
+  cursor: pointer;
+}
+.slider-row .val {
+  font-family: monospace;
+  color: var(--aurora-green);
+  min-width: 70px;
+  text-align: right;
+}
+
+/* === THEORY / EXAMPLE / TABLE === */
+.theory-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.theory-card {
+  background: var(--card-bg);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 12px;
+  padding: 1.2rem;
+}
+.theory-card.hot { border-color: rgba(255,94,58,0.35); }
+.theory-card.cold { border-color: rgba(76,201,240,0.35); }
+.theory-card h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  color: var(--aurora-green);
+}
+.theory-card.hot h4 { color: var(--hot); }
+.theory-card.cold h4 { color: var(--cold); }
+.theory-card .eq {
+  display: block;
+  font-family: 'Cambria Math', 'Times New Roman', serif;
+  background: rgba(0,0,0,0.35);
+  padding: 0.6rem 0.8rem;
+  border-radius: 6px;
+  margin: 0.6rem 0;
+  font-size: 1rem;
+  text-align: center;
+  border-left: 2px solid var(--aurora-purple);
+}
+.theory-card p {
+  font-size: 0.9rem;
+  color: var(--text-dim);
+  margin: 0.3rem 0 0;
+}
+
+.example-box {
+  background: linear-gradient(180deg, rgba(160,32,240,0.06), rgba(57,255,20,0.04));
+  border: 1px solid rgba(160,32,240,0.3);
+  border-radius: 14px;
+  padding: 1.5rem;
+  margin: 1rem 0;
+}
+.example-box h3 {
+  margin-top: 0;
+  color: var(--aurora-purple);
+}
+.example-box .step {
+  margin: 0.8rem 0;
+  padding-left: 1rem;
+  border-left: 2px solid rgba(160,32,240,0.3);
+}
+.example-box .calc {
+  font-family: 'Cambria Math', 'Times New Roman', serif;
+  background: rgba(0,0,0,0.3);
+  padding: 0.5rem 0.8rem;
+  border-radius: 6px;
+  display: inline-block;
+  margin: 0.3rem 0;
+  color: var(--aurora-blue);
+  font-size: 0.95rem;
+}
+.example-box .result {
+  color: var(--aurora-green);
+  font-weight: 500;
+}
+
+table.efficiency {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+  background: var(--card-bg);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.07);
+}
+table.efficiency th,
+table.efficiency td {
+  padding: 0.7rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  font-size: 0.9rem;
+}
+table.efficiency th {
+  color: var(--aurora-green);
+  font-weight: 500;
+  background: rgba(57,255,20,0.04);
+  letter-spacing: 0.05em;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+table.efficiency td.eta { color: var(--aurora-green); font-family: monospace; }
+table.efficiency td.eta-carnot { color: var(--hot); font-family: monospace; }
+table.efficiency tr:last-child td { border-bottom: none; }
+
+.principle-box {
+  background: rgba(57,255,20,0.04);
+  border-left: 3px solid var(--aurora-green);
+  padding: 1rem 1.2rem;
+  border-radius: 0 8px 8px 0;
+  margin: 1.2rem 0;
+}
+.principle-box strong { color: var(--aurora-green); }
+
+footer {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  margin-top: 2rem;
+}
+footer a { color: var(--aurora-purple); text-decoration: none; }
+
+/* Gas particle animation */
+@keyframes particleFloat {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(3px, -4px); }
+  50% { transform: translate(-2px, 3px); }
+  75% { transform: translate(4px, 2px); }
+}
+.gas-particle { animation: particleFloat 2.5s ease-in-out infinite; transform-origin: center; }
+
+/* Pulse for active reservoir */
+@keyframes hotPulse {
+  0%, 100% { filter: drop-shadow(0 0 4px var(--hot-glow)); }
+  50% { filter: drop-shadow(0 0 12px var(--hot-glow)); }
+}
+@keyframes coldPulse {
+  0%, 100% { filter: drop-shadow(0 0 4px var(--cold-glow)); }
+  50% { filter: drop-shadow(0 0 12px var(--cold-glow)); }
+}
+.reservoir-hot.active { animation: hotPulse 1.6s ease-in-out infinite; }
+.reservoir-cold.active { animation: coldPulse 1.6s ease-in-out infinite; }
+
+.heat-arrow {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.heat-arrow.visible {
+  opacity: 1;
+  animation: arrowPulse 1.2s ease-in-out infinite;
+}
+@keyframes arrowPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+</style>
+</head>
+<body>
+
+<nav class="back-link">
+  <a href="index.html">← Tilbage til oversigten</a>
+</nav>
+
+<header>
+  <p class="eyebrow">Termodynamik · Anno 1824</p>
+  <h1>Carnot-cyklussen</h1>
+  <p class="subtitle">
+    Den teoretisk perfekte varmemaskine — fire skridt mellem to varmereservoirer,
+    formuleret af den 28-årige Sadi Carnot syv år før hans død.
+    Ingen reel motor kan overgå dens virkningsgrad.
+  </p>
+</header>
+
+<main>
+
+<!-- ============ INTRODUCTION ============ -->
+<section>
+  <p>
+    I 1824 udgav den unge franske ingeniør Sadi Carnot et lille skrift med titlen
+    <em>Réflexions sur la puissance motrice du feu</em> — Betragtninger over ildens drivende kraft.
+    Spørgsmålet var praktisk: hvor meget arbejde kan man <em>maksimalt</em> få ud af en damp­maskine?
+    Svaret blev en af termodynamikkens dybeste indsigter: virkningsgraden afhænger
+    <strong>kun af temperaturerne</strong> i det varme og det kolde reservoir — ikke af arbejdsfluidet,
+    ikke af motorens konstruktion.
+  </p>
+  <p>
+    Cyklussen består af fire reversible processer: to <span style="color:var(--hot)">isoterme</span>
+    (ved konstant temperatur) og to <span style="color:var(--aurora-purple)">adiabatiske</span>
+    (uden varmeudveksling). Tryk play nedenfor og følg gassen rundt i sløjfen.
+  </p>
+</section>
+
+<!-- ============ MAIN ANIMATION ============ -->
+<section>
+
+  <div class="animation-panel">
+
+    <!-- Piston / cylinder + reservoirs -->
+    <div class="piston-stage">
+      <svg class="piston-svg" viewBox="0 0 280 380" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="cylWall" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#3a3a4a"/>
+            <stop offset="50%" stop-color="#5a5a6a"/>
+            <stop offset="100%" stop-color="#3a3a4a"/>
+          </linearGradient>
+          <linearGradient id="pistonGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#7a7a90"/>
+            <stop offset="50%" stop-color="#b0b0c0"/>
+            <stop offset="100%" stop-color="#7a7a90"/>
+          </linearGradient>
+          <radialGradient id="hotGrad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#ffb380"/>
+            <stop offset="50%" stop-color="#ff7a3a"/>
+            <stop offset="100%" stop-color="#cc3a10"/>
+          </radialGradient>
+          <radialGradient id="coldGrad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#a8e6ff"/>
+            <stop offset="50%" stop-color="#4cc9f0"/>
+            <stop offset="100%" stop-color="#1a7aa0"/>
+          </radialGradient>
+          <linearGradient id="insulGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#8a6a40"/>
+            <stop offset="50%" stop-color="#c9a96e"/>
+            <stop offset="100%" stop-color="#8a6a40"/>
+          </linearGradient>
+        </defs>
+
+        <!-- Top: piston rod / weight -->
+        <rect x="125" y="10" width="30" height="40" fill="#444455" stroke="#222" stroke-width="1"/>
+        <text x="140" y="33" text-anchor="middle" fill="#aaa" font-size="10" font-family="monospace">W</text>
+
+        <!-- Cylinder body -->
+        <rect x="55" y="50" width="170" height="240" fill="none" stroke="url(#cylWall)" stroke-width="6"/>
+
+        <!-- Piston head (moves vertically; y depends on volume) -->
+        <g id="piston">
+          <rect x="58" y="100" width="164" height="14" fill="url(#pistonGrad)" stroke="#222" stroke-width="1"/>
+          <rect x="135" y="50" width="10" height="55" fill="#666677" stroke="#333" stroke-width="1"/>
+        </g>
+
+        <!-- Gas (inside cylinder, below piston) -->
+        <g id="gasRegion">
+          <rect id="gasBox" x="62" y="114" width="156" height="172" fill="rgba(255,150,80,0.15)"/>
+          <!-- particles -->
+          <g id="gasParticles"></g>
+        </g>
+
+        <!-- Bottom of cylinder -->
+        <rect x="55" y="286" width="170" height="6" fill="#3a3a4a"/>
+
+        <!-- Reservoir / insulation slot below -->
+        <g id="reservoirSlot">
+          <!-- Hot reservoir (active in stage 1) -->
+          <g id="hotReservoir" class="reservoir-hot" opacity="0">
+            <rect x="40" y="295" width="200" height="55" rx="6" fill="url(#hotGrad)" stroke="#cc3a10" stroke-width="1"/>
+            <text x="140" y="328" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">T_h · varmt reservoir</text>
+          </g>
+          <!-- Cold reservoir (active in stage 3) -->
+          <g id="coldReservoir" class="reservoir-cold" opacity="0">
+            <rect x="40" y="295" width="200" height="55" rx="6" fill="url(#coldGrad)" stroke="#1a7aa0" stroke-width="1"/>
+            <text x="140" y="328" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">T_c · koldt reservoir</text>
+          </g>
+          <!-- Insulation (active in stages 2 and 4) -->
+          <g id="insulation" opacity="0">
+            <rect x="40" y="295" width="200" height="55" rx="6" fill="url(#insulGrad)" stroke="#5a4020" stroke-width="1"/>
+            <!-- hatching -->
+            <pattern id="hatch" patternUnits="userSpaceOnUse" width="8" height="8" patternTransform="rotate(45)">
+              <line x1="0" y1="0" x2="0" y2="8" stroke="#5a4020" stroke-width="2"/>
+            </pattern>
+            <rect x="40" y="295" width="200" height="55" rx="6" fill="url(#hatch)" opacity="0.4"/>
+            <text x="140" y="328" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">isoleret · ingen Q</text>
+          </g>
+        </g>
+
+        <!-- Heat flow arrow (in: hot to gas; out: gas to cold) -->
+        <g id="arrowHotIn" class="heat-arrow" transform="translate(0,0)">
+          <path d="M 250 310 L 240 310 L 240 290 L 230 290 L 240 280 L 250 270 L 260 290 L 250 290 Z"
+                fill="var(--hot)" transform="rotate(-90 245 290)"/>
+          <text x="265" y="295" fill="var(--hot)" font-size="11" font-weight="bold">Q_h →</text>
+        </g>
+        <g id="arrowColdOut" class="heat-arrow">
+          <path d="M 250 310 L 240 310 L 240 290 L 230 290 L 240 280 L 250 270 L 260 290 L 250 290 Z"
+                fill="var(--cold)" transform="rotate(90 245 290)"/>
+          <text x="265" y="295" fill="var(--cold)" font-size="11" font-weight="bold">← Q_c</text>
+        </g>
+
+        <!-- Piston motion arrows -->
+        <g id="motionArrow">
+          <text id="motionLabel" x="20" y="160" fill="#aaa" font-size="11">↓</text>
+        </g>
+
+      </svg>
+      <div style="font-size:0.8rem; color:var(--text-dim); text-align:center; padding-top:0.3rem;">
+        Cylinder med stempel · arbejdsfluid: ideal gas (1 mol He)
+      </div>
+    </div>
+
+    <!-- PV diagram -->
+    <div class="pv-stage">
+      <div class="pv-canvas-wrapper">
+        <canvas id="pvCanvas" width="600" height="500"></canvas>
+      </div>
+      <div style="font-size:0.8rem; color:var(--text-dim); text-align:center; padding-top:0.4rem;">
+        P-V-diagram · rødt = isoterm ved T_h · blåt = isoterm ved T_c · lilla = adiabater
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Stage cards -->
+  <div class="stages">
+    <div class="stage-card s1" data-stage="0" id="stage0">
+      <span class="stage-num">01</span>
+      <span class="stage-name">Isoterm udvidelse</span>
+      <span class="stage-tag">T = T_h · gas optager Q_h</span>
+    </div>
+    <div class="stage-card s2" data-stage="1" id="stage1">
+      <span class="stage-num">02</span>
+      <span class="stage-name">Adiabatisk udvidelse</span>
+      <span class="stage-tag">Q = 0 · T falder T_h → T_c</span>
+    </div>
+    <div class="stage-card s3" data-stage="2" id="stage2">
+      <span class="stage-num">03</span>
+      <span class="stage-name">Isoterm kompression</span>
+      <span class="stage-tag">T = T_c · gas afgiver Q_c</span>
+    </div>
+    <div class="stage-card s4" data-stage="3" id="stage3">
+      <span class="stage-num">04</span>
+      <span class="stage-name">Adiabatisk kompression</span>
+      <span class="stage-tag">Q = 0 · T stiger T_c → T_h</span>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button class="btn primary" id="playBtn">▶ Afspil</button>
+    <button class="btn" id="resetBtn">⟲ Nulstil</button>
+    <button class="btn" id="stepBtn">▶| Næste fase</button>
+    <span class="speed-label">Hastighed:</span>
+    <select class="speed-select" id="speedSel">
+      <option value="0.3">0.3×</option>
+      <option value="0.6">0.6×</option>
+      <option value="1" selected>1×</option>
+      <option value="2">2×</option>
+      <option value="4">4×</option>
+    </select>
+  </div>
+
+  <!-- Live values -->
+  <div class="live-values">
+    <div class="value-card"><span class="label">Tryk</span><span class="value"><span id="liveP">—</span> kPa</span></div>
+    <div class="value-card"><span class="label">Volumen</span><span class="value"><span id="liveV">—</span> L</span></div>
+    <div class="value-card hot"><span class="label">Temperatur</span><span class="value"><span id="liveT">—</span> K</span></div>
+    <div class="value-card hot"><span class="label">Q_h optaget</span><span class="value"><span id="liveQh">0</span> J</span></div>
+    <div class="value-card cold"><span class="label">Q_c afgivet</span><span class="value"><span id="liveQc">0</span> J</span></div>
+    <div class="value-card purple"><span class="label">Arbejde W</span><span class="value"><span id="liveW">0</span> J</span></div>
+    <div class="value-card blue"><span class="label">Virkningsgrad η</span><span class="value"><span id="liveEta">—</span> %</span></div>
+  </div>
+
+  <!-- Sliders -->
+  <div class="params">
+    <h3>Justér cyklussens parametre</h3>
+    <div class="slider-row">
+      <label for="ThSlider">T_h (varmt reservoir)</label>
+      <input type="range" id="ThSlider" min="350" max="900" value="600" step="10">
+      <span class="val"><span id="ThVal">600</span> K</span>
+    </div>
+    <div class="slider-row">
+      <label for="TcSlider">T_c (koldt reservoir)</label>
+      <input type="range" id="TcSlider" min="200" max="600" value="300" step="10">
+      <span class="val"><span id="TcVal">300</span> K</span>
+    </div>
+    <div class="slider-row">
+      <label for="vrSlider">Volumenforhold V₂/V₁</label>
+      <input type="range" id="vrSlider" min="1.3" max="3.5" value="2.0" step="0.1">
+      <span class="val"><span id="vrVal">2.0</span> ×</span>
+    </div>
+    <p style="font-size:0.82rem; color:var(--text-dim); margin:0.6rem 0 0;">
+      Slide T_h højere eller T_c lavere — du vil se virkningsgraden stige. Det er essensen af termodynamikkens 2. hovedsætning.
+    </p>
+  </div>
+</section>
+
+<!-- ============ THEORY ============ -->
+<section>
+  <h2>De fire processer — formler</h2>
+  <p>For en ideal gas med n mol, gaskonstant R og adiabatkoefficient γ:</p>
+
+  <div class="theory-grid">
+
+    <div class="theory-card hot">
+      <h4>① Isoterm udvidelse ved T_h</h4>
+      <span class="eq">Q_h = nRT_h · ln(V₂/V₁)</span>
+      <span class="eq">ΔU = 0 ⇒ W₁ = Q_h</span>
+      <p>Gassen er i kontakt med det varme reservoir. Den udvider sig langsomt, optager varme Q_h og udfører arbejde lige så stort.</p>
+    </div>
+
+    <div class="theory-card">
+      <h4>② Adiabatisk udvidelse</h4>
+      <span class="eq">T·V^(γ−1) = konstant</span>
+      <span class="eq">W₂ = nC_v · (T_h − T_c)</span>
+      <p>Cylinderen er isoleret. Gassen udvider sig videre, men nu på bekostning af sin egen indre energi — temperaturen falder fra T_h til T_c.</p>
+    </div>
+
+    <div class="theory-card cold">
+      <h4>③ Isoterm kompression ved T_c</h4>
+      <span class="eq">Q_c = nRT_c · ln(V₃/V₄)</span>
+      <span class="eq">ΔU = 0 ⇒ W₃ = −Q_c</span>
+      <p>Gassen er i kontakt med det kolde reservoir. Den komprimeres, afgiver varme Q_c, og der udføres arbejde <em>på</em> gassen.</p>
+    </div>
+
+    <div class="theory-card">
+      <h4>④ Adiabatisk kompression</h4>
+      <span class="eq">T·V^(γ−1) = konstant</span>
+      <span class="eq">W₄ = −nC_v · (T_h − T_c)</span>
+      <p>Igen isoleret. Den fortsatte kompression hæver gassens temperatur fra T_c tilbage til T_h. Cyklussen er sluttet.</p>
+    </div>
+
+  </div>
+
+  <h2>Det smukke resultat</h2>
+  <p>Adiabaterne sikrer at V₂/V₁ = V₃/V₄. Derfor giver nettoarbejdet:</p>
+
+  <div class="theory-card" style="max-width:520px; margin:1rem auto;">
+    <span class="eq" style="font-size:1.1rem;">W_net = Q_h − Q_c = nR(T_h − T_c) · ln(V₂/V₁)</span>
+    <span class="eq" style="font-size:1.2rem; color:var(--aurora-green);">η = W/Q_h = 1 − T_c/T_h</span>
+    <p style="text-align:center; margin-top:0.5rem;">
+      Virkningsgraden afhænger <em>udelukkende</em> af de to temperaturer — ikke af gas, ikke af volumener.
+    </p>
+  </div>
+
+  <div class="principle-box">
+    <strong>Carnot's sætning (1824):</strong> Ingen varmemaskine, der opererer mellem to reservoirer ved T_h og T_c,
+    kan have højere virkningsgrad end den reversible Carnot-maskine. Alle reversible maskiner mellem
+    samme to reservoirer har <em>samme</em> virkningsgrad. Denne sætning blev af William Thomson
+    (Lord Kelvin) brugt til at definere den absolutte temperaturskala.
+  </div>
+</section>
+
+<!-- ============ WORKED EXAMPLE ============ -->
+<section>
+  <h2>Gennemregnet eksempel</h2>
+  <div class="example-box">
+    <h3>Et dampkraftværk · T_h = 773 K (500 °C), T_c = 298 K (25 °C)</h3>
+    <p>
+      Et moderne kulkraftværk har en kedel ved 500 °C og en kondensator ved 25 °C
+      (omgivelsestemperatur). Hvad er den <em>teoretisk maksimale</em> virkningsgrad?
+    </p>
+
+    <div class="step">
+      <strong>Trin 1.</strong> Konvertér til kelvin:
+      <div class="calc">T_h = 500 + 273 = 773 K · T_c = 25 + 273 = 298 K</div>
+    </div>
+
+    <div class="step">
+      <strong>Trin 2.</strong> Brug Carnot-virkningsgraden:
+      <div class="calc">η_Carnot = 1 − T_c/T_h = 1 − 298/773 = 1 − 0.3855 = <span class="result">0.614 = 61.4 %</span></div>
+    </div>
+
+    <div class="step">
+      <strong>Trin 3.</strong> Virkelige kraftværker når <strong>typisk 35-45 %</strong> — alt mellem det og Carnot-grænsen er tabt til irreversibiliteter:
+      friktion, varmeledning gennem endelig temperaturforskel, turbulens, ufuldstændig forbrænding.
+    </div>
+
+    <p style="margin-top:1rem;">
+      <strong>Spørgsmål:</strong> Hvor meget arbejde får vi pr. kg kul forbrændt (forbrændingsvarme ≈ 30 MJ/kg)?
+    </p>
+    <div class="step">
+      Ved Carnot-grænsen: <span class="calc">W = 0.614 × 30 MJ = <span class="result">18.4 MJ pr. kg kul</span></span><br>
+      I et reelt kraftværk (η = 40 %): <span class="calc">W = 0.40 × 30 MJ = <span class="result">12 MJ pr. kg kul</span></span>
+    </div>
+  </div>
+
+  <div class="example-box">
+    <h3>Mol-for-mol regnestykke · 1 mol helium, T_h = 600 K, T_c = 300 K, V₂/V₁ = 2</h3>
+
+    <div class="step">
+      <strong>Q_h (varme optaget):</strong>
+      <div class="calc">Q_h = nRT_h · ln(V₂/V₁) = 1 · 8.314 · 600 · ln(2) = 1 · 8.314 · 600 · 0.6931 = <span class="result">3457 J</span></div>
+    </div>
+
+    <div class="step">
+      <strong>For helium (γ = 5/3) findes V₃:</strong>
+      <div class="calc">V₃ = V₂ · (T_h/T_c)^(1/(γ−1)) = V₂ · 2^(3/2) = <span class="result">2.828 · V₂</span></div>
+      Og tilsvarende V₄ = 2.828 · V₁. Bemærk V₃/V₄ = V₂/V₁ = 2 — adiabaterne er parallelle.
+    </div>
+
+    <div class="step">
+      <strong>Q_c (varme afgivet):</strong>
+      <div class="calc">Q_c = nRT_c · ln(V₃/V₄) = 1 · 8.314 · 300 · ln(2) = <span class="result">1729 J</span></div>
+    </div>
+
+    <div class="step">
+      <strong>Arbejde og virkningsgrad:</strong>
+      <div class="calc">W_net = Q_h − Q_c = 3457 − 1729 = <span class="result">1728 J</span></div>
+      <div class="calc">η = W/Q_h = 1728/3457 = 0.500 = <span class="result">50.0 %</span></div>
+      <div class="calc">Kontrol: 1 − T_c/T_h = 1 − 300/600 = <span class="result">0.500 ✓</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ REAL-WORLD ============ -->
+<section>
+  <h2>Sammenligning med virkelige maskiner</h2>
+  <p>Carnot-virkningsgraden er det loft, ingen reel motor kan nå. Her er et udvalg af motorer, deres typiske drift­temperaturer og hvor tæt de kommer:</p>
+
+  <table class="efficiency">
+    <thead>
+      <tr>
+        <th>Maskine</th>
+        <th>T_h</th>
+        <th>T_c</th>
+        <th>η_Carnot</th>
+        <th>η (reel)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Damplokomotiv (klassisk)</td>
+        <td>475 K (200 °C)</td>
+        <td>373 K (100 °C)</td>
+        <td class="eta-carnot">21.5 %</td>
+        <td class="eta">~12 %</td>
+      </tr>
+      <tr>
+        <td>Bilmotor (benzin)</td>
+        <td>2300 K</td>
+        <td>400 K</td>
+        <td class="eta-carnot">82.6 %</td>
+        <td class="eta">~30 %</td>
+      </tr>
+      <tr>
+        <td>Diesel-motor (skib)</td>
+        <td>2100 K</td>
+        <td>500 K</td>
+        <td class="eta-carnot">76.2 %</td>
+        <td class="eta">~50 %</td>
+      </tr>
+      <tr>
+        <td>Kulkraftværk</td>
+        <td>773 K (500 °C)</td>
+        <td>298 K (25 °C)</td>
+        <td class="eta-carnot">61.4 %</td>
+        <td class="eta">~40 %</td>
+      </tr>
+      <tr>
+        <td>Combined-cycle gasværk</td>
+        <td>1700 K</td>
+        <td>300 K</td>
+        <td class="eta-carnot">82.4 %</td>
+        <td class="eta">~60 %</td>
+      </tr>
+      <tr>
+        <td>Geotermisk kraftværk</td>
+        <td>475 K (200 °C)</td>
+        <td>290 K (17 °C)</td>
+        <td class="eta-carnot">38.9 %</td>
+        <td class="eta">~12 %</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p style="margin-top:1rem;">
+    Bemærk det interessante: bilmotoren har Carnot-loftet højest (over 80 %), men når kun ca. 30 %.
+    Den begrænses ikke primært af termodynamikken, men af irreversibiliteter — hurtig forbrænding,
+    friktion, varmetab gennem cylinderen, ufuldstændig udstødning. Kulkraftværket derimod ligger
+    væsentligt tættere på sit eget Carnot-loft, fordi alle processer foregår meget langsommere og
+    mere kontrolleret.
+  </p>
+
+  <h3>Køleskab og varmepumpe — Carnot baglæns</h3>
+  <p>
+    Køres Carnot-cyklussen omvendt (mod uret i P-V-diagrammet) bliver det en
+    <strong>køle­maskine</strong>: arbejde tilføres, varme pumpes fra koldt til varmt reservoir.
+    Effektivitets­målet er ikke η, men COP (Coefficient of Performance):
+  </p>
+  <div class="theory-card" style="max-width:480px; margin:0.8rem auto;">
+    <span class="eq">COP_køl = T_c / (T_h − T_c)</span>
+    <span class="eq">COP_varmepumpe = T_h / (T_h − T_c)</span>
+  </div>
+  <p>
+    En varmepumpe der løfter varme fra 0 °C ude (273 K) til 35 °C i gulvvarmen (308 K) har
+    Carnot-COP = 308/35 ≈ <strong>8.8</strong> — altså 8.8 kWh varme leveret pr. kWh elektricitet.
+    Reelle varmepumper når 3-5. Det er stadig en faktor 3-5 bedre end direkte el-varme,
+    og forklarer hvorfor varmepumper er termodynamikkens bedste ven i grøn omstilling.
+  </p>
+</section>
+
+<!-- ============ CONCLUSION ============ -->
+<section>
+  <h2>Hvad Carnot lærte os</h2>
+  <p>
+    Carnot døde af kolera i 1832, kun 36 år gammel. Hans skrift var ringe påagtet i sin samtid,
+    men da Rudolf Clausius og William Thomson læste det i 1850'erne, blev det grundstenen i hele
+    termodynamikken. Tre dybe konsekvenser:
+  </p>
+  <ul>
+    <li><strong>Termodynamikkens 2. hovedsætning:</strong> varme strømmer spontant fra varmt til koldt — ikke omvendt — og enhver omdannelse af varme til arbejde har et fundamentalt loft.</li>
+    <li><strong>Den absolutte temperaturskala:</strong> Kelvin definerede T således at η_Carnot = 1 − T_c/T_h er eksakt. Temperatur blev defineret <em>via</em> termodynamikkens love, ikke via en bestemt væske.</li>
+    <li><strong>Entropi:</strong> Clausius opdagede at Q_h/T_h = Q_c/T_c for Carnot-cyklussen. Det blev definitionen på en ny tilstandsstørrelse — entropien S — og fødte begrebet om irreversibilitet.</li>
+  </ul>
+
+  <div class="principle-box">
+    Carnot-cyklussen er termodynamikkens <strong>nordstjerne</strong>. Den findes ikke i naturen — ingen
+    proces er fuldstændig reversibel — men den fortæller os præcist hvor godt en motor <em>kunne</em>
+    være, hvis den var perfekt. Forskellen mellem η_Carnot og η_virkelig er målet for irreversibilitet.
+  </div>
+</section>
+
+<p style="text-align:center; margin-top:2.5rem;">
+  <a href="index.html" style="color:var(--aurora-green); text-decoration:none; border:1px solid var(--aurora-green); padding:0.7rem 1.4rem; border-radius:8px; display:inline-block;">
+    ← Tilbage til oversigten
+  </a>
+</p>
+
+</main>
+
+<footer>
+  &copy; 2026 · Fysik, matematik og kemi · Michael Grant ·
+  <a href="mailto:michael.h.grant@gmail.com">michael.h.grant@gmail.com</a>
+</footer>
+
+<script>
+// ============================================================
+//   Carnot cycle simulation
+// ============================================================
+
+const R = 8.314;       // gas constant
+const n = 1.0;         // 1 mol
+const GAMMA = 5/3;     // monatomic ideal gas (helium)
+
+// State parameters (will be set from sliders)
+let T_h = 600;
+let T_c = 300;
+let V1 = 1.0;          // L
+let V2_over_V1 = 2.0;
+
+// Derived state points (computed in updateCycle)
+let V1_, V2_, V3_, V4_;
+let P1, P2, P3, P4;
+
+// Animation
+let phase = 0;              // 0..4, integer part = stage, fractional = progress
+let playing = false;
+let lastTime = 0;
+let speed = 1.0;
+const cycleDuration = 16;   // seconds for one full cycle at 1x
+
+// Cumulative quantities
+let cumQh = 0;
+let cumQc = 0;
+let cumW  = 0;
+let prevState = null;
+
+// ============== Cycle math ==============
+function updateCycle(){
+  V1_ = V1;
+  V2_ = V1 * V2_over_V1;
+  // adiabatic: T·V^(γ-1) = const
+  const ratio = Math.pow(T_h / T_c, 1/(GAMMA - 1));
+  V3_ = V2_ * ratio;
+  V4_ = V1_ * ratio;
+  P1 = n*R*T_h / V1_;     // kPa·L = J, but to display let's use units
+  P2 = n*R*T_h / V2_;
+  P3 = n*R*T_c / V3_;
+  P4 = n*R*T_c / V4_;
+}
+
+// Returns {V, P, T, stage, progress}
+function stateAt(phase){
+  const stage = Math.floor(phase) % 4;
+  const p = phase - Math.floor(phase);
+  let V, T;
+  if(stage === 0){
+    // isothermal expansion at T_h: V1 → V2
+    V = V1_ + p*(V2_ - V1_);
+    T = T_h;
+  } else if(stage === 1){
+    // adiabatic expansion: V2 → V3, T_h → T_c
+    V = V2_ + p*(V3_ - V2_);
+    T = T_h * Math.pow(V2_/V, GAMMA - 1);
+  } else if(stage === 2){
+    // isothermal compression at T_c: V3 → V4
+    V = V3_ + p*(V4_ - V3_);
+    T = T_c;
+  } else {
+    // adiabatic compression: V4 → V1, T_c → T_h
+    V = V4_ + p*(V1_ - V4_);
+    T = T_c * Math.pow(V4_/V, GAMMA - 1);
+  }
+  const P = n*R*T/V;
+  return {V, P, T, stage, progress: p};
+}
+
+// ============== Canvas drawing ==============
+const canvas = document.getElementById('pvCanvas');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas(){
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener('resize', () => { resizeCanvas(); drawPV(); });
+
+function drawPV(){
+  const rect = canvas.getBoundingClientRect();
+  const W = rect.width, H = rect.height;
+  const padL = 55, padR = 20, padT = 25, padB = 45;
+  const plotW = W - padL - padR;
+  const plotH = H - padT - padB;
+
+  // Determine plot ranges
+  const vMin = V1_ * 0.85;
+  const vMax = V3_ * 1.05;
+  const pMin = P3 * 0.7;
+  const pMax = P1 * 1.05;
+
+  function xOf(v){ return padL + (v - vMin)/(vMax - vMin) * plotW; }
+  function yOf(p){ return padT + (1 - (p - pMin)/(pMax - pMin)) * plotH; }
+
+  // Clear
+  ctx.fillStyle = 'rgba(5, 6, 8, 0.95)';
+  ctx.fillRect(0, 0, W, H);
+
+  // Grid
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+  ctx.lineWidth = 1;
+  for(let i = 0; i <= 5; i++){
+    const x = padL + i*plotW/5;
+    ctx.beginPath(); ctx.moveTo(x, padT); ctx.lineTo(x, padT + plotH); ctx.stroke();
+    const y = padT + i*plotH/5;
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(padL + plotW, y); ctx.stroke();
+  }
+
+  // Axes
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(padL, padT); ctx.lineTo(padL, padT + plotH); ctx.lineTo(padL + plotW, padT + plotH);
+  ctx.stroke();
+
+  // Axis labels
+  ctx.fillStyle = '#a0a0a8';
+  ctx.font = '12px Segoe UI, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('Volumen V →', padL + plotW/2, H - 12);
+  ctx.save();
+  ctx.translate(15, padT + plotH/2);
+  ctx.rotate(-Math.PI/2);
+  ctx.fillText('Tryk P →', 0, 0);
+  ctx.restore();
+
+  // Draw isotherm at T_h (red)
+  ctx.strokeStyle = 'rgba(255, 94, 58, 0.55)';
+  ctx.lineWidth = 1.2;
+  ctx.setLineDash([4, 3]);
+  ctx.beginPath();
+  let started = false;
+  for(let v = vMin; v <= vMax; v += (vMax - vMin)/200){
+    const p = n*R*T_h/v;
+    const x = xOf(v), y = yOf(p);
+    if(y >= padT && y <= padT + plotH){
+      if(!started){ ctx.moveTo(x, y); started = true; }
+      else ctx.lineTo(x, y);
+    }
+  }
+  ctx.stroke();
+
+  // Draw isotherm at T_c (blue)
+  ctx.strokeStyle = 'rgba(76, 201, 240, 0.55)';
+  ctx.beginPath();
+  started = false;
+  for(let v = vMin; v <= vMax; v += (vMax - vMin)/200){
+    const p = n*R*T_c/v;
+    const x = xOf(v), y = yOf(p);
+    if(y >= padT && y <= padT + plotH){
+      if(!started){ ctx.moveTo(x, y); started = true; }
+      else ctx.lineTo(x, y);
+    }
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // === Draw cycle path (solid where traversed, dim ahead) ===
+  function tracePath(stageStart, stageEnd){
+    // Build path from stage*1.0 ... etc.
+    const segs = [];
+    for(let s = stageStart; s < stageEnd; s += 0.005){
+      const st = stateAt(s);
+      segs.push({x: xOf(st.V), y: yOf(st.P)});
+    }
+    return segs;
+  }
+
+  // Draw full cycle in dim color
+  ctx.strokeStyle = 'rgba(160, 32, 240, 0.25)';
+  ctx.lineWidth = 1.5;
+  let allPts = tracePath(0, 4);
+  ctx.beginPath();
+  allPts.forEach((pt,i) => {
+    if(i===0) ctx.moveTo(pt.x, pt.y); else ctx.lineTo(pt.x, pt.y);
+  });
+  ctx.closePath();
+  ctx.stroke();
+
+  // Shade enclosed area subtly
+  ctx.fillStyle = 'rgba(57, 255, 20, 0.04)';
+  ctx.fill();
+
+  // Draw the portion already traversed in bright color
+  const traversed = tracePath(0, phase);
+  if(traversed.length > 1){
+    // color by current stage
+    const stageColors = ['rgba(255, 94, 58, 0.95)',     // 1: hot isotherm
+                         'rgba(160, 32, 240, 0.95)',     // 2: adiabat
+                         'rgba(76, 201, 240, 0.95)',     // 3: cold isotherm
+                         'rgba(160, 32, 240, 0.95)'];    // 4: adiabat
+    // Draw each stage segment with its own color
+    for(let stg = 0; stg < 4; stg++){
+      const segStart = stg;
+      const segEnd = Math.min(stg+1, phase);
+      if(segEnd > segStart){
+        const segPts = tracePath(segStart, segEnd);
+        ctx.strokeStyle = stageColors[stg];
+        ctx.lineWidth = 2.8;
+        ctx.beginPath();
+        segPts.forEach((pt,i) => {
+          if(i===0) ctx.moveTo(pt.x, pt.y); else ctx.lineTo(pt.x, pt.y);
+        });
+        ctx.stroke();
+      }
+    }
+  }
+
+  // Draw four corner labels
+  const states = [
+    {V: V1_, P: P1, label: '①', T: 'T_h'},
+    {V: V2_, P: P2, label: '②', T: 'T_h'},
+    {V: V3_, P: P3, label: '③', T: 'T_c'},
+    {V: V4_, P: P4, label: '④', T: 'T_c'},
+  ];
+  states.forEach(s => {
+    const x = xOf(s.V), y = yOf(s.P);
+    ctx.fillStyle = 'rgba(11, 13, 23, 0.9)';
+    ctx.beginPath(); ctx.arc(x, y, 9, 0, 2*Math.PI); ctx.fill();
+    ctx.strokeStyle = '#39ff14';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = '#39ff14';
+    ctx.font = 'bold 10px Segoe UI, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(s.label, x, y);
+    ctx.textBaseline = 'alphabetic';
+  });
+
+  // Draw moving marker at current state
+  const cur = stateAt(phase);
+  const cx = xOf(cur.V), cy = yOf(cur.P);
+  // glow
+  const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, 15);
+  grd.addColorStop(0, 'rgba(57, 255, 20, 0.7)');
+  grd.addColorStop(1, 'rgba(57, 255, 20, 0)');
+  ctx.fillStyle = grd;
+  ctx.beginPath(); ctx.arc(cx, cy, 15, 0, 2*Math.PI); ctx.fill();
+  ctx.fillStyle = '#39ff14';
+  ctx.beginPath(); ctx.arc(cx, cy, 5, 0, 2*Math.PI); ctx.fill();
+
+  // Legend in corner
+  ctx.font = '10px Segoe UI, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = 'rgba(255, 94, 58, 0.8)';
+  ctx.fillText('— — isoterm T_h', padL + plotW - 110, padT + 12);
+  ctx.fillStyle = 'rgba(76, 201, 240, 0.8)';
+  ctx.fillText('— — isoterm T_c', padL + plotW - 110, padT + 26);
+  ctx.fillStyle = 'rgba(160, 32, 240, 0.9)';
+  ctx.fillText('—— adiabater', padL + plotW - 110, padT + 40);
+}
+
+// ============== Piston SVG update ==============
+const pistonG = document.getElementById('piston');
+const gasBox = document.getElementById('gasBox');
+const gasParticles = document.getElementById('gasParticles');
+const hotRes = document.getElementById('hotReservoir');
+const coldRes = document.getElementById('coldReservoir');
+const insul = document.getElementById('insulation');
+const arrowHot = document.getElementById('arrowHotIn');
+const arrowCold = document.getElementById('arrowColdOut');
+const motionLabel = document.getElementById('motionLabel');
+
+const NPART = 22;
+const particles = [];
+function initParticles(){
+  gasParticles.innerHTML = '';
+  for(let i = 0; i < NPART; i++){
+    const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    c.setAttribute('r', '3');
+    c.setAttribute('fill', '#ffd07a');
+    c.setAttribute('opacity', '0.75');
+    c.classList.add('gas-particle');
+    c.style.animationDelay = (Math.random() * 2.5) + 's';
+    gasParticles.appendChild(c);
+    particles.push({
+      el: c,
+      bx: 0.05 + Math.random()*0.9,   // baseline position (0..1) within gas box
+      by: 0.05 + Math.random()*0.9
+    });
+  }
+}
+initParticles();
+
+function updatePiston(){
+  const cur = stateAt(phase);
+  // Map volume V (V1..V3 range) to piston y position
+  // Top of piston when V = V1 (min): y = 95
+  // Top of piston when V = V3 (max): y = 200
+  const yMin = 95;
+  const yMax = 230;
+  const frac = (cur.V - V1_) / (V3_ - V1_);
+  const pistonY = yMin + frac * (yMax - yMin);
+  // piston rect at pistonY (head), gas box below to y=286
+  const headTop = pistonY;
+  const headHeight = 14;
+  pistonG.querySelector('rect').setAttribute('y', headTop);
+  // piston rod: top fixed at 50, bottom at headTop
+  const rod = pistonG.querySelectorAll('rect')[1];
+  rod.setAttribute('y', 50);
+  rod.setAttribute('height', headTop - 50);
+
+  // Gas box: from below piston head to bottom of cylinder
+  const gasTop = headTop + headHeight;
+  const gasBottom = 286;
+  gasBox.setAttribute('y', gasTop);
+  gasBox.setAttribute('height', gasBottom - gasTop);
+
+  // Color gas based on temperature
+  const t = (cur.T - T_c) / (T_h - T_c); // 0..1
+  const hue = lerp(200, 20, t);
+  const sat = 80;
+  const light = 55;
+  const alpha = 0.18 + 0.15*t;
+  gasBox.setAttribute('fill', `hsla(${hue}, ${sat}%, ${light}%, ${alpha})`);
+
+  // Reposition particles within gas box
+  particles.forEach(pa => {
+    const x = 62 + pa.bx * 156;
+    const y = gasTop + 5 + pa.by * (gasBottom - gasTop - 10);
+    pa.el.setAttribute('cx', x);
+    pa.el.setAttribute('cy', y);
+    pa.el.setAttribute('fill', `hsl(${hue}, ${sat}%, 70%)`);
+  });
+
+  // Show appropriate reservoir / insulation
+  hotRes.setAttribute('opacity', cur.stage === 0 ? 1 : 0);
+  coldRes.setAttribute('opacity', cur.stage === 2 ? 1 : 0);
+  insul.setAttribute('opacity', (cur.stage === 1 || cur.stage === 3) ? 1 : 0);
+  hotRes.classList.toggle('active', cur.stage === 0);
+  coldRes.classList.toggle('active', cur.stage === 2);
+
+  // Heat-flow arrows
+  arrowHot.classList.toggle('visible', cur.stage === 0);
+  arrowCold.classList.toggle('visible', cur.stage === 2);
+
+  // Motion label
+  const stageMotions = ['↑ udvider', '↑ udvider (adiab.)', '↓ komprimerer', '↓ komprimerer (adiab.)'];
+  motionLabel.textContent = stageMotions[cur.stage];
+}
+
+function lerp(a,b,t){ return a + (b-a)*t; }
+
+// ============== Stage UI ==============
+function updateStageUI(){
+  const stage = Math.floor(phase) % 4;
+  document.querySelectorAll('.stage-card').forEach((el,i) => {
+    el.classList.toggle('active', i === stage);
+  });
+}
+
+// ============== Live values ==============
+function updateLive(){
+  const cur = stateAt(phase);
+
+  // Track cumulative Q, W since previous frame
+  if(prevState){
+    const dV = cur.V - prevState.V;
+    // Trapezoidal P · dV for incremental work
+    const Pavg = 0.5*(cur.P + prevState.P);
+    const dW = Pavg * dV;   // in (kPa·L) = J (since R is in J/(mol·K) and V in L gives consistent J)
+    cumW += dW;
+    // dQ = dU + dW; dU = nCv dT, Cv = R/(γ-1) for ideal gas
+    const Cv = R/(GAMMA - 1);
+    const dU = n*Cv*(cur.T - prevState.T);
+    const dQ = dU + dW;
+    if(prevState.stage === 0) cumQh += dQ;          // isothermal hot: heat absorbed
+    if(prevState.stage === 2) cumQc += -dQ;         // isothermal cold: heat released (dQ < 0)
+  }
+  prevState = cur;
+
+  document.getElementById('liveP').textContent = cur.P.toFixed(1);
+  document.getElementById('liveV').textContent = cur.V.toFixed(2);
+  document.getElementById('liveT').textContent = cur.T.toFixed(0);
+  document.getElementById('liveQh').textContent = cumQh.toFixed(0);
+  document.getElementById('liveQc').textContent = cumQc.toFixed(0);
+  document.getElementById('liveW').textContent = cumW.toFixed(0);
+  const eta = (1 - T_c/T_h)*100;
+  document.getElementById('liveEta').textContent = eta.toFixed(1);
+}
+
+function resetCumulative(){
+  cumQh = 0; cumQc = 0; cumW = 0;
+  prevState = null;
+}
+
+// ============== Main loop ==============
+function loop(ts){
+  if(!lastTime) lastTime = ts;
+  const dt = (ts - lastTime)/1000;
+  lastTime = ts;
+  if(playing){
+    const newPhase = phase + 4 * dt / cycleDuration * speed;
+    if(Math.floor(newPhase) > Math.floor(phase)){
+      // crossed stage boundary - update UI
+    }
+    phase = newPhase % 4;
+    // Reset cumulative when crossing back to 0
+    if(Math.floor(newPhase / 4) > 0){
+      resetCumulative();
+    }
+  }
+  drawPV();
+  updatePiston();
+  updateStageUI();
+  updateLive();
+  requestAnimationFrame(loop);
+}
+
+// ============== Controls ==============
+document.getElementById('playBtn').addEventListener('click', e => {
+  playing = !playing;
+  e.target.textContent = playing ? '❚❚ Pause' : '▶ Afspil';
+  e.target.classList.toggle('primary', !playing);
+});
+document.getElementById('resetBtn').addEventListener('click', () => {
+  phase = 0;
+  resetCumulative();
+});
+document.getElementById('stepBtn').addEventListener('click', () => {
+  // Jump to next integer stage boundary
+  phase = (Math.floor(phase) + 1) % 4;
+  if(phase === 0) resetCumulative();
+});
+document.getElementById('speedSel').addEventListener('change', e => {
+  speed = parseFloat(e.target.value);
+});
+
+// Click stage cards to jump
+document.querySelectorAll('.stage-card').forEach(card => {
+  card.addEventListener('click', () => {
+    phase = parseInt(card.dataset.stage);
+    if(phase === 0) resetCumulative();
+  });
+});
+
+// ============== Sliders ==============
+const ThSl = document.getElementById('ThSlider');
+const TcSl = document.getElementById('TcSlider');
+const vrSl = document.getElementById('vrSlider');
+
+function syncSliders(){
+  T_h = parseFloat(ThSl.value);
+  T_c = parseFloat(TcSl.value);
+  // Ensure T_c < T_h
+  if(T_c >= T_h){
+    T_c = T_h - 30;
+    TcSl.value = T_c;
+  }
+  V2_over_V1 = parseFloat(vrSl.value);
+  document.getElementById('ThVal').textContent = T_h.toFixed(0);
+  document.getElementById('TcVal').textContent = T_c.toFixed(0);
+  document.getElementById('vrVal').textContent = V2_over_V1.toFixed(1);
+  updateCycle();
+  resetCumulative();
+}
+ThSl.addEventListener('input', syncSliders);
+TcSl.addEventListener('input', syncSliders);
+vrSl.addEventListener('input', syncSliders);
+
+// ============== Init ==============
+resizeCanvas();
+updateCycle();
+requestAnimationFrame(loop);
+
+</script>
+</body>
+</html>
