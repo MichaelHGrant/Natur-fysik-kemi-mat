@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Intetheden — Et univers uden rum, masse eller tid</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;0,9..144,900;1,9..144,400&family=DM+Mono:wght@300;400;500&family=Manrope:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #08080d;
+    --bg-2: #0f0e16;
+    --ink: #ede7d9;
+    --ink-dim: rgba(237, 231, 217, 0.55);
+    --ink-faint: rgba(237, 231, 217, 0.22);
+    --gold: #d4a574;
+    --violet: #6b5b9a;
+    --amber: #e8b56a;
+    --crimson: #b8463a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Manrope', sans-serif;
+    font-weight: 300;
+    line-height: 1.7;
+    overflow-x: hidden;
+    cursor: default;
+  }
+
+  /* Grain overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.5'/></svg>");
+    opacity: 0.06;
+    pointer-events: none;
+    z-index: 1000;
+    mix-blend-mode: overlay;
+  }
+
+  h1, h2, h3 { font-family: 'Fraunces', serif; font-weight: 400; letter-spacing: -0.02em; }
+
+  .mono { font-family: 'DM Mono', monospace; letter-spacing: 0.05em; }
+
+  section { position: relative; padding: 8rem 1.5rem; max-width: 100%; }
+
+  .container { max-width: 720px; margin: 0 auto; }
+
+  /* ─── HERO ─── */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 2rem 1.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  #particle-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+  }
+
+  .hero-content { position: relative; z-index: 2; max-width: 800px; }
+
+  .eyebrow {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 2.5rem;
+    opacity: 0;
+    animation: fadeUp 1.2s 0.3s forwards;
+  }
+
+  .hero h1 {
+    font-size: clamp(2.5rem, 9vw, 5.5rem);
+    line-height: 1.02;
+    font-weight: 300;
+    margin-bottom: 2rem;
+    opacity: 0;
+    animation: fadeUp 1.4s 0.6s forwards;
+  }
+
+  .hero h1 em {
+    font-style: italic;
+    font-weight: 300;
+    color: var(--gold);
+  }
+
+  .hero p {
+    font-size: clamp(1rem, 2.5vw, 1.15rem);
+    color: var(--ink-dim);
+    max-width: 540px;
+    margin: 0 auto;
+    opacity: 0;
+    animation: fadeUp 1.4s 1s forwards;
+  }
+
+  .scroll-hint {
+    position: absolute;
+    bottom: 2.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.4em;
+    color: var(--ink-faint);
+    opacity: 0;
+    animation: fadeUp 1.4s 1.6s forwards, pulse 2.4s 2s infinite;
+    z-index: 2;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.9; }
+  }
+
+  /* ─── SECTION CHROME ─── */
+  .section-number {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.35em;
+    color: var(--gold);
+    margin-bottom: 1.5rem;
+    text-transform: uppercase;
+  }
+
+  h2 {
+    font-size: clamp(2rem, 5.5vw, 3.2rem);
+    line-height: 1.1;
+    margin-bottom: 2.5rem;
+    font-weight: 300;
+  }
+
+  h2 em { font-style: italic; color: var(--gold); }
+
+  p { margin-bottom: 1.3rem; font-size: 1.02rem; color: var(--ink); }
+  p.lede { font-size: 1.15rem; color: var(--ink); font-weight: 400; }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 1s cubic-bezier(0.16, 1, 0.3, 1), transform 1s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  /* ─── INTERACTIVE: REMOVE PILLARS ─── */
+  .pillars-section {
+    background: linear-gradient(180deg, var(--bg), var(--bg-2));
+    border-top: 1px solid var(--ink-faint);
+    border-bottom: 1px solid var(--ink-faint);
+  }
+
+  .pillars {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin: 3rem 0 1rem;
+  }
+
+  .pillar {
+    background: rgba(237, 231, 217, 0.03);
+    border: 1px solid var(--ink-faint);
+    padding: 1.5rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  .pillar:hover {
+    border-color: var(--gold);
+    background: rgba(212, 165, 116, 0.06);
+  }
+
+  .pillar.removed {
+    opacity: 0.25;
+    transform: scale(0.95);
+    filter: blur(2px);
+    border-style: dashed;
+  }
+
+  .pillar-symbol {
+    font-family: 'Fraunces', serif;
+    font-size: 2.5rem;
+    color: var(--gold);
+    margin-bottom: 0.5rem;
+    display: block;
+    line-height: 1;
+  }
+
+  .pillar-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+
+  .pillar-status {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.55rem;
+    letter-spacing: 0.2em;
+    color: var(--ink-faint);
+    margin-top: 0.4rem;
+    display: block;
+  }
+  .pillar.removed .pillar-status { color: var(--crimson); }
+
+  .pillars-result {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: rgba(212, 165, 116, 0.04);
+    border-left: 2px solid var(--gold);
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 1.1rem;
+    color: var(--ink);
+    min-height: 80px;
+    transition: all 0.5s;
+  }
+
+  /* ─── EMERGENT GRID ─── */
+  .emergent-vis {
+    position: relative;
+    width: 100%;
+    height: 320px;
+    margin: 2rem 0 3rem;
+    background: radial-gradient(ellipse at center, rgba(107, 91, 154, 0.1), transparent 70%);
+    border: 1px solid var(--ink-faint);
+    overflow: hidden;
+  }
+
+  #grid-canvas { width: 100%; height: 100%; display: block; }
+
+  .vis-caption {
+    text-align: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    margin-top: -1.5rem;
+    margin-bottom: 3rem;
+  }
+
+  /* ─── QUOTE BLOCK ─── */
+  blockquote {
+    border-left: 2px solid var(--gold);
+    padding: 1rem 0 1rem 1.5rem;
+    margin: 2.5rem 0;
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 1.25rem;
+    line-height: 1.5;
+    color: var(--ink);
+  }
+  blockquote cite {
+    display: block;
+    margin-top: 0.8rem;
+    font-family: 'DM Mono', monospace;
+    font-style: normal;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+
+  /* ─── RANDALL SECTION ─── */
+  .randall {
+    background: linear-gradient(180deg, var(--bg-2), #0a0814);
+  }
+
+  .brane-vis {
+    width: 100%;
+    height: 280px;
+    margin: 2.5rem 0;
+    position: relative;
+    background: #050308;
+    border: 1px solid var(--ink-faint);
+    overflow: hidden;
+  }
+  #brane-canvas { width: 100%; height: 100%; display: block; }
+
+  .randall-card {
+    border: 1px solid var(--ink-faint);
+    padding: 1.5rem;
+    margin: 2rem 0;
+    background: rgba(237, 231, 217, 0.02);
+  }
+  .randall-card h3 {
+    font-size: 1.1rem;
+    font-weight: 400;
+    color: var(--gold);
+    margin-bottom: 0.6rem;
+    font-style: italic;
+  }
+  .randall-card p {
+    font-size: 0.95rem;
+    color: var(--ink-dim);
+    margin: 0;
+  }
+
+  /* ─── TIMELINE ─── */
+  .ideas {
+    display: grid;
+    gap: 0;
+    margin: 3rem 0;
+    border-top: 1px solid var(--ink-faint);
+  }
+  .idea {
+    padding: 2rem 0;
+    border-bottom: 1px solid var(--ink-faint);
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    gap: 1.5rem;
+    align-items: start;
+  }
+  .idea-year {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    color: var(--gold);
+    padding-top: 0.3rem;
+  }
+  .idea-body h3 {
+    font-size: 1.15rem;
+    font-weight: 400;
+    margin-bottom: 0.5rem;
+    color: var(--ink);
+  }
+  .idea-body p {
+    font-size: 0.95rem;
+    color: var(--ink-dim);
+    margin: 0;
+  }
+
+  /* ─── FINALE ─── */
+  .finale {
+    text-align: center;
+    padding: 10rem 1.5rem;
+    background: radial-gradient(ellipse at center, rgba(212, 165, 116, 0.04), transparent 60%), var(--bg);
+  }
+
+  .finale h2 {
+    font-size: clamp(2.2rem, 7vw, 4rem);
+    margin-bottom: 2rem;
+  }
+
+  .finale p {
+    max-width: 580px;
+    margin: 0 auto 1.5rem;
+    color: var(--ink-dim);
+  }
+
+  footer {
+    text-align: center;
+    padding: 3rem 1.5rem 4rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    border-top: 1px solid var(--ink-faint);
+  }
+
+  /* ─── BACK NAV ─── */
+  .back-nav {
+    position: fixed;
+    top: 1.5rem;
+    left: 1.5rem;
+    z-index: 100;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    text-decoration: none;
+    padding: 0.5rem 0.9rem;
+    border: 1px solid var(--ink-faint);
+    border-radius: 30px;
+    background: rgba(8, 8, 13, 0.6);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+  }
+  .back-nav:hover {
+    color: var(--gold);
+    border-color: var(--gold);
+    background: rgba(212, 165, 116, 0.08);
+  }
+
+  /* Mobile */
+  @media (max-width: 600px) {
+    section { padding: 5rem 1.25rem; }
+    .pillars { grid-template-columns: 1fr; }
+    .idea { grid-template-columns: 60px 1fr; gap: 1rem; }
+    .back-nav { top: 1rem; left: 1rem; font-size: 0.6rem; padding: 0.4rem 0.7rem; }
+  }
+</style>
+</head>
+<body>
+
+<a href="index.html" class="back-nav">← Tilbage til oversigten</a>
+
+<!-- ─────────── HERO ─────────── -->
+<section class="hero">
+  <canvas id="particle-canvas"></canvas>
+  <div class="hero-content">
+    <div class="eyebrow">Et essay i bevægelse · Fysik &amp; metafysik</div>
+    <h1>Forestil dig et univers<br>uden <em>rum</em>, <em>masse</em><br>eller <em>tid</em>.</h1>
+    <p>Hvad bliver der tilbage? Ifølge moderne fysik måske noget vi knap nok kan navngive — og måske er det netop dér, virkeligheden begynder.</p>
+  </div>
+  <div class="scroll-hint">RUL NEDAD ↓</div>
+</section>
+
+<!-- ─────────── 01 · INTET ─────────── -->
+<section>
+  <div class="container">
+    <div class="section-number reveal">§ 01 — Problemet med intet</div>
+    <h2 class="reveal">At fjerne <em>alt</em> er sværere end det lyder.</h2>
+    <p class="lede reveal">I almen relativitetsteori er rum og tid sammenflettet i ét væv — rumtiden. Du kan ikke fjerne det ene uden det andet. Og selv hvis du kunne, ville kvantefeltteorien protestere: det "tomme" rum bobler af virtuelle partikler, der konstant fødes og forsvinder.</p>
+    <p class="reveal">Filosoffer kritiserede Lawrence Krauss' bog <em>A Universe from Nothing</em> netop fordi hans "intet" stadig var et kvantevakuum — et væv af felter, love og matematik. Et ægte intet ville være noget fysikere ikke kan beskrive, for al beskrivelse forudsætter <em>noget</em>.</p>
+  </div>
+</section>
+
+<!-- ─────────── 02 · INTERACTIVE PILLARS ─────────── -->
+<section class="pillars-section">
+  <div class="container">
+    <div class="section-number reveal">§ 02 — Et tankeeksperiment</div>
+    <h2 class="reveal">Tryk og fjern søjlerne.</h2>
+    <p class="reveal">Hvad sker der, når vi én efter én tager rum, masse og tid væk fra universet? Klik på hver søjle.</p>
+
+    <div class="pillars reveal">
+      <div class="pillar" data-key="rum">
+        <span class="pillar-symbol">◇</span>
+        <span class="pillar-label">Rum</span>
+        <span class="pillar-status">TILSTEDE</span>
+      </div>
+      <div class="pillar" data-key="masse">
+        <span class="pillar-symbol">●</span>
+        <span class="pillar-label">Masse</span>
+        <span class="pillar-status">TILSTEDE</span>
+      </div>
+      <div class="pillar" data-key="tid">
+        <span class="pillar-symbol">↻</span>
+        <span class="pillar-label">Tid</span>
+        <span class="pillar-status">TILSTEDE</span>
+      </div>
+    </div>
+
+    <div class="pillars-result" id="pillars-result">
+      Du har universet, som du kender det. Tryk på en søjle for at fjerne den.
+    </div>
+  </div>
+</section>
+
+<!-- ─────────── 03 · EMERGENT ─────────── -->
+<section>
+  <div class="container">
+    <div class="section-number reveal">§ 03 — Den emergente rumtid</div>
+    <h2 class="reveal">Rumtiden er måske <em>ikke</em> fundamental.</h2>
+
+    <div class="emergent-vis reveal">
+      <canvas id="grid-canvas"></canvas>
+    </div>
+    <div class="vis-caption reveal">Spin-netværk: geometri fra rene relationer</div>
+
+    <p class="reveal">Flere moderne kandidater til en teori om kvantegravitation antyder, at rumtiden opstår — den er ikke en scene, men en konsekvens. Rummet selv består af noget mere grundlæggende, og hvad det er, afhænger af hvem du spørger.</p>
+
+    <div class="ideas">
+      <div class="idea reveal">
+        <div class="idea-year">LØKKE-<br>KVANTE-<br>GRAVITATION</div>
+        <div class="idea-body">
+          <h3>Diskrete atomer af geometri</h3>
+          <p>Rummet er ikke kontinuert. Det består af små "kvanter" af volumen og areal, vævet sammen i spin-netværk. Geometri opstår, når disse relationer er mange nok.</p>
+        </div>
+      </div>
+      <div class="idea reveal">
+        <div class="idea-year">HOLO-<br>GRAFI</div>
+        <div class="idea-body">
+          <h3>AdS/CFT — rummet som projektion</h3>
+          <p>Juan Maldacenas idé: et 3D-univers med tyngdekraft kan være matematisk ækvivalent med en 2D-overflade <em>uden</em> tyngdekraft. Rummet selv kan være en hologram-projektion fra information på en grænse.</p>
+        </div>
+      </div>
+      <div class="idea reveal">
+        <div class="idea-year">RELA-<br>TIONEL<br>FYSIK</div>
+        <div class="idea-body">
+          <h3>Rovelli &amp; Barbour — tiden findes ikke</h3>
+          <p>Carlo Rovelli og Julian Barbour argumenterer for, at tid ikke eksisterer fundamentalt. Der findes kun forandring og relationer mellem ting. Det vi kalder "tid", er hukommelse om forskelle.</p>
+        </div>
+      </div>
+      <div class="idea reveal">
+        <div class="idea-year">WHEELER<br>– DE WITT</div>
+        <div class="idea-body">
+          <h3>Den tidløse ligning</h3>
+          <p>Ligningen, der forsøger at forene kvantemekanik og tyngdekraft, indeholder ingen tidsvariabel. Universets bølgefunktion er statisk — al "forandring" er korrelationer indeni.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────── 04 · RANDALL ─────────── -->
+<section class="randall">
+  <div class="container">
+    <div class="section-number reveal">§ 04 — Lisa Randall &amp; de skjulte dimensioner</div>
+    <h2 class="reveal">Hvis rumtiden findes, er den måske<br><em>warped</em>.</h2>
+
+    <p class="lede reveal">Mens nogle fysikere prøver at få rumtiden helt til at forsvinde, har Lisa Randall — teoretisk fysiker ved Harvard — taget en anden vej: hvad nu hvis der findes flere dimensioner end vi ser, og rumtiden er drastisk krummet på en måde, der skjuler dem?</p>
+
+    <div class="brane-vis reveal">
+      <canvas id="brane-canvas"></canvas>
+    </div>
+    <div class="vis-caption reveal">Randall–Sundrum: vores brane, deres brane, krummet 5D-rum imellem</div>
+
+    <div class="randall-card reveal">
+      <h3>Randall–Sundrum-modellen (1999)</h3>
+      <p>Sammen med Raman Sundrum foreslog Randall, at vores univers er en 4-dimensional "brane" indlejret i et 5-dimensionalt rum. Den ekstra dimension er warped — krummet på en sådan måde, at den kan være uendelig stor uden at vi opdager den.</p>
+    </div>
+
+    <div class="randall-card reveal">
+      <h3>Hierarkiproblemet</h3>
+      <p>Hvorfor er tyngdekraften så svimlende svag sammenlignet med de andre kræfter? Randalls model giver et svar: tyngdekraften "bor" på en anden brane og er stærk dér. Det der når os, er kun en udtyndet rest, der har rejst gennem den krummede ekstra dimension.</p>
+    </div>
+
+    <div class="randall-card reveal">
+      <h3>Hvorfor det betyder noget for "intetheden"</h3>
+      <p>Randalls arbejde flytter spørgsmålet: måske er det ikke at <em>fjerne</em> rumtid, der afslører universets bund — måske er det at opdage, at rumtid har flere dimensioner, vi simpelthen ikke kan se. Det vi kalder "tomt rum" kan være tæt befolket — bare ikke her.</p>
+    </div>
+
+    <blockquote class="reveal">
+      <span>"Vi fandt, at rumtid med ekstra dimensioner kunne være så krummet, at selv en uendelig ekstra dimension kunne eksistere uden at vi opdager den."</span>
+      <cite>— Lisa Randall</cite>
+    </blockquote>
+  </div>
+</section>
+
+<!-- ─────────── 05 · FINALE ─────────── -->
+<section class="finale">
+  <div class="container">
+    <div class="section-number reveal">§ 05 — Hvad ligger nedenunder?</div>
+    <h2 class="reveal">Måske er virkeligheden,<br>på det dybeste niveau,<br><em>information</em>.</h2>
+    <p class="reveal">Jo dybere vi graver, jo mere ligner det dybeste niveau ikke ting i et rum, men relationer mellem noget vi knap nok kan navngive. Bits. Korrelationer. Et matematisk mønster der ikke "er" nogen steder, fordi "steder" først opstår ovenpå det.</p>
+    <p class="reveal">Et univers uden rum, masse eller tid er måske ikke et fravær. Det er <em>fundamentet</em>.</p>
+  </div>
+</section>
+
+<footer>
+  ◇ ● ↻ &nbsp;&nbsp;·&nbsp;&nbsp; INTETHEDEN &nbsp;&nbsp;·&nbsp;&nbsp; 2026<br>
+  <span style="opacity: 0.6; margin-top: 0.8rem; display: inline-block;">
+    Del af <a href="index.html" style="color: var(--gold); text-decoration: none;">Fysik, matematik og kemi</a> · Michael Grant
+  </span>
+</footer>
+
+<script>
+/* ───── PARTICLES (HERO) ───── */
+(() => {
+  const canvas = document.getElementById('particle-canvas');
+  const ctx = canvas.getContext('2d');
+  let w, h, particles = [];
+
+  function resize() {
+    w = canvas.width = canvas.offsetWidth * devicePixelRatio;
+    h = canvas.height = canvas.offsetHeight * devicePixelRatio;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  const N = 80;
+  for (let i = 0; i < N; i++) {
+    particles.push({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: (Math.random() - 0.5) * 0.3,
+      r: Math.random() * 1.5 + 0.3,
+      a: Math.random() * 0.5 + 0.1
+    });
+  }
+
+  function draw() {
+    ctx.fillStyle = 'rgba(8, 8, 13, 0.15)';
+    ctx.fillRect(0, 0, w, h);
+
+    // connections
+    for (let i = 0; i < N; i++) {
+      for (let j = i + 1; j < N; j++) {
+        const dx = particles[i].x - particles[j].x;
+        const dy = particles[i].y - particles[j].y;
+        const d = Math.sqrt(dx*dx + dy*dy);
+        if (d < 180 * devicePixelRatio) {
+          ctx.strokeStyle = `rgba(212, 165, 116, ${0.15 * (1 - d/(180*devicePixelRatio))})`;
+          ctx.lineWidth = 0.4 * devicePixelRatio;
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.stroke();
+        }
+      }
+    }
+
+    // points
+    particles.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+      if (p.x < 0 || p.x > w) p.vx *= -1;
+      if (p.y < 0 || p.y > h) p.vy *= -1;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r * devicePixelRatio, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(237, 231, 217, ${p.a})`;
+      ctx.fill();
+    });
+
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+/* ───── SCROLL REVEALS ───── */
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.15 });
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+/* ───── PILLARS INTERACTION ───── */
+(() => {
+  const result = document.getElementById('pillars-result');
+  const pillars = document.querySelectorAll('.pillar');
+  const state = { rum: true, masse: true, tid: true };
+
+  const messages = {
+    "111": "Du har universet, som du kender det. Tryk på en søjle for at fjerne den.",
+    "011": "Uden rum — men også uden tid, fordi rumtid er ét. Alt kollapser til et punkt uden udstrækning. Hvor er du?",
+    "101": "Uden masse forsvinder krumningen af rumtiden. Geometrien er flad, men findes stadig. Et tomt univers — eller er det?",
+    "110": "Uden tid: ingen forandring, ingen kausalitet, ingen \"før\" og \"efter\". Wheeler-DeWitt-ligningen kunne genkende dette.",
+    "001": "Rum og masse forsvundet. Tilbage er en abstrakt strømning uden geometri at strømme i.",
+    "010": "Kun masse uden rum eller tid: en logisk umulighed. Masse defineres ved sin gravitationelle påvirkning af rumtid.",
+    "100": "Kun rum, intet at fylde det med, ingen tid hvori noget kan ske. Et frossent, tomt geometrisk skelet.",
+    "000": "Tilbage er måske rene relationer — information uden bærer. Eller intet overhovedet. Fysikken kan ikke afgøre det."
+  };
+
+  function update() {
+    const key = (state.rum?1:0).toString() + (state.masse?1:0) + (state.tid?1:0);
+    result.textContent = messages[key];
+  }
+
+  pillars.forEach(p => {
+    p.addEventListener('click', () => {
+      const k = p.dataset.key;
+      state[k] = !state[k];
+      p.classList.toggle('removed', !state[k]);
+      p.querySelector('.pillar-status').textContent = state[k] ? 'TILSTEDE' : 'FJERNET';
+      update();
+    });
+  });
+})();
+
+/* ───── SPIN NETWORK (EMERGENT) ───── */
+(() => {
+  const canvas = document.getElementById('grid-canvas');
+  const ctx = canvas.getContext('2d');
+  let w, h, nodes = [], edges = [];
+
+  function resize() {
+    w = canvas.width = canvas.offsetWidth * devicePixelRatio;
+    h = canvas.height = canvas.offsetHeight * devicePixelRatio;
+    init();
+  }
+
+  function init() {
+    nodes = [];
+    edges = [];
+    const N = 22;
+    for (let i = 0; i < N; i++) {
+      nodes.push({
+        x: Math.random() * w,
+        y: Math.random() * h,
+        vx: (Math.random() - 0.5) * 0.2,
+        vy: (Math.random() - 0.5) * 0.2,
+        phase: Math.random() * Math.PI * 2
+      });
+    }
+    // build edges to nearest neighbours
+    for (let i = 0; i < N; i++) {
+      const dists = [];
+      for (let j = 0; j < N; j++) {
+        if (i === j) continue;
+        const dx = nodes[i].x - nodes[j].x;
+        const dy = nodes[i].y - nodes[j].y;
+        dists.push({ j, d: dx*dx + dy*dy });
+      }
+      dists.sort((a, b) => a.d - b.d);
+      for (let k = 0; k < 3; k++) {
+        const j = dists[k].j;
+        if (!edges.find(e => (e.a === i && e.b === j) || (e.a === j && e.b === i))) {
+          edges.push({ a: i, b: j, w: Math.random() * 2 + 0.5 });
+        }
+      }
+    }
+  }
+
+  resize();
+  window.addEventListener('resize', resize);
+
+  let t = 0;
+  function draw() {
+    ctx.fillStyle = 'rgba(8, 8, 13, 0.2)';
+    ctx.fillRect(0, 0, w, h);
+    t += 0.005;
+
+    nodes.forEach(n => {
+      n.x += n.vx;
+      n.y += n.vy;
+      if (n.x < 20 || n.x > w - 20) n.vx *= -1;
+      if (n.y < 20 || n.y > h - 20) n.vy *= -1;
+    });
+
+    edges.forEach(e => {
+      const a = nodes[e.a], b = nodes[e.b];
+      const pulse = Math.sin(t * 2 + e.a) * 0.5 + 0.5;
+      ctx.strokeStyle = `rgba(107, 91, 154, ${0.3 + pulse * 0.4})`;
+      ctx.lineWidth = e.w * devicePixelRatio * 0.7;
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+    });
+
+    nodes.forEach(n => {
+      const r = 3 * devicePixelRatio + Math.sin(t * 3 + n.phase) * devicePixelRatio;
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(212, 165, 116, 0.9)';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, r * 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(212, 165, 116, 0.1)';
+      ctx.fill();
+    });
+
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+/* ───── BRANES (RANDALL) ───── */
+(() => {
+  const canvas = document.getElementById('brane-canvas');
+  const ctx = canvas.getContext('2d');
+  let w, h;
+
+  function resize() {
+    w = canvas.width = canvas.offsetWidth * devicePixelRatio;
+    h = canvas.height = canvas.offsetHeight * devicePixelRatio;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  let t = 0;
+  function draw() {
+    ctx.fillStyle = 'rgba(5, 3, 8, 0.3)';
+    ctx.fillRect(0, 0, w, h);
+    t += 0.01;
+
+    // Background warped grid
+    const cols = 40;
+    const rows = 20;
+    const cw = w / cols;
+    const rh = h / rows;
+    ctx.strokeStyle = 'rgba(107, 91, 154, 0.25)';
+    ctx.lineWidth = 0.5 * devicePixelRatio;
+
+    for (let i = 0; i <= cols; i++) {
+      ctx.beginPath();
+      for (let j = 0; j <= rows; j++) {
+        const x = i * cw;
+        const baseY = j * rh;
+        // warp: distance from middle row warps inward toward branes
+        const distFromCenter = Math.abs(j - rows/2) / (rows/2);
+        const warp = Math.exp(-distFromCenter * 2) * 15 * devicePixelRatio * Math.sin(t + i * 0.2);
+        const y = baseY + warp;
+        if (j === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+
+    for (let j = 0; j <= rows; j++) {
+      ctx.beginPath();
+      for (let i = 0; i <= cols; i++) {
+        const x = i * cw;
+        const baseY = j * rh;
+        const distFromCenter = Math.abs(j - rows/2) / (rows/2);
+        const warp = Math.exp(-distFromCenter * 2) * 15 * devicePixelRatio * Math.sin(t + i * 0.2);
+        const y = baseY + warp;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+
+    // Top brane (gravity brane)
+    const topY = h * 0.12;
+    const grad1 = ctx.createLinearGradient(0, topY - 20, 0, topY + 20);
+    grad1.addColorStop(0, 'rgba(232, 181, 106, 0)');
+    grad1.addColorStop(0.5, 'rgba(232, 181, 106, 0.9)');
+    grad1.addColorStop(1, 'rgba(232, 181, 106, 0)');
+    ctx.fillStyle = grad1;
+    ctx.fillRect(0, topY - 8, w, 16);
+
+    // Bottom brane (our brane)
+    const botY = h * 0.88;
+    const grad2 = ctx.createLinearGradient(0, botY - 20, 0, botY + 20);
+    grad2.addColorStop(0, 'rgba(212, 165, 116, 0)');
+    grad2.addColorStop(0.5, 'rgba(212, 165, 116, 0.85)');
+    grad2.addColorStop(1, 'rgba(212, 165, 116, 0)');
+    ctx.fillStyle = grad2;
+    ctx.fillRect(0, botY - 8, w, 16);
+
+    // Graviton particle traveling between branes
+    const px = (w * 0.3) + Math.sin(t * 0.5) * w * 0.3;
+    const py = topY + ((botY - topY) * (0.5 + 0.5 * Math.sin(t * 1.2)));
+    ctx.beginPath();
+    ctx.arc(px, py, 4 * devicePixelRatio, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(237, 231, 217, 0.9)';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(px, py, 12 * devicePixelRatio, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(237, 231, 217, 0.15)';
+    ctx.fill();
+
+    // Labels
+    ctx.fillStyle = 'rgba(237, 231, 217, 0.6)';
+    ctx.font = `${10 * devicePixelRatio}px 'DM Mono', monospace`;
+    ctx.fillText('TYNGDE-BRANE', 15 * devicePixelRatio, topY - 12 * devicePixelRatio);
+    ctx.fillText('VORES BRANE', 15 * devicePixelRatio, botY + 22 * devicePixelRatio);
+
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+</script>
+</body>
+</html>
