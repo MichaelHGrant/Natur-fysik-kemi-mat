@@ -1332,8 +1332,15 @@ svg { display: block; width: 100%; height: auto; }
         <!-- Optical axis -->
         <line x1="0" y1="160" x2="500" y2="160" stroke="#5a5440" stroke-width="0.5" stroke-dasharray="2 4"/>
 
-        <!-- Concave lens (biconcave) -->
-        <path d="M 235 60 L 235 260 Q 250 160 235 60 M 255 60 L 255 260 Q 240 160 255 60 Z"
+        <!-- Concave lens (biconcave): thick at top and bottom edges, thin in the middle.
+             Path: start at top-left, sweep RIGHT (inward) down to thin middle, continue down to bottom-left,
+                   straight across to bottom-right, sweep LEFT (inward) up to thin middle, continue up to top-right,
+                   straight across to start. -->
+        <path d="M 232 60
+                 Q 248 160 232 260
+                 L 258 260
+                 Q 242 160 258 60
+                 Z"
               fill="rgba(143, 201, 232, 0.18)"
               stroke="#8fc9e8" stroke-width="1.2"/>
 
@@ -2296,9 +2303,21 @@ function drawLensShape() {
             fill="url(#lensGrad)" stroke="#8fc9e8" stroke-width="1.4"/>
     `;
   } else {
-    const thick = 8;
+    // Biconcave: thick at top/bottom edges, thin in the middle.
+    // edgeHalf = half-width at the edges; waistOffset = how far the curve pulls inward at the middle.
+    const edgeHalf = 10;
+    const waist = 6;
+    // Left edge at x = LENS_CX - edgeHalf; right edge at x = LENS_CX + edgeHalf
+    // Left surface curves inward (toward higher x) at the middle; control point at x = LENS_CX - edgeHalf + waist + edgeHalf = LENS_CX + waist
+    // Right surface curves inward (toward lower x); control point at LENS_CX - waist
+    const xL = LENS_CX - edgeHalf, xR = LENS_CX + edgeHalf;
+    const cxL = LENS_CX + waist, cxR = LENS_CX - waist;
     g.innerHTML = `
-      <path d="M ${LENS_CX - thick} 100 L ${LENS_CX - thick} 300 Q ${LENS_CX} ${AXIS_Y} ${LENS_CX - thick} 100 Z M ${LENS_CX + thick} 100 L ${LENS_CX + thick} 300 Q ${LENS_CX} ${AXIS_Y} ${LENS_CX + thick} 100 Z"
+      <path d="M ${xL} 100
+               Q ${cxL} ${AXIS_Y} ${xL} 300
+               L ${xR} 300
+               Q ${cxR} ${AXIS_Y} ${xR} 100
+               Z"
             fill="url(#lensGrad)" stroke="#8fc9e8" stroke-width="1.4"/>
     `;
   }
@@ -2578,7 +2597,7 @@ function setEyeMode(mode) {
     // Concave glasses in front spread rays slightly before they hit eye
     glassesGroup.style.display = 'block';
     // Draw concave glasses (biconcave shape, smaller)
-    glassesShape.setAttribute('d', 'M 495 110 L 495 270 Q 510 190 495 110 M 515 110 L 515 270 Q 500 190 515 110 Z');
+    glassesShape.setAttribute('d', 'M 493 110 Q 509 190 493 270 L 517 270 Q 501 190 517 110 Z');
     glassesLabel.textContent = 'KONKAV BRILLE';
 
     // Show rays diverging slightly after glasses
