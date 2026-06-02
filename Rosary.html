@@ -69,14 +69,24 @@
     background:radial-gradient(ellipse at 50% 38%, rgba(217,178,90,.10), transparent 62%);
   }
   #rosary{display:block;width:100%;height:auto;filter:drop-shadow(0 18px 30px rgba(0,0,0,.55))}
-  .bead{transition:transform .35s ease, opacity .3s}
+  .bead{cursor:pointer}
+  circle.bead{transition:transform .2s ease, filter .2s ease; transform-box:fill-box; transform-origin:center center}
   .bead-of{fill:url(#gOF);stroke:var(--gold-deep);stroke-width:.6}
   .bead-hm{fill:url(#gHM);stroke:#5b3a3c;stroke-width:.5}
   .chain{fill:none;stroke:url(#gChain);stroke-width:1.6;opacity:.7}
   .medal{fill:url(#gMedal);stroke:var(--gold-deep);stroke-width:.8}
-  .bead.active{filter:url(#glow)}
-  .bead.active circle, circle.active{}
-  .done{opacity:.45}
+
+  /* hover: antyd at perlen kan trykkes */
+  circle.bead:hover{transform:scale(1.28);filter:brightness(1.35)}
+  g.bead{cursor:pointer;transition:filter .2s ease}
+  g.bead:hover{filter:drop-shadow(0 0 7px rgba(243,212,136,.65))}
+
+  /* aktiv perle lyser op og pulserer */
+  circle.bead.active{filter:url(#glow);animation:beadPulse 1.5s ease-in-out infinite}
+  g.bead.active{filter:drop-shadow(0 0 11px rgba(243,212,136,.95)) drop-shadow(0 0 3px rgba(243,212,136,.9));animation:groupPulse 1.8s ease-in-out infinite}
+  @keyframes beadPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.32)}}
+  @keyframes groupPulse{0%,100%{opacity:1}50%{opacity:.82}}
+  .done{opacity:.5}
 
   /* ---- Prayer panel ---- */
   .panel{
@@ -239,6 +249,7 @@
         <!-- crucifix group, positioned by script via translate -->
         <g id="crucifixGroup"></g>
       </svg>
+      <div class="hint">Tryk på en hvilken som helst perle for at springe til bønnen — den aktive perle lyser op.</div>
     </div>
 
     <!-- PANEL -->
@@ -783,6 +794,27 @@ playBtn.addEventListener("click",()=>{
 });
 prevBtn.addEventListener("click",()=>{ stopSpeak(); goTo(idx-1, true); });
 nextBtn.addEventListener("click",()=>{ stopSpeak(); if(idx<seq.length-1) goTo(idx+1, true); });
+
+/* ---- Tryk på en hvilken som helst perle for at springe dertil ---- */
+function beadStepIndices(id){
+  const out=[]; for(let i=0;i<seq.length;i++) if(seq[i].bead===id) out.push(i); return out;
+}
+function jumpToBead(id){
+  if(!seq.length) rebuild();
+  const list=beadStepIndices(id);
+  if(!list.length) return;
+  // klik igen på samme perle -> næste bøn knyttet til den (fx mysterium -> Fadervor)
+  const pos=list.indexOf(idx);
+  const target = pos>=0 ? list[(pos+1)%list.length] : list[0];
+  if(playBtn.textContent==="Begynd forfra"){ playBtn.textContent="Begynd"; }
+  stopSpeak();
+  goTo(target, true);
+  if(!playing) statusEl.textContent="Bøn valgt — tryk Begynd for at bede videre.";
+}
+document.getElementById("rosary").addEventListener("click",e=>{
+  const node=e.target.closest("[data-id]");
+  if(node) jumpToBead(node.getAttribute("data-id"));
+});
 
 document.getElementById("mysteryChips").addEventListener("click",e=>{
   const b=e.target.closest(".chip"); if(!b) return;
