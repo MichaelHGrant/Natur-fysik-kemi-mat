@@ -743,10 +743,16 @@ let resumePump=null;
 function startPump(){ stopPump(); resumePump=setInterval(()=>{ if(synth&&synth.speaking&&!synth.paused) synth.resume(); },6000); }
 function stopPump(){ if(resumePump){clearInterval(resumePump);resumePump=null;} }
 
-/* Indtalt lyd (egne optagelser) — bruges hvor de findes */
-const audioEl = (typeof Audio!=="undefined") ? new Audio() : null;
-if(audioEl) audioEl.preload="auto";
+/* Indtalt lyd (egne optagelser) — friskt element pr. afspilning for robust kædning */
+let curAudio=null;
 const hasRec = (k)=> (typeof PRAYER_AUDIO!=="undefined") && k && PRAYER_AUDIO[k];
+
+function stopAudio(){
+  if(curAudio){
+    try{ curAudio.onended=null; curAudio.onerror=null; curAudio.onloadedmetadata=null; curAudio.pause(); }catch(e){}
+    curAudio=null;
+  }
+}
 
 function ttsSpeak(text,onDone,token){
   if(!supported){ if(onDone) setTimeout(onDone,1400); return; }
@@ -772,15 +778,24 @@ function playPrayer(s,onDone){
   const token=++speakSeq;
   stopPump();
   if(supported) synth.cancel();
-  if(audioEl){ try{audioEl.pause();audioEl.currentTime=0;}catch(e){} }
+  stopAudio();
 
-  if(audioEl && s && hasRec(s.audio)){
-    audioEl.src=PRAYER_AUDIO[s.audio];
-    audioEl.playbackRate=1.0;            // egen stemme afspilles i naturligt tempo
-    audioEl.onended=()=>{ if(token===speakSeq && onDone) onDone(); };
-    audioEl.onerror=()=>{ if(token===speakSeq) ttsSpeak(s.text,onDone,token); };
-    const p=audioEl.play();
-    if(p && p.catch) p.catch(()=>{ if(token===speakSeq) ttsSpeak(s.text,onDone,token); });
+  if(typeof Audio!=="undefined" && s && hasRec(s.audio)){
+    let done=false;
+    const finishOnce=()=>{ if(done) return; done=true; if(token===speakSeq && onDone) onDone(); };
+    const a=new Audio();
+    curAudio=a;
+    a.preload="auto";
+    a.playbackRate=1.0;                  // egen stemme afspilles i naturligt tempo
+    a.onended=finishOnce;
+    a.onerror=()=>{ if(!done && token===speakSeq){ done=true; ttsSpeak(s.text,onDone,token); } };
+    a.onloadedmetadata=()=>{             // vagthund: ryk videre hvis 'ended' udebliver
+      const ms=((isFinite(a.duration)?a.duration:0)/(a.playbackRate||1))*1000 + 1500;
+      if(ms>1500) setTimeout(()=>{ if(token===speakSeq) finishOnce(); }, ms);
+    };
+    a.src=PRAYER_AUDIO[s.audio];
+    const p=a.play();
+    if(p && p.catch) p.catch(()=>{ if(!done && token===speakSeq){ done=true; ttsSpeak(s.text,onDone,token); } });
   } else {
     ttsSpeak(s?s.text:"",onDone,token);
   }
@@ -789,7 +804,7 @@ function playPrayer(s,onDone){
 function stopSpeak(){
   speakSeq++; stopPump();
   if(supported) synth.cancel();
-  if(audioEl){ try{audioEl.pause();audioEl.currentTime=0;}catch(e){} }
+  stopAudio();
 }
 
 /* =========================================================================
