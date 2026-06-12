@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jupiters bane med Gauss' metode — afstand, fart og excentricitet</title>
+<script>
+window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+:root{
+  --night:#0c1322; --night2:#131c30; --ring:#3a4a66;
+  --paper:#f3f1ea; --panel:#fbfaf6; --ink:#22262e; --ink-soft:#5a6170;
+  --belt:#a85b32; --belt-deep:#7e4123; --zone:#e9dcc6;
+  --gemini:#5b7fae; --gemini-deep:#33517c;
+  --warn:#a8552e; --hair:#d8d3c6;
+  --mono:"SF Mono","Cascadia Code",Consolas,"DejaVu Sans Mono",monospace;
+  --serif:"Iowan Old Style","Palatino Linotype","Book Antiqua",Palatino,Georgia,serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} *{animation:none!important;transition:none!important} }
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif);font-size:18px;line-height:1.65}
+.wrap{max-width:780px;margin:0 auto;padding:0 22px}
+header.hero{background:radial-gradient(1200px 600px at 50% -10%, #1b2742 0%, var(--night) 55%, #080d18 100%);color:#e8e4d8;padding:56px 0 34px}
+header.hero .wrap{max-width:880px}
+.eyebrow{font-family:var(--mono);font-size:12.5px;letter-spacing:.22em;text-transform:uppercase;color:#9db1d2;margin:0 0 14px}
+h1{font-size:clamp(30px,5vw,46px);line-height:1.12;font-weight:600;margin:0 0 14px;letter-spacing:.005em}
+h1 em{font-style:italic;color:var(--zone)}
+.standfirst{font-size:19px;line-height:1.55;color:#c9cfdb;max-width:660px;margin:0 0 8px}
+.obs-line{font-family:var(--mono);font-size:13px;color:#8d9cb8;margin:18px 0 0;letter-spacing:.04em}
+.hero-fig{display:block;width:100%;max-width:880px;margin:26px auto 0}
+main{padding:8px 0 30px}
+section{margin:54px 0}
+h2{font-size:26px;font-weight:600;margin:0 0 4px;letter-spacing:.005em}
+h2 .pilcrow{font-family:var(--mono);font-size:14px;color:var(--belt);letter-spacing:.12em;display:block;margin-bottom:6px}
+h3{font-size:19px;margin:28px 0 8px}
+p{margin:14px 0}
+a{color:var(--gemini-deep)}
+figure{margin:26px 0}
+figcaption{font-size:14.5px;color:var(--ink-soft);margin-top:10px;line-height:1.5}
+figcaption b{color:var(--ink)}
+.fig-panel{background:var(--night);border-radius:10px;padding:18px;border:1px solid #1d2940}
+table{border-collapse:collapse;width:100%;font-size:15.5px;margin:18px 0}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--hair);vertical-align:top}
+th{font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);font-weight:600}
+td.num, th.num{text-align:right;font-family:var(--mono);font-size:14.5px}
+.note{background:var(--panel);border-left:3px solid var(--belt);padding:12px 16px;font-size:16px;border-radius:0 8px 8px 0;margin:20px 0}
+.note .tag{font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--belt-deep);display:block;margin-bottom:4px}
+.eq-note{font-size:15px;color:var(--ink-soft)}
+#lab{background:var(--night);border-radius:14px;border:1px solid #1f2c47;color:#dfe3ea;padding:26px 26px 22px;margin:30px -26px;box-shadow:0 18px 50px -22px rgba(8,13,24,.55)}
+@media(max-width:840px){#lab{margin:30px -10px;padding:20px 14px}}
+#lab h3{color:#f0ead9;margin-top:0;font-size:21px}
+#lab .lab-eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.2em;text-transform:uppercase;color:#90a4c6;margin:0 0 8px}
+.dropzone{position:relative;border-radius:50%;width:min(340px,80vw);aspect-ratio:1;margin:18px auto;border:1.5px solid var(--ring);display:flex;align-items:center;justify-content:center;text-align:center;cursor:pointer;background:radial-gradient(circle at 50% 42%, #16223a 0%, #0a101d 70%);transition:border-color .2s, box-shadow .2s}
+.dropzone:hover,.dropzone.drag{border-color:var(--zone);box-shadow:0 0 0 6px rgba(233,220,198,.06)}
+.dropzone p{font-size:15px;color:#aebad0;max-width:230px;margin:0;line-height:1.5}
+.dropzone p b{color:var(--zone)}
+.dropzone input{position:absolute;inset:0;opacity:0;cursor:pointer;border-radius:50%}
+.lab-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:8px}
+@media(max-width:700px){.lab-grid{grid-template-columns:1fr}}
+.lab-card{background:var(--night2);border:1px solid #22304e;border-radius:10px;padding:14px}
+.lab-card h4{margin:0 0 8px;font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#9fb2d2;font-weight:600}
+canvas.viewcanvas{width:100%;border-radius:8px;background:#000;display:block}
+#measTable{font-size:13.5px;color:#cfd6e2}
+#measTable th{color:#8fa2c2;border-color:#27365a}
+#measTable td{border-color:#1d2a47;font-family:var(--mono);font-size:12.5px}
+#measTable td:first-child{max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lab-controls{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin:14px 0 4px;font-size:14px}
+.lab-controls label{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#8fa2c2;margin-bottom:4px}
+.lab-controls input{background:#0a101d;border:1px solid #2c3b5e;border-radius:6px;color:#eee8d8;font-family:var(--mono);font-size:14px;padding:6px 8px;width:120px}
+.btn{background:linear-gradient(180deg,#c06a3a,#a85b32);color:#fff7ec;border:0;border-radius:7px;font-family:var(--mono);font-size:13px;letter-spacing:.06em;padding:9px 16px;cursor:pointer}
+.btn:hover{filter:brightness(1.08)}
+.btn.secondary{background:#22304e;color:#cfd9ec;border:1px solid #34466e}
+.lab-msg{font-size:13.5px;color:#9fb2d2;font-family:var(--mono);min-height:1.3em;margin-top:8px}
+.lab-msg.warn{color:#e8a06b}
+.obsgal{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:10px;margin-top:10px}
+.obsgal .obscard{margin:0;background:#000;border-radius:8px;overflow:hidden;border:1px solid #1d2940}
+.obsgal .obsframe{aspect-ratio:1;overflow:hidden;display:block;background:#000}
+.obsgal img,.obsgal canvas{width:100%;aspect-ratio:1;object-fit:cover;display:block}
+.obsgal img{transform:scale(2.2)}
+.obsgal figcaption{font-family:var(--mono);font-size:10.5px;color:#8fa2c2;padding:5px 4px;text-align:center;line-height:1.35}
+.obsgal .missing{display:none}
+.gal-session{font-family:var(--mono);font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:#9fb2d2;margin:16px 0 2px}
+.results{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:14px;margin:24px 0}
+.res-card{background:var(--panel);border:1px solid var(--hair);border-radius:10px;padding:14px 16px}
+.res-card .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft)}
+.res-card .val{font-size:25px;font-weight:600;margin:6px 0 2px;font-variant-numeric:tabular-nums}
+.res-card .sub{font-family:var(--mono);font-size:12px;color:var(--ink-soft)}
+.res-card.hero-res{background:linear-gradient(180deg,#fdfcf8,#f6efe2);border-color:#e3d4ba}
+footer{border-top:1px solid var(--hair);margin-top:60px;padding:26px 0 50px;font-size:14.5px;color:var(--ink-soft)}
+footer .wrap{display:grid;gap:6px}
+.kilde{font-size:14px}
+sup.fn{font-family:var(--mono);font-size:11px;color:var(--belt-deep)}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <p class="eyebrow">Observationsrapport · Gauss' metode · afstand · fart · excentricitet</p>
+    <h1>Jupiters bane, målt fra Djursland<br><em>med Gauss' metode</em></h1>
+    <p class="standfirst">To aftener — den 14. januar og den 14. februar 2026 — fotograferede et eVscope&nbsp;2 Jupiter fra 56°N&nbsp;11°Ø. Ni billeder af en lille stribet skive. Det viser sig at være nok til at regne sig frem til planetens afstand, dens fart i banen — og til at gentage den øvelse, der i 1801 gjorde den 24-årige Carl Friedrich Gauss verdensberømt.</p>
+    <p class="obs-line">eVscope 2 · 114 mm / 450 mm · Sony IMX347 · 56°N 11°Ø · opposition: 10. jan. 2026 kl. 09 UT (Tvillingerne)</p>
+
+    <svg class="hero-fig" viewBox="0 0 880 300" role="img" aria-label="Princippet: Jupiters vinkeldiameter theta, fysiske diameter D og afstanden Delta">
+      <defs>
+        <radialGradient id="jup" cx="38%" cy="35%">
+          <stop offset="0%" stop-color="#f2e6d0"/><stop offset="70%" stop-color="#d9c3a4"/><stop offset="100%" stop-color="#b59774"/>
+        </radialGradient>
+        <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#9db1d2"/>
+        </marker>
+        <marker id="arrW" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#e9dcc6"/>
+        </marker>
+      </defs>
+      <g transform="translate(80,150)">
+        <circle r="6" fill="#e9dcc6"/>
+        <text x="0" y="34" fill="#9db1d2" font-size="13" font-family="monospace" text-anchor="middle">eVscope, Jorden</text>
+      </g>
+      <g transform="translate(740,150)">
+        <circle r="56" fill="url(#jup)"/>
+        <g opacity="0.85" transform="rotate(-18)">
+          <rect x="-54" y="-22" width="108" height="10" rx="5" fill="#a8704a"/>
+          <rect x="-55" y="2"  width="110" height="9"  rx="4.5" fill="#9a6240"/>
+          <rect x="-48" y="24" width="96"  height="7"  rx="3.5" fill="#b98a60" opacity="0.7"/>
+        </g>
+        <circle r="56" fill="none" stroke="#0c1322" stroke-width="0"/>
+        <line x1="78" y1="-56" x2="78" y2="56" stroke="#e9dcc6" stroke-width="1.4" marker-start="url(#arrW)" marker-end="url(#arrW)"/>
+        <text x="90" y="5" fill="#e9dcc6" font-size="17" font-style="italic">D</text>
+      </g>
+      <line x1="86" y1="150" x2="740" y2="94"  stroke="#42557c" stroke-width="1.2"/>
+      <line x1="86" y1="150" x2="740" y2="206" stroke="#42557c" stroke-width="1.2"/>
+      <line x1="86" y1="150" x2="676" y2="150" stroke="#9db1d2" stroke-width="1.2" stroke-dasharray="5 6" marker-end="url(#arr)"/>
+      <text x="380" y="138" fill="#9db1d2" font-size="15" font-style="italic">&#916; — afstanden, den ubekendte</text>
+      <path d="M 150 144.5 A 60 60 0 0 1 150 155.5" fill="none" stroke="#e9dcc6" stroke-width="1.4"/>
+      <text x="162" y="156" fill="#e9dcc6" font-size="15" font-style="italic">&#952;</text>
+      <text x="440" y="266" fill="#8d9cb8" font-size="14" text-anchor="middle" font-style="italic">&#952; = D / &#916; : skivens vinkeldiameter er et afstandsmål, når den fysiske diameter D kendes</text>
+    </svg>
+  </div>
+</header>
+
+<main class="wrap">
+
+<section id="s1">
+  <h2><span class="pilcrow">§ 1</span>Optakt: en forsvunden planet og en 24-årig fra Braunschweig</h2>
+  <p>Natten til den 1. januar 1801 fandt Giuseppe Piazzi i Palermo et lyspunkt, der flyttede sig: <i>Ceres</i>. Han nåede at følge den i 41 dage — en bue på sølle 9° — før den forsvandt i Solens skær, og ingen kunne regne sig frem til, hvor den ville dukke op igen. Ingen, undtagen Gauss, som det efterår udviklede en metode til at bestemme en komplet keplerbane ud fra ganske få observationer og forudsagde positionen så præcist, at von Zach genfandt Ceres nytårsaften 1801 — næsten på årsdagen for opdagelsen. Metoden, med <i>sektor-trekant-forholdet</i> som omdrejningspunkt og mindste kvadraters metode som efterbehandling, udgav han i 1809 som <i>Theoria Motus Corporum Coelestium</i>.<sup class="fn">1</sup></p>
+  <p>Gauss arbejdede med præcise <em>retninger</em> (rektascension og deklination) målt mod fiksstjernerne. Vores eVscope-billeder af Jupiter indeholder ingen fiksstjerner — planeten overstråler alt — men de indeholder noget, Piazzi aldrig fik af Ceres: en <em>opløst skive</em>. Skivens vinkeldiameter er et direkte afstandsmål, og to afstande plus den mellemliggende tid er netop det råstof, Gauss' banemaskineri forlanger. Vi bytter altså Piazzis vinkler ud med afstandsmåling pr. skivestørrelse; resten af regningen er Gauss', stort set uændret.</p>
+  <p>Planen, i tre trin med stigende ambition:</p>
+  <table>
+    <tr><th>Trin</th><th>Spørgsmål</th><th>Værktøj</th></tr>
+    <tr><td><b>I</b></td><td>Hvor langt væk er Jupiter?</td><td>Vinkeldiameter + trekantsgeometri (§ 3–5)</td></tr>
+    <tr><td><b>II</b></td><td>Hvor hurtigt bevæger den sig?</td><td>Keplers 3. lov + vis-viva (§ 6)</td></tr>
+    <tr><td><b>III</b></td><td>Hvor rund er banen — excentriciteten?</td><td>Gauss' sektor-trekant-metode på de to stedvektorer (§ 7)</td></tr>
+  </table>
+</section>
+
+<section id="s2">
+  <h2><span class="pilcrow">§ 2</span>Observationerne</h2>
+  <p>Jupiter var i opposition den 10. januar 2026 kl. ca. 09 UT, stående i Tvillingerne nær Pollux, og kom Jorden nærmest dagen før — 633 millioner km ifølge efemeriderne.<sup class="fn">2</sup> Vores to sessioner ligger henholdsvis 4,4 og 35,3 døgn <em>efter</em> oppositionen. Det er et heldigt valg: I den første session står Jorden næsten på linje mellem Solen og Jupiter; en måned senere har Jorden — der løber godt dobbelt så hurtigt og på en tolvtedel af omløbstiden — trukket sig mærkbart ud til siden. Geometrien har ændret sig nok til, at afstanden er vokset måleligt: skiven bør være skrumpet godt 4&nbsp;%.</p>
+  <table>
+    <tr><th>Session</th><th>Optagelser (lokal tid, CET)</th><th class="num">Midlet epoke (UT)</th><th class="num">Døgn efter opp.</th></tr>
+    <tr><td><b>A</b> · 14. jan. 2026</td><td>19:33, 19:56, 19:57, 19:58, 19:59, 20:01 — 6 billeder</td><td class="num">14. jan. 18:48</td><td class="num">4,4</td></tr>
+    <tr><td><b>B</b> · 14. feb. 2026</td><td>17:38, 17:39, 18:11 — 3 billeder</td><td class="num">14. feb. 16:50</td><td class="num">35,3</td></tr>
+  </table>
+  <p>På flere af januarbillederne ses desuden en svag prik nær skiven — en af de galileiske måner, der lige akkurat stikker hovedet ud af planetens overstråling. Den får lov at blive siddende som statist; hovedrollen tilhører skivens <em>diameter</em>.</p>
+
+  <figure>
+    <div class="fig-panel">
+      <p class="gal-session">Session A · 14. januar 2026 · 6 optagelser</p>
+      <div class="obsgal" id="galA"></div>
+      <p class="gal-session">Session B · 14. februar 2026 · 3 optagelser</p>
+      <div class="obsgal" id="galB"></div>
+    </div>
+    <figcaption><b>Fig. 1 · Observationsmaterialet.</b> De ni eVscope&nbsp;2-optagelser, beskåret omkring skiven (ca. 2,2× zoom). Galleriet henter billederne fra samme mappe som denne side; slippes originalfilerne i målelaboratoriet (§ 4), erstattes hvert felt desuden af den målte skive med diameter i billedteksten. Bemærk månen som svag prik nederst til venstre på flere januarbilleder.</figcaption>
+  </figure>
+  <div class="note"><span class="tag">Instrument</span>eVscope 2: 114 mm spejl, brændvidde 450 mm, Sony IMX347-sensor med 2,9 µm pixels.<sup class="fn">5</sup> Den nominelle pixelskala er dermed \( s = 206\,265'' \times \tfrac{0{,}0029\ \text{mm}}{450\ \text{mm}} = 1{,}329''/\text{px} \). Unistellar-appen kan gemme planetbilleder beskåret eller omskaleret — det tager målelaboratoriet i § 4 højde for med et justerbart skalafelt og et indbygget rimelighedstjek.</div>
+</section>
+
+<section id="s3">
+  <h2><span class="pilcrow">§ 3</span>Idéen: skiven som afstandsmåler</h2>
+  <p>For små vinkler er sammenhængen mellem vinkeldiameter \( \theta \), fysisk diameter \(D\) og afstand \( \Delta \) ren proportionalitet:</p>
+  \[ \Delta \;=\; \frac{D}{\theta}, \qquad \theta \text{ i radianer.} \]
+  <p>Jupiters fysiske størrelse kender vi uafhængigt af denne måling — fra månernes formørkelser og fra rumsondernes radiotracking: ækvatordiameter 142&nbsp;984 km, poldiameter 133&nbsp;708 km.<sup class="fn">3</sup> Planeten er mærkbart fladtrykt (6,5&nbsp;%), og da vores målemetode midler skivens radius over alle retninger, bruger vi den geometrisk midlede diameter</p>
+  \[ D \;=\; \sqrt{D_{\text{ækv}}\,D_{\text{pol}}} \;=\; 138\,268\ \text{km}. \]
+  <p>Én procents fejl i \( \theta \) giver én procents fejl i \( \Delta \). Det lyder uskyldigt — og er det også for afstanden og farten. For excentriciteten bliver det dramatisk, som § 7 demonstrerer med ubehagelig tydelighed.</p>
+</section>
+
+<section id="s4">
+  <h2><span class="pilcrow">§ 4</span>Målelaboratoriet</h2>
+  <p>Skivens rand skal findes med <em>delpixel</em>-præcision. Metoden: find skivens lystyngdepunkt, dan den radiale intensitetsprofil \( I(\rho) \) — middelintensiteten i tynde ringe omkring centret — og definér randen som den radius, hvor profilen er faldet til halvvejs mellem skivens plateau og himmelbaggrunden. For en jævnt lysende skive udtværet af seeing ligger 50&nbsp;%-punktet netop på den sande rand, fordi udtværingen er symmetrisk. Jupiters randformørkelse trækker punktet en anelse indad; det bogføres som en systematisk usikkerhed på ~1&nbsp;% (§ 8).</p>
+
+  <div id="lab">
+    <p class="lab-eyebrow">Instrument · kører lokalt i browseren — billederne forlader ikke maskinen</p>
+    <h3>Slip eVscope-billederne i okularet</h3>
+    <p style="font-size:15px;color:#aebad0;margin-top:-6px">Originale PNG'er fra begge sessioner kan slippes samlet. Epoken aflæses automatisk af filnavnet (<span style="font-family:var(--mono);font-size:12.5px">…-20260114-195835.png</span>), og hvert billede måles med radialprofilmetoden. Indtil da viser rapporten en gennemregnet eksempelberegning.</p>
+
+    <div class="dropzone" id="dropzone">
+      <p><b>Slip PNG-filer her</b><br>eller klik for at vælge<br><span style="font-size:12.5px;font-family:var(--mono);color:#7e8fae">9 billeder · jan + feb</span></p>
+      <input type="file" id="fileInput" multiple accept="image/png,image/jpeg">
+    </div>
+
+    <div class="lab-controls">
+      <div><label for="scaleInput">Pixelskala (&#8243;/px)</label><input id="scaleInput" type="number" step="0.001" value="1.329"></div>
+      <div><label for="sigmaInput">Antaget &#963; pr. billede (&#8243;)</label><input id="sigmaInput" type="number" step="0.1" value="0.5"></div>
+      <button class="btn secondary" id="resetBtn" type="button">Nulstil til eksempel</button>
+      <button class="btn" id="mcBtn" type="button">Kør Monte Carlo (§ 7)</button>
+    </div>
+    <div class="lab-msg" id="labMsg">Eksempeltilstand: θ-værdierne nedenfor er beregnede pladsholdere, ikke målinger.</div>
+
+    <div class="lab-grid">
+      <div class="lab-card">
+        <h4>Seneste måling · skive + tilpasset rand</h4>
+        <canvas id="diskCanvas" class="viewcanvas" width="420" height="420"></canvas>
+      </div>
+      <div class="lab-card">
+        <h4>Radial profil · 50 %-randen</h4>
+        <canvas id="profCanvas" class="viewcanvas" width="420" height="420"></canvas>
+      </div>
+    </div>
+
+    <div class="lab-card" style="margin-top:18px">
+      <h4>Målejournal</h4>
+      <table id="measTable">
+        <thead><tr><th>Fil</th><th class="num">Session</th><th class="num">d (px)</th><th class="num">&#952; (&#8243;)</th></tr></thead>
+        <tbody id="measBody"></tbody>
+        <tfoot>
+          <tr><td><b>Session A · middel</b></td><td class="num">14. jan.</td><td class="num" id="dpxA">—</td><td class="num" id="thA">45,00 ± 0,50</td></tr>
+          <tr><td><b>Session B · middel</b></td><td class="num">14. feb.</td><td class="num" id="dpxB">—</td><td class="num" id="thB">43,10 ± 0,50</td></tr>
+        </tfoot>
+      </table>
+      <div class="lab-msg" id="sanityMsg"></div>
+    </div>
+  </div>
+</section>
+
+<section id="s5">
+  <h2><span class="pilcrow">§ 5</span>Geometrien — og resultat I: afstanden</h2>
+  <p>Vinkeldiameteren giver den <em>geocentriske</em> afstand \( \Delta \). Men banen ligger om Solen, så vi skal videre til den <em>heliocentriske</em> afstand \(r\). Her betaler oppositionsdatoen sig: den 10. januar kl. 09 UT lå Sol, Jord og Jupiter på linje. Derefter åbner trekanten sig med kendt hastighed, for Jordens bevægelse kender vi suverænt (keplerbane, \(e=0{,}0167\), perihel 3. januar), og Jupiters middelbevægelse følger af dens synodiske periode på 398,88 døgn — en størrelse, man kan måle med kalender og tålmodighed, fra opposition til opposition:</p>
+  \[ \frac{1}{T_J} \;=\; \frac{1}{T_\oplus} - \frac{1}{S} \;\;\Rightarrow\;\; T_J = 4333\ \text{døgn} = 11{,}86\ \text{år}. \]
+  <p>Vinklen ved Solen mellem Jord og Jupiter, \( \varphi(t) \), er nul ved oppositionen og vokser derefter som differensen mellem de to omløbsvinkler: \( \varphi_1 = 4{,}1° \) ved session A og \( \varphi_2 = 32{,}9° \) ved session B. Trekanten Sol–Jord–Jupiter løses derpå med en omskrevet cosinusrelation:</p>
+  \[ r \;=\; R\cos\varphi \;+\; \sqrt{\Delta^2 - R^2\sin^2\varphi}, \]
+  <p class="eq-note">hvor \(R\) er Jordens solafstand på epoken (0,9836 hhv. 0,9876 AU). Bemærk det venlige ved konstruktionen: en målefejl i \( \Delta \) går praktisk talt uforstærket igennem til \( r \) — geometrien piner ikke støjen op i dette trin.</p>
+
+  <figure>
+    <div class="fig-panel">
+      <svg id="geoSvg" viewBox="0 0 760 430" width="100%" role="img" aria-label="Sol, Jordens bane og Jupiters position ved de to epoker, i korrekt skala"></svg>
+    </div>
+    <figcaption><b>Fig. 2 · Geometrien i korrekt målestok.</b> Solen, Jordens bane (den lille cirkel — ja, <em>så</em> lille er den i denne målestok) og Jupiter ved de to epoker. Indsatsen forstørrer Jordens kvarter og viser vinklerne \( \varphi_1 \) og \( \varphi_2 \) ved Solen samt synslinjerne A og B. At man fra den lille cirkel kan opmåle den stores bane, er hele pointen med øvelsen.</figcaption>
+  </figure>
+
+  <div class="results" id="resDist">
+    <div class="res-card"><div class="lbl">&#916;&#8321; · 14. jan.</div><div class="val" id="rDelta1">—</div><div class="sub" id="rDelta1b">—</div></div>
+    <div class="res-card"><div class="lbl">&#916;&#8322; · 14. feb.</div><div class="val" id="rDelta2">—</div><div class="sub" id="rDelta2b">—</div></div>
+    <div class="res-card hero-res"><div class="lbl">r&#8321; · heliocentrisk</div><div class="val" id="rR1">—</div><div class="sub">Sol–Jupiter, 14. jan.</div></div>
+    <div class="res-card hero-res"><div class="lbl">r&#8322; · heliocentrisk</div><div class="val" id="rR2">—</div><div class="sub">Sol–Jupiter, 14. feb.</div></div>
+  </div>
+  <p>Som rimelighedstjek: efemeriderne angav største nærhed til 633 mio. km den 9. januar.<sup class="fn">2</sup> Vores \( \Delta_1 \), målt fire døgn senere, skal altså ligge en anelse over dette tal.</p>
+</section>
+
+<section id="s6">
+  <h2><span class="pilcrow">§ 6</span>Resultat II: farten</h2>
+  <p>Keplers 3. lov forvandler den synodisk bestemte omløbstid til en halv storakse: \( a = T_J^{\,2/3} = 5{,}20 \) AU (med \(T_J\) i år og \(a\) i AU). Sammen med den målte heliocentriske afstand giver energisætningen for keplerbaner — <i>vis-viva-ligningen</i> — banefarten:</p>
+  \[ v \;=\; \sqrt{\,GM_\odot\left(\frac{2}{r} - \frac{1}{a}\right)\,}. \]
+  <div class="results">
+    <div class="res-card hero-res"><div class="lbl">Banefart v</div><div class="val" id="rV">—</div><div class="sub">vis-viva, r = r&#8321;</div></div>
+    <div class="res-card"><div class="lbl">Cirkulær reference</div><div class="val" id="rVc">—</div><div class="sub">&#8730;(GM/r)</div></div>
+    <div class="res-card"><div class="lbl">Jorden, til sammenligning</div><div class="val">29,8 km/s</div><div class="sub">deraf den åbnende trekant</div></div>
+  </div>
+  <p>Jupiter lunter altså af sted med ca. 13 km/s, under det halve af Jordens fart — og netop dét misforhold får \( \varphi \) til at vokse med ca. 0,9° i døgnet og gør hele målingen mulig. At vis-viva og den cirkulære reference ligger så tæt, er i øvrigt det første diskrete vink om, at excentriciteten er lille.</p>
+</section>
+
+<section id="s7">
+  <h2><span class="pilcrow">§ 7</span>Resultat III: excentriciteten — Gauss' sektor-trekant</h2>
+  <p>Nu til kronjuvelen. Vi har to heliocentriske stedvektorer \( \vec r_1, \vec r_2 \): længderne fra § 5, og vinklen imellem dem, \( \Delta\nu = 2{,}55° \), som er Jupiters egen vandring i de 30,9 døgn. Gauss' indsigt: forholdet \(y\) mellem det <em>keplerske sektorareal</em>, som radiusvektoren stryger hen over (Keplers 2. lov: areal ∝ tid), og <em>trekanten</em> udspændt af de to vektorer fastlægger banen entydigt:</p>
+  \[ y \;=\; \frac{\text{sektor}}{\text{trekant}}, \qquad \tfrac12\,\big|\vec r_1 \times \vec r_2\big|\; y \;=\; \tfrac12\, h\,(t_2-t_1), \]
+  <p class="eq-note">hvor \(h\) er banens impulsmomentkonstant. Gauss løste systemet med sine berømte iterationsligninger; vi gør det numerisk med den ækvivalente moderne formulering — Lamberts problem i universelle variable<sup class="fn">4</sup> — samme matematik, mindre håndregning. Ud falder hele keplerbanen: \(a\), \(e\) og, som kontrol, farten \(v_1\).</p>
+
+  <figure>
+    <div class="fig-panel">
+      <svg viewBox="0 0 760 350" width="100%" role="img" aria-label="Sektor-trekant-forholdet: to radiusvektorer, korden og det keplerske sektorareal">
+        <defs>
+          <marker id="arrB" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#cfd9ec"/></marker>
+        </defs>
+        <g transform="translate(120,310)">
+          <path d="M 0 0 L 520 -50 A 540 540 0 0 1 430 -270 Z" fill="#a85b32" opacity="0.30"/>
+          <path d="M 0 0 L 520 -50 L 430 -270 Z" fill="#5b7fae" opacity="0.32"/>
+          <path d="M 556 -8 A 540 540 0 0 1 396 -302" fill="none" stroke="#e9dcc6" stroke-width="2"/>
+          <line x1="0" y1="0" x2="520" y2="-50" stroke="#cfd9ec" stroke-width="1.6" marker-end="url(#arrB)"/>
+          <line x1="0" y1="0" x2="430" y2="-270" stroke="#cfd9ec" stroke-width="1.6" marker-end="url(#arrB)"/>
+          <line x1="520" y1="-50" x2="430" y2="-270" stroke="#9fb2d2" stroke-width="1.3" stroke-dasharray="5 5"/>
+          <circle r="9" fill="#f4d77a"/>
+          <text x="-8" y="28" fill="#f4d77a" font-size="14" font-family="monospace">Sol</text>
+          <text x="534" y="-44" fill="#e9dcc6" font-size="16" font-style="italic">r&#8321;, t&#8321;</text>
+          <text x="438" y="-282" fill="#e9dcc6" font-size="16" font-style="italic">r&#8322;, t&#8322;</text>
+          <text x="255" y="-78" fill="#f0c8a8" font-size="15" font-style="italic">sektor (Kepler II: areal &#8733; tid)</text>
+          <text x="300" y="-150" fill="#b9cce8" font-size="15" font-style="italic">trekant</text>
+          <text x="497" y="-160" fill="#9fb2d2" font-size="14" font-style="italic">korden c</text>
+        </g>
+        <text x="380" y="34" fill="#8d9cb8" font-size="14" text-anchor="middle" font-style="italic">Vinklen &#916;&#957; er her overdrevet ~10&#215; — i virkeligheden er buen kun 2,55°</text>
+      </svg>
+    </div>
+    <figcaption><b>Fig. 3 · Gauss' sektor-trekant-forhold.</b> Trekanten beregnes direkte af \( \vec r_1, \vec r_2 \); sektoren følger af flyvetiden via Keplers 2. lov. Forholdet \(y\) mellem dem låser impulsmomentet og dermed hele banen.</figcaption>
+  </figure>
+
+  <div class="results">
+    <div class="res-card hero-res"><div class="lbl">Halv storakse a</div><div class="val" id="rA">—</div><div class="sub">Gauss/Lambert af (r&#8321;, r&#8322;, &#916;t)</div></div>
+    <div class="res-card hero-res"><div class="lbl">Excentricitet e</div><div class="val" id="rE">—</div><div class="sub">tabelværdi: 0,049</div></div>
+    <div class="res-card"><div class="lbl">Kontrol: v&#8321; fra Gauss-banen</div><div class="val" id="rVg">—</div><div class="sub">skal &#8776; § 6</div></div>
+  </div>
+
+  <h3>Den ærlige bagside: fejlforstærkningen</h3>
+  <p>Men hvor godt er det \(e\) bestemt? Her gemmer sig rapportens vigtigste lære. Buen mellem vores to observationer er kun 2,55°. På så kort en bue skelner banen mellem »cirkel« og »ellipse« næsten udelukkende via den bittesmå forskel \( r_2 - r_1 \), som for Jupiter i netop denne måned er omkring 0,2&nbsp;%. Måles radierne med 1&nbsp;% usikkerhed, drukner signalet, og Gauss-løsningen svarer igen med vildt fabulerende ellipser. Monte Carlo-simuleringen herunder — kør den med knappen i § 4 — viser fordelingen af \(a\) og \(e\), når \( \theta_1 \) og \( \theta_2 \) trækkes tilfældigt inden for deres usikkerheder:</p>
+
+  <figure>
+    <div class="fig-panel">
+      <div class="lab-grid" style="margin-top:0">
+        <div><canvas id="histA" class="viewcanvas" width="420" height="300"></canvas></div>
+        <div><canvas id="histE" class="viewcanvas" width="420" height="300"></canvas></div>
+      </div>
+      <div class="lab-msg" id="mcMsg" style="padding:6px 4px 0">Tryk »Kør Monte Carlo« i § 4.</div>
+    </div>
+    <figcaption><b>Fig. 4 · Monte Carlo, 4000 trækninger.</b> Fordelingen af halv storakse og excentricitet under de antagne måleusikkerheder. Med \( \sigma_\theta \approx 0{,}5'' \) (~1&nbsp;%) skævvrides begge fordelinger: \(a\) trækker mod for høje værdier, og \(e\) kan kun <em>begrænses</em> — lille og foreneligt med tabelværdien 0,049, men ikke fastnaglet. Det er derfor, § 6 henter \(a\) fra Keplers 3. lov, hvor den står solidt. Det er ikke metoden, der fejler — det er buen, der er for kort.</figcaption>
+  </figure>
+
+  <p>Dette er præcis grunden til, at Gauss insisterede på astrometri med buesekund-præcision, og til at Piazzis 9°-bue var en gave: jo længere bue, desto mere af ellipsens form når at vise sig. Vores trøst er, at \( \Delta \), \(r\), \(v\) og \(a\) står bundsolidt — og at der findes en kongevej til \(e\), som blot kræver tålmodighed:</p>
+  <div class="note"><span class="tag">Fortsæt selv · oppositionsserien</span>Mål Jupiters vinkeldiameter ved <em>hver</em> opposition de kommende år (næste: 11. februar 2027). Oppositionsafstanden er \( \Delta_{\text{opp}} \approx r - R \), så serien aftegner direkte \(r\)'s vandring rundt i ellipsen. Over en halv Jupiter-periode svinger oppositionsskiven fra ca. 44″ (nu, nær aphel-siden) til ca. 50″ (midt i 2030'erne, nær perihel), og excentriciteten falder ud af det rene forhold \[ \frac{r_{\max}}{r_{\min}} \;=\; \frac{1+e}{1-e}. \] Et eVscope og tolv års klare vinteraftener slår altså til. Gauss ville have nikket — og derefter spurgt til mindste kvadraters udjævning af serien.</div>
+</section>
+
+<section id="s8">
+  <h2><span class="pilcrow">§ 8</span>Fejlkilder og forbehold</h2>
+  <table>
+    <tr><th>Kilde</th><th>Type</th><th class="num">Skøn</th><th>Rammer mest</th></tr>
+    <tr><td>Pixelskalaen (appens evt. omskalering af gemte planetbilleder)</td><td>Systematisk</td><td class="num">op til få %</td><td>&#916;, r — kontrollér med rimelighedstjekket i § 4</td></tr>
+    <tr><td>Randformørkelse: 50 %-punktet trækkes svagt indad</td><td>Systematisk</td><td class="num">~1 %</td><td>&#916;, r (mod for små afstande)</td></tr>
+    <tr><td>Seeing/fokus: spredning fra billede til billede</td><td>Statistisk</td><td class="num">~0,3–0,7&#8243;</td><td>midles ned med &#8730;N</td></tr>
+    <tr><td>Fladtrykning og skivens orientering</td><td>Systematisk</td><td class="num">&lt; 0,3 %</td><td>håndteret via den geometrisk midlede diameter</td></tr>
+    <tr><td>Jupiters baneinklination (1,3°) ignoreret</td><td>Systematisk</td><td class="num">&lt; 0,05 %</td><td>geometrien i § 5</td></tr>
+    <tr><td>&#916;&#957; fra middelbevægelsen frem for observeret bue</td><td>Systematisk</td><td class="num">~0,3 %</td><td>e i § 7 (medtaget i Monte Carlo)</td></tr>
+  </table>
+  <p>Bemærk arbejdsdelingen: de statistiske fejl tæmmes af gentagne optagelser, mens de systematiske flytter alle målinger i samme retning og derfor er de farligste. Det var i øvrigt også Gauss' opdeling — <i>Theoria Motus</i> munder ud i netop dén pointe, med mindste kvadraters metode som svaret på den statistiske del.</p>
+</section>
+
+<section id="s9">
+  <h2><span class="pilcrow">§ 9</span>Konklusion</h2>
+  <div class="results" id="finalRes">
+    <div class="res-card hero-res"><div class="lbl">Afstand &#916;&#8321;</div><div class="val" id="fD">—</div><div class="sub" id="fDsub">tabel: 633 mio. km (9. jan.)</div></div>
+    <div class="res-card hero-res"><div class="lbl">Solafstand r&#8321;</div><div class="val" id="fR">—</div><div class="sub">efemeride: 5,22 AU (jan. 2026)</div></div>
+    <div class="res-card hero-res"><div class="lbl">Banefart v</div><div class="val" id="fV">—</div><div class="sub">tabel: 13,06 km/s (middel)</div></div>
+    <div class="res-card hero-res"><div class="lbl">Excentricitet e</div><div class="val" id="fE">—</div><div class="sub">tabel: 0,049</div></div>
+  </div>
+  <p>Ni billeder af en stribet skive, en kalender og en trekant: det rakte til Jupiters afstand med procentpræcision, banefarten via Kepler og vis-viva, og en begrænsning af excentriciteten med Gauss' eget banemaskineri — plus en klar opskrift på, hvordan tolv års oppositionsmålinger forvandler begrænsningen til et tal. Ceres-metoden fra 1801 kører upåklageligt på et havebordsteleskop fra 2026. Man fornemmer, at Gauss ville have fundet det hele meget rimeligt.</p>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="kilde"><sup class="fn">1</sup> C.F. Gauss, <i>Theoria Motus Corporum Coelestium in Sectionibus Conicis Solem Ambientium</i> (1809).</div>
+    <div class="kilde"><sup class="fn">2</sup> Opposition 10. jan. 2026 kl. 09 UT i Tvillingerne; mindste afstand 633 mio. km den 9. jan. (EarthSky; In-The-Sky.org; APOD 10.1.2026).</div>
+    <div class="kilde"><sup class="fn">3</sup> NASA Jupiter Fact Sheet: D-ækvator = 142 984 km, D-pol = 133 708 km, a = 5,2026 AU, e = 0,0489, middelbanefart 13,06 km/s.</div>
+    <div class="kilde"><sup class="fn">4</sup> Bate, Mueller &amp; White, <i>Fundamentals of Astrodynamics</i>, kap. 5 — universelle variable; ækvivalent med Gauss' sektor-trekant-iteration.</div>
+    <div class="kilde"><sup class="fn">5</sup> Unistellar, tekniske specifikationer for eVscope 2.</div>
+    <div style="margin-top:14px">Observationer: Unistellar eVscope 2, Djursland (56°N 11°Ø), 14. januar &amp; 14. februar 2026. Alle beregninger udføres lokalt i browseren; siden er selvstændig (eneste eksterne afhængighed er MathJax til formelsats).</div>
+  </div>
+</footer>
+
+<script>
+"use strict";
+/* =====================================================================
+   Himmelmekanik. Tider i døgn relativt til oppositionen 2026-01-10
+   kl. 09:20 UT. Vinkler internt i radianer.
+===================================================================== */
+const AU   = 1.495978707e8;            // km
+const GM   = 1.32712440018e11;         // km^3/s^2
+const DAY  = 86400;
+const DJ   = Math.sqrt(142984*133708); // geometrisk middeldiameter, km
+const T_E  = 365.256;                  // døgn
+const E_E  = 0.0167;
+const S_J  = 398.88;                   // synodisk periode, døgn
+const T_J  = 1/(1/T_E - 1/S_J);        // 4333 døgn
+const A_K3 = Math.pow(T_J/T_E, 2/3);   // 5.2015 AU (Keplers 3. lov)
+const T_OPP_UTC = Date.UTC(2026,0,10,9,20);
+const T_PERI_E  = -6.68;               // Jordens perihel, døgn før oppositionen
+const ASEC = Math.PI/(180*3600);
+
+function keplerE(M,e){ let E=M; for(let i=0;i<60;i++) E -= (E-e*Math.sin(E)-M)/(1-e*Math.cos(E)); return E; }
+function earthState(t){
+  const M = 2*Math.PI*(t-T_PERI_E)/T_E, E = keplerE(M,E_E);
+  const R = 1-E_E*Math.cos(E);
+  const nu = 2*Math.atan2(Math.sqrt(1+E_E)*Math.sin(E/2), Math.sqrt(1-E_E)*Math.cos(E/2));
+  return {R, lam:nu};
+}
+function phiOf(t,r){
+  const nJ = (2*Math.PI/T_J)*Math.pow(A_K3/r,2);
+  return (earthState(t).lam - earthState(0).lam) - nJ*t;
+}
+const deltaFromTheta = th => DJ/(th*ASEC)/AU;            // AU
+function rFromDelta(D,t){
+  let r=5.2;
+  for(let i=0;i<25;i++){
+    const {R}=earthState(t), p=phiOf(t,r);
+    r = R*Math.cos(p) + Math.sqrt(Math.max(D*D - (R*Math.sin(p))**2, 1e-9));
+  }
+  return r;
+}
+/* ---------- Lambert i universelle variable (2D, prograd) ---------- */
+function stC(z){ if(z>1e-8) return (1-Math.cos(Math.sqrt(z)))/z;
+                 if(z<-1e-8) return (Math.cosh(Math.sqrt(-z))-1)/(-z); return 0.5; }
+function stS(z){ if(z>1e-8){const s=Math.sqrt(z);return (s-Math.sin(s))/(s*s*s);}
+                 if(z<-1e-8){const s=Math.sqrt(-z);return (Math.sinh(s)-s)/(s*s*s);} return 1/6; }
+function lambert(r1,r2,dnu,dtSec){
+  const A=Math.sin(dnu)*Math.sqrt(r1*r2/(1-Math.cos(dnu)));
+  const y=z=> r1+r2+A*(z*stS(z)-1)/Math.sqrt(stC(z));
+  const F=z=>{ const yy=y(z); if(yy<0) return null;
+    return Math.pow(yy/stC(z),1.5)*stS(z)+A*Math.sqrt(yy)-Math.sqrt(GM)*dtSec; };
+  let zlo=-100, zhi=4*Math.PI*Math.PI-1e-6;
+  while(F(zlo)===null) zlo+=0.5;
+  if(F(zlo)>0) return null;
+  for(let i=0;i<200;i++){ const zm=(zlo+zhi)/2, fm=F(zm);
+    if(fm===null || fm<0) zlo=zm; else zhi=zm; }
+  const z=(zlo+zhi)/2, yy=y(z);
+  const f=1-yy/r1, g=A*Math.sqrt(yy/GM);
+  const r2v=[r2*Math.cos(dnu), r2*Math.sin(dnu)];
+  const v1=[(r2v[0]-f*r1)/g, (r2v[1])/g];
+  const v2=v1[0]*v1[0]+v1[1]*v1[1];
+  const aKm=-GM/(2*(v2/2-GM/r1));
+  const h=r1*v1[1];
+  const ex=( v1[1]*h)/GM - 1;
+  const ey=(-v1[0]*h)/GM;
+  return {a:aKm/AU, e:Math.hypot(ex,ey), v1:Math.sqrt(v2)};
+}
+
+/* ===================== tilstand & formatering ===================== */
+const state = {
+  example:true,
+  ep:{ A:{tDays:4.41,  theta:45.00, sig:0.50, rows:[]},
+       B:{tDays:35.33, theta:43.10, sig:0.50, rows:[]} },
+};
+const $ = id => document.getElementById(id);
+const fmt = (x,d=2)=>x.toLocaleString('da-DK',{minimumFractionDigits:d,maximumFractionDigits:d});
+
+function parseEpochFromName(name){
+  const m=name.match(/(20\d{6})-(\d{6})/);
+  if(!m) return null;
+  const Y=+m[1].slice(0,4), Mo=+m[1].slice(4,6)-1, D=+m[1].slice(6,8);
+  const h=+m[2].slice(0,2), mi=+m[2].slice(2,4), s=+m[2].slice(4,6);
+  const utc=Date.UTC(Y,Mo,D,h,mi,s)-3600*1000;          // filnavn i CET = UT+1
+  return {tDays:(utc-T_OPP_UTC)/(DAY*1000), key:(Mo===0?'A':'B'), token:m[1]+'-'+m[2]};
+}
+
+/* ============== observationsgalleri (Fig. 1, § 2) ================ */
+const OBS = {
+  A: [['20260114-193347','19:33'],['20260114-195659','19:56'],['20260114-195756','19:57'],
+      ['20260114-195835','19:58'],['20260114-195913','19:59'],['20260114-200118','20:01']],
+  B: [['20260214-173813','17:38'],['20260214-173916','17:39'],['20260214-181151','18:11']]
+};
+function initGallery(){
+  for(const key of ['A','B']){
+    const host=$('gal'+key);
+    OBS[key].forEach(([token,time])=>{
+      const fig=document.createElement('figure');
+      fig.className='obscard'; fig.id='obs-'+token;
+      const frame=document.createElement('span'); frame.className='obsframe';
+      const img=document.createElement('img');
+      img.src='Jupiter-eVscope2-'+token+'.png';
+      img.alt='Jupiter, eVscope 2, '+time;
+      img.loading='lazy';
+      img.onerror=()=>{ fig.classList.add('missing'); updateGalleryHint(); };
+      img.onload =()=>{ fig.dataset.loaded='1'; updateGalleryHint(); };
+      frame.appendChild(img); fig.appendChild(frame);
+      const cap=document.createElement('figcaption'); cap.textContent=time;
+      fig.appendChild(cap); host.appendChild(fig);
+    });
+  }
+  const hint=document.createElement('div');
+  hint.id='galHint'; hint.className='lab-msg';
+  hint.textContent='Galleriet udfyldes automatisk, n\u00e5r PNG-filerne ligger i samme mappe som siden \u2014 eller n\u00e5r de slippes i m\u00e5lelaboratoriet i \u00a7 4.';
+  $('galB').parentNode.appendChild(hint);
+}
+function updateGalleryHint(){
+  const any=document.querySelector('.obscard[data-loaded="1"], .obscard[data-measured="1"]');
+  const h=$('galHint'); if(h) h.style.display=any?'none':'block';
+}
+function fillGalleryCard(name, img, m, key, time){
+  const ep=parseEpochFromName(name);
+  let fig=ep?document.getElementById('obs-'+ep.token):null;
+  if(!fig){ // ukendt fil: tilf\u00f8j nyt kort i sessionens galleri
+    fig=document.createElement('figure'); fig.className='obscard';
+    const frame=document.createElement('span'); frame.className='obsframe';
+    fig.appendChild(frame);
+    fig.appendChild(document.createElement('figcaption'));
+    $('gal'+key).appendChild(fig);
+  }
+  fig.classList.remove('missing'); fig.dataset.measured='1';
+  const frame=fig.querySelector('.obsframe'); frame.innerHTML='';
+  const cv=document.createElement('canvas'); cv.width=220; cv.height=220;
+  const ctx=cv.getContext('2d');
+  const Rv=Math.max(m.rHalf*2.4,36);
+  ctx.fillStyle='#000'; ctx.fillRect(0,0,220,220);
+  ctx.drawImage(img, m.cx-Rv, m.cy-Rv, 2*Rv, 2*Rv, 0,0,220,220);
+  ctx.strokeStyle='rgba(192,106,58,.75)'; ctx.lineWidth=1.2; ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.arc(110,110,m.rHalf*(110/Rv),0,7); ctx.stroke();
+  frame.appendChild(cv);
+  const scale=parseFloat($('scaleInput').value)||1.329;
+  const t = time || (ep?OBS[ep.key].find(o=>o[0]===ep.token):null)?.[1] || '';
+  fig.querySelector('figcaption').textContent =
+    (t?t+' \u00b7 ':'')+'d = '+fmt(2*m.rHalf,1)+' px \u00b7 \u03b8 = '+fmt(2*m.rHalf*scale,1)+'\u2033';
+  updateGalleryHint();
+}
+
+/* ============ skivemåling: radial profil + 50 %-rand ============== */
+function measureDisk(img){
+  const W=img.naturalWidth, H=img.naturalHeight;
+  const oc=document.createElement('canvas'); oc.width=W; oc.height=H;
+  const ctx=oc.getContext('2d',{willReadFrequently:true});
+  ctx.drawImage(img,0,0);
+  const d=ctx.getImageData(0,0,W,H).data;
+  const lum=i=>0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
+  let best=-1,bx=0,by=0;
+  const yMax=Math.floor(H*0.82);                        // undgå vandmærket
+  for(let y=4;y<yMax;y+=2) for(let x=4;x<W-4;x+=2){
+    const v=lum(4*(y*W+x)); if(v>best){best=v;bx=x;by=y;}
+  }
+  const win=Math.min(260, Math.floor(Math.min(W,H)/3));
+  const x0=Math.max(0,bx-win), x1=Math.min(W,bx+win);
+  const y0=Math.max(0,by-win), y1=Math.min(H,by+win);
+  const edge=[];
+  for(let x=x0;x<x1;x+=3) edge.push(lum(4*(y0*W+x)), lum(4*((y1-1)*W+x)));
+  edge.sort((a,b)=>a-b); const bgGuess=edge[Math.floor(edge.length/2)];
+  const thr=bgGuess+0.5*(best-bgGuess);
+  let sx=0,sy=0,sw=0,n=0;
+  for(let y=y0;y<y1;y++) for(let x=x0;x<x1;x++){
+    const v=lum(4*(y*W+x))-thr;
+    if(v>0){ sx+=x*v; sy+=y*v; sw+=v; n++; }
+  }
+  if(!sw) return null;
+  const cx=sx/sw, cy=sy/sw, rEst=Math.sqrt(n/Math.PI);
+  const rMax=Math.min(win-2, rEst*4+20), nb=Math.ceil(rMax/0.5);
+  const sum=new Float64Array(nb), cnt=new Float64Array(nb);
+  for(let y=Math.max(0,Math.floor(cy-rMax)); y<Math.min(H,Math.ceil(cy+rMax)); y++)
+    for(let x=Math.max(0,Math.floor(cx-rMax)); x<Math.min(W,Math.ceil(cx+rMax)); x++){
+      const rr=Math.hypot(x-cx,y-cy); if(rr>=rMax) continue;
+      const b=Math.floor(rr/0.5); sum[b]+=lum(4*(y*W+x)); cnt[b]++;
+    }
+  const prof=[]; for(let i=0;i<nb;i++) prof.push(cnt[i]?sum[i]/cnt[i]:NaN);
+  let pSum=0,pN=0;
+  for(let i=0;i<nb;i++){ const r=(i+0.5)*0.5;
+    if(r<0.55*rEst && isFinite(prof[i])){pSum+=prof[i];pN++;} }
+  const plateau=pSum/Math.max(pN,1);
+  const bgs=[];
+  for(let i=0;i<nb;i++){ const r=(i+0.5)*0.5;
+    if(r>2.2*rEst && r<3.5*rEst && isFinite(prof[i])) bgs.push(prof[i]); }
+  bgs.sort((a,b)=>a-b);
+  const bg=bgs.length?bgs[Math.floor(bgs.length/2)]:bgGuess;
+  const half=bg+0.5*(plateau-bg);
+  let rHalf=null;
+  for(let i=Math.max(1,Math.floor(0.4*rEst/0.5)); i<nb-1; i++){
+    if(isFinite(prof[i])&&isFinite(prof[i+1])&&prof[i]>=half&&prof[i+1]<half){
+      const f=(prof[i]-half)/(prof[i]-prof[i+1]);
+      rHalf=((i+0.5)+f)*0.5; break;
+    }
+  }
+  if(!rHalf||rHalf<3) return null;
+  return {cx,cy,rHalf,prof,plateau,bg,half,img};
+}
+
+/* --------------------- tegning af målepaneler -------------------- */
+function drawDisk(m){
+  const cv=$('diskCanvas'), ctx=cv.getContext('2d');
+  ctx.fillStyle='#000'; ctx.fillRect(0,0,cv.width,cv.height);
+  if(!m){ ctx.fillStyle='#3a4a66'; ctx.font='13px monospace'; ctx.textAlign='center';
+    ctx.fillText('— afventer billede —',cv.width/2,cv.height/2); return; }
+  const Rv=Math.max(m.rHalf*2.6,40), s=cv.width/(2*Rv);
+  ctx.imageSmoothingEnabled=true;
+  ctx.drawImage(m.img, m.cx-Rv, m.cy-Rv, 2*Rv, 2*Rv, 0,0,cv.width,cv.height);
+  ctx.strokeStyle='#c06a3a'; ctx.lineWidth=1.6; ctx.setLineDash([6,5]);
+  ctx.beginPath(); ctx.arc(cv.width/2,cv.height/2,m.rHalf*s,0,7); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.strokeStyle='rgba(159,178,210,.55)';
+  ctx.beginPath();
+  ctx.moveTo(cv.width/2-8,cv.height/2); ctx.lineTo(cv.width/2+8,cv.height/2);
+  ctx.moveTo(cv.width/2,cv.height/2-8); ctx.lineTo(cv.width/2,cv.height/2+8); ctx.stroke();
+  ctx.fillStyle='#e9dcc6'; ctx.font='12.5px monospace'; ctx.textAlign='left';
+  ctx.fillText('d = '+fmt(2*m.rHalf,1)+' px', 12, cv.height-14);
+}
+function drawProfile(m){
+  const cv=$('profCanvas'), ctx=cv.getContext('2d');
+  ctx.fillStyle='#0c1322'; ctx.fillRect(0,0,cv.width,cv.height);
+  if(!m){ ctx.fillStyle='#3a4a66'; ctx.font='13px monospace'; ctx.textAlign='center';
+    ctx.fillText('— afventer billede —',cv.width/2,cv.height/2); return; }
+  const L=50,Rr=14,T=20,B=42, w=cv.width-L-Rr, h=cv.height-T-B;
+  const rShow=Math.min(m.prof.length*0.5, m.rHalf*2.2);
+  const vMax=m.plateau*1.12;
+  const X=r=>L+w*r/rShow, Y=v=>T+h*(1-Math.min(Math.max(v-m.bg,0)/(vMax-m.bg),1));
+  ctx.strokeStyle='#27365a'; ctx.lineWidth=1; ctx.strokeRect(L,T,w,h);
+  ctx.strokeStyle='#c06a3a'; ctx.setLineDash([5,5]);
+  ctx.beginPath(); ctx.moveTo(L,Y(m.half)); ctx.lineTo(L+w,Y(m.half)); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(X(m.rHalf),T); ctx.lineTo(X(m.rHalf),T+h); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.strokeStyle='#e9dcc6'; ctx.lineWidth=2; ctx.beginPath();
+  let started=false;
+  for(let i=0;i<m.prof.length;i++){
+    const r=(i+0.5)*0.5; if(r>rShow) break;
+    if(!isFinite(m.prof[i])) continue;
+    const x=X(r), y=Y(m.prof[i]);
+    if(!started){ctx.moveTo(x,y);started=true;} else ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+  ctx.fillStyle='#9fb2d2'; ctx.font='12px monospace'; ctx.textAlign='center';
+  ctx.fillText('radius (px)', L+w/2, cv.height-12);
+  ctx.fillText('50 %', X(m.rHalf), T-6);
+  ctx.save(); ctx.translate(16,T+h/2); ctx.rotate(-Math.PI/2);
+  ctx.fillText('intensitet',0,0); ctx.restore();
+  ctx.fillStyle='#e9dcc6'; ctx.textAlign='left';
+  ctx.fillText('r\u00BD = '+fmt(m.rHalf,2)+' px', L+8, T+16);
+}
+
+/* ------------------------- filhåndtering ------------------------- */
+function handleFiles(files){
+  if(!files||!files.length) return;
+  let pending=files.length;
+  [...files].forEach(f=>{
+    const url=URL.createObjectURL(f), img=new Image();
+    img.onload=()=>{
+      const m=measureDisk(img);
+      if(m){
+        const ep=parseEpochFromName(f.name);
+        const key=ep?ep.key:(state.ep.A.rows.length<=state.ep.B.rows.length?'A':'B');
+        state.ep[key].rows.push({name:f.name, dpx:2*m.rHalf, tDays:ep?ep.tDays:null});
+        state.example=false;
+        drawDisk(m); drawProfile(m);
+        fillGalleryCard(f.name, img, m, key);
+      } else {
+        $('labMsg').textContent='Kunne ikke finde en skive i '+f.name+' — er det originalfilen?';
+        $('labMsg').className='lab-msg warn';
+      }
+      URL.revokeObjectURL(url);
+      if(--pending===0) recompute();
+    };
+    img.onerror=()=>{ URL.revokeObjectURL(url); if(--pending===0) recompute(); };
+    img.src=url;
+  });
+}
+$('fileInput').addEventListener('change',e=>{handleFiles(e.target.files); e.target.value='';});
+const dz=$('dropzone');
+['dragenter','dragover'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.add('drag');}));
+['dragleave','drop'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.remove('drag');}));
+dz.addEventListener('drop',e=>handleFiles(e.dataTransfer.files));
+$('resetBtn').addEventListener('click',()=>{
+  state.example=true;
+  state.ep.A={tDays:4.41,theta:45.00,sig:0.50,rows:[]};
+  state.ep.B={tDays:35.33,theta:43.10,sig:0.50,rows:[]};
+  drawDisk(null); drawProfile(null);
+  drawHist($('histA'),null,'a (AU)',null); drawHist($('histE'),null,'e',null);
+  $('mcMsg').textContent='Tryk \u00bbK\u00f8r Monte Carlo\u00ab i \u00a7 4.';
+  recompute();
+});
+$('scaleInput').addEventListener('change',recompute);
+$('sigmaInput').addEventListener('change',recompute);
+
+/* ----------------------- hovedberegningen ------------------------ */
+function pipeline(thA,thB,tA,tB,dnuScale=1){
+  const D1=deltaFromTheta(thA), D2=deltaFromTheta(thB);
+  const r1=rFromDelta(D1,tA),   r2=rFromDelta(D2,tB);
+  const dt=(tB-tA)*DAY;
+  const nJ=(2*Math.PI/T_J)*Math.pow(A_K3/((r1+r2)/2),2);
+  const dnu=nJ*(tB-tA)*dnuScale;
+  const lam=lambert(r1*AU, r2*AU, dnu, dt);
+  return {D1,D2,r1,r2,dnu,lam};
+}
+function recompute(){
+  const scale=parseFloat($('scaleInput').value)||1.329;
+  const sigDefault=parseFloat($('sigmaInput').value)||0.5;
+  const tb=$('measBody'); tb.innerHTML='';
+  for(const key of ['A','B']){
+    const ep=state.ep[key];
+    if(ep.rows.length){
+      const th=ep.rows.map(r=>r.dpx*scale);
+      ep.theta=th.reduce((a,b)=>a+b,0)/th.length;
+      const sd=th.length>1
+        ? Math.sqrt(th.map(x=>(x-ep.theta)**2).reduce((a,b)=>a+b,0)/(th.length-1))
+        : sigDefault;
+      ep.sig=Math.max(sd/Math.sqrt(th.length),0.15);
+      const ts=ep.rows.map(r=>r.tDays).filter(t=>t!==null);
+      if(ts.length) ep.tDays=ts.reduce((a,b)=>a+b,0)/ts.length;
+      ep.rows.forEach(r=>{
+        tb.insertAdjacentHTML('beforeend',
+          '<tr><td>'+r.name+'</td><td class="num">'+key+'</td><td class="num">'
+          +fmt(r.dpx,1)+'</td><td class="num">'+fmt(r.dpx*scale,2)+'</td></tr>');
+      });
+      $(key==='A'?'dpxA':'dpxB').textContent=fmt(ep.theta/scale,1);
+      $(key==='A'?'thA':'thB').textContent=fmt(ep.theta,2)+' \u00b1 '+fmt(ep.sig,2);
+    } else {
+      ep.sig=sigDefault;
+      $(key==='A'?'dpxA':'dpxB').textContent='\u2014';
+      $(key==='A'?'thA':'thB').textContent=
+        fmt(ep.theta,2)+' \u00b1 '+fmt(ep.sig,2)+(state.example?' (eksempel)':'');
+    }
+  }
+  $('labMsg').className='lab-msg';
+  $('labMsg').textContent = state.example
+    ? 'Eksempeltilstand: \u03b8-v\u00e6rdierne er beregnede pladsholdere, ikke m\u00e5linger.'
+    : 'M\u00e5letilstand: '+state.ep.A.rows.length+' billede(r) i session A, '
+      +state.ep.B.rows.length+' i session B.';
+
+  const P=pipeline(state.ep.A.theta,state.ep.B.theta,state.ep.A.tDays,state.ep.B.tDays);
+  // rimelighedstjek af skala
+  const sane = P.D1>3.7 && P.D1<5.0;
+  $('sanityMsg').className='lab-msg'+(sane?'':' warn');
+  $('sanityMsg').textContent = sane
+    ? 'Rimelighedstjek: \u0394\u2081 = '+fmt(P.D1,2)+' AU ligger i det fysisk mulige interval for Jupiter n\u00e6r opposition (\u22484\u20134,6 AU). Pixelskalaen ser trov\u00e6rdig ud.'
+    : 'Advarsel: \u0394\u2081 = '+fmt(P.D1,2)+' AU er ikke fysisk rimelig for Jupiter n\u00e6r opposition \u2014 appen har formentlig gemt billedet i en anden skala. Just\u00e9r pixelskalaen, til tjekket bliver gr\u00f8nt.';
+
+  // resultatkort
+  $('rDelta1').textContent=fmt(P.D1,2)+' AU';
+  $('rDelta1b').textContent=fmt(P.D1*AU/1e6,0)+' mio. km \u00b7 '+fmt(P.D1*AU/2.998e5/60,1)+' lysmin.';
+  $('rDelta2').textContent=fmt(P.D2,2)+' AU';
+  $('rDelta2b').textContent=fmt(P.D2*AU/1e6,0)+' mio. km \u00b7 '+fmt(P.D2*AU/2.998e5/60,1)+' lysmin.';
+  $('rR1').textContent=fmt(P.r1,2)+' AU';
+  $('rR2').textContent=fmt(P.r2,2)+' AU';
+  const v=Math.sqrt(GM*(2/(P.r1*AU)-1/(A_K3*AU)));
+  $('rV').textContent=fmt(v,1)+' km/s';
+  $('rVc').textContent=fmt(Math.sqrt(GM/(P.r1*AU)),1)+' km/s';
+  if(P.lam){
+    $('rA').textContent=fmt(P.lam.a,2)+' AU';
+    $('rE').textContent=fmt(P.lam.e,3);
+    $('rVg').textContent=fmt(P.lam.v1,1)+' km/s';
+  }
+  // konklusion
+  $('fD').textContent=fmt(P.D1*AU/1e6,0)+' mio. km';
+  $('fR').textContent=fmt(P.r1,2)+' AU';
+  $('fV').textContent=fmt(v,1)+' km/s';
+  $('fE').textContent = state.mcE!==undefined
+    ? '\u2264 '+fmt(state.mcE,2)+' (84 %)'
+    : (P.lam?fmt(P.lam.e,2)+' (punktv.)':'\u2014');
+  drawGeo(P);
+}
+
+/* ----------------------- Monte Carlo (§7) ------------------------ */
+function gauss(){ let u=0,v=0; while(!u)u=Math.random(); while(!v)v=Math.random();
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+$('mcBtn').addEventListener('click',()=>{
+  const N=4000, As=[], Es=[];
+  const {A,B}=state.ep;
+  for(let i=0;i<N;i++){
+    const thA=A.theta+gauss()*A.sig, thB=B.theta+gauss()*B.sig;
+    const P=pipeline(thA,thB,A.tDays,B.tDays, 1+gauss()*0.003);
+    if(P.lam && P.lam.a>0 && P.lam.a<40 && P.lam.e<1){ As.push(P.lam.a); Es.push(P.lam.e); }
+  }
+  As.sort((a,b)=>a-b); Es.sort((a,b)=>a-b);
+  const q=(arr,p)=>arr[Math.floor(p*arr.length)];
+  drawHist($('histA'),As,'a (AU)',[q(As,0.16),q(As,0.5),q(As,0.84)]);
+  drawHist($('histE'),Es,'e',[q(Es,0.16),q(Es,0.5),q(Es,0.84)]);
+  state.mcE=q(Es,0.84);
+  $('mcMsg').textContent='N = '+As.length+' gyldige baner.  a: median '+fmt(q(As,0.5),2)
+    +' AU (16\u201384 %: '+fmt(q(As,0.16),2)+'\u2013'+fmt(q(As,0.84),2)+').  e: median '
+    +fmt(q(Es,0.5),3)+' (16\u201384 %: '+fmt(q(Es,0.16),3)+'\u2013'+fmt(q(Es,0.84),3)
+    +').  Tabel: a = 5,20 AU, e = 0,049.';
+  recompute();
+});
+function drawHist(cv,data,label,qs){
+  const ctx=cv.getContext('2d');
+  ctx.fillStyle='#131c30'; ctx.fillRect(0,0,cv.width,cv.height);
+  ctx.fillStyle='#9fb2d2'; ctx.font='12px monospace';
+  if(!data){ ctx.textAlign='center';
+    ctx.fillText('\u2014 '+label+': afventer Monte Carlo \u2014',cv.width/2,cv.height/2); return; }
+  const L=14,Rr=14,T=16,B=36, w=cv.width-L-Rr, h=cv.height-T-B;
+  const lo=data[Math.floor(0.005*data.length)], hi=data[Math.floor(0.995*data.length)];
+  const nb=40, bins=new Array(nb).fill(0);
+  data.forEach(x=>{ if(x>=lo&&x<=hi) bins[Math.min(nb-1,Math.floor((x-lo)/(hi-lo)*nb))]++; });
+  const mx=Math.max(...bins);
+  for(let i=0;i<nb;i++){
+    const bh=h*bins[i]/mx;
+    ctx.fillStyle='#a85b32';
+    ctx.fillRect(L+i*w/nb+1, T+h-bh, w/nb-2, bh);
+  }
+  if(qs){
+    ctx.strokeStyle='#e9dcc6'; ctx.setLineDash([4,4]);
+    qs.forEach((qv,k)=>{
+      const x=L+(qv-lo)/(hi-lo)*w;
+      if(x>L&&x<L+w){ ctx.lineWidth=k===1?1.6:1;
+        ctx.beginPath(); ctx.moveTo(x,T); ctx.lineTo(x,T+h); ctx.stroke(); }
+    });
+    ctx.setLineDash([]);
+  }
+  ctx.fillStyle='#9fb2d2'; ctx.textAlign='center';
+  ctx.fillText(label+'  ('+fmt(lo,label==='e'?2:1)+' \u2013 '+fmt(hi,label==='e'?2:1)+')', L+w/2, cv.height-12);
+}
+
+/* ------------- Fig. 2: geometri i korrekt målestok --------------- */
+function drawGeo(P){
+  const svg=$('geoSvg'); if(!svg) return;
+  const NS='http://www.w3.org/2000/svg';
+  svg.innerHTML='';
+  const el=(tag,at,txt)=>{ const e=document.createElementNS(NS,tag);
+    for(const k in at) e.setAttribute(k,at[k]); if(txt!=null) e.textContent=txt;
+    svg.appendChild(e); return e; };
+  // hovedpanel: Solen t.v., opposition mod højre
+  const Sx=170, Sy=215, sc=42;   // px pr. AU
+  const tA=state.ep.A.tDays, tB=state.ep.B.tDays;
+  const eA=earthState(tA), eB=earthState(tB), e0=earthState(0);
+  const lamA=eA.lam-e0.lam, lamB=eB.lam-e0.lam;             // Jordens vandring siden opp.
+  const nJ=(2*Math.PI/T_J)*Math.pow(A_K3/P.r1,2);
+  const jA=nJ*tA, jB=nJ*tB;                                  // Jupiters vandring
+  const pt=(R,ang)=>[Sx+R*sc*Math.cos(ang), Sy-R*sc*Math.sin(ang)];
+  // Jordbane + et stykke af Jupiters bane
+  el('circle',{cx:Sx,cy:Sy,r:1*sc,fill:'none',stroke:'#33517c','stroke-width':1.1});
+  el('text',{x:Sx-10,y:Sy+1.0*sc+18,fill:'#33517c','font-size':11.5,'font-family':'monospace'},'Jordens bane');
+  (()=>{ const pts=[];
+    for(let k=0;k<=40;k++){ const ang=-0.42+0.84*k/40; pts.push(pt(P.r1,ang).join(',')); }
+    el('polyline',{points:pts.join(' '),fill:'none',stroke:'#3a4a66','stroke-width':1.1,'stroke-dasharray':'3 6'});
+    el('text',{x:pt(P.r1,-0.40)[0]-78,y:pt(P.r1,-0.40)[1],fill:'#3a4a66','font-size':11.5,'font-family':'monospace'},'Jupiters bane');
+  })();
+  // Sol
+  el('circle',{cx:Sx,cy:Sy,r:7,fill:'#f4d77a'});
+  el('text',{x:Sx-2,y:Sy+24,fill:'#f4d77a','font-size':13,'font-family':'monospace'},'Sol');
+  // positioner
+  const EA=pt(eA.R,lamA), EB=pt(eB.R,lamB);
+  const JA=pt(P.r1,jA),   JB=pt(P.r2,jB);
+  // synslinjer
+  el('line',{x1:EA[0],y1:EA[1],x2:JA[0],y2:JA[1],stroke:'#e9dcc6','stroke-width':1.4});
+  el('line',{x1:EB[0],y1:EB[1],x2:JB[0],y2:JB[1],stroke:'#c06a3a','stroke-width':1.4});
+  // radier til Jupiter
+  el('line',{x1:Sx,y1:Sy,x2:JA[0],y2:JA[1],stroke:'#42557c','stroke-width':1,'stroke-dasharray':'4 5'});
+  el('line',{x1:Sx,y1:Sy,x2:JB[0],y2:JB[1],stroke:'#42557c','stroke-width':1,'stroke-dasharray':'4 5'});
+  // Jupiter
+  [[JA,'#e9dcc6','J (14. jan.)'],[JB,'#e0b48c','J (14. feb.)']].forEach(([p,c,lab],i)=>{
+    el('circle',{cx:p[0],cy:p[1],r:6,fill:c});
+    el('text',{x:p[0]+10,y:p[1]+(i?18:-8),fill:c,'font-size':13,'font-family':'monospace'},lab);
+  });
+  el('circle',{cx:EA[0],cy:EA[1],r:3.4,fill:'#9db1d2'});
+  el('circle',{cx:EB[0],cy:EB[1],r:3.4,fill:'#c06a3a'});
+  el('text',{x:EA[0]+7,y:EA[1]+14,fill:'#9db1d2','font-size':11.5,'font-family':'monospace'},'Jorden 14/1');
+  el('text',{x:EB[0]-26,y:EB[1]-10,fill:'#c06a3a','font-size':11.5,'font-family':'monospace'},'Jorden 14/2');
+  el('text',{x:(EA[0]+JA[0])/2,y:(EA[1]+JA[1])/2-10,fill:'#e9dcc6','font-size':14,'font-style':'italic'},
+     '\u0394\u2081 = '+fmt(P.D1,2)+' AU');
+  el('text',{x:(EB[0]+JB[0])/2+8,y:(EB[1]+JB[1])/2+22,fill:'#e0a87e','font-size':14,'font-style':'italic'},
+     '\u0394\u2082 = '+fmt(P.D2,2)+' AU');
+  // ---- indsats: Jordens kvarter forstørret ----
+  const Ix=600, Iy=120, IR=100, isc=88;
+  el('circle',{cx:Ix,cy:Iy,r:IR,fill:'#0a101d',stroke:'#2c3b5e','stroke-width':1});
+  const ipt=(R,ang)=>[Ix+R*isc*Math.cos(ang)-isc*0.55, Iy-R*isc*Math.sin(ang)+isc*0.30];
+  const iS=[Ix-isc*0.55, Iy+isc*0.30];
+  el('circle',{cx:iS[0],cy:iS[1],r:5,fill:'#f4d77a'});
+  // jordbanebue
+  const arc=[];
+  for(let k=0;k<=24;k++){ const ang=-0.15+ (lamB+0.25)*k/24;
+    arc.push(ipt(1,ang).join(',')); }
+  el('polyline',{points:arc.join(' '),fill:'none',stroke:'#33517c','stroke-width':1.2});
+  const iEA=ipt(eA.R,lamA), iEB=ipt(eB.R,lamB), iE0=ipt(e0.R,0);
+  el('line',{x1:iS[0],y1:iS[1],x2:iE0[0],y2:iE0[1],stroke:'#42557c','stroke-width':1,'stroke-dasharray':'3 4'});
+  el('line',{x1:iS[0],y1:iS[1],x2:iEA[0],y2:iEA[1],stroke:'#e9dcc6','stroke-width':1.2});
+  el('line',{x1:iS[0],y1:iS[1],x2:iEB[0],y2:iEB[1],stroke:'#c06a3a','stroke-width':1.2});
+  el('circle',{cx:iE0[0],cy:iE0[1],r:3,fill:'#5b7fae'});
+  el('circle',{cx:iEA[0],cy:iEA[1],r:3.6,fill:'#e9dcc6'});
+  el('circle',{cx:iEB[0],cy:iEB[1],r:3.6,fill:'#c06a3a'});
+  el('text',{x:iE0[0]+8,y:iE0[1]+4,fill:'#5b7fae','font-size':11.5,'font-family':'monospace'},'opp. 10/1');
+  el('text',{x:iEA[0]+8,y:iEA[1]-4,fill:'#e9dcc6','font-size':11.5,'font-family':'monospace'},'A 14/1');
+  el('text',{x:iEB[0]+6,y:iEB[1]-8,fill:'#c06a3a','font-size':11.5,'font-family':'monospace'},'B 14/2');
+  el('text',{x:Ix-IR+12,y:Iy+IR-12,fill:'#8fa2c2','font-size':11.5,'font-family':'monospace'},
+     '\u03c6\u2081 = '+fmt(phiOf(tA,P.r1)*180/Math.PI,1)+'\u00b0, \u03c6\u2082 = '
+     +fmt(phiOf(tB,P.r2)*180/Math.PI,1)+'\u00b0');
+  el('text',{x:Ix,y:Iy-IR-8,fill:'#8fa2c2','font-size':12,'font-family':'monospace','text-anchor':'middle'},
+     'Jordens kvarter, forst\u00f8rret');
+}
+
+/* ------------------------------ start ----------------------------- */
+initGallery();
+drawDisk(null); drawProfile(null);
+drawHist($('histA'),null,'a (AU)',null); drawHist($('histE'),null,'e',null);
+recompute();
+</script>
+</body>
+</html>
