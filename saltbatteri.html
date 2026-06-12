@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Saltvandsbatteriet — kobber, zink og elektrokemi på køkkenbordet</title>
+<script>
+window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] }, chtml: { scale: 1.0 } };
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.js" async></script>
+<style>
+:root{
+  --bg:#0e1a22;
+  --panel:#15242e;
+  --panel2:#101d26;
+  --line:#28404e;
+  --text:#dce8ee;
+  --muted:#8fa6b2;
+  --copper:#d08648;
+  --copper-dim:#8a5a31;
+  --zinc:#b9c4cc;
+  --cyan:#56cfc4;
+  --led:#ff5347;
+  --brass:#d9b86a;
+  --lcd:#9fb98a;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  line-height:1.65;
+  font-size:17px;
+}
+h1,h2,h3{font-family:"Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;line-height:1.2;font-weight:600}
+.wrap{max-width:980px;margin:0 auto;padding:0 22px}
+.eyebrow{
+  font-size:.74rem;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--brass);font-weight:700;margin-bottom:.5rem;
+}
+.eyebrow::before{content:"";display:inline-block;width:26px;height:2px;background:var(--brass);vertical-align:middle;margin-right:10px;opacity:.7}
+section{padding:64px 0;border-top:1px solid var(--line)}
+section h2{font-size:1.9rem;margin-bottom:1rem;color:#f0f6f9}
+p{margin-bottom:1rem;max-width:72ch}
+p.lead{font-size:1.12rem;color:#c8d8e0}
+em{color:var(--cyan);font-style:normal;font-weight:600}
+a{color:var(--cyan)}
+code{font-family:ui-monospace,Consolas,monospace;background:var(--panel2);padding:2px 6px;border-radius:4px;font-size:.92em}
+
+/* ---------- HERO ---------- */
+header{padding:54px 0 40px;background:
+  radial-gradient(1100px 480px at 70% -10%, rgba(86,207,196,.10), transparent 60%),
+  radial-gradient(800px 420px at 15% 110%, rgba(208,134,72,.10), transparent 60%);}
+header h1{font-size:clamp(1.9rem,4.6vw,3.1rem);margin:.4rem 0 1rem;color:#f3f8fa}
+header h1 .cu{color:var(--copper)} header h1 .zn{color:var(--zinc)}
+.hero-sub{font-size:1.15rem;color:var(--muted);max-width:64ch;margin-bottom:1.8rem}
+.cellbox{
+  background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  padding:18px;box-shadow:0 14px 40px rgba(0,0,0,.35);
+}
+.cellbox canvas{display:block;width:100%;height:auto;border-radius:8px;background:var(--panel2)}
+.cellctrl{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:14px}
+button.switch{
+  font:inherit;font-weight:700;color:#08141a;background:var(--cyan);
+  border:none;border-radius:8px;padding:10px 20px;cursor:pointer;
+}
+button.switch[data-on="1"]{background:var(--led);color:#fff}
+button.switch:focus-visible{outline:3px solid var(--brass);outline-offset:2px}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:.85rem;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.dot{width:11px;height:11px;border-radius:50%;display:inline-block}
+
+/* ---------- FOTOS ---------- */
+.fotos{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;margin:1.4rem 0}
+figure{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+figure img{width:100%;display:block;aspect-ratio:4/3;object-fit:cover}
+figcaption{padding:12px 14px;font-size:.88rem;color:var(--muted)}
+figcaption b{color:var(--text)}
+
+/* ---------- TEORI ---------- */
+.reaktion{
+  background:var(--panel);border-left:4px solid var(--copper);
+  border-radius:0 10px 10px 0;padding:16px 20px;margin:1rem 0;overflow-x:auto;
+}
+.reaktion.zn{border-left-color:var(--zinc)}
+.reaktion.total{border-left-color:var(--cyan)}
+.reaktion .tag{font-size:.74rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:700}
+table{border-collapse:collapse;width:100%;margin:1.2rem 0;font-size:.95rem}
+th,td{border:1px solid var(--line);padding:9px 13px;text-align:left}
+th{background:var(--panel);color:var(--brass);font-weight:700}
+td.num{font-family:ui-monospace,Consolas,monospace;text-align:right}
+tr.hl td{background:rgba(86,207,196,.08)}
+
+/* ---------- SERIEKOBLING ---------- */
+.simgrid{display:grid;grid-template-columns:1fr;gap:18px}
+.sliders{display:grid;gap:18px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
+.sliders label{font-size:.9rem;color:var(--muted);font-weight:600}
+.sliders output{font-family:ui-monospace,Consolas,monospace;color:var(--cyan);font-weight:700;margin-left:8px}
+input[type=range]{width:100%;accent-color:var(--copper);height:28px}
+.readout{
+  font-family:ui-monospace,Consolas,monospace;font-size:1.5rem;font-weight:700;
+  color:var(--lcd);background:#1a2418;border:1px solid #33402f;border-radius:8px;
+  padding:8px 16px;display:inline-block;letter-spacing:.06em;
+}
+.note{font-size:.9rem;color:var(--muted);border-left:3px solid var(--line);padding-left:14px;margin:1rem 0}
+
+/* ---------- MÅLING / LCD ---------- */
+.lcd{
+  display:inline-block;background:#202c1c;border:6px solid #11181d;border-radius:10px;
+  padding:14px 30px;font-family:ui-monospace,Consolas,monospace;
+  font-size:3rem;font-weight:700;color:var(--lcd);letter-spacing:.12em;
+  text-shadow:0 0 10px rgba(159,185,138,.45);
+}
+.lcd small{font-size:1.1rem;letter-spacing:.05em;vertical-align:middle;margin-left:8px}
+
+/* ---------- QUIZ ---------- */
+.quiz{display:grid;gap:16px}
+.q{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
+.q p{font-weight:600;margin-bottom:.7rem}
+.q button{
+  font:inherit;display:block;width:100%;text-align:left;margin:6px 0;
+  background:var(--panel2);color:var(--text);border:1px solid var(--line);
+  border-radius:8px;padding:10px 14px;cursor:pointer;
+}
+.q button:hover{border-color:var(--cyan)}
+.q button.rigtig{background:rgba(86,207,196,.18);border-color:var(--cyan)}
+.q button.forkert{background:rgba(255,83,71,.15);border-color:var(--led)}
+.q .svar{font-size:.9rem;color:var(--muted);margin-top:.6rem;display:none}
+
+footer{padding:40px 0 60px;border-top:1px solid var(--line);color:var(--muted);font-size:.9rem}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="eyebrow">Elektrokemi · gør-det-selv</div>
+    <h1>Saltvandsbatteriet<br><span class="zn">zink</span>, <span class="cu">kobber</span> og en spiseskefuld salt</h1>
+    <p class="hero-sub">Fire gennemsigtige celler med saltvand, en zinkelektrode og en kobberelektrode i hver — og en rød lysdiode, der lyser. Det hele bygget på et køkkenbord. Tryk på kontakten og se, hvad der sker inde i cellen.</p>
+    <div class="cellbox">
+      <canvas id="celleCanvas" width="920" height="460" aria-label="Animation af en galvanisk celle med zink- og kobberelektrode i saltvand"></canvas>
+      <div class="cellctrl">
+        <button class="switch" id="kontakt" data-on="0" aria-pressed="false">Luk kredsløbet</button>
+        <div class="legend">
+          <span><span class="dot" style="background:#ffd34d"></span> elektroner e⁻</span>
+          <span><span class="dot" style="background:#b9c4cc"></span> Zn²⁺</span>
+          <span><span class="dot" style="background:#f29b5f"></span> Na⁺</span>
+          <span><span class="dot" style="background:#7fd97f"></span> Cl⁻</span>
+          <span><span class="dot" style="background:#56cfc4"></span> OH⁻</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section id="forsoeget">
+  <div class="wrap">
+    <div class="eyebrow">Forsøget</div>
+    <h2>Fire celler, fire søm og en lysdiode</h2>
+    <p class="lead">Hver celle er en lille gennemsigtig plastbeholder fyldt med saltvand. I beholderen står to elektroder: et stykke <em>zink</em> (det grå søm) og et stykke <em>kobber</em>. Cellerne forbindes i serie med ledninger og krokodillenæb — pluspol til minuspol — og til sidst sættes en rød lysdiode ind i kredsløbet.</p>
+    <div class="fotos">
+      <figure>
+        <img src="saltbatteri-foto1.jpg" alt="Fire gennemsigtige celler med elektroder i saltvand, forbundet i serie med røde og sorte ledninger, og en rød lysdiode der lyser" loading="lazy">
+        <figcaption><b>Opstillingen.</b> Fire celler i serie på køkkenbordet. Bemærk den lille røde lysdiode mellem det sorte og det røde krokodillenæb — den lyser!</figcaption>
+      </figure>
+      <figure>
+        <img src="saltbatteri-foto3.jpg" alt="Hånd holder to krokodillenæb med en lysende rød lysdiode imellem" loading="lazy">
+        <figcaption><b>Beviset.</b> Lysdioden lyser tydeligt, når kredsløbet sluttes. En rød LED kræver typisk 1,7–2,0 V — så batteriet leverer.</figcaption>
+      </figure>
+      <figure>
+        <img src="saltbatteri-foto2.jpg" alt="Digitalt multimeter der viser 1,54 volt, forbundet til cellerne" loading="lazy">
+        <figcaption><b>Målingen.</b> Multimeteret viser 1,54 V over to celler i serie — altså omkring 0,77 V pr. celle. Hvorfor ikke mere? Det vender vi tilbage til.</figcaption>
+      </figure>
+    </div>
+    <p>Det ligner legetøj, men det er præcis samme princip som i Alessandro Voltas berømte <em>voltasøjle</em> fra år 1800 — verdens første batteri, bygget af zink- og kobberskiver med saltvandsvædet pap imellem. Med fire celler på et køkkenbord gentager vi altså et af fysikhistoriens vigtigste eksperimenter.</p>
+  </div>
+</section>
+
+<section id="kemien">
+  <div class="wrap">
+    <div class="eyebrow">Kemien</div>
+    <h2>Hvad sker der inde i cellen?</h2>
+    <p class="lead">En galvanisk celle omdanner kemisk energi til elektrisk energi. Drivkraften er, at zink <em>meget hellere</em> vil afgive elektroner end kobber.</p>
+    <p>Ved <em>zinkelektroden (anoden, minuspol)</em> går zinkatomer i opløsning som ioner og efterlader to elektroner i metallet:</p>
+    <div class="reaktion zn">
+      <span class="tag">Anode · oxidation</span>
+      \[ \mathrm{Zn(s)} \;\rightarrow\; \mathrm{Zn^{2+}(aq)} + 2\,e^- \qquad E^\circ = -0{,}76\ \mathrm{V} \]
+    </div>
+    <p>Elektronerne løber gennem den ydre ledning — og gennem lysdioden — over til <em>kobberelektroden (katoden, pluspol)</em>. Her er det vigtigt at bemærke: kobberet deltager ikke selv i reaktionen! Det fungerer blot som en inert elektrode, hvor elektronerne afleveres til <em>ilt opløst i vandet</em>:</p>
+    <div class="reaktion">
+      <span class="tag">Katode · reduktion</span>
+      \[ \mathrm{O_2(aq)} + 2\,\mathrm{H_2O(l)} + 4\,e^- \;\rightarrow\; 4\,\mathrm{OH^-(aq)} \qquad E^\circ = +0{,}40\ \mathrm{V} \]
+    </div>
+    <p>Den samlede reaktion bliver dermed en langsom "forbrænding" af zink med ilt:</p>
+    <div class="reaktion total">
+      <span class="tag">Totalreaktion</span>
+      \[ 2\,\mathrm{Zn(s)} + \mathrm{O_2(aq)} + 2\,\mathrm{H_2O(l)} \;\rightarrow\; 2\,\mathrm{Zn^{2+}(aq)} + 4\,\mathrm{OH^-(aq)} \]
+    </div>
+    <p>Og hvad laver saltet så? Natrium- og chloridionerne deltager ikke i elektrodereaktionerne — de er <em>ledningsevnens arbejdsheste</em>. Inde i væsken skal kredsløbet nemlig sluttes af ioner, der vandrer: positive ioner mod katoden, negative mod anoden. Rent vand leder næsten ikke strøm; med en skefuld salt bliver elektrolytten tusindvis af gange bedre ledende.</p>
+  </div>
+</section>
+
+<section id="teorien">
+  <div class="wrap">
+    <div class="eyebrow">Teorien</div>
+    <h2>Hvor stor en spænding kan vi forvente?</h2>
+    <p>Cellens elektromotoriske kraft (emk) under standardbetingelser fås af standardpotentialerne:</p>
+    <div class="reaktion total">
+      <span class="tag">Emk</span>
+      \[ E^\circ_{\text{celle}} = E^\circ_{\text{katode}} - E^\circ_{\text{anode}} = 0{,}40\ \mathrm{V} - (-0{,}76\ \mathrm{V}) = 1{,}16\ \mathrm{V} \]
+    </div>
+    <table>
+      <thead><tr><th>Halvreaktion</th><th>E° (V)</th><th>Rolle her</th></tr></thead>
+      <tbody>
+        <tr><td>Cu²⁺ + 2e⁻ → Cu</td><td class="num">+0,34</td><td>Deltager ikke (ingen Cu²⁺ i opløsningen)</td></tr>
+        <tr class="hl"><td>O₂ + 2H₂O + 4e⁻ → 4OH⁻</td><td class="num">+0,40</td><td>Katodereaktion på kobberets overflade</td></tr>
+        <tr><td>2H₂O + 2e⁻ → H₂ + 2OH⁻</td><td class="num">−0,83</td><td>Mulig konkurrent, når ilten er brugt op</td></tr>
+        <tr class="hl"><td>Zn²⁺ + 2e⁻ → Zn</td><td class="num">−0,76</td><td>Løber baglæns: anodereaktion</td></tr>
+      </tbody>
+    </table>
+    <p>I praksis måler man typisk <em>0,7–1,0 V pr. celle</em> — pænt under de 1,16 V. Der er tre gode grunde:</p>
+    <p><b>1. Overspænding.</b> Iltreduktionen på en kobberoverflade er træg; der skal et ekstra "skub" (overpotentiale) til, før reaktionen løber med mærkbar hastighed.<br>
+    <b>2. Koncentrationer langt fra standard.</b> Mængden af opløst ilt er lille (ca. 0,25 mM ved stuetemperatur), og Nernst-ligningen trækker potentialet ned:
+    \[ E = E^\circ - \frac{RT}{nF}\ln Q \]
+    <b>3. Indre modstand.</b> Så snart der trækkes strøm, falder polspændingen med \( U = \varepsilon - R_i \cdot I \). Saltvandscellens indre modstand er stor — derfor lyser dioden svagt, men tydeligt.</p>
+    <p>Med målingen på 1,54 V over <em>to</em> celler i serie får vi ca. 0,77 V pr. celle — i smuk overensstemmelse med teorien ovenfor.</p>
+  </div>
+</section>
+
+<section id="serie">
+  <div class="wrap">
+    <div class="eyebrow">Prøv selv</div>
+    <h2>Seriekobling: hvor mange celler skal der til?</h2>
+    <p class="lead">En rød lysdiode begynder først at lyse, når spændingen over den når op omkring 1,7–1,8 V. Træk i skyderne og find ud af, hvor mange saltvandsceller der skal til.</p>
+    <div class="simgrid">
+      <div class="cellbox">
+        <canvas id="serieCanvas" width="920" height="340" aria-label="Animation af celler i seriekobling med lysdiode"></canvas>
+      </div>
+      <div class="sliders">
+        <div>
+          <label for="antal">Antal celler i serie<output id="antalUd">4</output></label>
+          <input type="range" id="antal" min="1" max="6" value="4" step="1">
+        </div>
+        <div>
+          <label for="emk">Spænding pr. celle<output id="emkUd">0,77 V</output></label>
+          <input type="range" id="emk" min="0.50" max="1.16" value="0.77" step="0.01">
+        </div>
+        <div>
+          Samlet spænding: <span class="readout" id="totalUd">3,08 V</span>
+          &nbsp; <span id="ledStatus" style="font-weight:700"></span>
+        </div>
+      </div>
+    </div>
+    <p class="note">Ved seriekobling lægges spændingerne sammen: \( U_{\text{total}} = n \cdot U_{\text{celle}} \). Strømmen er derimod den samme gennem alle cellerne — og den begrænses af cellernes samlede indre modstand. Derfor lyser dioden, men kun svagt.</p>
+  </div>
+</section>
+
+<section id="maalingen">
+  <div class="wrap">
+    <div class="eyebrow">Målingen</div>
+    <h2>Multimeteret siger…</h2>
+    <p style="margin-bottom:1.4rem"><span class="lcd">1.54<small>V ⎓</small></span></p>
+    <p>Multimeteret står på 20 V jævnspænding og måler her over to celler i serie. Bemærk at et voltmeter har meget stor indre modstand og derfor næsten ikke trækker strøm — det måler altså noget tæt på cellernes <em>hvilespænding</em> (emk). Sætter man i stedet lysdioden i kredsløbet, falder spændingen, fordi der nu løber en strøm gennem cellernes indre modstand.</p>
+    <p>Et godt ekstra forsøg: mål spændingen over én celle, to celler, tre celler og fire celler, og tegn spændingen som funktion af antal celler. Punkterne bør ligge på en ret linje gennem nulpunktet — seriekoblingens lov, set med egne øjne.</p>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="wrap">
+    <div class="eyebrow">Tjek dig selv</div>
+    <h2>Fire hurtige spørgsmål</h2>
+    <div class="quiz" id="quizHolder"></div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    Saltvandsbatteriet · en interaktiv side om elektrokemi · Fotos fra eget forsøg, juni 2026.<br>
+    Tilbage til <a href="index.html">Natur · fysik · kemi · mat</a>.
+  </div>
+</footer>
+
+<script>
+(function(){
+"use strict";
+var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ============ HERO: galvanisk celle ============ */
+var cv = document.getElementById('celleCanvas');
+var cx = cv.getContext('2d');
+var W = cv.width, H = cv.height;
+var on = false;
+
+var beaker = {x: W*0.30, y: 130, w: W*0.40, h: 290};
+var waterTop = beaker.y + 40;
+var znX = beaker.x + beaker.w*0.22;
+var cuX = beaker.x + beaker.w*0.78;
+var elTop = beaker.y - 38, elBot = beaker.y + beaker.h - 30;
+
+/* ledningsbane: zink -> op -> LED (top midt) -> ned -> kobber */
+var ledX = W/2, ledY = 46;
+var wirePath = [
+  {x:znX, y:elTop}, {x:znX, y:ledY}, {x:ledX-26, y:ledY}
+];
+var wirePath2 = [
+  {x:ledX+26, y:ledY}, {x:cuX, y:ledY}, {x:cuX, y:elTop}
+];
+function pathLen(p){var L=0;for(var i=1;i<p.length;i++){L+=Math.hypot(p[i].x-p[i-1].x,p[i].y-p[i-1].y);}return L;}
+function pointAt(p, d){
+  for(var i=1;i<p.length;i++){
+    var seg=Math.hypot(p[i].x-p[i-1].x,p[i].y-p[i-1].y);
+    if(d<=seg){var t=d/seg;return {x:p[i-1].x+(p[i].x-p[i-1].x)*t, y:p[i-1].y+(p[i].y-p[i-1].y)*t};}
+    d-=seg;
+  }
+  return p[p.length-1];
+}
+var L1=pathLen(wirePath), L2=pathLen(wirePath2), Ltot=L1+26*2+L2;
+
+/* partikler i elektrolytten */
+function rnd(a,b){return a+Math.random()*(b-a);}
+var ions=[];
+function addIon(type){
+  ions.push({
+    type:type,
+    x:rnd(beaker.x+14, beaker.x+beaker.w-14),
+    y:rnd(waterTop+12, beaker.y+beaker.h-14),
+    vx:rnd(-0.25,0.25), vy:rnd(-0.2,0.2), born:performance.now()
+  });
+}
+for(var i=0;i<16;i++) addIon('Na');
+for(var i=0;i<16;i++) addIon('Cl');
+
+var electrons=[];   // d = afstand langs ledningen
+var znIons=[];      // zn2+ der frigives
+var ohIons=[];
+var lastSpawn=0;
+
+function ionColor(t){
+  return t==='Na' ? '#f29b5f' : t==='Cl' ? '#7fd97f' : t==='Zn' ? '#b9c4cc' : '#56cfc4';
+}
+function ionLabel(t){
+  return t==='Na' ? 'Na⁺' : t==='Cl' ? 'Cl⁻' : t==='Zn' ? 'Zn²⁺' : 'OH⁻';
+}
+
+function drawCell(now){
+  cx.clearRect(0,0,W,H);
+
+  /* ledninger */
+  cx.lineWidth=4; cx.strokeStyle = on ? '#c0392b' : '#5a3a35';
+  cx.beginPath(); cx.moveTo(wirePath[0].x,wirePath[0].y);
+  for(var i=1;i<wirePath.length;i++) cx.lineTo(wirePath[i].x,wirePath[i].y);
+  cx.stroke();
+  cx.beginPath(); cx.moveTo(wirePath2[0].x,wirePath2[0].y);
+  for(var i=1;i<wirePath2.length;i++) cx.lineTo(wirePath2[i].x,wirePath2[i].y);
+  cx.stroke();
+
+  /* afbryder-gab hvis åben */
+  if(!on){
+    cx.strokeStyle='#0e1a22'; cx.lineWidth=8;
+    cx.beginPath(); cx.moveTo(znX, ledY+40); cx.lineTo(znX, ledY+70); cx.stroke();
+    cx.strokeStyle='#8fa6b2'; cx.lineWidth=3;
+    cx.beginPath(); cx.moveTo(znX, ledY+70); cx.lineTo(znX+22, ledY+44); cx.stroke();
+  }
+
+  /* LED */
+  var glow = on ? 1 : 0;
+  if(glow>0){
+    var g=cx.createRadialGradient(ledX,ledY,2,ledX,ledY,46);
+    g.addColorStop(0,'rgba(255,83,71,.85)');
+    g.addColorStop(1,'rgba(255,83,71,0)');
+    cx.fillStyle=g; cx.beginPath(); cx.arc(ledX,ledY,46,0,7); cx.fill();
+  }
+  cx.fillStyle = on ? '#ff5347' : '#5a2a26';
+  cx.beginPath(); cx.arc(ledX,ledY,13,0,7); cx.fill();
+  cx.strokeStyle='#dce8ee'; cx.lineWidth=1.5; cx.stroke();
+  cx.fillStyle='#8fa6b2'; cx.font='12px system-ui'; cx.textAlign='center';
+  cx.fillText('LED', ledX, ledY-22);
+
+  /* bæger */
+  cx.fillStyle='rgba(86,207,196,0.10)';
+  cx.fillRect(beaker.x, waterTop, beaker.w, beaker.y+beaker.h-waterTop);
+  cx.strokeStyle='#3d5a68'; cx.lineWidth=2.5;
+  cx.strokeRect(beaker.x, beaker.y, beaker.w, beaker.h);
+  cx.strokeStyle='rgba(86,207,196,.5)'; cx.lineWidth=1.5;
+  cx.beginPath(); cx.moveTo(beaker.x, waterTop); cx.lineTo(beaker.x+beaker.w, waterTop); cx.stroke();
+
+  /* elektroder */
+  cx.fillStyle='#b9c4cc'; cx.fillRect(znX-7, elTop, 14, elBot-elTop);
+  cx.fillStyle='#d08648'; cx.fillRect(cuX-7, elTop, 14, elBot-elTop);
+  cx.font='bold 15px system-ui'; cx.textAlign='center';
+  cx.fillStyle='#b9c4cc'; cx.fillText('Zn  (−)', znX, elBot+26);
+  cx.fillStyle='#d08648'; cx.fillText('Cu  (+)', cuX, elBot+26);
+  cx.fillStyle='#8fa6b2'; cx.font='12px system-ui';
+  cx.fillText('anode · oxidation', znX, elBot+44);
+  cx.fillText('katode · reduktion', cuX, elBot+44);
+
+  /* ioner */
+  ions.concat(znIons, ohIons).forEach(function(p){
+    cx.beginPath(); cx.arc(p.x,p.y,5,0,7);
+    cx.fillStyle=ionColor(p.type); cx.fill();
+  });
+
+  /* elektroner */
+  if(on){
+    electrons.forEach(function(e){
+      var pt;
+      if(e.d<L1) pt=pointAt(wirePath,e.d);
+      else if(e.d<L1+52) pt={x:ledX-26+(e.d-L1), y:ledY};
+      else pt=pointAt(wirePath2, e.d-L1-52);
+      cx.beginPath(); cx.arc(pt.x,pt.y,4,0,7);
+      cx.fillStyle='#ffd34d'; cx.fill();
+    });
+  }
+  cx.textAlign='left';
+}
+
+function stepCell(now){
+  var speed = on?1:0.4;
+  /* ion-drift: når der løber strøm, trækkes Na+ mod Cu og Cl- mod Zn */
+  ions.forEach(function(p){
+    var bias = on ? (p.type==='Na'?0.05:-0.05) : 0;
+    p.vx += rnd(-0.06,0.06)+bias*0.2; p.vy += rnd(-0.06,0.06);
+    p.vx=Math.max(-0.6,Math.min(0.6,p.vx)); p.vy=Math.max(-0.6,Math.min(0.6,p.vy));
+    p.x+=p.vx*speed; p.y+=p.vy*speed;
+    if(p.x<beaker.x+10){p.x=beaker.x+10;p.vx*=-1}
+    if(p.x>beaker.x+beaker.w-10){p.x=beaker.x+beaker.w-10;p.vx*=-1}
+    if(p.y<waterTop+8){p.y=waterTop+8;p.vy*=-1}
+    if(p.y>beaker.y+beaker.h-10){p.y=beaker.y+beaker.h-10;p.vy*=-1}
+  });
+  znIons.concat(ohIons).forEach(function(p){
+    p.vx+=rnd(-0.05,0.05); p.vy+=rnd(-0.05,0.05)+0.01;
+    p.x+=p.vx; p.y+=p.vy;
+    if(p.x<beaker.x+10||p.x>beaker.x+beaker.w-10)p.vx*=-1;
+    if(p.y<waterTop+8){p.y=waterTop+8;p.vy*=-1}
+    if(p.y>beaker.y+beaker.h-10){p.y=beaker.y+beaker.h-10;p.vy*=-1}
+  });
+  if(znIons.length>14) znIons.shift();
+  if(ohIons.length>14) ohIons.shift();
+
+  if(on){
+    electrons.forEach(function(e){ e.d += 2.2; });
+    electrons = electrons.filter(function(e){ return e.d < Ltot; });
+    if(now-lastSpawn>260){
+      lastSpawn=now;
+      electrons.push({d:0});
+      znIons.push({type:'Zn', x:znX+12, y:rnd(waterTop+30,elBot-10), vx:0.4, vy:rnd(-0.2,0.2)});
+      ohIons.push({type:'OH', x:cuX-12, y:rnd(waterTop+30,elBot-10), vx:-0.4, vy:rnd(-0.2,0.2)});
+    }
+  }
+}
+
+function loopCell(now){
+  stepCell(now);
+  drawCell(now);
+  if(!reduceMotion) requestAnimationFrame(loopCell);
+}
+requestAnimationFrame(loopCell);
+
+var knap=document.getElementById('kontakt');
+knap.addEventListener('click', function(){
+  on=!on;
+  knap.dataset.on = on?'1':'0';
+  knap.setAttribute('aria-pressed', on?'true':'false');
+  knap.textContent = on ? 'Åbn kredsløbet' : 'Luk kredsløbet';
+  if(reduceMotion){ stepCell(performance.now()); drawCell(performance.now()); }
+});
+
+/* ============ SERIEKOBLING ============ */
+var sv=document.getElementById('serieCanvas');
+var sx=sv.getContext('2d');
+var SW=sv.width, SH=sv.height;
+var antalEl=document.getElementById('antal');
+var emkEl=document.getElementById('emk');
+var antalUd=document.getElementById('antalUd');
+var emkUd=document.getElementById('emkUd');
+var totalUd=document.getElementById('totalUd');
+var ledStatus=document.getElementById('ledStatus');
+var sPhase=0;
+
+function daTal(x,dec){ return x.toFixed(dec).replace('.',','); }
+
+function drawSerie(){
+  var n=+antalEl.value, e=+emkEl.value, V=n*e;
+  antalUd.textContent=n;
+  emkUd.textContent=daTal(e,2)+' V';
+  totalUd.textContent=daTal(V,2)+' V';
+  var lys=Math.max(0,Math.min(1,(V-1.65)/0.6));
+  ledStatus.textContent = lys<=0 ? 'LED: slukket' : (lys<0.5 ? 'LED: svagt lys' : 'LED: lyser!');
+  ledStatus.style.color = lys<=0 ? '#8fa6b2' : '#ff5347';
+
+  sx.clearRect(0,0,SW,SH);
+  var cw=86, gap=26, totW=n*cw+(n-1)*gap;
+  var x0=(SW-totW)/2, cy=200, ch=110;
+  var topY=70;
+
+  /* celler */
+  for(var i=0;i<n;i++){
+    var x=x0+i*(cw+gap);
+    sx.fillStyle='rgba(86,207,196,0.10)';
+    sx.fillRect(x,cy-ch/2,cw,ch);
+    sx.strokeStyle='#3d5a68'; sx.lineWidth=2;
+    sx.strokeRect(x,cy-ch/2,cw,ch);
+    sx.fillStyle='#b9c4cc'; sx.fillRect(x+cw*0.28-5, cy-ch/2-16, 10, ch*0.75+16);
+    sx.fillStyle='#d08648'; sx.fillRect(x+cw*0.72-5, cy-ch/2-16, 10, ch*0.75+16);
+    /* forbindelse til næste celle: Cu -> Zn */
+    sx.strokeStyle='#c0392b'; sx.lineWidth=3;
+    if(i<n-1){
+      sx.beginPath();
+      sx.moveTo(x+cw*0.72, cy-ch/2-16);
+      sx.lineTo(x+cw*0.72, cy-ch/2-30);
+      sx.lineTo(x+cw+gap+cw*0.28, cy-ch/2-30);
+      sx.lineTo(x+cw+gap+cw*0.28, cy-ch/2-16);
+      sx.stroke();
+    }
+  }
+  /* ydre kreds til LED */
+  var ledXx=SW/2, ledYy=topY-30;
+  var zn0=x0+cw*0.28, cuN=x0+(n-1)*(cw+gap)+cw*0.72;
+  sx.strokeStyle='#c0392b'; sx.lineWidth=3;
+  sx.beginPath();
+  sx.moveTo(zn0, cy-ch/2-16); sx.lineTo(zn0, ledYy); sx.lineTo(ledXx-20, ledYy); sx.stroke();
+  sx.beginPath();
+  sx.moveTo(cuN, cy-ch/2-16); sx.lineTo(cuN, ledYy); sx.lineTo(ledXx+20, ledYy); sx.stroke();
+
+  /* LED med lysstyrke */
+  if(lys>0){
+    var g=sx.createRadialGradient(ledXx,ledYy,2,ledXx,ledYy,30+40*lys);
+    g.addColorStop(0,'rgba(255,83,71,'+(0.9*lys)+')');
+    g.addColorStop(1,'rgba(255,83,71,0)');
+    sx.fillStyle=g; sx.beginPath(); sx.arc(ledXx,ledYy,30+40*lys,0,7); sx.fill();
+  }
+  sx.fillStyle = lys>0 ? 'rgba(255,83,71,'+(0.35+0.65*lys)+')' : '#5a2a26';
+  sx.beginPath(); sx.arc(ledXx,ledYy,12,0,7); sx.fill();
+  sx.strokeStyle='#dce8ee'; sx.lineWidth=1.5; sx.stroke();
+
+  /* elektronprikker langs ydre kreds når LED lyser */
+  if(lys>0 && !reduceMotion){
+    sx.fillStyle='#ffd34d';
+    for(var k=0;k<6;k++){
+      var t=((sPhase*0.004*(0.5+lys))+k/6)%1;
+      var px, py;
+      var leftLen=(ledYy<cy? (cy-ch/2-16-ledYy):0)+ (ledXx-20-zn0);
+      /* simpel: prikker kun på topledningen */
+      px = zn0 + t*(cuN-zn0);
+      py = ledYy;
+      if(Math.abs(px-ledXx)>24){ sx.beginPath(); sx.arc(px,py,3.5,0,7); sx.fill(); }
+    }
+  }
+
+  /* labels */
+  sx.fillStyle='#8fa6b2'; sx.font='13px system-ui'; sx.textAlign='center';
+  sx.fillText(n+' × '+daTal(e,2)+' V  =  '+daTal(V,2)+' V', SW/2, SH-18);
+  sx.textAlign='left';
+}
+function loopSerie(){ sPhase=performance.now(); drawSerie(); if(!reduceMotion) requestAnimationFrame(loopSerie); }
+antalEl.addEventListener('input', drawSerie);
+emkEl.addEventListener('input', drawSerie);
+requestAnimationFrame(loopSerie);
+
+/* ============ QUIZ ============ */
+var sporgsmaal=[
+ {q:'Hvilken elektrode er minuspolen i saltvandsbatteriet?',
+  sv:['Kobberelektroden','Zinkelektroden','Det afhænger af saltmængden'], r:1,
+  f:'Zink oxideres (afgiver elektroner) og er derfor anoden — i en galvanisk celle er anoden minuspol.'},
+ {q:'Hvad er saltets vigtigste rolle?',
+  sv:['Det reagerer med zinken og frigiver energi','Det gør vandet elektrisk ledende','Det beskytter kobberet mod ir'], r:1,
+  f:'Na⁺ og Cl⁻ deltager ikke i elektrodereaktionerne, men de transporterer ladning gennem væsken og slutter kredsløbet.'},
+ {q:'Hvorfor skal der flere celler i serie til, før den røde LED lyser?',
+  sv:['Én celle giver kun ca. 0,8 V, og en rød LED kræver ca. 1,8 V','LED\u2019en bruger vekselstrøm','Saltvand kan kun lede svag strøm i én celle'], r:0,
+  f:'Spændingerne lægges sammen i serie: med fire celler à ca. 0,8 V når man over LED\u2019ens tærskelspænding.'},
+ {q:'Hvad sker der ved kobberelektroden?',
+  sv:['Kobber går i opløsning som Cu²⁺','Opløst ilt reduceres til hydroxidioner','Natriumioner bliver til natriummetal'], r:1,
+  f:'Kobberet er inert og lægger blot overflade til: O₂ + 2H₂O + 4e⁻ → 4OH⁻.'}
+];
+var qh=document.getElementById('quizHolder');
+sporgsmaal.forEach(function(s,qi){
+  var d=document.createElement('div'); d.className='q';
+  var p=document.createElement('p'); p.textContent=(qi+1)+'. '+s.q; d.appendChild(p);
+  var svarP=document.createElement('div'); svarP.className='svar';
+  s.sv.forEach(function(txt,i){
+    var b=document.createElement('button'); b.textContent=txt;
+    b.addEventListener('click',function(){
+      d.querySelectorAll('button').forEach(function(x){x.disabled=true;});
+      b.className = (i===s.r) ? 'rigtig' : 'forkert';
+      if(i!==s.r) d.querySelectorAll('button')[s.r].className='rigtig';
+      svarP.style.display='block';
+    });
+    d.appendChild(b);
+  });
+  svarP.textContent=s.f; d.appendChild(svarP);
+  qh.appendChild(d);
+});
+})();
+</script>
+</body>
+</html>
