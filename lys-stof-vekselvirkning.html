@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lysets vekselvirkning med stof – Michael Grant</title>
+<style>
+    :root {
+        --space-black: #0b0d17;
+        --space-deep: #050608;
+        --aurora-green: #39ff14;
+        --aurora-purple: #a020f0;
+        --aurora-blue: #4cc9f0;
+        --text-light: #e0e0e0;
+        --text-dim: #a0a0a8;
+        --card-bg: rgba(255, 255, 255, 0.04);
+        --card-border: rgba(57, 255, 20, 0.18);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 66px; }
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background-color: var(--space-black);
+        background-image:
+            radial-gradient(circle at 20% 10%, rgba(160, 32, 240, 0.08), transparent 40%),
+            radial-gradient(circle at 80% 60%, rgba(57, 255, 20, 0.05), transparent 40%);
+        color: var(--text-light);
+        line-height: 1.65;
+        margin: 0;
+    }
+    nav.topnav {
+        position: sticky; top: 0; z-index: 100;
+        background: rgba(11, 13, 23, 0.94);
+        backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+        border-bottom: 1px solid rgba(57, 255, 20, 0.25);
+        padding: 0.6rem 1rem; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch;
+    }
+    nav.topnav ul { list-style: none; margin: 0; padding: 0; display: inline-flex; gap: 0.4rem; min-width: max-content; }
+    nav.topnav a {
+        color: var(--text-dim); text-decoration: none; padding: 0.4rem 0.9rem; border-radius: 20px;
+        font-size: 0.85rem; font-weight: 500; transition: all 0.2s ease; border: 1px solid transparent;
+    }
+    nav.topnav a:hover { color: var(--aurora-green); border-color: rgba(57, 255, 20, 0.4); background: rgba(57, 255, 20, 0.05); }
+    nav.topnav a.home { color: var(--aurora-blue); border-color: rgba(76, 201, 240, 0.35); }
+
+    header { text-align: center; padding: 3.2rem 1.5rem 2.4rem; background: linear-gradient(to bottom, #1a1a2e, var(--space-black)); border-bottom: 1px solid rgba(160, 32, 240, 0.15); }
+    header h1 { font-size: clamp(1.7rem, 4.6vw, 2.7rem); color: var(--aurora-green); text-shadow: 0 0 25px rgba(57, 255, 20, 0.4); margin: 0 0 0.8rem 0; }
+    header .subtitle { font-size: 1.02rem; color: var(--text-dim); max-width: 720px; margin: 0 auto; }
+
+    main { max-width: 980px; margin: 0 auto; padding: 1rem 1.3rem 4rem; }
+
+    .chapter { margin: 3.4rem 0; padding-top: 0.6rem; }
+    .chapter .ch-header { border-left: 4px solid var(--aurora-green); padding: 0.4rem 0 0.4rem 1.1rem; margin-bottom: 1.2rem; }
+    .chapter .ch-header h2 { font-size: 1.45rem; color: var(--aurora-green); margin: 0; }
+    .chapter .ch-header .ch-num { color: var(--aurora-purple); margin-right: 0.5rem; }
+    .chapter p { font-size: 0.98rem; }
+    .chapter p.lede { color: var(--text-dim); font-style: italic; margin-top: -0.4rem; }
+
+    .panel {
+        background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 14px;
+        padding: 1.3rem 1.3rem 1.5rem; margin: 1.2rem 0;
+    }
+    .panel h3 { margin: 0 0 0.9rem 0; color: #fff; font-size: 1.05rem; }
+
+    canvas { width: 100%; height: auto; background: var(--space-deep); border-radius: 10px; display: block; border: 1px solid rgba(255,255,255,0.06); touch-action: none; }
+
+    .controls { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; margin-top: 1rem; font-size: 0.88rem; }
+    .controls label { display: flex; flex-direction: column; gap: 0.3rem; color: var(--text-dim); min-width: 150px; flex: 1; }
+    .controls input[type="range"] { accent-color: var(--aurora-green); width: 100%; }
+    .controls select {
+        background: rgba(255,255,255,0.05); color: var(--text-light); border: 1px solid var(--card-border);
+        border-radius: 8px; padding: 0.35rem 0.5rem; font-size: 0.85rem;
+    }
+    button.action {
+        background: transparent; color: var(--aurora-green); border: 1.5px solid var(--aurora-green);
+        border-radius: 25px; padding: 0.5rem 1.1rem; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all .2s ease;
+    }
+    button.action:hover { background: var(--aurora-green); color: var(--space-black); box-shadow: 0 0 14px rgba(57,255,20,.5); }
+    button.action.secondary { color: var(--aurora-purple); border-color: var(--aurora-purple); }
+    button.action.secondary:hover { background: var(--aurora-purple); color: #fff; box-shadow: 0 0 14px rgba(160,32,240,.5); }
+
+    .readout {
+        margin-top: 0.9rem; font-size: 0.9rem; color: var(--aurora-blue);
+        background: rgba(76,201,240,0.06); border: 1px solid rgba(76,201,240,0.25);
+        border-radius: 8px; padding: 0.6rem 0.9rem; min-height: 1.4em;
+    }
+    .note {
+        margin-top: 0.9rem; font-size: 0.87rem; color: var(--text-dim);
+        border-left: 2px solid var(--aurora-purple); padding-left: 0.8rem;
+    }
+    .formula { text-align: center; font-size: 1.05rem; color: var(--aurora-green); margin: 0.9rem 0; }
+    footer { margin-top: 3rem; padding: 2rem 1.5rem; font-size: 0.85rem; color: var(--text-dim); text-align: center; border-top: 1px solid rgba(255,255,255,0.05); }
+    footer a { color: var(--aurora-blue); text-decoration: none; }
+    @media (max-width: 600px) {
+        header { padding: 2.4rem 1rem 1.8rem; }
+        main { padding: 1rem 0.9rem 3rem; }
+        .controls label { min-width: 100%; }
+    }
+</style>
+</head>
+<body>
+
+<nav class="topnav" aria-label="Sidenavigation">
+    <ul>
+        <li><a href="index.html" class="home">🏠 Forsiden</a></li>
+        <li><a href="#intro">Fire processer</a></li>
+        <li><a href="#bohr">Absorption &amp; emission</a></li>
+        <li><a href="#foto">Fotoelektrisk effekt</a></li>
+        <li><a href="#rayleigh">Rayleigh-spredning</a></li>
+        <li><a href="#dispersion">Brydningsindeks</a></li>
+        <li><a href="#fluorescens">Fluorescens</a></li>
+    </ul>
+</nav>
+
+<header>
+    <h1>Lysets vekselvirkning med stof</h1>
+    <p class="subtitle">Hvad sker der egentlig, når en lysbølge rammer et atom? Seks interaktive stationer om absorption, emission, spredning, brydning og fluorescens – med animationer, du selv styrer.</p>
+</header>
+
+<main>
+
+    <section class="chapter" id="intro">
+        <div class="ch-header"><h2><span class="ch-num">01 ·</span> Fire grundlæggende processer</h2></div>
+        <p class="lede">Alt hvad lys gør, når det møder stof, kan føres tilbage til fire slægtskaber mellem foton og elektron.</p>
+        <p>Når en lysbølge rammer et materiale, er det i sidste ende de elektriske felter i lyset, der rykker i materialets elektroner. Hvad der derefter sker, afhænger af fotonens energi sammenlignet med de energiniveauer, elektronerne kan opholde sig i:</p>
+        <p><strong style="color:var(--aurora-green)">Absorption</strong> – fotonen forsvinder, og dens energi løfter en elektron til et højere niveau.<br>
+        <strong style="color:var(--aurora-green)">Emission</strong> – en elektron falder til et lavere niveau og sender overskudsenergien af sted som en ny foton.<br>
+        <strong style="color:var(--aurora-green)">Spredning</strong> – fotonen ryster elektronskyen kortvarigt og slippes fri igen i en anden retning, uden at blive optaget permanent.<br>
+        <strong style="color:var(--aurora-green)">Brydning</strong> – de svingende elektroner sender selv bittesmå lysbølger ud, som lægger sig oven i den oprindelige bølge og bremser dens fremdrift gennem materialet.</p>
+        <p>De næste stationer udforsker hver af disse – plus to nære slægtninge: den fotoelektriske effekt og fluorescens.</p>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- BOHR: ABSORPTION & EMISSION                                    -->
+    <!-- ============================================================ -->
+    <section class="chapter" id="bohr">
+        <div class="ch-header"><h2><span class="ch-num">02 ·</span> Absorption &amp; emission – kvantespring i brintatomet</h2></div>
+        <p class="lede">Klik på et energiniveau for at flytte elektronen derhen, og se hvilken foton der skal til.</p>
+        <p>I Bohrs model af brintatomet kan elektronen kun opholde sig i bestemte energiniveauer, givet ved E<sub>n</sub> = −13,6 eV / n². Flytter elektronen sig opad, skal den <em>absorbere</em> en foton med præcis den rigtige energiforskel. Flytter den sig nedad, <em>emitterer</em> den en foton med den energi.</p>
+        <div class="panel">
+            <h3>Brintatomets energiniveauer</h3>
+            <canvas id="bohrCanvas" width="900" height="420"></canvas>
+            <div class="readout" id="bohrReadout">Klik på et niveau (n = 1–6) for at starte.</div>
+            <div class="note" id="bohrSeriesNote">Overgange ned til n = 1 kaldes Lyman-serien (ultraviolet), ned til n = 2 Balmer-serien (synligt lys), og ned til n = 3 Paschen-serien (infrarødt).</div>
+        </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- PHOTOELECTRIC EFFECT                                          -->
+    <!-- ============================================================ -->
+    <section class="chapter" id="foto">
+        <div class="ch-header"><h2><span class="ch-num">03 ·</span> Den fotoelektriske effekt</h2></div>
+        <p class="lede">Det var her Einstein overbeviste verden om, at lys kommer i pakker.</p>
+        <p>Skinner man lys på en metaloverflade, kan elektroner rives løs – men kun hvis den enkelte fotons energi overstiger metallets <em>arbejdsfunktion</em> φ. Flere fotoner (højere intensitet) giver flere elektroner, men aldrig hurtigere elektroner. Det er kun bølgelængden – fotonens energi – der bestemmer elektronernes fart.</p>
+        <div class="panel">
+            <h3>Skyd lys på en metalplade</h3>
+            <canvas id="fotoCanvas" width="900" height="380"></canvas>
+            <div class="controls">
+                <label>Metal
+                    <select id="fotoMetal">
+                        <option value="2.1">Cæsium (φ = 2,1 eV)</option>
+                        <option value="2.36" selected>Natrium (φ = 2,36 eV)</option>
+                        <option value="4.3">Zink (φ = 4,3 eV)</option>
+                        <option value="6.35">Platin (φ = 6,35 eV)</option>
+                    </select>
+                </label>
+                <label>Bølgelængde: <span id="fotoLambdaVal">450</span> nm
+                    <input type="range" id="fotoLambda" min="150" max="700" value="450">
+                </label>
+                <label>Intensitet (fotoner/s)
+                    <input type="range" id="fotoIntensity" min="1" max="10" value="5">
+                </label>
+            </div>
+            <div class="readout" id="fotoReadout"></div>
+            <canvas id="fotoGraph" width="900" height="220" style="margin-top:1rem;"></canvas>
+        </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- RAYLEIGH SCATTERING                                           -->
+    <!-- ============================================================ -->
+    <section class="chapter" id="rayleigh">
+        <div class="ch-header"><h2><span class="ch-num">04 ·</span> Rayleigh-spredning – himlens farve</h2></div>
+        <p class="lede">Blåt lys spredes langt kraftigere end rødt – derfor er himlen blå, og solen bliver rød ved horisonten.</p>
+        <p>Når lys møder molekyler, der er langt mindre end bølgelængden, spredes det med en styrke, der vokser med 1/λ⁴. Blåt lys (~450 nm) spredes derfor omkring fem gange kraftigere end rødt lys (~650 nm).</p>
+        <div class="panel">
+            <h3>Spredning gennem atmosfæren</h3>
+            <canvas id="rayleighCanvas" width="900" height="380"></canvas>
+            <div class="controls">
+                <label>Bølgelængde: <span id="rayLambdaVal">450</span> nm
+                    <input type="range" id="rayLambda" min="400" max="700" value="450">
+                </label>
+                <label>Vejlængde gennem atmosfæren (solhøjde)
+                    <input type="range" id="rayPath" min="0" max="10" value="1">
+                </label>
+            </div>
+            <div class="readout" id="rayReadout"></div>
+        </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- DISPERSION / REFRACTIVE INDEX                                 -->
+    <!-- ============================================================ -->
+    <section class="chapter" id="dispersion">
+        <div class="ch-header"><h2><span class="ch-num">05 ·</span> Hvorfor har materialer et brydningsindeks?</h2></div>
+        <p class="lede">En bundet elektron er en lille svinger – lyset driver den, og dens svar former brydningsindekset.</p>
+        <p>Tænk på hver elektron i glasset som en kugle på en fjeder med en egen-resonansfrekvens ω₀ (typisk langt oppe i ultraviolet). Lysets elektriske felt driver svingeren med sin egen frekvens ω. Svingerens amplitude og faseforskydning i forhold til det drivende felt bestemmer, hvor meget lyset bremses (brydningsindeks n) og hvor meget der absorberes (κ).</p>
+        <div class="panel">
+            <h3>Den drevne, dæmpede elektron-svinger</h3>
+            <canvas id="dispCanvas" width="900" height="420"></canvas>
+            <div class="controls">
+                <label>Drivfrekvens ω / ω₀: <span id="dispOmegaVal">0.50</span>
+                    <input type="range" id="dispOmega" min="10" max="300" value="50">
+                </label>
+                <label>Dæmpning γ
+                    <input type="range" id="dispGamma" min="5" max="60" value="18">
+                </label>
+            </div>
+            <div class="readout" id="dispReadout"></div>
+            <div class="note">Læg mærke til: for ω &lt; ω₀ (til venstre for resonansen) vokser n med ω – det er derfor blåt lys (højere ω) brydes mere end rødt i det prisme, du kan udforske på <a href="optik.html#newton" style="color:var(--aurora-blue)">optik-siden</a>. Tæt på resonansen skifter elektronens fase fra at følge feltet til at ligge 90° og til sidst 180° bagud, og her toppen absorptionen κ.</div>
+        </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- FLUORESCENCE                                                  -->
+    <!-- ============================================================ -->
+    <section class="chapter" id="fluorescens">
+        <div class="ch-header"><h2><span class="ch-num">06 ·</span> Fluorescens – lys ind, andet lys ud</h2></div>
+        <p class="lede">Hvorfor lyser en tekstmarkør knaldgul under UV-lys, selvom den er ramt af usynligt ultraviolet?</p>
+        <p>En fluorescerende molekyle absorberer en høj-energi foton (ofte UV) og hopper op i en høj svingningstilstand af en exciteret elektrontilstand. Molekylet taber hurtigt lidt energi som varme og falder til bunden af den exciterede tilstand, <em>før</em> det udsender en foton tilbage til grundtilstanden. Den udsendte foton har derfor altid lavere energi – og længere bølgelængde – end den, der blev absorberet. Forskellen kaldes Stokes-forskydningen.</p>
+        <div class="panel">
+            <h3>Excitation, varmetab og emission</h3>
+            <canvas id="fluorCanvas" width="900" height="420"></canvas>
+            <button class="action" id="fluorFire">Skyd en UV-foton af</button>
+            <div class="readout" id="fluorReadout">Klik på knappen for at starte forløbet.</div>
+        </div>
+    </section>
+
+</main>
+
+<footer>
+    &copy; 2026 · Fysik, matematik og kemi · Michael Grant<br>
+    <a href="mailto:michael.h.grant@gmail.com">michael.h.grant@gmail.com</a> ·
+    <a href="index.html">Tilbage til forsiden</a>
+</footer>
+
+<script>
+/* ================= shared helpers ================= */
+function wavelengthToColor(nm){
+    // returns {r,g,b,label} ; label set for outside visible range
+    let r=0,g=0,b=0,label=null;
+    if (nm < 380) { return {r:120,g:60,b:180,label:'Ultraviolet'}; }
+    if (nm > 750) { return {r:120,g:20,b:20,label:'Infrarødt'}; }
+    if (nm>=380 && nm<440){ r=-(nm-440)/(440-380); g=0; b=1; }
+    else if (nm>=440 && nm<490){ r=0; g=(nm-440)/(490-440); b=1; }
+    else if (nm>=490 && nm<510){ r=0; g=1; b=-(nm-510)/(510-490); }
+    else if (nm>=510 && nm<580){ r=(nm-510)/(580-510); g=1; b=0; }
+    else if (nm>=580 && nm<645){ r=1; g=-(nm-645)/(645-580); b=0; }
+    else if (nm>=645 && nm<=750){ r=1; g=0; b=0; }
+    let factor=1;
+    if (nm>=380 && nm<420) factor = 0.3+0.7*(nm-380)/(420-380);
+    else if (nm>=700 && nm<=750) factor = 0.3+0.7*(750-nm)/(750-700);
+    return {r:Math.round(255*r*factor), g:Math.round(255*g*factor), b:Math.round(255*b*factor), label:null};
+}
+function rgbCss(c){ return `rgb(${c.r},${c.g},${c.b})`; }
+function fitCanvas(c){
+    // keep internal resolution, CSS scales via width:100%
+}
+
+/* ================= 02 BOHR MODEL ================= */
+(function(){
+    const cv = document.getElementById('bohrCanvas');
+    const ctx = cv.getContext('2d');
+    const readout = document.getElementById('bohrReadout');
+    const W = cv.width, H = cv.height;
+    const levels = [1,2,3,4,5,6];
+    const En = n => -13.6/(n*n);
+    const yTop = 40, yBottom = 340;
+    const yOf = E => yBottom + (E - (-13.6))/(0 - (-13.6)) * (yTop - yBottom);
+    const diagramLeft = 60, diagramRight = 520;
+    let currentLevel = 1;
+    let photon = null; // {x,y,vx,vy,color,mode:'in'|'out', targetDrawn}
+    let flashAtomTimer = 0;
+
+    function seriesName(nLow){
+        return {1:'Lyman-serien (ultraviolet)',2:'Balmer-serien (synligt lys)',3:'Paschen-serien (infrarødt)',4:'Brackett-serien (infrarødt)',5:'Pfund-serien (infrarødt)'}[nLow] || '';
+    }
+
+    function draw(){
+        ctx.clearRect(0,0,W,H);
+        // ionization dashed line
+        ctx.strokeStyle='rgba(255,255,255,0.25)';
+        ctx.setLineDash([4,4]);
+        ctx.beginPath(); ctx.moveTo(diagramLeft-20, yTop); ctx.lineTo(diagramRight+20, yTop); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle='rgba(255,255,255,0.4)'; ctx.font='12px sans-serif';
+        ctx.fillText('Ioniseringsgrænse (n = ∞, E = 0)', diagramLeft-15, yTop-8);
+
+        levels.forEach(n=>{
+            const y = yOf(En(n));
+            ctx.strokeStyle = (n===currentLevel) ? '#39ff14' : 'rgba(76,201,240,0.55)';
+            ctx.lineWidth = (n===currentLevel) ? 3 : 2;
+            ctx.beginPath(); ctx.moveTo(diagramLeft, y); ctx.lineTo(diagramRight, y); ctx.stroke();
+            ctx.fillStyle = (n===currentLevel) ? '#39ff14' : '#a0a0a8';
+            ctx.font='13px sans-serif';
+            ctx.fillText(`n=${n}  (${En(n).toFixed(2)} eV)`, diagramRight+8, y+4);
+        });
+
+        // electron marker
+        const ey = yOf(En(currentLevel));
+        ctx.beginPath();
+        ctx.arc(diagramLeft + 30, ey, 7, 0, 2*Math.PI);
+        ctx.fillStyle = '#39ff14';
+        ctx.shadowColor='#39ff14'; ctx.shadowBlur = flashAtomTimer>0 ? 25 : 10;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // little "atom" schematic on the right side for flavor
+        const nucX = 760, nucY = 220;
+        ctx.beginPath(); ctx.arc(nucX, nucY, 10, 0, 2*Math.PI); ctx.fillStyle='#a020f0'; ctx.fill();
+        for (let i=1;i<=3;i++){
+            ctx.beginPath(); ctx.strokeStyle='rgba(160,32,240,0.25)';
+            ctx.ellipse(nucX, nucY, 22*i, 10*i, 0, 0, 2*Math.PI); ctx.stroke();
+        }
+        const orbitN = Math.min(currentLevel,3);
+        const angle = performance.now()/500 + currentLevel;
+        const ex = nucX + 22*orbitN*Math.cos(angle);
+        const ey2 = nucY + 10*orbitN*Math.sin(angle);
+        ctx.beginPath(); ctx.arc(ex,ey2,5,0,2*Math.PI);
+        ctx.fillStyle = flashAtomTimer>0 ? '#ffffff' : '#39ff14';
+        ctx.fill();
+
+        // photon animation
+        if (photon){
+            ctx.beginPath();
+            ctx.arc(photon.x, photon.y, 6, 0, 2*Math.PI);
+            ctx.fillStyle = rgbCss(photon.color);
+            ctx.shadowColor = rgbCss(photon.color); ctx.shadowBlur = 18;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            // wavy tail
+            ctx.strokeStyle = rgbCss(photon.color);
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for(let t=0;t<24;t++){
+                const px = photon.x - photon.dirx*t*3;
+                const py = photon.y - photon.diry*t*3 + Math.sin(t*0.9 + performance.now()/80)*4;
+                if(t===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+            }
+            ctx.stroke();
+
+            photon.x += photon.vx; photon.y += photon.vy;
+            const doneIn = photon.mode==='in' && Math.hypot(photon.x-(nucX), photon.y-(nucY)) < 20;
+            const doneOut = photon.mode==='out' && (photon.x>W || photon.x<0);
+            if (doneIn || doneOut){ photon=null; flashAtomTimer = 12; }
+        }
+        if (flashAtomTimer>0) flashAtomTimer--;
+
+        requestAnimationFrame(draw);
+    }
+    draw();
+
+    cv.addEventListener('click', (evt)=>{
+        const rect = cv.getBoundingClientRect();
+        const scaleY = H/rect.height;
+        const my = (evt.clientY-rect.top)*scaleY;
+        let closest=null, closestDist=1e9;
+        levels.forEach(n=>{
+            const y=yOf(En(n));
+            const d=Math.abs(y-my);
+            if (d<closestDist){closestDist=d; closest=n;}
+        });
+        if (closest===currentLevel) return;
+        const absorbing = closest>currentLevel;
+        const nLow = Math.min(closest,currentLevel), nHigh = Math.max(closest,currentLevel);
+        const dE = 13.6*(1/(nLow*nLow) - 1/(nHigh*nHigh)); // eV, positive
+        const lambda = 1240/dE; // nm
+        const color = wavelengthToColor(lambda);
+        const nucX=760, nucY=220;
+        if (absorbing){
+            photon = {x: 30, y: 220, dirx:1, diry:0, vx:9, vy:0, color, mode:'in'};
+        } else {
+            const ang = Math.random()*2*Math.PI;
+            photon = {x: nucX, y: nucY, dirx:Math.cos(ang), diry:Math.sin(ang), vx:9*Math.cos(ang), vy:9*Math.sin(ang), color, mode:'out'};
+        }
+        currentLevel = closest;
+        const label = color.label ? color.label : `≈ ${Math.round(lambda)} nm (${rgbCss(color)})`;
+        readout.innerHTML = `${absorbing?'Absorption':'Emission'}: n=${nLow} ↔ n=${nHigh}. ΔE = ${dE.toFixed(2)} eV → λ = ${lambda.toFixed(0)} nm — ${label}`;
+        document.getElementById('bohrSeriesNote').textContent = `Denne overgang tilhører ${seriesName(nLow)}.`;
+    });
+})();
+
+/* ================= 03 PHOTOELECTRIC EFFECT ================= */
+(function(){
+    const cv = document.getElementById('fotoCanvas');
+    const ctx = cv.getContext('2d');
+    const W=cv.width, H=cv.height;
+    const metalSel = document.getElementById('fotoMetal');
+    const lambdaSlider = document.getElementById('fotoLambda');
+    const lambdaVal = document.getElementById('fotoLambdaVal');
+    const intensitySlider = document.getElementById('fotoIntensity');
+    const readout = document.getElementById('fotoReadout');
+    const graphCv = document.getElementById('fotoGraph');
+    const gctx = graphCv.getContext('2d');
+    const GW = graphCv.width, GH = graphCv.height;
+
+    let photons = [];
+    let electrons = [];
+    let spawnAcc = 0;
+
+    function state(){
+        const phi = parseFloat(metalSel.value);
+        const lambda = parseFloat(lambdaSlider.value);
+        const E = 1240/lambda;
+        const KE = E - phi;
+        return {phi, lambda, E, KE};
+    }
+
+    function drawScene(){
+        ctx.clearRect(0,0,W,H);
+        // metal plate
+        ctx.fillStyle = '#3a3f4b';
+        ctx.fillRect(W-140, 0, 30, H);
+        ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.font='13px sans-serif';
+        ctx.save(); ctx.translate(W-118,H/2); ctx.rotate(Math.PI/2); ctx.fillText('metalplade', -40,0); ctx.restore();
+
+        const s = state();
+        const col = wavelengthToColor(s.lambda);
+
+        // spawn photons
+        spawnAcc += parseFloat(intensitySlider.value)/60;
+        while (spawnAcc>=1){
+            photons.push({x:20, y: 40+Math.random()*(H-80), vx:6});
+            spawnAcc -= 1;
+        }
+        photons.forEach(p=>{
+            ctx.beginPath(); ctx.arc(p.x,p.y,5,0,2*Math.PI);
+            ctx.fillStyle=rgbCss(col); ctx.shadowColor=rgbCss(col); ctx.shadowBlur=12; ctx.fill(); ctx.shadowBlur=0;
+            p.x += p.vx;
+            if (p.x > W-140 && !p.hit){
+                p.hit = true;
+                if (s.KE>0){
+                    const speed = 2+Math.sqrt(s.KE)*2.2;
+                    const ang = -0.5+Math.random()*1.0;
+                    electrons.push({x:p.x,y:p.y,vx:-speed*Math.cos(ang),vy:speed*Math.sin(ang), life:90});
+                }
+            }
+        });
+        photons = photons.filter(p=>p.x < W-140+2);
+
+        electrons.forEach(e=>{
+            ctx.beginPath(); ctx.arc(e.x,e.y,4,0,2*Math.PI);
+            ctx.fillStyle='#4cc9f0'; ctx.shadowColor='#4cc9f0'; ctx.shadowBlur=10; ctx.fill(); ctx.shadowBlur=0;
+            e.x += e.vx; e.y += e.vy; e.life--;
+        });
+        electrons = electrons.filter(e=>e.life>0 && e.x>-10);
+
+        requestAnimationFrame(drawScene);
+    }
+    drawScene();
+
+    function drawGraph(){
+        gctx.clearRect(0,0,GW,GH);
+        const s = state();
+        const pad = 50;
+        const maxE = 9, maxKE = 6;
+        const xOf = E => pad + (E/maxE)*(GW-pad-20);
+        const yOf = KE => (GH-30) - ((KE+2)/(maxKE+2))*(GH-50);
+        // axes
+        gctx.strokeStyle='rgba(255,255,255,0.3)'; gctx.lineWidth=1;
+        gctx.beginPath(); gctx.moveTo(pad,10); gctx.lineTo(pad,GH-30); gctx.lineTo(GW-10,GH-30); gctx.stroke();
+        gctx.fillStyle='var(--text-dim)'; gctx.fillStyle='#a0a0a8'; gctx.font='11px sans-serif';
+        gctx.fillText('Fotonenergi E (eV) →', GW-160, GH-8);
+        gctx.save(); gctx.translate(14,GH/2); gctx.rotate(-Math.PI/2); gctx.fillText('Elektron-KE (eV)',0,0); gctx.restore();
+
+        // KE = E - phi line, only where positive-ish
+        gctx.strokeStyle = '#39ff14'; gctx.lineWidth=2;
+        gctx.beginPath();
+        for (let E=s.phi; E<=maxE; E+=0.05){
+            const KE = E-s.phi;
+            const X=xOf(E), Y=yOf(KE);
+            if (E===s.phi) gctx.moveTo(X,Y); else gctx.lineTo(X,Y);
+        }
+        gctx.stroke();
+        // zero line
+        gctx.strokeStyle='rgba(255,255,255,0.15)';
+        gctx.beginPath(); gctx.moveTo(xOf(0),yOf(0)); gctx.lineTo(xOf(maxE),yOf(0)); gctx.stroke();
+
+        // threshold marker
+        gctx.fillStyle='#a020f0';
+        gctx.beginPath(); gctx.arc(xOf(s.phi), yOf(0), 4,0,2*Math.PI); gctx.fill();
+        gctx.fillText(`φ=${s.phi} eV`, xOf(s.phi)-10, yOf(0)+16);
+
+        // current point
+        const curKE = Math.max(s.KE, -1.5);
+        gctx.beginPath(); gctx.arc(xOf(s.E), yOf(curKE), 6,0,2*Math.PI);
+        gctx.fillStyle = s.KE>0 ? '#4cc9f0' : '#ff5a5a';
+        gctx.shadowColor = gctx.fillStyle; gctx.shadowBlur=14; gctx.fill(); gctx.shadowBlur=0;
+    }
+
+    function updateReadout(){
+        const s = state();
+        lambdaVal.textContent = s.lambda;
+        drawGraph();
+        if (s.KE>0){
+            readout.innerHTML = `E<sub>foton</sub> = 1240/λ = ${s.E.toFixed(2)} eV &gt; φ = ${s.phi} eV → elektroner slippes fri med KE = E − φ = <strong style="color:var(--aurora-green)">${s.KE.toFixed(2)} eV</strong>.`;
+        } else {
+            readout.innerHTML = `E<sub>foton</sub> = ${s.E.toFixed(2)} eV &lt; φ = ${s.phi} eV → uanset hvor kraftigt lyset skinner, rives ingen elektroner løs.`;
+        }
+    }
+    [lambdaSlider, intensitySlider, metalSel].forEach(el=>el.addEventListener('input', updateReadout));
+    updateReadout();
+})();
+
+/* ================= 04 RAYLEIGH SCATTERING ================= */
+(function(){
+    const cv = document.getElementById('rayleighCanvas');
+    const ctx = cv.getContext('2d');
+    const W=cv.width, H=cv.height;
+    const lambdaSlider = document.getElementById('rayLambda');
+    const lambdaVal = document.getElementById('rayLambdaVal');
+    const pathSlider = document.getElementById('rayPath');
+    const readout = document.getElementById('rayReadout');
+
+    let molecules = [];
+    for (let i=0;i<60;i++){
+        molecules.push({x: 120+Math.random()*(W-200), y: 40+Math.random()*(H-80), phase:Math.random()*10});
+    }
+
+    function transmittedColor(L){
+        const K0=0.15;
+        const chans = [ {nm:630,ch:'r'}, {nm:532,ch:'g'}, {nm:465,ch:'b'} ];
+        const out={r:255,g:255,b:255};
+        chans.forEach(c=>{
+            const k = K0*Math.pow(500/c.nm,4);
+            const T = Math.exp(-k*L);
+            out[c.ch] = Math.max(30, Math.round(255*T));
+        });
+        return out;
+    }
+
+    function draw(){
+        ctx.clearRect(0,0,W,H);
+        const lambda = parseFloat(lambdaSlider.value);
+        const path = parseFloat(pathSlider.value);
+        const col = wavelengthToColor(lambda);
+        const scatterStrength = Math.pow(550/lambda,4); // normalized to 550nm
+
+        // sun
+        const sunX = 60, sunY = H/2;
+        ctx.beginPath(); ctx.arc(sunX,sunY,18,0,2*Math.PI);
+        ctx.fillStyle='#fff8e0'; ctx.shadowColor='#fff8e0'; ctx.shadowBlur=25; ctx.fill(); ctx.shadowBlur=0;
+
+        // main beam
+        ctx.strokeStyle = rgbCss(col); ctx.lineWidth=3; ctx.globalAlpha=0.85;
+        ctx.beginPath(); ctx.moveTo(sunX+18,sunY); ctx.lineTo(W-40,sunY); ctx.stroke();
+        ctx.globalAlpha=1;
+
+        // molecules scattering
+        const t = performance.now()/1000;
+        molecules.forEach(m=>{
+            const twinkle = 0.6+0.4*Math.sin(t*2+m.phase);
+            const alpha = Math.min(1, scatterStrength*0.09*twinkle);
+            ctx.beginPath(); ctx.arc(m.x,m.y,2,0,2*Math.PI);
+            ctx.fillStyle='rgba(255,255,255,0.15)'; ctx.fill();
+            const rays = 5;
+            for (let i=0;i<rays;i++){
+                const ang = (i/rays)*2*Math.PI + m.phase;
+                const len = 10+scatterStrength*3;
+                ctx.beginPath();
+                ctx.moveTo(m.x,m.y);
+                ctx.lineTo(m.x+Math.cos(ang)*len, m.y+Math.sin(ang)*len);
+                ctx.strokeStyle = `rgba(${col.r},${col.g},${col.b},${alpha})`;
+                ctx.lineWidth=1.5;
+                ctx.stroke();
+            }
+        });
+
+        // sky wash
+        const skyAlpha = Math.min(0.35, scatterStrength*0.02);
+        ctx.fillStyle = `rgba(${col.r},${col.g},${col.b},${skyAlpha})`;
+        ctx.fillRect(120,20,W-240,H-40);
+
+        // sun disc at horizon showing transmitted colour after path length
+        const tc = transmittedColor(path);
+        ctx.beginPath(); ctx.arc(W-70, H-60, 26,0,2*Math.PI);
+        ctx.fillStyle = `rgb(${tc.r},${tc.g},${tc.b})`;
+        ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur=20; ctx.fill(); ctx.shadowBlur=0;
+        ctx.fillStyle='#a0a0a8'; ctx.font='12px sans-serif';
+        ctx.fillText('Sol set gennem', W-140, H-20);
+        ctx.fillText(`${path} enheder atmosfære`, W-160, H-6);
+
+        requestAnimationFrame(draw);
+    }
+    draw();
+
+    function updateReadout(){
+        const lambda = parseFloat(lambdaSlider.value);
+        lambdaVal.textContent = lambda;
+        const ratio = Math.pow(650/lambda,4);
+        readout.innerHTML = `Spredningsstyrke ∝ 1/λ⁴. Ved λ = ${lambda} nm spredes lyset ${ratio.toFixed(2)}× så kraftigt som ved 650 nm (rødt). Ved lav solhøjde (stor vejlængde) fjernes det blå fra hovedstrålen ved spredning, så solskiven bliver mere orange-rød — se solskiven til højre.`;
+    }
+    [lambdaSlider, pathSlider].forEach(el=>el.addEventListener('input', updateReadout));
+    updateReadout();
+})();
+
+/* ================= 05 DISPERSION / OSCILLATOR ================= */
+(function(){
+    const cv = document.getElementById('dispCanvas');
+    const ctx = cv.getContext('2d');
+    const W=cv.width, H=cv.height;
+    const omegaSlider = document.getElementById('dispOmega'); // 10..300 -> /100 = 0.1..3.0
+    const omegaVal = document.getElementById('dispOmegaVal');
+    const gammaSlider = document.getElementById('dispGamma'); // 5..60 -> /100
+    const readout = document.getElementById('dispReadout');
+
+    function response(omega, gamma){
+        // omega0 = 1 (normalized). alpha = 1/(1-omega^2 - i*gamma*omega)
+        const denomRe = 1 - omega*omega;
+        const denomIm = -gamma*omega;
+        const denomMagSq = denomRe*denomRe + denomIm*denomIm;
+        const alphaRe = denomRe/denomMagSq;
+        const alphaIm = -denomIm/denomMagSq; // sign so absorption (Im part) is positive-ish near resonance
+        return {alphaRe, alphaIm, amp: Math.hypot(alphaRe,alphaIm), phase: Math.atan2(-alphaIm,alphaRe)};
+    }
+
+    // graph region
+    const gx0=380, gx1=880, gy0=40, gy1=190; // n(w)
+    const gy2_0=210, gy2_1=330; // kappa(w)
+    const omegaMin=0.1, omegaMax=3.0;
+    function xOf(w){ return gx0 + (w-omegaMin)/(omegaMax-omegaMin)*(gx1-gx0); }
+
+    function drawStaticGraphs(){
+        // n(w) panel
+        ctx.strokeStyle='rgba(255,255,255,0.25)';
+        ctx.beginPath(); ctx.moveTo(gx0,gy0); ctx.lineTo(gx0,gy1); ctx.lineTo(gx1,gy1); ctx.stroke();
+        ctx.fillStyle='#a0a0a8'; ctx.font='12px sans-serif';
+        ctx.fillText('n(ω)  (brydningsindeks, skematisk)', gx0, gy0-8);
+        ctx.beginPath(); ctx.moveTo(gx0,gy2_0); ctx.lineTo(gx0,gy2_1); ctx.lineTo(gx1,gy2_1); ctx.stroke();
+        ctx.fillText('κ(ω)  (absorption)', gx0, gy2_0-8);
+        // resonance line
+        ctx.strokeStyle='rgba(255,90,90,0.4)'; ctx.setLineDash([4,3]);
+        ctx.beginPath(); ctx.moveTo(xOf(1),gy0); ctx.lineTo(xOf(1),gy1); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(xOf(1),gy2_0); ctx.lineTo(xOf(1),gy2_1); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle='rgba(255,90,90,0.7)'; ctx.fillText('ω₀', xOf(1)-8, gy1+14);
+    }
+
+    function draw(){
+        ctx.clearRect(0,0,W,H);
+        const omega = parseFloat(omegaSlider.value)/100;
+        const gamma = parseFloat(gammaSlider.value)/100;
+        omegaVal.textContent = omega.toFixed(2);
+        drawStaticGraphs();
+
+        // curves
+        let nCurve=[], kCurve=[];
+        for (let w=omegaMin; w<=omegaMax; w+=0.01){
+            const r = response(w,gamma);
+            nCurve.push({w, val: r.alphaRe});
+            kCurve.push({w, val: r.alphaIm});
+        }
+        function plot(curve, y0, y1, color, scale){
+            ctx.strokeStyle=color; ctx.lineWidth=2; ctx.beginPath();
+            curve.forEach((p,i)=>{
+                const yy = (y0+y1)/2 - p.val*scale;
+                const yc = Math.max(y0, Math.min(y1,yy));
+                const xx = xOf(p.w);
+                if(i===0) ctx.moveTo(xx,yc); else ctx.lineTo(xx,yc);
+            });
+            ctx.stroke();
+        }
+        plot(nCurve, gy0, gy1, '#39ff14', 40);
+        plot(kCurve, gy2_0, gy2_1, '#4cc9f0', 40);
+
+        // current point + electron animation (left side)
+        const r = response(omega,gamma);
+        const px = xOf(omega);
+        ctx.beginPath(); ctx.arc(px, (gy0+gy1)/2 - r.alphaRe*40, 5,0,2*Math.PI); ctx.fillStyle='#39ff14'; ctx.shadowColor='#39ff14'; ctx.shadowBlur=12; ctx.fill(); ctx.shadowBlur=0;
+        ctx.beginPath(); ctx.arc(px, (gy2_0+gy2_1)/2 - r.alphaIm*40, 5,0,2*Math.PI); ctx.fillStyle='#4cc9f0'; ctx.shadowColor='#4cc9f0'; ctx.shadowBlur=12; ctx.fill(); ctx.shadowBlur=0;
+
+        // left: nucleus-spring-electron animation, driven field arrow
+        const cx=140, cy=210;
+        const t = performance.now()/300;
+        const driveX = Math.cos(omega*t);
+        const ampScale = Math.min(60, 60*r.amp/ (1/gamma > 20 ? 1 : 1)); // clamp
+        const elecX = cx + Math.max(-70,Math.min(70, r.alphaRe*40*Math.cos(omega*t) + r.alphaIm*40*Math.sin(omega*t)));
+        // nucleus
+        ctx.beginPath(); ctx.arc(cx,cy,10,0,2*Math.PI); ctx.fillStyle='#a020f0'; ctx.fill();
+        // spring (zigzag)
+        ctx.strokeStyle='rgba(255,255,255,0.4)'; ctx.lineWidth=1.5;
+        ctx.beginPath();
+        const segs=10;
+        for(let i=0;i<=segs;i++){
+            const xx = cx + (elecX-cx)*(i/segs);
+            const yy = cy + ((i%2===0)?-6:6);
+            if(i===0) ctx.moveTo(cx,cy); else ctx.lineTo(xx,yy);
+        }
+        ctx.lineTo(elecX,cy);
+        ctx.stroke();
+        // electron
+        ctx.beginPath(); ctx.arc(elecX,cy,7,0,2*Math.PI); ctx.fillStyle='#39ff14'; ctx.shadowColor='#39ff14'; ctx.shadowBlur=14; ctx.fill(); ctx.shadowBlur=0;
+        // driving field arrow above
+        ctx.strokeStyle='#ffe0a0'; ctx.lineWidth=2;
+        ctx.beginPath(); ctx.moveTo(cx,cy-60); ctx.lineTo(cx + driveX*50, cy-60); ctx.stroke();
+        ctx.beginPath(); ctx.arc(cx+driveX*50, cy-60, 3,0,2*Math.PI); ctx.fillStyle='#ffe0a0'; ctx.fill();
+        ctx.fillStyle='#ffe0a0'; ctx.font='11px sans-serif'; ctx.fillText('E-felt (drivende)', cx-40, cy-70);
+        ctx.fillStyle='#a0a0a8'; ctx.fillText('elektron', cx-20, cy+30);
+
+        requestAnimationFrame(draw);
+    }
+    draw();
+
+    function updateReadout(){
+        const omega = parseFloat(omegaSlider.value)/100;
+        const gamma = parseFloat(gammaSlider.value)/100;
+        const r = response(omega,gamma);
+        const phaseDeg = (r.phase*180/Math.PI).toFixed(0);
+        let region = omega<0.9 ? 'under resonansen: n vokser med ω (normal dispersion)' : (omega>1.1 ? 'over resonansen: n aftager med ω (anomalt)' : 'tæt på resonansen: absorptionen κ topper');
+        readout.innerHTML = `ω/ω₀ = ${omega.toFixed(2)} → faseforskydning mellem elektron og drivende felt ≈ ${phaseDeg}°. Dette svarer til at være ${region}.`;
+    }
+    [omegaSlider, gammaSlider].forEach(el=>el.addEventListener('input', updateReadout));
+    updateReadout();
+})();
+
+/* ================= 06 FLUORESCENCE ================= */
+(function(){
+    const cv = document.getElementById('fluorCanvas');
+    const ctx = cv.getContext('2d');
+    const W=cv.width, H=cv.height;
+    const btn = document.getElementById('fluorFire');
+    const readout = document.getElementById('fluorReadout');
+
+    const S0y = 340, S1y = 90;
+    const vibLevels = [0,1,2,3];
+    const groundX = 200, exciteX = 200;
+
+    let anim = null; // {phase, t}
+    const absLambda = 365; // UV
+    const emitLambda = 520; // green — Stokes shifted
+
+    function levelY(baseY, vib, up){
+        return baseY + (up? -vib*14 : vib*10);
+    }
+
+    function drawDiagram(){
+        ctx.clearRect(0,0,W,H);
+        // S0 vibrational levels
+        ctx.strokeStyle='rgba(76,201,240,0.6)'; ctx.lineWidth=2;
+        vibLevels.forEach(v=>{
+            const y = S0y - v*10;
+            ctx.beginPath(); ctx.moveTo(120,y); ctx.lineTo(320,y); ctx.stroke();
+        });
+        ctx.fillStyle='#4cc9f0'; ctx.font='13px sans-serif'; ctx.fillText('Grundtilstand S₀', 120, S0y+30);
+
+        // S1 vibrational levels
+        ctx.strokeStyle='rgba(160,32,240,0.6)';
+        vibLevels.forEach(v=>{
+            const y = S1y + v*14;
+            ctx.beginPath(); ctx.moveTo(120,y); ctx.lineTo(320,y); ctx.stroke();
+        });
+        ctx.fillStyle='#a020f0'; ctx.fillText('Exciteret tilstand S₁', 120, S1y-16);
+
+        // molecule glyph on the right
+        ctx.beginPath(); ctx.arc(650,220,26,0,2*Math.PI);
+        ctx.fillStyle = anim && anim.glow ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.15)';
+        ctx.shadowColor='#fff'; ctx.shadowBlur = anim && anim.glow ? 30 : 0;
+        ctx.fill(); ctx.shadowBlur=0;
+        ctx.fillStyle='#e0e0e0'; ctx.font='12px sans-serif'; ctx.fillText('fluorescerende molekyle', 570,270);
+
+        if (!anim) { requestAnimationFrame(drawDiagram); return; }
+
+        const uvCol = wavelengthToColor(absLambda);
+        const emCol = wavelengthToColor(emitLambda);
+
+        if (anim.phase==='absorb'){
+            const x0=40, x1=200, y=levelY(S0y,0,false);
+            const x = x0 + (x1-x0)*anim.t;
+            ctx.beginPath(); ctx.arc(x,y,6,0,2*Math.PI); ctx.fillStyle=rgbCss(uvCol); ctx.shadowColor=rgbCss(uvCol); ctx.shadowBlur=16; ctx.fill(); ctx.shadowBlur=0;
+            anim.t += 0.035;
+            if (anim.t>=1){ anim.phase='jump'; anim.t=0; }
+        } else if (anim.phase==='jump'){
+            // electron dot moves from S0 ground vib to S1 top vib level
+            const y0 = S0y, y1 = levelY(S1y,3,true);
+            const y = y0 + (y1-y0)*anim.t;
+            ctx.beginPath(); ctx.arc(250,y,6,0,2*Math.PI); ctx.fillStyle='#39ff14'; ctx.shadowColor='#39ff14'; ctx.shadowBlur=14; ctx.fill(); ctx.shadowBlur=0;
+            anim.t += 0.04;
+            if (anim.t>=1){ anim.phase='relax'; anim.t=0; anim.glow=true; }
+        } else if (anim.phase==='relax'){
+            // wiggly little arrows down through vib levels of S1, releasing heat
+            const yTop = levelY(S1y,3,true), yBot = levelY(S1y,0,true);
+            const y = yTop + (yBot-yTop)*anim.t;
+            ctx.beginPath(); ctx.arc(250,y,6,0,2*Math.PI); ctx.fillStyle='#39ff14'; ctx.shadowColor='#39ff14'; ctx.shadowBlur=14; ctx.fill(); ctx.shadowBlur=0;
+            for (let i=0;i<3;i++){
+                ctx.strokeStyle='rgba(255,122,42,0.5)';
+                ctx.beginPath();
+                const wy = yTop + (i+1)*8 + Math.sin(performance.now()/60+i)*2;
+                ctx.moveTo(270,wy); ctx.lineTo(285,wy+4); ctx.lineTo(275,wy+8);
+                ctx.stroke();
+            }
+            ctx.fillStyle='rgba(255,122,42,0.8)'; ctx.font='11px sans-serif'; ctx.fillText('varmetab (svingninger)', 300, yTop+15);
+            anim.t += 0.03;
+            if (anim.t>=1){ anim.phase='emit'; anim.t=0; }
+        } else if (anim.phase==='emit'){
+            const x0=250, x1=650, y0=levelY(S1y,0,true), y1=220;
+            const x = x0 + (x1-x0)*anim.t;
+            const y = y0 + (y1-y0)*anim.t;
+            ctx.beginPath(); ctx.arc(x,y,6,0,2*Math.PI); ctx.fillStyle=rgbCss(emCol); ctx.shadowColor=rgbCss(emCol); ctx.shadowBlur=18; ctx.fill(); ctx.shadowBlur=0;
+            anim.t += 0.03;
+            if (anim.t>=1){
+                anim.phase='out';
+                anim.t=0;
+                readout.innerHTML = `Absorberet: ${absLambda} nm (${(1240/absLambda).toFixed(2)} eV, ultraviolet). Efter varmetab udsendes: ${emitLambda} nm (${(1240/emitLambda).toFixed(2)} eV, grønt). Stokes-forskydning = ${(1240/absLambda-1240/emitLambda).toFixed(2)} eV tabt som varme.`;
+            }
+        } else if (anim.phase==='out'){
+            const ang = anim.ang===undefined ? (anim.ang=Math.random()*2*Math.PI) : anim.ang;
+            anim.t += 0.03;
+            const x = 650 + Math.cos(ang)*anim.t*250;
+            const y = 220 + Math.sin(ang)*anim.t*180;
+            ctx.beginPath(); ctx.arc(x,y,5,0,2*Math.PI); ctx.fillStyle=rgbCss(emCol); ctx.shadowColor=rgbCss(emCol); ctx.shadowBlur=14; ctx.fill(); ctx.shadowBlur=0;
+            if (anim.t>=1){ anim=null; }
+        }
+
+        requestAnimationFrame(drawDiagram);
+    }
+    drawDiagram();
+
+    btn.addEventListener('click', ()=>{
+        anim = {phase:'absorb', t:0, glow:false};
+        readout.textContent = 'Ultraviolet foton absorberes …';
+    });
+})();
+</script>
+</body>
+</html>
