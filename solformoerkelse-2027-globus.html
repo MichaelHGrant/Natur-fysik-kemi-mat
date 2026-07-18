@@ -122,6 +122,8 @@ footer a{color:var(--aurora-blue);text-decoration:none}
       </div>
       <label class="toggle"><input type="checkbox" id="spin" checked> auto-rotation</label>
       <label class="toggle"><input type="checkbox" id="showBand" checked> bånd</label>
+      <label class="toggle"><input type="checkbox" id="showGrid" checked> gradnet</label>
+      <label class="toggle"><input type="checkbox" id="showClouds" checked> skyer</label>
     </div>
 
     <div class="readout">
@@ -192,7 +194,7 @@ const ECLIPSE = {"centralLine": [{"ut": 8.4367, "lat": 29.477, "lon": -39.679, "
 const D2R = Math.PI/180;
 function llToVec(lat, lon, r=1){
   const la=lat*D2R, lo=lon*D2R;
-  return new THREE.Vector3(r*Math.cos(la)*Math.cos(lo), r*Math.sin(la), r*Math.cos(la)*Math.sin(lo));
+  return new THREE.Vector3(r*Math.cos(la)*Math.sin(lo), r*Math.sin(la), r*Math.cos(la)*Math.cos(lo));
 }
 const CL = ECLIPSE.centralLine;
 const UT0 = CL[0].ut, UT1 = CL[CL.length-1].ut;
@@ -208,6 +210,8 @@ const camera=new THREE.PerspectiveCamera(42, 1, 0.01, 100);
 let camDist=3.15; camera.position.set(0,0,camDist);
 const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.outputEncoding=THREE.sRGBEncoding;
 stage.appendChild(renderer.domElement);
 
 function resize(){const w=stage.clientWidth,h=stage.clientHeight;renderer.setSize(w,h);
@@ -215,16 +219,35 @@ function resize(){const w=stage.clientWidth,h=stage.clientHeight;renderer.setSiz
 window.addEventListener('resize',resize);
 
 /* lights */
-scene.add(new THREE.AmbientLight(0x6070a0, 0.55));
+scene.add(new THREE.AmbientLight(0x445566, 0.22));
 const globe=new THREE.Group(); scene.add(globe);
-const sun=new THREE.DirectionalLight(0xfff4e0, 1.25);
+const sun=new THREE.DirectionalLight(0xffeedd, 2.4);
 const sunTarget=new THREE.Object3D(); globe.add(sunTarget);
 sun.target=sunTarget; globe.add(sun);
 
-/* Earth sphere */
-const earthMat=new THREE.MeshPhongMaterial({color:0x123a63, emissive:0x061022, specular:0x225588, shininess:12});
-const earth=new THREE.Mesh(new THREE.SphereGeometry(1,64,48), earthMat);
+/* Earth sphere — realistic NASA "blue marble" textures (same set as Newtons Kanon) */
+const IMG='https://unpkg.com/three-globe/example/img/';
+const texLoader=new THREE.TextureLoader();
+const dayTex=texLoader.load(IMG+'earth-blue-marble.jpg'); dayTex.encoding=THREE.sRGBEncoding;
+const bumpTex=texLoader.load(IMG+'earth-topology.png');
+const waterTex=texLoader.load(IMG+'earth-water.png');
+const earthMat=new THREE.MeshPhongMaterial({map:dayTex,bumpMap:bumpTex,bumpScale:0.015,
+  specularMap:waterTex,specular:new THREE.Color('grey'),shininess:18});
+const earth=new THREE.Mesh(new THREE.SphereGeometry(1,64,64), earthMat);
+earth.rotation.y=-Math.PI/2;                       // align equirectangular map to lat/lon
 globe.add(earth);
+// clouds (slowly drifting)
+const cloudTex=texLoader.load(IMG+'earth-clouds.png');
+const clouds=new THREE.Mesh(new THREE.SphereGeometry(1.006,64,64),
+  new THREE.MeshPhongMaterial({map:cloudTex,transparent:true,opacity:0.8,
+    blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
+earth.add(clouds);
+// starfield backdrop
+(function(){const g=new THREE.BufferGeometry();const n=1500;const p=new Float32Array(n*3);
+  for(let i=0;i<n;i++){const u=Math.random()*2-1,th=Math.random()*Math.PI*2,rr=45+Math.random()*15,s=Math.sqrt(1-u*u);
+    p[i*3]=rr*s*Math.cos(th);p[i*3+1]=rr*u;p[i*3+2]=rr*s*Math.sin(th);}
+  g.setAttribute('position',new THREE.BufferAttribute(p,3));
+  scene.add(new THREE.Points(g,new THREE.PointsMaterial({color:0xffffff,size:1.4,sizeAttenuation:false,toneMapped:false})));})();
 
 /* atmosphere (fresnel rim) */
 const atmMat=new THREE.ShaderMaterial({
@@ -238,21 +261,19 @@ const atmMat=new THREE.ShaderMaterial({
 });
 globe.add(new THREE.Mesh(new THREE.SphereGeometry(1.025,64,48), atmMat));
 
-/* graticule */
+/* graticule (faint, over the texture, toggleable) */
+const gratGroup=new THREE.Group(); globe.add(gratGroup);
 (function(){
-  const pts=[]; const R=1.002;
-  for(let lon=-180;lon<180;lon+=15){const major=(lon%90===0);
-    for(let lat=-90;lat<90;lat+=3){pts.push(llToVec(lat,lon,R),llToVec(lat+3,lon,R));}}
-  for(let lat=-75;lat<=75;lat+=15){const major=(lat===0);
-    for(let lon=-180;lon<180;lon+=3){pts.push(llToVec(lat,lon,R),llToVec(lat,lon+3,R));}}
+  const pts=[]; const R=1.004;
+  for(let lon=-180;lon<180;lon+=15){for(let lat=-90;lat<90;lat+=3){pts.push(llToVec(lat,lon,R),llToVec(lat+3,lon,R));}}
+  for(let lat=-75;lat<=75;lat+=15){for(let lon=-180;lon<180;lon+=3){pts.push(llToVec(lat,lon,R),llToVec(lat,lon+3,R));}}
   const g=new THREE.BufferGeometry().setFromPoints(pts);
-  globe.add(new THREE.LineSegments(g,new THREE.LineBasicMaterial({color:0x2f6f95,transparent:true,opacity:0.28})));
-  // equator + prime meridian brighter
+  gratGroup.add(new THREE.LineSegments(g,new THREE.LineBasicMaterial({color:0x9fd6f2,transparent:true,opacity:0.13,toneMapped:false})));
   const eq=[],pm=[];
   for(let lon=-180;lon<=180;lon+=2)eq.push(llToVec(0,lon,R*1.0005));
   for(let lat=-90;lat<=90;lat+=2)pm.push(llToVec(lat,0,R*1.0005));
-  globe.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(eq),new THREE.LineBasicMaterial({color:0x4cc9f0,transparent:true,opacity:0.5})));
-  globe.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pm),new THREE.LineBasicMaterial({color:0x4cc9f0,transparent:true,opacity:0.35})));
+  gratGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(eq),new THREE.LineBasicMaterial({color:0xaee6ff,transparent:true,opacity:0.22,toneMapped:false})));
+  gratGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pm),new THREE.LineBasicMaterial({color:0xaee6ff,transparent:true,opacity:0.18,toneMapped:false})));
 })();
 
 /* ---------- eclipse path ---------- */
@@ -261,13 +282,13 @@ globe.add(new THREE.Mesh(new THREE.SphereGeometry(1.025,64,48), atmMat));
   const cpts=CL.map(c=>llToVec(c.lat,c.lon,1.006));
   const curve=new THREE.CatmullRomCurve3(cpts);
   const tube=new THREE.Mesh(new THREE.TubeGeometry(curve,Math.max(64,CL.length),0.0032,8,false),
-    new THREE.MeshBasicMaterial({color:0xffe14d}));
+    new THREE.MeshBasicMaterial({color:0xffe14d,toneMapped:false}));
   globe.add(tube);
 })();
 // limits
 function limitLine(key){const p=CL.map(c=>llToVec(c[key+'lat'],c[key+'lon'],1.004));
   return new THREE.Line(new THREE.BufferGeometry().setFromPoints(p),
-    new THREE.LineBasicMaterial({color:0xc9922e,transparent:true,opacity:0.7}));}
+    new THREE.LineBasicMaterial({color:0xffc94d,transparent:true,opacity:0.85,toneMapped:false}));}
 globe.add(limitLine('n')); globe.add(limitLine('s'));
 // band ribbon between N and S limits
 const bandMesh=(function(){
@@ -278,7 +299,7 @@ const bandMesh=(function(){
   for(let i=0;i<CL.length-1;i++){const a=2*i,b=2*i+1,c=2*i+2,d=2*i+3;idx.push(a,b,c,b,d,c);}
   const g=new THREE.BufferGeometry();
   g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setIndex(idx); g.computeVertexNormals();
-  const m=new THREE.MeshBasicMaterial({color:0x7b3fa0,transparent:true,opacity:0.30,side:THREE.DoubleSide,depthWrite:false});
+  const m=new THREE.MeshBasicMaterial({color:0x8a4fd0,transparent:true,opacity:0.34,side:THREE.DoubleSide,depthWrite:false,toneMapped:false});
   const mesh=new THREE.Mesh(g,m); globe.add(mesh); return mesh;
 })();
 
@@ -291,7 +312,7 @@ function makeLabel(text,color){
   ctx.fillStyle='rgba(5,6,10,0.55)'; ctx.fillRect(0,0,cv.width,cv.height);
   ctx.fillStyle=color; ctx.fillText(text,pad,cv.height/2);
   const tex=new THREE.CanvasTexture(cv); tex.minFilter=THREE.LinearFilter;
-  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false,toneMapped:false}));
   const sc=0.0016; sp.scale.set(cv.width*sc,cv.height*sc,1); sp.renderOrder=5;
   return sp;
 }
@@ -299,21 +320,21 @@ ECLIPSE.cities.forEach(c=>{
   const v=llToVec(c.lat,c.lon,1.007);
   const col=c.hi? 0xffd24d : 0x9fb4c8;
   const dot=new THREE.Mesh(new THREE.SphereGeometry(c.hi?0.0075:0.005,10,10),
-      new THREE.MeshBasicMaterial({color:col})); dot.position.copy(v); globe.add(dot);
+      new THREE.MeshBasicMaterial({color:col,toneMapped:false})); dot.position.copy(v); globe.add(dot);
   const lab=makeLabel(c.name, c.hi?'#ffe08a':'#c7d4e0'); lab.position.copy(v.clone().multiplyScalar(1.045)); globe.add(lab);
 });
 // greatest eclipse marker
 (function(){const g=ECLIPSE.greatest; const v=llToVec(g.lat,g.lon,1.008);
   const ring=new THREE.Mesh(new THREE.RingGeometry(0.012,0.02,24),
-    new THREE.MeshBasicMaterial({color:0xff3355,side:THREE.DoubleSide,transparent:true,opacity:0.9}));
+    new THREE.MeshBasicMaterial({color:0xff3355,side:THREE.DoubleSide,transparent:true,opacity:0.95,toneMapped:false}));
   ring.position.copy(v); ring.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),v.clone().normalize()); globe.add(ring);
   const lab=makeLabel('Størst: '+fmtDur(g.dur),'#ff9db0'); lab.position.copy(v.clone().multiplyScalar(1.06)); globe.add(lab);
 })();
 
 /* ---------- umbra disk (animated) ---------- */
 const umbraGeo=new THREE.CircleGeometry(1,40);
-const umbra=new THREE.Mesh(umbraGeo,new THREE.MeshBasicMaterial({color:0x120a1e,transparent:true,opacity:0.62,side:THREE.DoubleSide,depthWrite:false}));
-const umbraRim=new THREE.Mesh(new THREE.RingGeometry(0.9,1.0,40),new THREE.MeshBasicMaterial({color:0xee3355,transparent:true,opacity:0.85,side:THREE.DoubleSide,depthWrite:false}));
+const umbra=new THREE.Mesh(umbraGeo,new THREE.MeshBasicMaterial({color:0x0a0512,transparent:true,opacity:0.66,side:THREE.DoubleSide,depthWrite:false,toneMapped:false}));
+const umbraRim=new THREE.Mesh(new THREE.RingGeometry(0.9,1.0,40),new THREE.MeshBasicMaterial({color:0xff4466,transparent:true,opacity:0.9,side:THREE.DoubleSide,depthWrite:false,toneMapped:false}));
 umbra.add(umbraRim); globe.add(umbra);
 
 /* sun direction sprite */
@@ -397,6 +418,8 @@ document.getElementById('toGreatest').addEventListener('click',()=>{
   const g=ECLIPSE.greatest;setUT(g.ut);targetQuat=faceQuat(g.lat,g.lon);playing=false;playBtn.textContent='▶ Afspil';});
 document.getElementById('reset').addEventListener('click',()=>{targetQuat=faceQuat(28,18);camDist=3.15;camera.position.setLength(camDist);});
 document.getElementById('showBand').addEventListener('change',e=>{bandMesh.visible=e.target.checked;});
+document.getElementById('showGrid').addEventListener('change',e=>{gratGroup.visible=e.target.checked;});
+document.getElementById('showClouds').addEventListener('change',e=>{clouds.visible=e.target.checked;});
 const spinChk=document.getElementById('spin');
 
 /* ---------- loop ---------- */
@@ -404,6 +427,7 @@ const clock=new THREE.Clock();
 function animate(){
   requestAnimationFrame(animate);
   const dt=clock.getDelta();
+  clouds.rotation.y += dt*0.02;
   if(playing){ut+=dt*speed*((UT1-UT0)/16);   // full path in ~16 s at 1×
     if(ut>=UT1){ut=UT1;playing=false;playBtn.textContent='▶ Afspil';}
     timeSlider.value=(ut-UT0)/(UT1-UT0);}
