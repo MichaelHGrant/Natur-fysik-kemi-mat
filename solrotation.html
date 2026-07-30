@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Måling af Solens differentielle rotation fra en dansk baghave: eVscope2-solpletfotografering, geometrisk kalibrering mod NOAA, fem selvfundne fejl, og et resultat der lykkedes for én gruppe men ikke for koefficienten B.">
+<title>Solens rotation – Michael Grant</title>
+<style>
+:root {
+    --space-black:#0b0d17; --space-deep:#050608;
+    --aurora-green:#39ff14; --aurora-purple:#a020f0; --aurora-blue:#4cc9f0;
+    --text-light:#e0e0e0; --text-dim:#a0a0a8;
+    --card-bg:rgba(255,255,255,0.04); --card-border:rgba(57,255,20,0.18);
+    --sacred-gold:#f5c878; --sacred-gold-bright:#ffe0a0;
+    --warn-red:#ff6b6b; --pink:#ff8ae0;
+}
+* { box-sizing:border-box; }
+html { scroll-behavior:smooth; scroll-padding-top:70px; }
+body {
+    font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
+    background-color:var(--space-black);
+    background-image:
+        radial-gradient(circle at 15% 8%, rgba(160,32,240,0.08), transparent 40%),
+        radial-gradient(circle at 85% 55%, rgba(57,255,20,0.05), transparent 40%);
+    color:var(--text-light); line-height:1.65; margin:0;
+}
+a { color:var(--aurora-blue); }
+.crumbwrap {
+    background:rgba(11,13,23,0.92); backdrop-filter:blur(10px);
+    border-bottom:1px solid rgba(57,255,20,0.2); padding:0.7rem 1.2rem;
+    font-size:0.85rem; color:var(--text-dim); position:sticky; top:0; z-index:50;
+}
+.crumbwrap a { color:var(--aurora-green); text-decoration:none; }
+.crumbwrap a:hover { text-decoration:underline; }
+.crumbwrap .sep { margin:0 0.5rem; opacity:0.5; }
+.crumbwrap strong { color:var(--text-light); font-weight:600; }
+
+header.hero {
+    text-align:center; padding:3.5rem 1.5rem 2rem;
+    background:linear-gradient(to bottom, #1a1a2e, var(--space-black));
+    border-bottom:1px solid rgba(160,32,240,0.15);
+}
+.eyebrow {
+    display:inline-block; font-size:0.75rem; letter-spacing:0.3em; text-transform:uppercase;
+    color:var(--sacred-gold); border:1px solid rgba(245,200,120,0.35); border-radius:20px;
+    padding:0.35rem 1rem; margin-bottom:1.3rem;
+}
+header.hero h1 {
+    font-size:clamp(2.2rem,6vw,3.6rem); color:var(--aurora-green);
+    text-shadow:0 0 25px rgba(57,255,20,0.4); margin:0 0 0.6rem; letter-spacing:0.3px;
+}
+header.hero .tagline {
+    font-size:1.1rem; color:var(--text-dim); max-width:680px; margin:0 auto 1.6rem; line-height:1.7;
+}
+header.hero .byline { font-size:0.95rem; color:var(--aurora-purple); }
+header.hero .byline .role { color:var(--text-dim); font-size:0.85rem; display:block; margin-top:0.2rem; }
+
+main { max-width:980px; margin:0 auto; padding:0 1.5rem 3rem; }
+
+/* hero video */
+.hero-media { max-width:820px; margin:2.2rem auto 0; padding:0 1.5rem; }
+.hero-media video, .hero-media img {
+    width:100%; border-radius:14px; border:1px solid rgba(57,255,20,0.25);
+    box-shadow:0 0 40px rgba(57,255,20,0.1), 0 20px 50px rgba(0,0,0,0.5); display:block;
+}
+.hero-caption { text-align:center; font-size:0.82rem; color:var(--text-dim); font-style:italic; margin-top:0.7rem; }
+
+/* numbered sections */
+.snum-section { margin:4rem 0 1rem; }
+.snum-head { display:flex; align-items:baseline; gap:0.9rem; margin-bottom:1.3rem;
+    border-left:4px solid var(--aurora-green); padding:0.3rem 0 0.3rem 1.1rem; }
+.snum-head .n { font-size:1.5rem; color:var(--aurora-purple); font-weight:300; }
+.snum-head h2 { font-size:1.65rem; color:var(--aurora-green); margin:0; letter-spacing:0.2px; }
+.snum-section p { font-size:1.02rem; color:var(--text-light); }
+.snum-section p.lede { font-size:1.1rem; color:#fff; }
+
+/* formula block */
+.formula {
+    background:rgba(76,201,240,0.05); border:1px solid rgba(76,201,240,0.25);
+    border-left:3px solid var(--aurora-blue); border-radius:0 10px 10px 0;
+    padding:1rem 1.4rem; margin:1.3rem 0; font-size:1.05rem; color:var(--aurora-blue);
+    text-align:center; overflow-x:auto;
+}
+
+/* stat callout */
+.stat-row { display:flex; flex-wrap:wrap; gap:1.2rem; margin:1.6rem 0; }
+.stat-box {
+    flex:1 1 220px; background:var(--card-bg); border:1px solid var(--card-border);
+    border-radius:12px; padding:1.3rem 1.4rem; text-align:center;
+}
+.stat-box .num { font-size:1.9rem; font-weight:700; color:var(--aurora-green); display:block; }
+.stat-box .lab { font-size:0.85rem; color:var(--text-dim); margin-top:0.3rem; }
+.stat-box.gold .num { color:var(--sacred-gold-bright); }
+.stat-box.warn .num { color:var(--warn-red); }
+
+/* comparison panel */
+.compare {
+    display:grid; grid-template-columns:1fr 1fr; gap:1px; background:rgba(255,255,255,0.08);
+    border-radius:12px; overflow:hidden; margin:1.6rem 0; border:1px solid var(--card-border);
+}
+.compare > div { background:var(--space-black); padding:1.3rem 1.4rem; }
+.compare h4 { margin:0 0 0.8rem; color:var(--aurora-blue); font-size:0.9rem; text-transform:uppercase;
+    letter-spacing:0.4px; }
+.compare dl { margin:0; }
+.compare dt { font-size:0.8rem; color:var(--text-dim); margin-top:0.6rem; }
+.compare dt:first-child { margin-top:0; }
+.compare dd { margin:0; font-size:1.05rem; color:var(--text-light); font-weight:600; }
+@media (max-width:600px) { .compare { grid-template-columns:1fr; } }
+
+/* figure */
+.fig { margin:1.8rem 0; text-align:center; }
+.fig img { max-width:100%; border-radius:12px; border:1px solid rgba(255,255,255,0.08); }
+.fig figcaption { font-size:0.85rem; color:var(--text-dim); margin-top:0.7rem; font-style:italic;
+    max-width:640px; margin-left:auto; margin-right:auto; }
+
+/* correction list */
+.correction {
+    background:var(--card-bg); border:1px solid var(--card-border); border-radius:12px;
+    padding:1.2rem 1.4rem; margin:1.1rem 0;
+}
+.correction h4 { margin:0 0 0.5rem; color:var(--aurora-green); font-size:1.05rem; }
+.correction p { margin:0; font-size:0.96rem; color:var(--text-light); }
+
+/* gallery */
+.gallery { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:1rem; margin:1.6rem 0; }
+.gallery figure { margin:0; background:var(--card-bg); border:1px solid var(--card-border);
+    border-radius:12px; overflow:hidden; }
+.gallery img { width:100%; display:block; }
+.gallery figcaption { padding:0.6rem 0.8rem; font-size:0.8rem; color:var(--text-dim); text-align:center; }
+
+/* pull quote */
+.pullquote {
+    font-size:1.25rem; color:var(--sacred-gold-bright); border-left:3px solid var(--sacred-gold);
+    padding:0.4rem 0 0.4rem 1.3rem; margin:2rem 0; font-style:italic; line-height:1.5;
+}
+
+footer { margin-top:4rem; padding:2rem 1.5rem; font-size:0.85rem; color:var(--text-dim);
+    text-align:center; border-top:1px solid rgba(255,255,255,0.06); }
+footer a { color:var(--aurora-blue); text-decoration:none; }
+
+@media (max-width:600px) {
+    header.hero { padding:2.5rem 1rem 1.6rem; }
+    .snum-head h2 { font-size:1.3rem; }
+    .compare > div { padding:1rem; }
+}
+</style>
+</head>
+<body>
+
+<div class="crumbwrap">
+    <a href="index.html">← Fysik, matematik &amp; kemi</a>
+    <span class="sep">·</span> Astronomi / <strong>Solens rotation</strong>
+</div>
+
+<header class="hero">
+    <span class="eyebrow">Amatørforskning · Fysik</span>
+    <h1>Solens rotation</h1>
+    <p class="tagline">
+        Hvad et amatørteleskop, en håndfuld solpletter og halvanden måneds stædighed
+        kan — og ikke kan — afsløre om Solens indre.
+    </p>
+    <p class="byline">
+        Michael Howard Grant
+        <span class="role">Lektor emeritus · Grenaa Gymnasium · Sostrup, Djursland (56°N 11°E)</span>
+    </p>
+</header>
+
+<div class="hero-media">
+    <video controls loop muted playsinline poster="solrotation-poster.webp">
+        <source src="solrotation-animation.mp4" type="video/mp4">
+        Din browser kan ikke afspille video. <a href="solrotation-poster.webp">Se stillbilledet i stedet</a>.
+    </video>
+    <p class="hero-caption">16 optagelser, 20.–30. juli 2026, deroteret så Solens nordpol vender opad.
+        Det cyan gitter er fast i forhold til centralmeridianen — pletternes drift gennem det <em>er</em>
+        selve rotationen.</p>
+</div>
+
+<main>
+
+<p class="lede" style="margin-top:2.5rem;">
+    Solen roterer ikke som en fast kugle. Det vidste man allerede i 1630'erne, da de første
+    observatører fulgte solpletter hen over skiven og opdagede, at pletter nær ækvator når rundt
+    om Solen hurtigere end pletter længere mod polerne — et af de tidligste beviser på, at Solen
+    er en flydende plasmakugle. At måle det selv, med et forbrugerteleskop fra en baghave i
+    Danmark, lød som en overkommelig sommerferieopgave. Det blev til halvanden måneds daglige
+    billeder, fem selvopdagede fejl, og et resultat der både lykkedes og ikke lykkedes.
+</p>
+
+<!-- 01 -->
+<section class="snum-section" id="spoergsmaal">
+    <div class="snum-head"><span class="n">01</span><h2>Spørgsmålet og udstyret</h2></div>
+    <p>Udstyret er et <strong>Unistellar eVscope2</strong>, et 11,4&nbsp;cm katadioptrisk teleskop
+        med indbygget solfilter og automatisk billedstakning — ikke et forskningsinstrument, men
+        skarpt nok til at vise solpletter tydeligt på en hvidlys-solskive.</p>
+    <p>Spørgsmålet var konkret: kan man, ud fra en serie billeder over nogle uger, genmåle den
+        klassiske sammenhæng mellem solpletternes rotationshastighed Ω og deres heliografiske
+        bredde φ, først kortlagt af Newton og Nunn i 1951 ud fra tusindvis af professionelle
+        pletmålinger?</p>
+    <div class="formula">Ω(φ) = A &minus; B·sin²φ &nbsp;&nbsp;&nbsp; A = 14,44°/døgn &nbsp; B = 2,8°/døgn</div>
+    <p>A er rotationen ved selve ækvator; B beskriver, hvor meget langsommere rotationen bliver
+        mod polerne — selve differentialrotationen, drivkraften bag Solens magnetfelt.</p>
+</section>
+
+<!-- 02 -->
+<section class="snum-section" id="metode">
+    <div class="snum-head"><span class="n">02</span><h2>Fra billede til breddegrad</h2></div>
+    <p>Hvert billede viser en flad skive med et par mørke pletter. Solens rotationsakse er ikke
+        lodret i billedet — kameraets orientering mod himlen skifter time for time, fordi
+        eVscope2 sidder på en alt-azimutal montering uden derotator. Vinklen kaldes den
+        <strong>parallaktiske vinkel</strong>:</p>
+    <div class="formula">q&nbsp;=&nbsp;atan2( sin H , tan φ_obs·cos δ &minus; sin δ·cos H )</div>
+    <p>Med q kendt kan billedet drejes tilbage, så Solens egen akse peger lodret op. Herfra er
+        det ren projektionsgeometri: en plet, målt som afstand fra skivecentrum, løftes til en
+        kugleflade og roteres ind i det heliografiske koordinatsystem — ud kommer breddegrad og
+        længdegrad. Lægges Solens kendte stive rotationsrate (Carringtons konstant,
+        14,1844°/døgn) til, giver driften i pletternes længdegrad, dag for dag, selve den
+        rotation, man leder efter.</p>
+    <p>Hele kæden er valideret uafhængigt mod NOAA/USAF's daglige <em>Solar Region Summary</em>:
+        43 breddemålinger matchede de officielle positioner til en spredning på 0,7° — uden en
+        eneste tilpasset fri parameter i geometrien.</p>
+</section>
+
+<!-- 03 -->
+<section class="snum-section" id="fejl">
+    <div class="snum-head"><span class="n">03</span><h2>Fem gange forkert, før det blev rigtigt</h2></div>
+    <p>Den mest lærerige del af forløbet var ikke fysikken, men fejlene, der undervejs så ud som
+        fysik og viste sig at være teknik.</p>
+
+    <div class="correction">
+        <h4>Tidszonen</h4>
+        <p>eVscope2 skriver tidsstemplet i filnavnet i UTC, ikke lokal tid. Fejlen — to timer i
+            sommertid — blev ikke opdaget i fem udgaver af den løbende statusrapport, fordi
+            rullevinklen blev tilpasset for hvert billede og lydløst <em>opslugte</em> fejlen.
+            Da tiden blev rettet, viste instrumentet sig at have intet målbart rul overhovedet.</p>
+    </div>
+    <div class="correction">
+        <h4>Randproblemet</h4>
+        <p>Nær solskivens rand komprimerer projektionen længdegraderne kraftigt. Løsningen var
+            først at kassere alle randnære målinger — men projektionen er matematisk eksakt
+            invertibel; problemet er ikke geometrien, men at randnære målinger er <em>mindre
+            præcise</em>, ikke <em>forkerte</em>. Den rigtige behandling er at vægte hver måling
+            efter sin præcision, ikke sætte en hård grænse og smide data væk.</p>
+    </div>
+    <div class="correction">
+        <h4>Randfinderen selv</h4>
+        <p>En tærskelbaseret metode til at finde skivens rand brød sammen ved let skydække — og
+            ved Unistellars annoterede billeder, hvor en tynd hvid ring blev fejllæst som selve
+            solranden. En gradientbaseret randfinder, der leder efter det stejleste lysfald i
+            stedet for et fast lysniveau, løste begge problemer på én gang.</p>
+    </div>
+    <div class="correction">
+        <h4>Gruppematchning</h4>
+        <p>To nye pletgrupper, kun 12° fra hinanden i længde, blev forvekslet af et for bredt
+            søgevindue og gav en fysisk umulig rotationshastighed. Løsningen: gør søgevinduet
+            smallere end afstanden mellem nabogrupper. Pointen sidder: et resultat, der strider
+            mod al kendt fysik, er en grund til at lede efter en analysefejl — ikke en grund til
+            straks at forkaste det som støj.</p>
+    </div>
+
+    <p>Fælles for fejlene: hver af dem så, indtil den blev fundet, ud som en interessant fysisk
+        konklusion. Ingen af dem var det — og hver rettelse bragte resultatet tættere på den
+        accepterede fysik, aldrig længere væk.</p>
+</section>
+
+<!-- 04 -->
+<section class="snum-section" id="resultater">
+    <div class="snum-head"><span class="n">04</span><h2>Resultatet: to svar, ikke ét</h2></div>
+    <p>Den bedst fulgte gruppe, AR4492, blev sporet gennem otte hele døgn, 13 gange, ved en
+        heliografisk bredde på 15,6°.</p>
+
+    <div class="stat-row">
+        <div class="stat-box gold">
+            <span class="num">14,247 ± 0,027°</span>
+            <span class="lab">målt sideriske rotation, AR4492</span>
+        </div>
+        <div class="stat-box">
+            <span class="num">14,24°</span>
+            <span class="lab">Newton &amp; Nunns lov ved samme bredde</span>
+        </div>
+        <div class="stat-box">
+            <span class="num">&lt;0,03%</span>
+            <span class="lab">afvigelse — kampagnens bedste måling</span>
+        </div>
+    </div>
+
+    <div class="fig">
+        <img src="solrotation-lov.png" alt="Solpletgruppernes rotationshastighed sammenlignet med Newton og Nunns lov" loading="lazy">
+        <figcaption>Fem pletgruppers målte rotation sammenlignet med den klassiske lov fra 1951.</figcaption>
+    </div>
+
+    <p>En anden, helt uafhængig gruppe ved 5° bredde gav samme gode overensstemmelse. Men
+        koefficienten B — selve differentialrotationen — kunne ikke bestemmes:</p>
+
+    <div class="compare">
+        <div>
+            <h4>Newton &amp; Nunn (1951)</h4>
+            <dl>
+                <dt>Grundlag</dt><dd>tusindvis af pletmålinger</dd>
+                <dt>Tidsspand</dt><dd>flere solcykler</dd>
+                <dt>B</dt><dd>2,8°/døgn</dd>
+            </dl>
+        </div>
+        <div>
+            <h4>Baghave-kampagnen</h4>
+            <dl>
+                <dt>Grundlag</dt><dd>5 pletgrupper</dd>
+                <dt>Tidsspand</dt><dd>16 dage</dd>
+                <dt>B</dt><dd>0,8 ± 0,7°/døgn</dd>
+            </dl>
+        </div>
+    </div>
+</section>
+
+<!-- 05 -->
+<section class="snum-section" id="diagnose">
+    <div class="snum-head"><span class="n">05</span><h2>Hvorfor B undslap</h2></div>
+    <p>Ikke en modsigelse af fysikken — en konsekvens af, hvad kampagnens grupper tilfældigvis lå
+        ved. To grupper med 8,4° breddeforskel viste sig at rotere praktisk talt ens, mens to
+        grupper ved næsten samme bredde afveg med hele 0,29°/døgn fra hinanden. Solpletgrupper er
+        ikke perfekte mærker på plasmaets bevægelse; spredningen mellem grupper viste sig at være
+        omkring 0,28°/døgn, målt uafhængigt tre gange.</p>
+
+    <div class="fig">
+        <img src="solrotation-diagnose.png" alt="Diagnose: gruppespredning versus det differentielle signal" loading="lazy">
+        <figcaption>Venstre: to sammenligninger, samme konklusion. Højre: signalet skal overstige
+            støjen — ved det nuværende breddespænd kræves over hundrede grupper; ved 25–30° kun
+            en håndfuld.</figcaption>
+    </div>
+
+    <p>Det tal er større end selve det signal, der skulle måles: over det breddespænd, kampagnens
+        grupper faktisk dækkede (5° til 16°), forudsiger loven kun en forskel på 0,17°/døgn
+        mellem yderpunkterne. Havde blot én gruppe ligget ved 25–30° bredde i stedet, ville en
+        håndfuld grupper have været nok.</p>
+</section>
+
+<!-- 06 -->
+<section class="snum-section" id="efemer">
+    <div class="snum-head"><span class="n">06</span><h2>En plet der levede for kort</h2></div>
+    <p>Den 29. juli fangede to uafhængige billeder, taget tre sekunder fra hinanden, en lille
+        mørkning ved en heliografisk bredde på 37° — højere end noget andet set i kampagnen.
+        Kernen var 4–5&nbsp;% mørkere end baggrunden i begge billeder, et ægte og reproducerbart
+        signal. Men på samme sted, fem timer tidligere samme dag og igen et døgn senere, var der
+        intet at se.</p>
+    <p class="pullquote">Pletten var opstået og forsvundet igen inden for det tidsrum, én
+        observatør kunne nå at fange den to gange.</p>
+    <p>Det er, hvad man må forvente af en <em>efemer region</em> — et lille, kortlivet magnetisk
+        bipol, der aldrig udvikler sig til en nummereret aktiv region. Almindelige i solfysikken,
+        men sjældent fanget så konkret af amatørudstyr.</p>
+</section>
+
+<!-- 07 -->
+<section class="snum-section" id="galleri">
+    <div class="snum-head"><span class="n">07</span><h2>Billedgalleri</h2></div>
+    <p>Et udpluk af de rå eVscope2-optagelser, kampagnen bygger på.</p>
+    <div class="gallery">
+        <figure><img src="sol-22juli.jpg" alt="Solen 22. juli 2026" loading="lazy"><figcaption>22. juli</figcaption></figure>
+        <figure><img src="sol-23juli.jpg" alt="Solen 23. juli 2026" loading="lazy"><figcaption>23. juli</figcaption></figure>
+        <figure><img src="sol-24juli.jpg" alt="Solen 24. juli 2026, let skydække" loading="lazy"><figcaption>24. juli · let skydække</figcaption></figure>
+        <figure><img src="sol-29juli-fm.jpg" alt="Solen 29. juli 2026 formiddag" loading="lazy"><figcaption>29. juli · formiddag</figcaption></figure>
+        <figure><img src="sol-29juli-em.jpg" alt="Solen 29. juli 2026 eftermiddag, med den efemere plet" loading="lazy"><figcaption>29. juli · eftermiddag</figcaption></figure>
+        <figure><img src="sol-30juli.jpg" alt="Solen 30. juli 2026" loading="lazy"><figcaption>30. juli</figcaption></figure>
+    </div>
+</section>
+
+<!-- 08 -->
+<section class="snum-section" id="perspektiv">
+    <div class="snum-head"><span class="n">08</span><h2>Perspektiv</h2></div>
+    <p>To ting adskiller dette fra en fiasko. For det første: hver af de fem fejl, der undervejs
+        blev fundet og rettet, bragte resultatet tættere på den accepterede fysik — selve
+        kendetegnet på en reel fejl frem for en tilpasning til et ønsket svar. For det andet:
+        kampagnen ved nu præcist, hvad der mangler. Ikke mere data af samme slags, men én
+        solpletgruppe ved en anden bredde. Solcyklus 25 er på vej ned, men de første grupper fra
+        cyklus 26 vil med stor sandsynlighed dukke op netop ved 25–30° bredde. Teleskopet er
+        stadig rettet mod Solen hver klare dag.</p>
+</section>
+
+</main>
+
+<footer>
+    Solens rotation · Michael Howard Grant<br>
+    Del af <a href="index.html">Fysik, matematik og kemi</a> ·
+    <a href="mailto:michael.h.grant@gmail.com">michael.h.grant@gmail.com</a>
+</footer>
+
+</body>
+</html>
