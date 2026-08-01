@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Interaktiv 3D-model af Solens indre lag og en levende simulation af den 11-årige solpletcyklus, hvor sommerfuglediagrammet tegner sig selv mens pletterne fødes.">
+<title>Solen indefra – Michael Grant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* site frame */
+  --space:#0b0d17; --space-lift:#12151f;
+  --aurora-green:#39ff14; --aurora-purple:#a020f0; --aurora-blue:#4cc9f0;
+  --txt:#e6e6ea; --dim:#9a9aa6; --line:rgba(255,255,255,.09);
+  /* Solens temperaturstige — indholdets palet */
+  --core:#fff3d0; --radiative:#ffb347; --tacho:#4cc9f0;
+  --convective:#ff7a2a; --photo:#ffc04d; --chromo:#ff4d5e; --corona:#cfe8ff;
+  --display:'Space Grotesk',system-ui,sans-serif;
+  --body:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,'SF Mono',Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:64px}
+body{
+  margin:0;background:var(--space);color:var(--txt);
+  font-family:var(--body);line-height:1.65;
+  background-image:
+    radial-gradient(circle at 12% 6%,rgba(160,32,240,.09),transparent 42%),
+    radial-gradient(circle at 88% 48%,rgba(255,122,42,.07),transparent 45%);
+}
+a{color:var(--aurora-blue)}
+
+/* ---------- chrome ---------- */
+.crumb{position:sticky;top:0;z-index:60;background:rgba(11,13,23,.93);
+  backdrop-filter:blur(10px);border-bottom:1px solid rgba(57,255,20,.2);
+  padding:.7rem 1.2rem;font-size:.84rem;color:var(--dim)}
+.crumb a{color:var(--aurora-green);text-decoration:none}
+.crumb a:hover{text-decoration:underline}
+.crumb strong{color:var(--txt);font-weight:600}
+.crumb .sep{margin:0 .5rem;opacity:.45}
+
+/* ---------- hero ---------- */
+header.hero{padding:3.4rem 1.5rem 1.4rem;text-align:center;
+  background:linear-gradient(to bottom,#191a2c,var(--space));
+  border-bottom:1px solid rgba(160,32,240,.14)}
+.eyebrow{display:inline-block;font-family:var(--mono);font-size:.7rem;
+  letter-spacing:.28em;text-transform:uppercase;color:var(--photo);
+  border:1px solid rgba(255,192,77,.35);border-radius:2px;padding:.35rem .9rem;margin-bottom:1.2rem}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(2.3rem,6.5vw,4rem);
+  margin:0 0 .5rem;letter-spacing:-.02em;line-height:1.02;
+  background:linear-gradient(100deg,var(--core),var(--photo) 40%,var(--convective) 75%,var(--chromo));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.tagline{max-width:640px;margin:0 auto 1.5rem;color:var(--dim);font-size:1.06rem}
+.byline{font-size:.9rem;color:var(--aurora-purple)}
+.byline span{display:block;color:var(--dim);font-size:.8rem;margin-top:.15rem}
+
+main{max-width:1120px;margin:0 auto;padding:0 1.4rem 4rem}
+
+/* ---------- sections ---------- */
+section{margin-top:4.2rem}
+.sec-head{border-left:3px solid var(--line);padding-left:1.1rem;margin-bottom:1.4rem}
+.sec-head .kicker{font-family:var(--mono);font-size:.72rem;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--aurora-blue);display:block;margin-bottom:.3rem}
+.sec-head h2{font-family:var(--display);font-weight:500;font-size:1.75rem;margin:0;letter-spacing:-.01em}
+.sec-head p{margin:.4rem 0 0;color:var(--dim);font-size:.96rem}
+p{font-size:1.01rem}
+.lede{font-size:1.12rem;color:#f2f2f5}
+
+/* ---------- layer explorer ---------- */
+.explorer{display:grid;grid-template-columns:132px 1fr 300px;gap:1.1rem;
+  background:rgba(255,255,255,.025);border:1px solid var(--line);border-radius:14px;padding:1.1rem}
+.depthscale{display:flex;flex-direction:column;gap:3px}
+.depthscale .dlabel{font-family:var(--mono);font-size:.6rem;color:var(--dim);
+  letter-spacing:.08em;margin-bottom:.35rem;text-transform:uppercase}
+.dband{border:1px solid transparent;border-left:3px solid var(--bc);
+  background:linear-gradient(90deg,rgba(255,255,255,.05),transparent);
+  color:var(--txt);text-align:left;cursor:pointer;font-family:var(--mono);
+  font-size:.68rem;padding:.45rem .5rem;border-radius:0 5px 5px 0;
+  transition:background .18s,border-color .18s;line-height:1.25;font-weight:400}
+.dband:hover{background:linear-gradient(90deg,rgba(255,255,255,.11),transparent)}
+.dband[aria-pressed="true"]{background:linear-gradient(90deg,var(--bcd),transparent);
+  border-color:var(--bc);color:#fff;font-weight:600}
+.dband .r{display:block;opacity:.6;font-size:.6rem}
+.dband:focus-visible{outline:2px solid var(--aurora-blue);outline-offset:2px}
+
+.stage{position:relative;min-height:390px;border-radius:10px;overflow:hidden;
+  background:radial-gradient(circle at 50% 45%,#15121c,#07080e 70%)}
+.stage canvas{display:block;width:100%;height:100%;touch-action:none}
+.stage .hint{position:absolute;bottom:8px;left:0;right:0;text-align:center;
+  font-family:var(--mono);font-size:.62rem;color:var(--dim);pointer-events:none;opacity:.7}
+
+.readout{background:rgba(0,0,0,.28);border:1px solid var(--line);border-radius:10px;padding:1rem 1.1rem}
+.readout h3{font-family:var(--display);font-size:1.15rem;margin:0 0 .1rem;color:var(--rc,var(--txt))}
+.readout .sub{font-family:var(--mono);font-size:.68rem;color:var(--dim);
+  letter-spacing:.06em;margin-bottom:.85rem}
+.readout dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:.3rem .8rem;align-items:baseline}
+.readout dt{font-size:.72rem;color:var(--dim);text-transform:uppercase;letter-spacing:.05em}
+.readout dd{margin:0;font-family:var(--mono);font-size:.86rem;color:var(--txt);text-align:right}
+.readout .blurb{margin:.9rem 0 0;font-size:.87rem;color:var(--dim);line-height:1.55;
+  border-top:1px solid var(--line);padding-top:.75rem}
+@media(max-width:900px){
+  .explorer{grid-template-columns:1fr}
+  .depthscale{flex-direction:row;flex-wrap:wrap}
+  .dband{flex:1 1 96px}
+  .stage{min-height:320px}
+}
+
+/* ---------- cycle ---------- */
+.cyclewrap{background:rgba(255,255,255,.025);border:1px solid var(--line);
+  border-radius:14px;padding:1.1rem}
+.cyclegrid{display:grid;grid-template-columns:340px 1fr;gap:1.1rem}
+@media(max-width:860px){.cyclegrid{grid-template-columns:1fr}}
+.bfly{position:relative;border-radius:10px;overflow:hidden;background:#07080e;border:1px solid var(--line)}
+.bfly canvas{display:block;width:100%;height:100%}
+.transport{display:flex;flex-wrap:wrap;align-items:center;gap:.7rem;margin-top:.9rem;
+  padding-top:.9rem;border-top:1px solid var(--line)}
+.btn{font-family:var(--mono);font-size:.74rem;letter-spacing:.04em;
+  background:transparent;color:var(--aurora-green);border:1px solid var(--aurora-green);
+  border-radius:3px;padding:.42rem .85rem;cursor:pointer;transition:.18s}
+.btn:hover{background:var(--aurora-green);color:var(--space)}
+.btn:focus-visible{outline:2px solid var(--aurora-blue);outline-offset:2px}
+.btn.ghost{color:var(--dim);border-color:var(--line)}
+.btn.ghost:hover{background:rgba(255,255,255,.08);color:var(--txt)}
+.btn[aria-pressed="true"]{background:var(--aurora-green);color:var(--space)}
+.scrub{flex:1 1 200px;min-width:160px;accent-color:var(--photo)}
+.clock{font-family:var(--mono);font-size:.95rem;color:var(--photo);min-width:126px}
+.clock small{display:block;font-size:.62rem;color:var(--dim);letter-spacing:.08em}
+
+/* ---------- generic bits ---------- */
+.note{background:rgba(76,201,240,.05);border:1px solid rgba(76,201,240,.22);
+  border-left:3px solid var(--aurora-blue);border-radius:0 9px 9px 0;padding:.95rem 1.2rem;margin:1.4rem 0}
+.note h4{margin:0 0 .4rem;font-family:var(--display);font-size:1rem;color:var(--aurora-blue)}
+.note p{margin:0;font-size:.93rem;color:var(--dim)}
+.note p+p{margin-top:.55rem}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem;margin:1.4rem 0}
+.card{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:11px;padding:1.1rem 1.2rem}
+.card h4{margin:0 0 .45rem;font-family:var(--display);font-size:1.02rem;color:var(--photo)}
+.card p{margin:0;font-size:.9rem;color:var(--dim)}
+.card .big{font-family:var(--mono);font-size:1.5rem;color:var(--txt);display:block;margin-bottom:.2rem}
+
+table.data{width:100%;border-collapse:collapse;margin:1.2rem 0;font-size:.87rem}
+table.data th,table.data td{padding:.55rem .6rem;text-align:left;border-bottom:1px solid var(--line)}
+table.data th{font-family:var(--mono);font-size:.68rem;text-transform:uppercase;
+  letter-spacing:.06em;color:var(--dim);font-weight:400}
+table.data td.num{font-family:var(--mono);text-align:right}
+table.data tr:hover td{background:rgba(255,255,255,.03)}
+
+footer{margin-top:4rem;padding:2rem 1.4rem;text-align:center;font-size:.84rem;
+  color:var(--dim);border-top:1px solid var(--line)}
+footer a{text-decoration:none}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+
+<div class="crumb">
+  <a href="index.html">← Fysik, matematik &amp; kemi</a>
+  <span class="sep">·</span> Astronomi / <strong>Solen indefra</strong>
+</div>
+
+<header class="hero">
+  <span class="eyebrow">Interaktiv model</span>
+  <h1>Solen indefra</h1>
+  <p class="tagline">Syv lag, femten millioner grader og en puls på elleve år —
+     en model du kan dreje, skille ad og sætte i gang.</p>
+  <p class="byline">Michael Howard Grant
+    <span>Lektor emeritus · Grenaa Gymnasium · Sostrup, Djursland</span></p>
+</header>
+
+<main>
+
+<p class="lede" style="margin-top:2.2rem">
+  Solen er ikke en glødende kugle med samme indhold hele vejen igennem. Den er lagdelt som en
+  løgs skaller, hver med sin egen temperatur, tæthed og måde at flytte energi på — og i grænsen
+  mellem to af lagene sidder den mekanisme, der får solpletter til at komme og gå i en rytme på
+  elleve år. Herunder kan du gøre begge dele: skille Solen ad, og sætte cyklussen i gang.
+</p>
+
+<!-- ============ LAYERS ============ -->
+<section id="lag">
+  <div class="sec-head">
+    <span class="kicker">Del 1 · Opbygningen</span>
+    <h2>Skil Solen ad</h2>
+    <p>Træk for at dreje, rul for at zoome. Vælg et lag i dybdeskalaen — eller klik direkte på
+       modellen.</p>
+  </div>
+
+  <div class="explorer">
+    <div class="depthscale" id="depthscale" role="group" aria-label="Vælg lag efter dybde">
+      <span class="dlabel">r / R☉</span>
+    </div>
+    <div class="stage" id="stageLayers">
+      <div class="hint">træk · rul · klik et lag</div>
+    </div>
+    <div class="readout" id="readout">
+      <h3 id="roName">—</h3>
+      <div class="sub" id="roRange"></div>
+      <dl id="roData"></dl>
+      <p class="blurb" id="roBlurb"></p>
+    </div>
+  </div>
+
+  <p style="margin-top:1.2rem;font-size:.87rem;color:var(--dim)">
+    De tre yderste lag — fotosfære, kromosfære og korona — er tegnet kraftigt overdrevne i tykkelse.
+    I virkeligheden er fotosfæren kun omkring 500 km tyk mod Solens radius på 696.000 km: et lag så
+    tyndt i forhold til kuglen som skrællen på et æble.
+  </p>
+
+  <div class="note">
+    <h4>Hvorfor en simpel model rammer skævt</h4>
+    <p>Bygger man Solen op fra bunden med hydrostatisk ligevægt, idealgasligning og
+       strålingstransport — men antager at brint og helium er <em>fuldstændig</em> ioniserede
+       overalt — så kommer centertemperaturen ud på 7,8 millioner grader mod de rigtige 15,7.</p>
+    <p>Fejlen er lærerig. Uden bundne elektroner findes hverken bound-free-opacitet eller det
+       negative brintion H⁻, og netop de to er grunden til, at strålingen giver op og konvektionen
+       overtager i de yderste 30 %. Uden dem bliver hele stjernen konvektiv — og en gennemkonvektiv
+       sol er langt mindre koncentreret i midten. Det er altså strålingszonens eksistens, der
+       presser kernen sammen og gør den dobbelt så varm.</p>
+  </div>
+</section>
+
+<!-- ============ CYCLE ============ -->
+<section id="cyklus">
+  <div class="sec-head">
+    <span class="kicker">Del 2 · Pulsen</span>
+    <h2>Den 11-årige cyklus</h2>
+    <p>Solpletter fødes ved høj bredde og vandrer mod ækvator. Se det ske — og se
+       sommerfuglediagrammet tegne sig selv undervejs.</p>
+  </div>
+
+  <div class="cyclewrap">
+    <div class="cyclegrid">
+      <div class="stage" id="stageCycle" style="min-height:340px">
+        <div class="hint">træk for at dreje</div>
+      </div>
+      <div class="bfly" id="bflyWrap" style="min-height:340px">
+        <canvas id="bfly"></canvas>
+      </div>
+    </div>
+
+    <div class="transport">
+      <button class="btn" id="playBtn" aria-pressed="true">❙❙&nbsp; Pause</button>
+      <button class="btn ghost" id="resetBtn">Forfra</button>
+      <button class="btn ghost" id="traceBtn" aria-pressed="false">Rotationsspor</button>
+      <input class="scrub" id="scrub" type="range" min="2008.9" max="2041.9" step="0.02"
+             value="2008.9" aria-label="Spol i tiden">
+      <span class="clock" id="clock">2008,9<small>SIMULERET ÅR</small></span>
+    </div>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <h4>Spörers lov</h4>
+      <p><span class="big">28° → 7°</span>Ved en ny cyklus' begyndelse bryder pletterne frem omkring
+        28° bredde. Gennem de følgende elleve år vandrer fødezonen jævnt ned mod ækvator og ender
+        omkring 7°, hvor cyklussen dør ud.</p>
+    </div>
+    <div class="card">
+      <h4>Hales lov</h4>
+      <p><span class="big">22 år</span>Hver ny cyklus vender de magnetiske poler om. Den egentlige
+        magnetiske periode er derfor dobbelt så lang som pletcyklussen — to elleveårige cyklusser
+        udgør ét fuldt magnetisk omløb.</p>
+    </div>
+    <div class="card">
+      <h4>Overlappet</h4>
+      <p><span class="big">1–2 år</span>Omkring minimum ser man begge cyklusser på én gang: de sidste
+        gamle pletter tæt ved ækvator, samtidig med de første nye ved høj bredde. Det er de to
+        sommerfuglevinger, der krydser hinanden.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ DYNAMO ============ -->
+<section id="dynamo">
+  <div class="sec-head">
+    <span class="kicker">Del 3 · Mekanismen</span>
+    <h2>Hvorfor elleve år?</h2>
+    <p>Cyklussen er ikke et ur. Den er en magnetfeltsmotor, der kører i tachoclinen.</p>
+  </div>
+
+  <p>Solen roterer ikke som et fast legeme. Ækvator når rundt på omkring 25 døgn, mens områder
+     ved 60° bredde bruger over 30. Men det gælder kun konvektionszonen — den indre strålingszone
+     roterer derimod stift, som en kugle. Mellem de to sidder <strong>tachoclinen</strong>, et
+     tyndt lag hvor de to rotationer river i hinanden.</p>
+
+  <table class="data">
+    <thead><tr><th>Trin</th><th>Hvad sker der</th><th class="num">Tidsskala</th></tr></thead>
+    <tbody>
+      <tr><td>Ω-effekten</td><td>Den differentielle rotation trækker et nord–syd-magnetfelt ud og
+        vikler det op omkring Solen, indtil det ligger som stramme øst–vest-bånd</td><td class="num">~3 år</td></tr>
+      <tr><td>Opdrift</td><td>Hvor båndet bliver stærkt nok, bliver det lettere end omgivelserne og
+        stiger op som en bue gennem konvektionszonen</td><td class="num">måneder</td></tr>
+      <tr><td>Gennembrud</td><td>Buen bryder gennem fotosfæren og efterlader to pletter med modsat
+        polaritet — en solpletgruppe</td><td class="num">timer–dage</td></tr>
+      <tr><td>α-effekten</td><td>Konvektion og Coriolis-kraft vrider de opstigende buer, så de
+        tilsammen genskaber et nord–syd-felt — nu med modsat fortegn</td><td class="num">~8 år</td></tr>
+    </tbody>
+  </table>
+
+  <p>Fordi det genskabte felt vender modsat, tager det <em>to</em> gennemløb at komme tilbage til
+     udgangspunktet. Det er derfor pletcyklussen varer elleve år, mens den magnetiske varer 22.
+     Og fordi opviklingen er stærkest, hvor forskydningen er størst, starter hver cyklus ved høj
+     bredde og arbejder sig indad — Spörers lov er ikke en selvstændig regel, men en konsekvens
+     af, hvordan motoren kører.</p>
+
+  <div class="note">
+    <h4>Når motoren går i stå</h4>
+    <p>Mellem 1645 og 1715 forsvandt solpletterne næsten helt. I hele perioden — kaldet
+       Maunder-minimummet — talte astronomerne færre pletter, end man i dag ser på et enkelt aktivt
+       år. Dynamoen er altså ikke garanteret; den kan sætte ud i årtier ad gangen, af grunde vi
+       stadig ikke forstår til bunds.</p>
+  </div>
+</section>
+
+<!-- ============ TIE-IN ============ -->
+<section id="egne-maalinger">
+  <div class="sec-head">
+    <span class="kicker">Del 4 · Fra model til baghave</span>
+    <h2>Hvad cyklussen forudsagde om mine egne målinger</h2>
+    <p>Sommerfuglediagrammet forklarer, hvorfor sommerens rotationskampagne kun kunne
+       lykkes halvt.</p>
+  </div>
+
+  <p>I juli 2026 fulgte jeg fem solpletgrupper gennem elleve dage for at måle Solens differentielle
+     rotation. Én gruppes rotation blev målt smukt — AR4492 gav 14,247 ± 0,027°/døgn mod lovens
+     14,24. Men selve <em>koefficienten</em> for differentialrotationen lod sig ikke bestemme.</p>
+
+  <p>Grunden står skrevet i diagrammet ovenfor. Juli 2026 ligger omkring seks år inde i cyklus 25 —
+     et godt stykke nede ad den aftagende gren, hvor fødezonen for længst er vandret ind mod
+     ækvator. Alle fem grupper lå da også mellem 4,5° og 15,6° bredde. Med så snævert et
+     breddespænd er det signal, man skal måle, mindre end den naturlige spredning mellem grupperne
+     — og så drukner det.</p>
+
+  <table class="data">
+    <thead><tr><th>Gruppe</th><th class="num">Bredde</th><th class="num">Målt Ω</th><th class="num">Lovens værdi</th></tr></thead>
+    <tbody>
+      <tr><td>AR4493</td><td class="num">+5,15°</td><td class="num">14,522</td><td class="num">14,42</td></tr>
+      <tr><td>AR4489</td><td class="num">−7,20°</td><td class="num">14,228</td><td class="num">14,40</td></tr>
+      <tr><td>AR4492</td><td class="num">+15,56°</td><td class="num">14,247</td><td class="num">14,24</td></tr>
+      <tr><td>Gruppe A</td><td class="num">+4,67°</td><td class="num">14,470</td><td class="num">14,42</td></tr>
+      <tr><td>Gruppe B</td><td class="num">−4,55°</td><td class="num">14,364</td><td class="num">14,42</td></tr>
+    </tbody>
+  </table>
+
+  <p>Det interessante er, at modellen også fortæller, hvornår problemet løser sig. Cyklus 25 løber
+     mod sit minimum omkring 2030, og de første pletter fra <strong>cyklus 26</strong> vil bryde
+     frem ved cirka 28° bredde — netop den høje breddegrad, målingen mangler. Spol frem til 2031 i
+     simulationen ovenfor, og du ser den nye vinge begynde.</p>
+
+  <div class="cards">
+    <div class="card">
+      <h4>Nu</h4>
+      <p><span class="big">4,5–15,6°</span>Breddespændet i juli 2026. Loven forudsiger kun 0,17°/døgn
+        forskel over det spænd — mindre end spredningen mellem grupper på 0,28.</p>
+    </div>
+    <div class="card">
+      <h4>Omkring 2031</h4>
+      <p><span class="big">~28°</span>Cyklus 26's første grupper. Ved den bredde er signalet
+        0,68°/døgn — fire gange større, og en håndfuld grupper ville være nok.</p>
+    </div>
+  </div>
+
+  <p style="font-size:.93rem;color:var(--dim)">
+    Læs hele kampagnen på siden <a href="solrotation.html">Solens rotation</a>, hvor målingerne,
+    de fem selvfundne fejl og den fulde analyse er beskrevet.
+  </p>
+</section>
+
+</main>
+
+<footer>
+  Solen indefra · Michael Howard Grant<br>
+  Del af <a href="index.html">Fysik, matematik og kemi</a> ·
+  <a href="mailto:michael.h.grant@gmail.com">michael.h.grant@gmail.com</a>
+</footer>
+
+<script>
+/* Henter three.js lokalt hvis filen ligger ved siden af siden (virker offline),
+   ellers fra CDN. Læg three.min.js i samme mappe for at bruge den lokale. */
+window.__threeReady = new Promise(function(resolve, reject){
+  function add(src, ok, bad){
+    var s = document.createElement('script');
+    s.src = src; s.onload = ok; s.onerror = bad;
+    document.head.appendChild(s);
+  }
+  add('three.min.js', resolve, function(){
+    add('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js', resolve, reject);
+  });
+});
+</script>
+<script>
+(function(){
+"use strict";
+const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ============================================================
+   LAYER DATA — accepted solar values
+   ============================================================ */
+const LAYERS = [
+  { id:'corona', name:'Koronaen', r0:1.030, r1:1.30, col:0xcfe8ff,
+    range:'ud i millioner km', draw:'glow',
+    data:[['Temperatur','1–3 mio. K'],['Tæthed','~10⁻¹² kg/m³'],['Transport','magnetisk opvarmning'],['Ses ved','total solformørkelse']],
+    blurb:'Solens yderste atmosfære er hundredvis af gange varmere end overfladen under den. '+
+          'Hvorfor, ved man stadig ikke sikkert — koronaopvarmningen er et af solfysikkens åbne '+
+          'spørgsmål. Herfra strømmer solvinden ud gennem hele solsystemet.' },
+  { id:'chromo', name:'Kromosfæren', r0:1.012, r1:1.030, col:0xff4d5e,
+    range:'+2.000 km', draw:'shell', alpha:0.42,
+    data:[['Temperatur','4.500 → 20.000 K'],['Tykkelse','~2.000 km'],['Farve','rød (Hα 656 nm)'],['Struktur','spikler']],
+    blurb:'Et tyndt, rødligt lag hvor temperaturen mod al forventning begynder at stige igen. '+
+          'Overalt skyder spikler — smalle gasstråler — tusinder af kilometer op og falder tilbage '+
+          'i løbet af få minutter.' },
+  { id:'photo', name:'Fotosfæren', r0:1.000, r1:1.012, col:0xffc04d,
+    range:'r = 1,00 R☉', draw:'shell',
+    data:[['Temperatur','5.772 K'],['Tykkelse','~500 km'],['Tæthed','2·10⁻⁴ kg/m³'],['Solpletter','3.800–4.500 K']],
+    blurb:'Den overflade vi ser og fotograferer. Den er dækket af granuler på cirka 1.000 km — '+
+          'toppen af konvektionsceller, der lever i otte minutter ad gangen. Og det er her, '+
+          'solpletterne bryder igennem.' },
+  { id:'convective', name:'Konvektionszonen', r0:0.715, r1:1.000, col:0xff7a2a,
+    range:'0,71 – 1,00 R☉', draw:'shell',
+    data:[['Temperatur','2 mio. K → 5.772 K'],['Tæthed','200 → 2·10⁻⁴ kg/m³'],['Transport','konvektion'],['Omløb','25 d ved ækvator']],
+    blurb:'Her bliver gassen så uigennemsigtig, at strålingen ikke længere kan slæbe energien videre. '+
+          'I stedet koger Solen: varm gas stiger, køles af ved overfladen og synker igen. Det er '+
+          'også dette lag, der roterer differentielt.' },
+  { id:'tacho', name:'Tachoclinen', r0:0.690, r1:0.715, col:0x4cc9f0,
+    range:'≈ 0,70 R☉', draw:'shell',
+    data:[['Tykkelse','~0,04 R☉'],['Temperatur','~2 mio. K'],['Rolle','solens dynamo'],['Forskydning','stiv ↔ differentiel']],
+    blurb:'Et forbløffende tyndt grænselag, hvor den stift roterende strålingszone møder den '+
+          'differentielt roterende konvektionszone. Forskydningen vikler magnetfeltet op — og det '+
+          'er derfor herfra, hele den 11-årige cyklus udspringer.' },
+  { id:'radiative', name:'Strålingszonen', r0:0.250, r1:0.690, col:0xffb347,
+    range:'0,25 – 0,69 R☉', draw:'shell',
+    data:[['Temperatur','7 → 2 mio. K'],['Tæthed','20.000 → 200 kg/m³'],['Transport','fotondiffusion'],['Rejsetid','~170.000 år']],
+    blurb:'Energien vandrer udad som stråling, men gassen er så tæt, at en foton kun når få '+
+          'millimeter, før den absorberes og udsendes i en tilfældig retning. Den slingrende vej '+
+          'ud tager i størrelsesordenen hundrede tusind år.' },
+  { id:'core', name:'Kernen', r0:0.000, r1:0.250, col:0xfff3d0,
+    range:'0 – 0,25 R☉', draw:'shell',
+    data:[['Temperatur','15,7 mio. K'],['Tæthed','150.000 kg/m³'],['Tryk','2,6·10¹⁶ Pa'],['Andel af energien','99 %']],
+    blurb:'Her fusionerer brint til helium gennem pp-kæden. Kernen fylder kun 1,6 % af Solens rumfang, '+
+          'men leverer så godt som al energien. Tætheden er over ti gange blyets — og alligevel '+
+          'er det en gas, fordi temperaturen er så høj.' }
+];
+
+/* ============================================================
+   Shared: minimal orbit control (OrbitControls not in r128 core)
+   ============================================================ */
+function makeOrbit(dom, camera, opts){
+  const o = Object.assign({dist:3.1, minD:1.9, maxD:6.5, theta:0.5, phi:1.15, damp:0.09}, opts||{});
+  let target = {theta:o.theta, phi:o.phi, dist:o.dist};
+  let cur = {theta:o.theta, phi:o.phi, dist:o.dist};
+  let dragging=false, lx=0, ly=0, pid=null;
+  dom.addEventListener('pointerdown', e=>{
+    dragging=true; pid=e.pointerId; lx=e.clientX; ly=e.clientY;
+    dom.setPointerCapture(pid);
+  });
+  dom.addEventListener('pointermove', e=>{
+    if(!dragging || e.pointerId!==pid) return;
+    target.theta -= (e.clientX-lx)*0.006;
+    target.phi   -= (e.clientY-ly)*0.006;
+    target.phi = Math.max(0.18, Math.min(Math.PI-0.18, target.phi));
+    lx=e.clientX; ly=e.clientY;
+  });
+  const stop = e=>{ if(pid!==null && e.pointerId===pid){ dragging=false;
+    try{dom.releasePointerCapture(pid);}catch(_){} pid=null; } };
+  dom.addEventListener('pointerup', stop);
+  dom.addEventListener('pointercancel', stop);
+  dom.addEventListener('wheel', e=>{
+    e.preventDefault();
+    target.dist = Math.max(o.minD, Math.min(o.maxD, target.dist + e.deltaY*0.0016));
+  }, {passive:false});
+  return {
+    update(){
+      cur.theta += (target.theta-cur.theta)*o.damp;
+      cur.phi   += (target.phi  -cur.phi  )*o.damp;
+      cur.dist  += (target.dist -cur.dist )*o.damp;
+      camera.position.set(
+        cur.dist*Math.sin(cur.phi)*Math.sin(cur.theta),
+        cur.dist*Math.cos(cur.phi),
+        cur.dist*Math.sin(cur.phi)*Math.cos(cur.theta));
+      camera.lookAt(0,0,0);
+    },
+    spin(d){ if(!dragging) target.theta += d; },
+    get dragging(){ return dragging; }
+  };
+}
+
+/* Cap geometry for the cutaway: half-annulus in the plane (d, ŷ)
+   d matches three.js sphere azimuth convention: d(phi)=(-cos phi,0,sin phi) */
+function capGeometry(ri, ro, phi, nT){
+  nT = nT||40;
+  const dx=-Math.cos(phi), dz=Math.sin(phi);
+  const pos=[], idx=[];
+  for(let i=0;i<2;i++){
+    const r = i===0?ri:ro;
+    for(let j=0;j<=nT;j++){
+      const t = Math.PI*j/nT;
+      const s = r*Math.sin(t), y = r*Math.cos(t);
+      pos.push(dx*s, y, dz*s);
+    }
+  }
+  const row=nT+1;
+  for(let j=0;j<nT;j++){
+    const a=j, b=j+1, c=row+j, d=row+j+1;
+    idx.push(a,c,b, b,c,d);
+  }
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos,3));
+  g.setIndex(idx); g.computeVertexNormals();
+  return g;
+}
+
+/* ============================================================
+   SCENE A — layered cutaway
+   ============================================================ */
+const CUT_A = 0, CUT_B = Math.PI/2;      // wedge removed between these azimuths
+let selected = 'photo';
+
+function initLayers(){
+  const host = document.getElementById('stageLayers');
+  const scene = new THREE.Scene();
+  const cam = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
+  const rnd = new THREE.WebGLRenderer({antialias:true, alpha:true});
+  rnd.setPixelRatio(Math.min(devicePixelRatio,2));
+  host.appendChild(rnd.domElement);
+  scene.add(new THREE.AmbientLight(0xffffff,0.62));
+  const key = new THREE.DirectionalLight(0xffffff,0.85); key.position.set(3,2.4,3.4); scene.add(key);
+
+  const group = new THREE.Group(); scene.add(group);
+  const picks = [];   // meshes that can be clicked
+  const byId = {};
+
+  LAYERS.forEach(L=>{
+    const entry = {shells:[], caps:[], base:L.col};
+    if(L.draw==='glow'){
+      const g=new THREE.SphereGeometry(L.r1,48,32);
+      const m=new THREE.MeshBasicMaterial({color:L.col,transparent:true,opacity:0.10,
+        side:THREE.BackSide, blending:THREE.AdditiveBlending, depthWrite:false});
+      const mesh=new THREE.Mesh(g,m); mesh.userData.layer=L.id;
+      group.add(mesh); entry.shells.push(mesh);
+    }else{
+      const a = (L.alpha===undefined)?1:L.alpha;
+      entry.alpha = a;
+      // outer shell, 270° of azimuth
+      const g=new THREE.SphereGeometry(L.r1,72,44,CUT_B,Math.PI*2-(CUT_B-CUT_A));
+      const m=new THREE.MeshPhongMaterial({color:L.col,emissive:L.col,
+        emissiveIntensity:0.34,shininess:6,flatShading:false,
+        transparent:a<1, opacity:a, depthWrite:a>=1});
+      const mesh=new THREE.Mesh(g,m); mesh.userData.layer=L.id;
+      group.add(mesh); entry.shells.push(mesh); picks.push(mesh);
+      // two cut faces
+      [CUT_A,CUT_B].forEach(phi=>{
+        const cg=capGeometry(L.r0,L.r1,phi,44);
+        const cm=new THREE.MeshBasicMaterial({color:L.col,side:THREE.DoubleSide,
+          transparent:a<1, opacity:Math.min(1,a*1.7)});
+        const cmesh=new THREE.Mesh(cg,cm); cmesh.userData.layer=L.id;
+        group.add(cmesh); entry.caps.push(cmesh); picks.push(cmesh);
+      });
+    }
+    byId[L.id]=entry;
+  });
+
+  // default view looks straight into the removed wedge (azimuth ≈ 45°)
+  const orbit = makeOrbit(rnd.domElement, cam, {dist:3.25, theta:-0.785, phi:1.13});
+
+  function applySelection(){
+    LAYERS.forEach(L=>{
+      const e=byId[L.id], on = (L.id===selected);
+      const a = (e.alpha===undefined)?1:e.alpha;
+      e.shells.forEach(m=>{
+        if(L.draw==='glow'){ m.material.opacity = on?0.20:0.10; return; }
+        m.material.emissiveIntensity = on?0.72:0.20;
+        m.material.opacity = on ? Math.min(1,a*1.5) : a*0.92;
+        m.material.transparent = m.material.opacity < 1;
+      });
+      e.caps.forEach(m=>{
+        m.material.color.setHex(L.col);
+        m.material.opacity = on ? Math.min(1,a*1.7) : Math.min(1,a*1.7)*0.62;
+        m.material.transparent = m.material.opacity < 1;
+      });
+    });
+    const L = LAYERS.find(x=>x.id===selected);
+    const ro=document.getElementById('readout');
+    document.getElementById('roName').textContent=L.name;
+    ro.style.setProperty('--rc','#'+L.col.toString(16).padStart(6,'0'));
+    document.getElementById('roRange').textContent=L.range;
+    document.getElementById('roData').innerHTML =
+      L.data.map(d=>`<dt>${d[0]}</dt><dd>${d[1]}</dd>`).join('');
+    document.getElementById('roBlurb').textContent=L.blurb;
+    document.querySelectorAll('.dband').forEach(b=>
+      b.setAttribute('aria-pressed', String(b.dataset.id===selected)));
+  }
+
+  // depth scale buttons (ordered outside-in, matching the visual)
+  const ds=document.getElementById('depthscale');
+  LAYERS.forEach(L=>{
+    const b=document.createElement('button');
+    b.className='dband'; b.dataset.id=L.id; b.type='button';
+    b.setAttribute('aria-pressed','false');
+    const hex='#'+L.col.toString(16).padStart(6,'0');
+    b.style.setProperty('--bc',hex);
+    b.style.setProperty('--bcd',hex+'2e');
+    b.innerHTML=`${L.name}<span class="r">${L.range}</span>`;
+    b.addEventListener('click',()=>{selected=L.id;applySelection();});
+    ds.appendChild(b);
+  });
+
+  // click on the model itself
+  const ray=new THREE.Raycaster(), ndc=new THREE.Vector2();
+  let downAt=null;
+  rnd.domElement.addEventListener('pointerdown',e=>{downAt={x:e.clientX,y:e.clientY};});
+  rnd.domElement.addEventListener('pointerup',e=>{
+    if(!downAt) return;
+    const moved=Math.hypot(e.clientX-downAt.x, e.clientY-downAt.y);
+    downAt=null;
+    if(moved>5) return;                     // it was a drag, not a click
+    const r=rnd.domElement.getBoundingClientRect();
+    ndc.x=((e.clientX-r.left)/r.width)*2-1;
+    ndc.y=-((e.clientY-r.top)/r.height)*2+1;
+    ray.setFromCamera(ndc,cam);
+    const hit=ray.intersectObjects(picks,false)[0];
+    if(hit&&hit.object.userData.layer){selected=hit.object.userData.layer;applySelection();}
+  });
+
+  function resize(){
+    const w=host.clientWidth, h=host.clientHeight;
+    if(!w||!h) return;
+    rnd.setSize(w,h,false); cam.aspect=w/h; cam.updateProjectionMatrix();
+  }
+  new ResizeObserver(resize).observe(host); resize();
+  applySelection();
+
+  (function loop(){
+    requestAnimationFrame(loop);
+    if(!REDUCED) orbit.spin(0.0016);
+    orbit.update();
+    rnd.render(scene,cam);
+  })();
+}
+
+/* ============================================================
+   CYCLE SIMULATION
+   ============================================================ */
+const T_START = 2008.9, T_END = 2041.9;      // cycle 24 min → cycle 27 min
+const MINIMA  = [2008.9, 2019.9, 2030.9, 2041.9];
+const CYCNUM  = [24, 25, 26];
+
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
+  t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const rnd01 = mulberry(20260730);
+function gauss(){ let u=0,v=0; while(!u)u=rnd01(); while(!v)v=rnd01();
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+
+const latMean = p => 28 - 21*Math.pow(Math.max(p,0),0.6);
+const latSig  = p => 6 - 2.5*p;
+const activity= p => (p<=0||p>=1.12)?0:Math.pow(p,1.8)*Math.exp(-p/0.19);
+const ACT_MAX = (function(){let m=0;for(let p=0;p<=1.12;p+=0.002)m=Math.max(m,activity(p));return m;})();
+
+/* Pre-generate the whole spot catalogue: deterministic, so scrubbing is exact */
+const SPOTS = [];
+(function build(){
+  for(let c=0;c<3;c++){
+    const t0=MINIMA[c], span=MINIMA[c+1]-MINIMA[c];
+    const polarity = (c%2===0)?1:-1;
+    for(let step=0; step<span*365; step+=1){
+      const t = t0 + step/365;
+      const p = (t-t0)/span;
+      if(p>1.12) break;
+      const rate = 0.62*activity(p)/ACT_MAX;         // spots per day at peak
+      if(rnd01() < rate){
+        const north = rnd01()<0.5;
+        let lat = latMean(p) + gauss()*latSig(p);
+        lat = Math.max(2, Math.min(42, lat));
+        SPOTS.push({
+          t0:t, lat:(north?lat:-lat), lon0:rnd01()*360,
+          life:0.02+rnd01()*0.13,                     // years  (≈7–55 days)
+          size:0.35+rnd01()*0.95,
+          pol: north?polarity:-polarity,
+          cyc: CYCNUM[c]
+        });
+      }
+    }
+  }
+  SPOTS.sort((a,b)=>a.t0-b.t0);
+})();
+
+const omega = lat => 14.44 - 2.8*Math.pow(Math.sin(lat*Math.PI/180),2);   // deg/day, sidereal
+const OMEGA_REF = omega(16);
+
+/* ---------- butterfly diagram ---------- */
+const bflyCv = document.getElementById('bfly');
+const bctx = bflyCv.getContext('2d');
+let bW=0,bH=0, bDrawn=0;
+const PADL=44, PADR=12, PADT=16, PADB=26;
+
+function bflyResize(){
+  const wrap=document.getElementById('bflyWrap');
+  const w=wrap.clientWidth, h=wrap.clientHeight;
+  if(!w||!h) return;
+  const dpr=Math.min(devicePixelRatio,2);
+  bflyCv.width=w*dpr; bflyCv.height=h*dpr;
+  bflyCv.style.width=w+'px'; bflyCv.style.height=h+'px';
+  bctx.setTransform(dpr,0,0,dpr,0,0);
+  bW=w; bH=h;
+  bflyRedraw(simT);          // keep the accumulated wings across a resize
+}
+const bx = t => PADL + (t-T_START)/(T_END-T_START)*(bW-PADL-PADR);
+const by = lat => PADT + (40-lat)/80*(bH-PADT-PADB);
+
+function bflyFrame(){
+  bctx.clearRect(0,0,bW,bH);
+  bctx.fillStyle='#07080e'; bctx.fillRect(0,0,bW,bH);
+  // latitude gridlines
+  bctx.strokeStyle='rgba(255,255,255,.09)'; bctx.lineWidth=1;
+  bctx.fillStyle='#9a9aa6'; bctx.font='10px "JetBrains Mono",monospace';
+  bctx.textAlign='right'; bctx.textBaseline='middle';
+  [-30,-15,0,15,30].forEach(L=>{
+    const y=by(L);
+    bctx.globalAlpha = L===0?0.55:0.22;
+    bctx.beginPath(); bctx.moveTo(PADL,y); bctx.lineTo(bW-PADR,y); bctx.stroke();
+    bctx.globalAlpha=1;
+    bctx.fillText((L>0?'+':'')+L+'°', PADL-6, y);
+  });
+  // cycle minima
+  bctx.textAlign='center'; bctx.textBaseline='top';
+  MINIMA.forEach((m,i)=>{
+    if(m<T_START||m>T_END) return;
+    const x=bx(m);
+    bctx.strokeStyle='rgba(255,255,255,.16)'; bctx.setLineDash([3,4]);
+    bctx.beginPath(); bctx.moveTo(x,PADT); bctx.lineTo(x,bH-PADB); bctx.stroke();
+    bctx.setLineDash([]);
+  });
+  CYCNUM.forEach((n,i)=>{
+    const xm=(bx(MINIMA[i])+bx(MINIMA[i+1]))/2;
+    bctx.fillStyle='rgba(255,192,77,.75)';
+    bctx.font='600 10px "JetBrains Mono",monospace';
+    bctx.fillText('CYKLUS '+n, xm, PADT+2);
+  });
+  // year axis
+  bctx.fillStyle='#9a9aa6'; bctx.font='10px "JetBrains Mono",monospace';
+  for(let y=2010;y<=2040;y+=5){
+    const x=bx(y);
+    bctx.fillText(String(y), x, bH-PADB+5);
+  }
+  bctx.textAlign='left';
+  bctx.fillStyle='rgba(154,154,166,.8)';
+  bctx.fillText('Heliografisk bredde', PADL, PADT-12<0?2:2);
+}
+
+function bflyPlotUpTo(t){
+  for(; bDrawn<SPOTS.length && SPOTS[bDrawn].t0<=t; bDrawn++){
+    const s=SPOTS[bDrawn];
+    const x=bx(s.t0), y=by(s.lat);
+    if(x<PADL||x>bW-PADR) continue;
+    bctx.beginPath();
+    bctx.fillStyle = s.pol>0 ? 'rgba(255,192,77,.72)' : 'rgba(76,201,240,.72)';
+    bctx.arc(x,y, 0.7+s.size*1.15, 0, Math.PI*2);
+    bctx.fill();
+  }
+}
+function bflyRedraw(t){ bflyFrame(); bDrawn=0; bflyPlotUpTo(t); }
+
+/* ---------- 3D sun with live spots ---------- */
+let simT = T_START, playing = !REDUCED, showTrace = false;
+const SPEED = 1.15;                       // simulated years per real second
+
+function initCycle(){
+  const host=document.getElementById('stageCycle');
+  const scene=new THREE.Scene();
+  const cam=new THREE.PerspectiveCamera(40,1,0.1,100);
+  const rnd=new THREE.WebGLRenderer({antialias:true,alpha:true});
+  rnd.setPixelRatio(Math.min(devicePixelRatio,2));
+  host.appendChild(rnd.domElement);
+  scene.add(new THREE.AmbientLight(0xffffff,0.75));
+  const key=new THREE.DirectionalLight(0xffffff,0.7); key.position.set(2.6,2,3.2); scene.add(key);
+
+  const sun=new THREE.Group(); scene.add(sun);
+  const R=1;
+  sun.add(new THREE.Mesh(new THREE.SphereGeometry(R,64,40),
+    new THREE.MeshPhongMaterial({color:0xffb03a,emissive:0xff7a2a,
+      emissiveIntensity:0.5,shininess:3})));
+  // limb glow
+  sun.add(new THREE.Mesh(new THREE.SphereGeometry(R*1.16,48,32),
+    new THREE.MeshBasicMaterial({color:0xffc04d,transparent:true,opacity:0.075,
+      side:THREE.BackSide,blending:THREE.AdditiveBlending,depthWrite:false})));
+  // equator + 30° parallels
+  function circle(latDeg,col,op){
+    const pts=[],la=latDeg*Math.PI/180;
+    for(let i=0;i<=128;i++){const a=i/128*Math.PI*2;
+      pts.push(new THREE.Vector3(R*1.004*Math.cos(la)*Math.cos(a),R*1.004*Math.sin(la),
+                                 R*1.004*Math.cos(la)*Math.sin(a)));}
+    const g=new THREE.BufferGeometry().setFromPoints(pts);
+    return new THREE.Line(g,new THREE.LineBasicMaterial({color:col,transparent:true,opacity:op}));
+  }
+  sun.add(circle(0,0xffffff,0.42));
+  sun.add(circle(30,0x4cc9f0,0.22)); sun.add(circle(-30,0x4cc9f0,0.22));
+
+  // spot pool
+  const POOL=150, pool=[];
+  const spotGeo=new THREE.CircleGeometry(0.045,14);
+  for(let i=0;i<POOL;i++){
+    const m=new THREE.Mesh(spotGeo,new THREE.MeshBasicMaterial({
+      color:0x2a1608,transparent:true,opacity:0,side:THREE.DoubleSide}));
+    m.visible=false; sun.add(m); pool.push(m);
+  }
+  // rotation tracers
+  const tracers=[];
+  [0,30,60].forEach(lat=>{
+    const m=new THREE.Mesh(new THREE.SphereGeometry(0.035,12,10),
+      new THREE.MeshBasicMaterial({color:0x39ff14}));
+    m.visible=false; sun.add(m); tracers.push({lat,mesh:m});
+  });
+
+  const orbit=makeOrbit(rnd.domElement,cam,{dist:2.95,theta:0.4,phi:1.22,minD:2.0,maxD:5});
+
+  // A disc's own normal is +Z; rotate it onto the local radial direction.
+  // Done with a quaternion rather than lookAt(), which would read the parent's
+  // world matrix — stale here, because the sun group rotates every frame.
+  const ZAX=new THREE.Vector3(0,0,1), RAD=new THREE.Vector3();
+  function place(mesh,lat,lon,scale){
+    const la=lat*Math.PI/180, lo=lon*Math.PI/180;
+    const r=R*1.002;
+    const x=r*Math.cos(la)*Math.cos(lo), y=r*Math.sin(la), z=r*Math.cos(la)*Math.sin(lo);
+    mesh.position.set(x,y,z);
+    RAD.set(x,y,z).normalize();
+    mesh.quaternion.setFromUnitVectors(ZAX,RAD);
+    mesh.scale.setScalar(scale);
+  }
+
+  let lastFrame=performance.now();
+  function frame(now){
+    requestAnimationFrame(frame);
+    const dt=Math.min((now-lastFrame)/1000,0.05); lastFrame=now;
+    if(playing){
+      simT+=dt*SPEED;
+      if(simT>=T_END){            // hold the finished diagram — it's the payoff
+        simT=T_END; bflyPlotUpTo(simT); setPlaying(false);
+      }
+      updateUI();
+    }
+    // live spots
+    let k=0;
+    const days=(simT-T_START)*365.25;
+    for(let i=0;i<SPOTS.length;i++){
+      const s=SPOTS[i];
+      if(s.t0>simT) break;
+      if(simT>s.t0+s.life) continue;
+      if(k>=POOL) break;
+      const age=(simT-s.t0)/s.life;
+      const drift=(omega(s.lat)-OMEGA_REF)*(simT-s.t0)*365.25;
+      const m=pool[k++];
+      m.visible=true;
+      m.material.opacity=0.92*Math.sin(Math.PI*Math.min(age,1))**0.45;
+      m.material.color.setHex(s.pol>0?0x33190a:0x0d1a26);
+      place(m,s.lat,s.lon0+drift,s.size*1.5+0.5);
+    }
+    for(let i=k;i<POOL;i++) pool[i].visible=false;
+
+    tracers.forEach(t=>{
+      t.mesh.visible=showTrace;
+      if(showTrace) place(t.mesh,t.lat,(omega(t.lat)-OMEGA_REF)*days,1);
+    });
+
+    sun.rotation.y = (OMEGA_REF*days*Math.PI/180)%(Math.PI*2);
+    if(playing) bflyPlotUpTo(simT);
+    orbit.update();
+    rnd.render(scene,cam);
+  }
+
+  function resize(){
+    const w=host.clientWidth,h=host.clientHeight;
+    if(!w||!h) return;
+    rnd.setSize(w,h,false); cam.aspect=w/h; cam.updateProjectionMatrix();
+  }
+  new ResizeObserver(resize).observe(host); resize();
+  requestAnimationFrame(frame);
+}
+
+/* ---------- transport UI ---------- */
+const scrub=document.getElementById('scrub');
+const clock=document.getElementById('clock');
+const playBtn=document.getElementById('playBtn');
+function updateUI(){
+  scrub.value=simT.toFixed(2);
+  const yr=Math.floor(simT);
+  const frac=Math.round((simT-yr)*12);
+  const MON=['jan','feb','mar','apr','maj','jun','jul','aug','sep','okt','nov','dec'];
+  clock.innerHTML=MON[Math.min(frac,11)]+' '+yr+'<small>SIMULERET TID</small>';
+}
+scrub.addEventListener('input',()=>{
+  const v=parseFloat(scrub.value);
+  if(v<simT) { simT=v; bflyRedraw(simT); } else { simT=v; bflyPlotUpTo(simT); }
+  updateUI();
+});
+function setPlaying(v){
+  playing=v;
+  playBtn.setAttribute('aria-pressed',String(playing));
+  playBtn.innerHTML = playing ? '❙❙&nbsp; Pause'
+                    : (simT>=T_END ? '↻&nbsp; Afspil igen' : '▶&nbsp; Afspil');
+}
+playBtn.addEventListener('click',()=>{
+  if(!playing && simT>=T_END){ simT=T_START; bflyRedraw(simT); }  // replay from the top
+  setPlaying(!playing);
+});
+document.getElementById('resetBtn').addEventListener('click',()=>{
+  simT=T_START; bflyRedraw(simT); updateUI(); setPlaying(playing);
+});
+const traceBtn=document.getElementById('traceBtn');
+traceBtn.addEventListener('click',()=>{
+  showTrace=!showTrace;
+  traceBtn.setAttribute('aria-pressed',String(showTrace));
+});
+
+/* ---------- boot ---------- */
+function showLoadError(){
+  ['stageLayers','stageCycle'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) el.innerHTML='<p style="padding:1.6rem;color:#9a9aa6;font-size:.88rem;line-height:1.5">'+
+      '3D-modellen kunne ikke indlæses. Læg <code>three.min.js</code> i samme mappe som siden, '+
+      'eller kontrollér din internetforbindelse og genindlæs.</p>';
+  });
+}
+function boot(){
+  if(typeof THREE==='undefined'){ showLoadError(); return; }
+  initLayers();
+  bflyResize();
+  new ResizeObserver(()=>bflyResize()).observe(document.getElementById('bflyWrap'));
+  initCycle();
+  setPlaying(playing);
+  updateUI();
+}
+function whenReady(fn){
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',fn);
+  else fn();
+}
+whenReady(function(){
+  if(window.__threeReady) window.__threeReady.then(boot).catch(showLoadError);
+  else boot();
+});
+})();
+</script>
+</body>
+</html>
