@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maskinen der lærer at gætte</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700&family=Fira+Sans+Condensed:wght@400;500;700&family=Fira+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EDF1EC;
+  --grid-fine:#D7E2D8;
+  --grid-bold:#BBCFC0;
+  --ink:#16283C;
+  --blue:#1F4E9C;
+  --red:#C1281C;
+  --muted:#66787F;
+  --sheet:#F6F8F5;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper);
+  background-image:
+    linear-gradient(var(--grid-fine) 1px,transparent 1px),
+    linear-gradient(90deg,var(--grid-fine) 1px,transparent 1px);
+  background-size:8px 8px;
+  color:var(--ink);
+  font-family:"Fira Sans Condensed",system-ui,sans-serif;
+  font-size:17px;line-height:1.45;
+  padding:24px 16px 64px;
+}
+.sheet{max-width:960px;margin:0 auto}
+
+/* ---- header ---- */
+.eyebrow{
+  font-family:"Fira Mono",monospace;font-size:11px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 10px;
+}
+h1{
+  font-family:"Bricolage Grotesque","Fira Sans Condensed",sans-serif;
+  font-weight:700;font-size:clamp(34px,7vw,60px);line-height:.95;
+  margin:0 0 14px;letter-spacing:-.02em;max-width:14ch;
+}
+.lede{max-width:56ch;margin:0 0 28px;color:#2B4155}
+.lede b{font-weight:700}
+
+/* ---- plot: the signature ---- */
+.plot-frame{
+  background:var(--sheet);
+  border:1px solid var(--grid-bold);
+  box-shadow:0 1px 0 rgba(22,40,60,.06),0 10px 24px -18px rgba(22,40,60,.5);
+  padding:14px 14px 8px;margin-bottom:14px;
+}
+.plot-head{
+  display:flex;justify-content:space-between;align-items:baseline;
+  gap:12px;flex-wrap:wrap;margin-bottom:8px;
+}
+.plot-title{font-family:"Fira Mono",monospace;font-size:12px;letter-spacing:.12em;text-transform:uppercase}
+.plot-key{font-family:"Fira Mono",monospace;font-size:11px;color:var(--muted)}
+.plot-key i{font-style:normal;color:var(--red)}
+canvas{width:100%;height:auto;display:block}
+
+/* ---- readout ---- */
+.readout{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:1px;
+  background:var(--grid-bold);border:1px solid var(--grid-bold);margin-bottom:22px;
+}
+.cell{background:var(--sheet);padding:10px 12px}
+.cell .k{font-family:"Fira Mono",monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.cell .v{font-family:"Fira Mono",monospace;font-size:clamp(17px,3.4vw,23px);font-weight:700;color:var(--blue)}
+.cell.score .v{color:var(--red)}
+
+/* ---- controls ---- */
+.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:24px}
+label.field{display:flex;flex-direction:column;gap:4px;flex:1 1 240px}
+label.field span{font-family:"Fira Mono",monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+input[type=text],select{
+  font-family:"Fira Sans Condensed",sans-serif;font-size:16px;
+  padding:9px 10px;border:1px solid var(--grid-bold);background:var(--sheet);
+  color:var(--ink);border-radius:0;
+}
+input[type=text]:focus,select:focus,button:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
+button{
+  font-family:"Fira Sans Condensed",sans-serif;font-weight:700;font-size:15px;
+  letter-spacing:.02em;padding:10px 18px;border:1px solid var(--ink);
+  background:var(--ink);color:var(--sheet);cursor:pointer;border-radius:0;
+}
+button.ghost{background:transparent;color:var(--ink)}
+button:disabled{opacity:.4;cursor:default}
+
+/* ---- panels ---- */
+.panels{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.panel{background:var(--sheet);border:1px solid var(--grid-bold);padding:12px 14px;min-height:220px}
+.panel h2{
+  font-family:"Fira Mono",monospace;font-size:11px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 10px;font-weight:400;
+}
+#log{font-family:"Fira Mono",monospace;font-size:12px;line-height:1.7;max-height:260px;overflow-y:auto}
+#log div{border-bottom:1px dotted var(--grid-bold);padding:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#log .held{color:var(--red)}
+#log .err{color:var(--muted)}
+#speech{
+  color:var(--red);font-size:17px;line-height:1.55;
+  font-family:"Bricolage Grotesque",serif;min-height:120px;
+}
+.speech-controls{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.speech-controls input[type=text]{flex:1 1 140px}
+
+footer{
+  max-width:60ch;margin:34px 0 0;font-size:14px;color:var(--muted);
+  border-top:1px solid var(--grid-bold);padding-top:14px;
+}
+footer p{margin:0 0 8px}
+code{font-family:"Fira Mono",monospace;font-size:.9em}
+
+@media (max-width:720px){
+  .panels{grid-template-columns:1fr}
+  .readout{grid-template-columns:repeat(2,1fr)}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<main class="sheet">
+
+  <p class="eyebrow">Måling · sprogmodel · entropi</p>
+  <h1>Maskinen der lærer at gætte</h1>
+  <p class="lede">Den henter artikler fra Wikipedia, læser dem én for én og forsøger
+  hele tiden at forudsige det næste ord i en tekst, <b>den aldrig har set før</b>.
+  Kurven nedenfor er dens vidnesbyrd: hvor mange bits information den mangler
+  pr. ord. Falder den, har maskinen lært noget — og det er den eneste definition
+  af "lære" der kan måles.</p>
+
+  <section class="plot-frame">
+    <div class="plot-head">
+      <span class="plot-title">Læringskurve — bits pr. ord på tilbageholdt tekst</span>
+      <span class="plot-key">— model &nbsp; <i>--- Shannon 1951: menneske ≈ 5 bits/ord</i></span>
+    </div>
+    <canvas id="plot" width="1800" height="820" aria-label="Læringskurve"></canvas>
+  </section>
+
+  <section class="readout">
+    <div class="cell"><div class="k">Artikler læst</div><div class="v" id="m-docs">0</div></div>
+    <div class="cell"><div class="k">Ord i alt</div><div class="v" id="m-tokens">0</div></div>
+    <div class="cell"><div class="k">Ordforråd</div><div class="v" id="m-vocab">0</div></div>
+    <div class="cell score"><div class="k">Bits pr. ord</div><div class="v" id="m-bits">—</div></div>
+  </section>
+
+  <section class="controls">
+    <label class="field">
+      <span>Start ved artiklen</span>
+      <input type="text" id="seed" value="Lyd" autocomplete="off">
+    </label>
+    <label class="field" style="flex:0 1 150px">
+      <span>Wikipedia</span>
+      <select id="lang">
+        <option value="da" selected>dansk</option>
+        <option value="en">english</option>
+        <option value="de">deutsch</option>
+      </select>
+    </label>
+    <button id="run">Sæt i gang</button>
+    <button id="reset" class="ghost">Nulstil</button>
+  </section>
+
+  <section class="panels">
+    <div class="panel">
+      <h2>Hvad den har hentet</h2>
+      <div id="log"><div class="err">Intet endnu. Tryk "Sæt i gang".</div></div>
+    </div>
+    <div class="panel">
+      <h2>Hvad den selv siger</h2>
+      <div id="speech">Maskinen har ikke lært nok til at sige noget endnu.</div>
+      <div class="speech-controls">
+        <input type="text" id="prompt" placeholder="Begynd en sætning …" autocomplete="off">
+        <button id="say" class="ghost">Lad den fortsætte</button>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p><b>Sådan læses kurven.</b> Bits pr. ord er krydsentropien: hvor mange
+    ja/nej-spørgsmål maskinen i gennemsnit skal bruge for at ramme det næste ord.
+    Rent gæt blandt 20.000 ord ≈ 14 bits. Shannon målte i 1951 at et menneske
+    ligger omkring 1 bit pr. bogstav, altså ca. 5 bits pr. ord — den røde streg.</p>
+    <p><b>Hvorfor den flader ud.</b> Modellen er en 3-gram-model: den kender kun
+    de to foregående ord. Den kan lære hvilke ord der plejer at stå sammen, men
+    ikke hvad de betyder. Mere tekst hjælper derfor kun til et vist punkt.
+    Den grænse er pointen med demonstrationen.</p>
+    <p>Browseren må kun hente fra servere der tillader det, og Wikipedias API
+    gør. Skal den læse hele nettet, kræver det et program der kører uden for
+    browseren.</p>
+  </footer>
+</main>
+
+<script>
+//---MODEL-START---
+const ORDER = 3;                 // ser to ord tilbage
+const VOCAB_UNIVERSE = 1 << 20;  // fast bund, så tal kan sammenlignes over tid
+const TOKEN_RE = /[\p{L}]+(?:['’][\p{L}]+)*|\d+|[.,!?;:]/gu;
+
+function tokenize(text){
+  return (text.toLowerCase().match(TOKEN_RE) || []);
+}
+
+class NGram {
+  constructor(order=ORDER){
+    this.order = order;
+    this.tables = Array.from({length:order}, () => new Map()); // ctx -> Map(word->count)
+    this.totals = Array.from({length:order}, () => new Map()); // ctx -> count
+    this.vocab  = new Set();
+    this.tokens = 0;
+  }
+  train(tokens){
+    const pad = Array(this.order-1).fill("\u0001");
+    const seq = pad.concat(tokens);
+    for (const t of tokens) this.vocab.add(t);
+    this.tokens += tokens.length;
+    for (let i = this.order-1; i < seq.length; i++){
+      const word = seq[i];
+      for (let k = 0; k < this.order; k++){
+        const ctx = k ? seq.slice(i-k, i).join("\u0000") : "";
+        let row = this.tables[k].get(ctx);
+        if (!row){ row = new Map(); this.tables[k].set(ctx, row); }
+        row.set(word, (row.get(word) || 0) + 1);
+        this.totals[k].set(ctx, (this.totals[k].get(ctx) || 0) + 1);
+      }
+    }
+  }
+  // Witten-Bell-interpoleret: lange kontekster vejer tungt når de er set tit
+  prob(ctxArr, word){
+    let p = 1 / VOCAB_UNIVERSE;
+    for (let k = 0; k <= ctxArr.length; k++){
+      const ctx = k ? ctxArr.slice(ctxArr.length-k).join("\u0000") : "";
+      const total = this.totals[k].get(ctx);
+      if (!total) continue;
+      const row = this.tables[k].get(ctx);
+      const lam = total / (total + row.size);
+      p = lam * ((row.get(word) || 0) / total) + (1 - lam) * p;
+    }
+    return p;
+  }
+  crossEntropy(tokens){
+    if (!tokens.length) return NaN;
+    const pad = Array(this.order-1).fill("\u0001");
+    const seq = pad.concat(tokens);
+    let bits = 0;
+    for (let i = this.order-1; i < seq.length; i++){
+      bits -= Math.log2(Math.max(this.prob(seq.slice(i-this.order+1, i), seq[i]), 1e-30));
+    }
+    return bits / tokens.length;
+  }
+  generate(prompt="", length=45, temperature=0.75){
+    let ctx = tokenize(prompt).slice(-(this.order-1));
+    while (ctx.length < this.order-1) ctx.unshift("\u0001");
+    const out = [];
+    for (let n = 0; n < length; n++){
+      let row = null;
+      for (let k = this.order-1; k >= 0; k--){
+        const key = k ? ctx.slice(ctx.length-k).join("\u0000") : "";
+        if (this.totals[k].get(key)){ row = this.tables[k].get(key); break; }
+      }
+      if (!row) break;
+      let sum = 0; const weights = [], words = [];
+      for (const [w,c] of row){ const x = Math.pow(c, 1/Math.max(temperature,1e-3)); words.push(w); weights.push(x); sum += x; }
+      let r = Math.random()*sum, pick = words[words.length-1];
+      for (let i = 0; i < words.length; i++){ r -= weights[i]; if (r <= 0){ pick = words[i]; break; } }
+      out.push(pick);
+      ctx = ctx.concat([pick]).slice(-(this.order-1));
+    }
+    return detokenize(out);
+  }
+  contexts(){ return this.tables.reduce((n,t) => n + t.size, 0); }
+}
+
+function detokenize(tokens){
+  let s = "";
+  for (const t of tokens){
+    if (!s || ".,!?;:".includes(t)) s += t;
+    else s += " " + t;
+  }
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+//---MODEL-END---
+
+// ---------------------------------------------------------------- hentning
+const API = lang => `https://${lang}.wikipedia.org/w/api.php`;
+
+async function wiki(lang, params){
+  const url = API(lang) + "?" + new URLSearchParams(
+    Object.assign({format:"json", origin:"*", action:"query"}, params));
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  return res.json();
+}
+
+async function fetchArticle(lang, title){
+  const data = await wiki(lang, {
+    prop:"extracts|links", explaintext:"1", exlimit:"1", exsectionformat:"plain",
+    plnamespace:"0", pllimit:"200", redirects:"1", titles:title
+  });
+  const pages = data?.query?.pages || {};
+  const page = Object.values(pages)[0];
+  if (!page || page.missing !== undefined || !page.extract) return null;
+  return {
+    title: page.title,
+    text: page.extract,
+    links: (page.links || []).map(l => l.title)
+  };
+}
+
+// ---------------------------------------------------------------- tilstand
+const state = {
+  model: new NGram(),
+  frontier: [], seen: new Set(),
+  held: [], docs: 0, curve: [],
+  running: false
+};
+
+const $ = id => document.getElementById(id);
+const fmt = n => n.toLocaleString("da-DK");
+
+function logLine(text, cls){
+  const log = $("log");
+  if (log.firstChild && log.firstChild.className === "err") log.innerHTML = "";
+  const row = document.createElement("div");
+  if (cls) row.className = cls;
+  row.textContent = text;
+  log.insertBefore(row, log.firstChild);
+  while (log.childNodes.length > 60) log.removeChild(log.lastChild);
+}
+
+function refresh(){
+  $("m-docs").textContent   = fmt(state.docs);
+  $("m-tokens").textContent = fmt(state.model.tokens);
+  $("m-vocab").textContent  = fmt(state.model.vocab.size);
+  const last = state.curve[state.curve.length-1];
+  $("m-bits").textContent = last ? last.bits.toFixed(2) : "—";
+}
+
+// ---------------------------------------------------------------- kurven
+function drawPlot(){
+  const cv = $("plot"), ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height, P = {l:110, r:40, t:30, b:80};
+  const css = getComputedStyle(document.documentElement);
+  const col = n => css.getPropertyValue(n).trim();
+
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle = col("--sheet"); ctx.fillRect(0,0,W,H);
+
+  const yMax = 16, yMin = 2;
+  const xMax = Math.max(20000, ...state.curve.map(p => p.tokens)) * 1.05;
+  const X = t => P.l + (W-P.l-P.r) * (t / xMax);
+  const Y = b => P.t + (H-P.t-P.b) * (1 - (b - yMin) / (yMax - yMin));
+
+  // millimeterpapir
+  ctx.lineWidth = 1;
+  for (let b = yMin; b <= yMax; b += 0.5){
+    ctx.strokeStyle = (b % 2 === 0) ? col("--grid-bold") : col("--grid-fine");
+    ctx.beginPath(); ctx.moveTo(P.l, Y(b)); ctx.lineTo(W-P.r, Y(b)); ctx.stroke();
+  }
+  for (let i = 0; i <= 10; i++){
+    const x = P.l + (W-P.l-P.r) * i/10;
+    ctx.strokeStyle = (i % 2 === 0) ? col("--grid-bold") : col("--grid-fine");
+    ctx.beginPath(); ctx.moveTo(x, P.t); ctx.lineTo(x, H-P.b); ctx.stroke();
+  }
+
+  // akser
+  ctx.strokeStyle = col("--ink"); ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(P.l, P.t); ctx.lineTo(P.l, H-P.b); ctx.lineTo(W-P.r, H-P.b); ctx.stroke();
+
+  ctx.fillStyle = col("--ink");
+  ctx.font = "500 26px 'Fira Mono', monospace";
+  ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  for (let b = yMin; b <= yMax; b += 2) ctx.fillText(b.toFixed(0), P.l-16, Y(b));
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  for (let i = 0; i <= 5; i++){
+    const t = xMax * i/5;
+    ctx.fillText(t >= 1000 ? Math.round(t/1000)+"k" : Math.round(t),
+                 P.l + (W-P.l-P.r)*i/5, H-P.b+14);
+  }
+  ctx.font = "500 24px 'Fira Sans Condensed', sans-serif";
+  ctx.fillText("ord læst", (P.l+W-P.r)/2, H-P.b+52);
+  ctx.save();
+  ctx.translate(34, (P.t+H-P.b)/2); ctx.rotate(-Math.PI/2);
+  ctx.fillText("bits pr. ord", 0, 0);
+  ctx.restore();
+
+  // Shannon-reference
+  ctx.strokeStyle = col("--red"); ctx.lineWidth = 2.5; ctx.setLineDash([14,10]);
+  ctx.beginPath(); ctx.moveTo(P.l, Y(5)); ctx.lineTo(W-P.r, Y(5)); ctx.stroke();
+  ctx.setLineDash([]);
+
+  if (state.curve.length === 0){
+    ctx.fillStyle = col("--muted");
+    ctx.font = "500 26px 'Fira Sans Condensed', sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("Ingen målinger endnu", (P.l+W-P.r)/2, (P.t+H-P.b)/2);
+    return;
+  }
+
+  // sporet — tegnet som håndafsatte punkter forbundet med rette linjer
+  const pts = state.curve.filter(p => isFinite(p.bits));
+  ctx.strokeStyle = col("--blue"); ctx.lineWidth = 3.5;
+  ctx.beginPath();
+  pts.forEach((p,i) => { const x = X(p.tokens), y = Y(Math.min(Math.max(p.bits,yMin),yMax));
+    i ? ctx.lineTo(x,y) : ctx.moveTo(x,y); });
+  ctx.stroke();
+  ctx.fillStyle = col("--sheet");
+  for (const p of pts){
+    const x = X(p.tokens), y = Y(Math.min(Math.max(p.bits,yMin),yMax));
+    ctx.beginPath(); ctx.arc(x,y,6,0,Math.PI*2); ctx.fill(); ctx.stroke();
+  }
+}
+
+// ---------------------------------------------------------------- cyklus
+async function step(lang){
+  if (!state.frontier.length) return false;
+  const title = state.frontier.shift();
+  if (state.seen.has(title)) return true;
+  state.seen.add(title);
+
+  let art;
+  try { art = await fetchArticle(lang, title); }
+  catch (err){ logLine("kunne ikke hentes: " + title, "err"); return true; }
+  if (!art || art.text.length < 800) return true;
+
+  const tokens = tokenize(art.text).slice(0, 8000);
+  if (tokens.length < 200) return true;
+
+  state.docs++;
+  const holdout = state.docs % 10 === 0;      // hver 10. artikel trænes der ikke på
+  if (holdout){
+    state.held.push(tokens.slice(0, 1500));
+    logLine(`${art.title} — ${fmt(tokens.length)} ord — TILBAGEHOLDT`, "held");
+  } else {
+    state.model.train(tokens);
+    logLine(`${art.title} — ${fmt(tokens.length)} ord`);
+  }
+
+  for (const link of art.links.sort(() => Math.random()-0.5).slice(0,25)){
+    if (!state.seen.has(link) && state.frontier.length < 4000) state.frontier.push(link);
+  }
+
+  if (state.held.length && state.docs % 5 === 0){
+    const sample = state.held.flat().slice(0, 20000);
+    const bits = state.model.crossEntropy(sample);
+    state.curve.push({tokens: state.model.tokens, bits});
+    drawPlot();
+  }
+  refresh();
+  return true;
+}
+
+async function run(){
+  const lang = $("lang").value;
+  if (!state.frontier.length){
+    const seed = $("seed").value.trim() || "Lyd";
+    state.frontier.push(seed);
+  }
+  while (state.running){
+    let ok;
+    try { ok = await step(lang); }
+    catch (err){ logLine("fejl: " + err.message, "err"); ok = true; }
+    if (!ok){ logLine("Ikke flere artikler i køen.", "err"); stop(); break; }
+    await new Promise(r => setTimeout(r, 350));   // venlig over for Wikipedia
+    if (state.docs && state.docs % 20 === 0) speak();
+  }
+}
+
+function speak(){
+  if (state.model.tokens < 3000){
+    $("speech").textContent = "Maskinen har ikke lært nok til at sige noget endnu.";
+    return;
+  }
+  $("speech").textContent = state.model.generate($("prompt").value, 45, 0.75) + " …";
+}
+
+function stop(){
+  state.running = false;
+  $("run").textContent = "Fortsæt";
+}
+
+// ---------------------------------------------------------------- knapper
+$("run").addEventListener("click", () => {
+  if (state.running){ stop(); return; }
+  state.running = true;
+  $("run").textContent = "Pause";
+  run();
+});
+
+$("reset").addEventListener("click", () => {
+  stop();
+  state.model = new NGram();
+  state.frontier = []; state.seen = new Set();
+  state.held = []; state.docs = 0; state.curve = [];
+  $("log").innerHTML = '<div class="err">Intet endnu. Tryk "Sæt i gang".</div>';
+  $("speech").textContent = "Maskinen har ikke lært nok til at sige noget endnu.";
+  $("run").textContent = "Sæt i gang";
+  refresh(); drawPlot();
+});
+
+$("say").addEventListener("click", speak);
+$("prompt").addEventListener("keydown", e => { if (e.key === "Enter") speak(); });
+
+refresh();
+drawPlot();
+</script>
+</body>
+</html>
