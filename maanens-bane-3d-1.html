@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Månens bane i 3D — knudelinje, apsidelinje og evektion</title>
+<meta name="description" content="Interaktiv 3D-model af Månens bane om Jorden: den regredierende knudelinje (18,6 år), den præcesserende apsidelinje (8,85 år) og excentricitetens 205,9-dages evektionscyklus.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --space:#05080f;
+  --ink:#0a0f1b;
+  --ink-2:#0e1524;
+  --hair:rgba(201,162,39,.28);
+  --hair-soft:rgba(201,162,39,.13);
+  --brass:#c9a227;
+  --brass-dim:#8d7326;
+  --parchment:#ece3d2;
+  --muted:#8d93a3;
+  --apse:#f2762e;
+  --node:#4fd1c5;
+  --sun:#ffd479;
+  --moon:#e8e4da;
+  --earth:#6fa8d6;
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--space); color:var(--parchment);
+  font-family:'Inter',system-ui,sans-serif; overflow:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+canvas#scene{position:fixed; inset:0; display:block; touch-action:none}
+
+/* ---------- shared instrument-panel chrome ---------- */
+.panel{
+  background:linear-gradient(180deg, rgba(14,21,36,.93), rgba(8,12,22,.93));
+  border:1px solid var(--hair);
+  border-radius:2px;
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+  box-shadow:0 18px 50px rgba(0,0,0,.55);
+}
+.eyebrow{
+  font-family:'Inter',sans-serif; font-size:9.5px; font-weight:600;
+  letter-spacing:.19em; text-transform:uppercase; color:var(--brass);
+}
+.rule{height:1px; background:var(--hair-soft); margin:11px 0}
+
+/* ---------- masthead ---------- */
+#masthead{
+  position:fixed; top:16px; left:18px; z-index:20; max-width:min(46ch,72vw);
+  pointer-events:none;
+}
+#masthead h1{
+  font-family:'Spectral',Georgia,serif; font-weight:600;
+  font-size:clamp(19px,2.5vw,29px); line-height:1.12; margin:5px 0 0;
+  letter-spacing:-.01em;
+}
+#masthead h1 em{font-style:italic; color:var(--brass); font-weight:400}
+#masthead p{
+  margin:7px 0 0; font-size:12.5px; line-height:1.5; color:var(--muted);
+  max-width:40ch;
+}
+
+/* ---------- control panel ---------- */
+#controls{
+  position:fixed; top:132px; left:18px; z-index:20;
+  width:290px; max-height:calc(100vh - 158px); overflow-y:auto;
+  padding:14px 15px 16px;
+  scrollbar-width:thin; scrollbar-color:var(--brass-dim) transparent;
+}
+#controls::-webkit-scrollbar{width:6px}
+#controls::-webkit-scrollbar-thumb{background:var(--brass-dim); border-radius:3px}
+
+.grp{margin-bottom:14px}
+.grp:last-child{margin-bottom:0}
+
+.row{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:9px}
+.row label{font-size:12px; color:#c3c9d6}
+.val{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--brass); font-variant-numeric:tabular-nums}
+
+input[type=range]{
+  -webkit-appearance:none; appearance:none; width:100%; height:16px;
+  background:transparent; margin:4px 0 0; cursor:pointer;
+}
+input[type=range]::-webkit-slider-runnable-track{height:1px; background:var(--hair)}
+input[type=range]::-moz-range-track{height:1px; background:var(--hair)}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; width:11px; height:11px; margin-top:-5px;
+  background:var(--brass); border-radius:50%; border:none;
+}
+input[type=range]::-moz-range-thumb{
+  width:11px; height:11px; background:var(--brass); border-radius:50%; border:none;
+}
+input[type=range]:focus-visible{outline:2px solid var(--brass); outline-offset:4px}
+
+.btns{display:flex; gap:6px; flex-wrap:wrap; margin-top:9px}
+button{
+  font-family:'Inter',sans-serif; font-size:11px; font-weight:500;
+  color:var(--parchment); background:rgba(201,162,39,.07);
+  border:1px solid var(--hair); border-radius:2px;
+  padding:6px 9px; cursor:pointer; transition:background .15s, border-color .15s;
+}
+button:hover{background:rgba(201,162,39,.18); border-color:var(--brass)}
+button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
+button.on{background:var(--brass); color:#0a0f1b; border-color:var(--brass); font-weight:600}
+button.wide{flex:1; text-align:center}
+
+.checks{display:grid; grid-template-columns:1fr 1fr; gap:5px 8px; margin-top:9px}
+.chk{display:flex; align-items:center; gap:6px; font-size:11.5px; color:#c3c9d6; cursor:pointer}
+.chk input{
+  appearance:none; -webkit-appearance:none; width:12px; height:12px; flex:none;
+  border:1px solid var(--hair); border-radius:1px; background:transparent;
+  cursor:pointer; position:relative;
+}
+.chk input:checked{background:var(--brass); border-color:var(--brass)}
+.chk input:checked::after{
+  content:''; position:absolute; left:3.5px; top:1px; width:3px; height:6px;
+  border:solid #0a0f1b; border-width:0 1.6px 1.6px 0; transform:rotate(42deg);
+}
+.chk input:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
+.swatch{width:9px; height:2px; flex:none; border-radius:1px}
+
+/* ---------- readout ---------- */
+#readout{
+  position:fixed; left:18px; bottom:18px; z-index:20; width:290px; padding:13px 15px 14px;
+}
+#stamp{
+  font-family:'Spectral',serif; font-size:17px; letter-spacing:.01em; margin-top:6px;
+}
+#stamp span{color:var(--muted); font-size:12px; font-family:'Inter',sans-serif}
+.dl{display:grid; grid-template-columns:auto 1fr; gap:4px 12px; font-size:11.5px; margin-top:2px}
+.dl dt{color:var(--muted)}
+.dl dd{
+  margin:0; text-align:right; font-family:'IBM Plex Mono',monospace;
+  font-variant-numeric:tabular-nums; color:var(--parchment);
+}
+#eclipse{
+  margin-top:10px; font-size:11px; letter-spacing:.05em; text-transform:uppercase;
+  color:var(--sun); border-left:2px solid var(--sun); padding-left:8px; display:none;
+}
+
+/* ---------- inset instrument ---------- */
+#instrument{
+  position:fixed; right:18px; bottom:18px; z-index:20; width:264px; padding:12px 13px 13px;
+}
+.tabs{display:flex; gap:4px; margin-bottom:10px}
+.tabs button{flex:1; padding:5px 4px; font-size:10.5px}
+#inset{width:238px; height:186px; display:block; margin:0 auto}
+#insetCaption{font-size:10.5px; line-height:1.45; color:var(--muted); margin-top:9px; min-height:2.9em}
+
+/* ---------- mobile ---------- */
+#sheetToggle{position:fixed; right:18px; top:18px; z-index:30; display:none; padding:8px 12px}
+@media (max-width:900px){
+  #masthead{max-width:62vw}
+  #masthead p{display:none}
+  #sheetToggle{display:block}
+  #controls{
+    top:auto; bottom:0; left:0; width:100%; max-height:64vh; border-radius:8px 8px 0 0;
+    transform:translateY(101%); transition:transform .28s cubic-bezier(.4,0,.2,1);
+    padding-bottom:calc(18px + env(safe-area-inset-bottom));
+  }
+  #controls.open{transform:translateY(0)}
+  #readout{width:auto; left:12px; right:12px; bottom:12px; padding:10px 13px}
+  #readout .dl{grid-template-columns:auto 1fr auto 1fr; gap:3px 10px}
+  #controls.open ~ #readout{display:none}
+  #instrument{display:none}
+  #instrument.open{display:block; right:12px; left:12px; width:auto; bottom:auto; top:64px}
+  #inset{width:100%; max-width:300px}
+}
+@media (prefers-reduced-motion:reduce){
+  #controls{transition:none}
+}
+#fallback{
+  position:fixed; inset:0; display:none; place-content:center; text-align:center;
+  padding:32px; font-size:14px; line-height:1.6; color:var(--muted); z-index:50;
+}
+</style>
+</head>
+<body>
+
+<canvas id="scene" aria-label="3D-model af Månens bane om Jorden"></canvas>
+
+<div id="fallback">
+  <div>
+    <p style="color:var(--parchment); font-family:'Spectral',serif; font-size:18px">3D-modellen kunne ikke indlæses.</p>
+    <p>Siden henter Three.js fra et CDN. Kontrollér netforbindelsen, og genindlæs.</p>
+  </div>
+</div>
+
+<header id="masthead">
+  <div class="eyebrow">Ét legeme, tre cyklusser</div>
+  <h1>Månens bane <em>er ikke en fast ellipse</em></h1>
+  <p>Knudelinjen vandrer rundt på 18,6 år, apsidelinjen på 8,85 år — og imellem dem ånder excentriciteten med en periode på 205,9 døgn.</p>
+</header>
+
+<button id="sheetToggle" aria-expanded="false">Betjening</button>
+
+<section id="controls" class="panel" aria-label="Betjening">
+
+  <div class="grp">
+    <div class="eyebrow">Tid</div>
+    <div class="btns">
+      <button id="playBtn" class="wide">Afspil</button>
+      <button id="revBtn" title="Kør tiden baglæns">&#8646;</button>
+      <button id="todayBtn">I dag</button>
+    </div>
+    <div class="row"><label for="speed">Døgn pr. sekund</label><span class="val" id="speedVal">1,5</span></div>
+    <input type="range" id="speed" min="-1.6" max="2.75" step="0.01" value="0.176">
+    <div class="btns">
+      <button data-period="27.32">Måned</button>
+      <button data-period="365.26">År</button>
+      <button data-period="3232.6">Apside</button>
+      <button data-period="6798.4">Knude</button>
+    </div>
+  </div>
+
+  <div class="rule"></div>
+
+  <div class="grp">
+    <div class="eyebrow">Synsvinkel</div>
+    <div class="btns">
+      <button id="frameInert" class="on wide">Fast stjernehimmel</button>
+      <button id="frameSun" class="wide">Solretning fastholdt</button>
+    </div>
+    <div class="btns">
+      <button id="viewTop">Ovenfra</button>
+      <button id="viewEdge">Fra siden</button>
+      <button id="viewFree">Skrå</button>
+    </div>
+  </div>
+
+  <div class="rule"></div>
+
+  <div class="grp">
+    <div class="eyebrow">Overdrivelse (kun visuelt)</div>
+    <div class="row"><label for="exE">Excentricitet</label><span class="val" id="exEVal">4,0×</span></div>
+    <input type="range" id="exE" min="1" max="9" step="0.1" value="4">
+    <div class="row"><label for="exI">Baneheldning</label><span class="val" id="exIVal">3,0×</span></div>
+    <input type="range" id="exI" min="1" max="9" step="0.1" value="3">
+    <div class="row"><label for="exR">Klodernes størrelse</label><span class="val" id="exRVal">8,0×</span></div>
+    <input type="range" id="exR" min="1" max="20" step="0.5" value="8">
+    <div class="btns"><button id="realBtn" class="wide">Sæt alt til 1× (virkelige forhold)</button></div>
+  </div>
+
+  <div class="rule"></div>
+
+  <div class="grp">
+    <div class="eyebrow">Vis</div>
+    <div class="checks">
+      <label class="chk"><input type="checkbox" id="cOrbit" checked><span class="swatch" style="background:var(--brass)"></span>Baneellipse</label>
+      <label class="chk"><input type="checkbox" id="cApse" checked><span class="swatch" style="background:var(--apse)"></span>Apsidelinje</label>
+      <label class="chk"><input type="checkbox" id="cNode" checked><span class="swatch" style="background:var(--node)"></span>Knudelinje</label>
+      <label class="chk"><input type="checkbox" id="cSun" checked><span class="swatch" style="background:var(--sun)"></span>Solretning</label>
+      <label class="chk"><input type="checkbox" id="cEcl" checked><span class="swatch" style="background:var(--brass-dim)"></span>Ekliptika</label>
+      <label class="chk"><input type="checkbox" id="cTrail" checked><span class="swatch" style="background:var(--moon)"></span>Banespor</label>
+    </div>
+    <div class="row"><label for="trailLen">Sporets længde</label><span class="val" id="trailVal">1 år</span></div>
+    <input type="range" id="trailLen" min="27" max="1100" step="1" value="365">
+  </div>
+</section>
+
+<section id="readout" class="panel" aria-label="Aflæsning" aria-live="polite">
+  <div class="eyebrow">Aflæsning</div>
+  <div id="stamp">—</div>
+  <div class="rule"></div>
+  <dl class="dl">
+    <dt>Excentricitet <i>e</i></dt><dd id="rE">—</dd>
+    <dt>Afstand <i>r</i></dt><dd id="rR">—</dd>
+    <dt>Vinkeldiameter</dt><dd id="rAng">—</dd>
+    <dt>Elongation <i>D</i></dt><dd id="rD">—</dd>
+    <dt>Ekl. bredde <i>β</i></dt><dd id="rB">—</dd>
+    <dt>Apsidevinkel <i>ψ</i></dt><dd id="rPsi">—</dd>
+    <dt>Knude <i>Ω</i></dt><dd id="rOm">—</dd>
+    <dt>Libration i længde</dt><dd id="rLib">—</dd>
+  </dl>
+  <div id="eclipse"></div>
+</section>
+
+<section id="instrument" class="panel" aria-label="Instrument">
+  <div class="tabs">
+    <button data-tab="phase" class="on">Fase</button>
+    <button data-tab="portrait">Faseportræt</button>
+    <button data-tab="curve">e(t)</button>
+  </div>
+  <canvas id="inset" width="476" height="372"></canvas>
+  <p id="insetCaption"></p>
+</section>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* ══════════════════════════════════════════════════════════
+   1.  ASTRONOMI
+   Middelelementer efter Meeus, epoke J2000,0 (JD 2451545,0).
+   Skalaen i scenen er 1 enhed = 1000 km.
+   ══════════════════════════════════════════════════════════ */
+const DEG = Math.PI/180;
+
+const AST = {
+  a      : 384.399,        // Månens store halvakse [1000 km]
+  Re     : 6.371,          // Jordens radius
+  Rm     : 1.7374,         // Månens radius
+  n      : 13.176358,      // Månens sideriske middelbevægelse [°/d]
+  nS     : 0.9856076,      // Solens middelbevægelse [°/d]
+  dPom   : 0.1114041,      // apsidepræcession [°/d]  → 8,85 år
+  dNode  :-0.0529539,      // knuderegression  [°/d]  → 18,6 år
+  inc    : 5.145,          // baneheldning [°]
+  L0     : 218.3165,       // Månens middellængde ved J2000
+  pom0   : 83.3532,        // perigæets længde
+  node0  : 125.0445,       // opstigende knudes længde
+  Ls0    : 280.4600,       // Solens middellængde
+  m      : 0.0748013       // n'/n
+};
+// Evektionens amplitude i ϖ:  κ = 15m/8  (se udledningen)
+const KAPPA = 15*AST.m/8;
+// e(ψ) = C / √(1 − ¾m − 15/4·m·cos2ψ)   med C valgt så √(e_max·e_min) = 0,0549
+const EA = 1 - 0.75*AST.m;      // 0,9439
+const EB = 3.75*AST.m;          // 0,2805
+const EC = 0.0549 * Math.pow(EA*EA - EB*EB, 0.25);
+
+function eccOf(psi){ return EC / Math.sqrt(EA - EB*Math.cos(2*psi)); }
+
+function kepler(M, e){
+  let E = M + e*Math.sin(M);
+  for(let i=0;i<8;i++){
+    const d = (E - e*Math.sin(E) - M)/(1 - e*Math.cos(E));
+    E -= d;
+    if(Math.abs(d) < 1e-13) break;
+  }
+  return E;
+}
+
+/** Fuldstændig tilstand til tiden t (døgn fra J2000). */
+function state(t){
+  const Lbar = (AST.L0 + AST.n*t)*DEG;
+  const Ls   = (AST.Ls0 + AST.nS*t)*DEG;
+  const node = (AST.node0 + AST.dNode*t)*DEG;
+  const pom0 = (AST.pom0 + AST.dPom*t)*DEG;
+
+  // ψ = ϖ − λ' ; ϖ bærer selv evektionsleddet, så vi itererer én gang
+  let psi = pom0 - Ls;
+  let pom = pom0 - KAPPA*Math.sin(2*psi);
+  psi = pom - Ls;
+  pom = pom0 - KAPPA*Math.sin(2*psi);
+  psi = pom - Ls;
+
+  const e = eccOf(psi);
+  const M = Lbar - pom;
+  const E = kepler(M, e);
+  const v = Math.atan2(Math.sqrt(1-e*e)*Math.sin(E), Math.cos(E)-e);
+  const r = AST.a*(1 - e*Math.cos(E));
+
+  return { t, Lbar, Ls, node, pom, psi, e, M, E, v, r };
+}
+
+/** Position i ekliptisk system (z mod nordpolen), med valgfri overdrivelse. */
+function position(s, exE, exI){
+  const e  = Math.min(0.88, s.e*exE);
+  const E  = kepler(s.M, e);
+  const v  = Math.atan2(Math.sqrt(1-e*e)*Math.sin(E), Math.cos(E)-e);
+  const r  = AST.a*(1 - e*Math.cos(E));
+  const inc= Math.min(60, AST.inc*exI)*DEG;
+  const u  = s.pom - s.node + v;             // argument fra knuden
+  const cO = Math.cos(s.node), sO = Math.sin(s.node);
+  const cu = Math.cos(u),      su = Math.sin(u);
+  const ci = Math.cos(inc),    si = Math.sin(inc);
+  return {
+    x: r*(cO*cu - sO*su*ci),
+    y: r*(sO*cu + cO*su*ci),
+    z: r*(su*si),
+    r, v, e, inc
+  };
+}
+
+/* Kalender fra Julian Day (Meeus kap. 7) */
+const MDR = ['januar','februar','marts','april','maj','juni','juli',
+             'august','september','oktober','november','december'];
+function jdToDate(jd){
+  const z = Math.floor(jd + 0.5), f = jd + 0.5 - z;
+  let A = z;
+  if(z >= 2299161){
+    const al = Math.floor((z - 1867216.25)/36524.25);
+    A = z + 1 + al - Math.floor(al/4);
+  }
+  const B = A + 1524, C = Math.floor((B - 122.1)/365.25);
+  const D = Math.floor(365.25*C), Ei = Math.floor((B - D)/30.6001);
+  const day = B - D - Math.floor(30.6001*Ei) + f;
+  const mon = Ei < 14 ? Ei - 1 : Ei - 13;
+  const yr  = mon > 2 ? C - 4716 : C - 4715;
+  return { d: Math.floor(day), m: mon, y: yr };
+}
+function todayT(){ return Date.now()/86400000 + 2440587.5 - 2451545.0; }
+
+const nf = (x,d=1) => x.toLocaleString('da-DK',{minimumFractionDigits:d, maximumFractionDigits:d});
+const wrap360 = a => ((a % 360) + 360) % 360;
+
+/* ══════════════════════════════════════════════════════════
+   2.  SCENE
+   ══════════════════════════════════════════════════════════ */
+let renderer, scene, camera, controls;
+const canvas = document.getElementById('scene');
+
+try {
+  renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+} catch(err){
+  document.getElementById('fallback').style.display = 'grid';
+  throw err;
+}
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+
+scene = new THREE.Scene();
+scene.background = new THREE.Color(0x05080f);
+scene.fog = null;
+
+camera = new THREE.PerspectiveCamera(42, innerWidth/innerHeight, 1, 12000);
+camera.position.set(430, 300, 520);
+
+controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.minDistance = 40;
+controls.maxDistance = 2600;
+controls.target.set(0,0,0);
+
+/* ---- verdensrod, så vi kan dreje hele scenen i det solfaste system ---- */
+const world = new THREE.Group();
+scene.add(world);
+
+/* ---- stjerner ---- */
+(function stars(){
+  const N = 2600, pos = new Float32Array(N*3), col = new Float32Array(N*3);
+  for(let i=0;i<N;i++){
+    const th = Math.random()*Math.PI*2;
+    const ph = Math.acos(2*Math.random()-1);
+    const R  = 5200 + Math.random()*1400;
+    pos[3*i]   = R*Math.sin(ph)*Math.cos(th);
+    pos[3*i+1] = R*Math.cos(ph);
+    pos[3*i+2] = R*Math.sin(ph)*Math.sin(th);
+    const w = 0.55 + Math.random()*0.45;
+    col[3*i]=w; col[3*i+1]=w*(0.94+Math.random()*0.06); col[3*i+2]=w*(0.9+Math.random()*0.1);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  g.setAttribute('color', new THREE.BufferAttribute(col,3));
+  scene.add(new THREE.Points(g, new THREE.PointsMaterial({size:6, vertexColors:true, sizeAttenuation:true, transparent:true, opacity:.85})));
+})();
+
+/* ---- lys ---- */
+const sunLight = new THREE.DirectionalLight(0xfff2d8, 2.6);
+world.add(sunLight);                            // følger med det solfaste system
+scene.add(new THREE.AmbientLight(0x2a3550, 0.34));
+
+/* ---- procedurale teksturer ---- */
+function texEarth(){
+  const c = document.createElement('canvas'); c.width=1024; c.height=512;
+  const x = c.getContext('2d');
+  const g = x.createLinearGradient(0,0,0,512);
+  g.addColorStop(0,'#dfe9f2'); g.addColorStop(.13,'#1d5c8d');
+  g.addColorStop(.5,'#12406b'); g.addColorStop(.87,'#1d5c8d'); g.addColorStop(1,'#e3ecf4');
+  x.fillStyle=g; x.fillRect(0,0,1024,512);
+  let s = 20250824;
+  const rnd = () => (s = (s*1664525 + 1013904223) % 4294967296) / 4294967296;
+  x.globalAlpha = .58;
+  for(let i=0;i<150;i++){
+    const cx = rnd()*1024, cy = 90 + rnd()*332;
+    const rx = 22 + rnd()*80, ry = 14 + rnd()*46;
+    x.fillStyle = rnd() > .34 ? '#3d6b48' : '#7d6c43';
+    x.beginPath(); x.ellipse(cx, cy, rx, ry, rnd()*Math.PI, 0, 7); x.fill();
+  }
+  x.globalAlpha = 1;
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+function texMoon(){
+  const c = document.createElement('canvas'); c.width=1024; c.height=512;
+  const x = c.getContext('2d');
+  x.fillStyle='#b3aea4'; x.fillRect(0,0,1024,512);
+  let s = 1969072016;
+  const rnd = () => (s = (s*1103515245 + 12345) % 2147483648) / 2147483648;
+  // maria på den nærmeste side (omkring længde 0 = midt i teksturen)
+  x.globalAlpha=.62; x.fillStyle='#6f6c68';
+  const maria=[[512,175,120,78],[590,240,74,58],[452,232,88,64],[398,168,58,44],
+               [640,180,52,40],[520,290,66,42],[350,262,44,34]];
+  maria.forEach(([cx,cy,rx,ry])=>{ x.beginPath(); x.ellipse(cx,cy,rx,ry,0,0,7); x.fill(); });
+  x.globalAlpha=.22;
+  for(let i=0;i<900;i++){
+    const cx=rnd()*1024, cy=rnd()*512, r=1+rnd()*9;
+    x.fillStyle = rnd()>.5 ? '#d8d3c8' : '#8b877f';
+    x.beginPath(); x.arc(cx,cy,r,0,7); x.fill();
+  }
+  x.globalAlpha=1;
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+/* ---- Jorden ---- */
+const earth = new THREE.Mesh(
+  new THREE.SphereGeometry(1, 64, 48),
+  new THREE.MeshPhongMaterial({map:texEarth(), shininess:16, specular:0x2c3f55})
+);
+const earthPivot = new THREE.Group();
+earthPivot.rotation.z = 23.44*DEG;            // aksehældning mod ekliptika
+earthPivot.add(earth);
+world.add(earthPivot);
+
+const atmo = new THREE.Mesh(
+  new THREE.SphereGeometry(1.045, 48, 32),
+  new THREE.ShaderMaterial({
+    transparent:true, side:THREE.BackSide, blending:THREE.AdditiveBlending, depthWrite:false,
+    vertexShader:`varying vec3 vN; varying vec3 vP;
+      void main(){ vN=normalize(normalMatrix*normal);
+        vec4 mv=modelViewMatrix*vec4(position,1.); vP=mv.xyz;
+        gl_Position=projectionMatrix*mv; }`,
+    fragmentShader:`varying vec3 vN; varying vec3 vP;
+      void main(){ float k=pow(1.0-abs(dot(normalize(vN),normalize(-vP))),2.6);
+        gl_FragColor=vec4(0.36,0.62,0.95,k*0.85); }`
+  })
+);
+earthPivot.add(atmo);
+
+/* ---- Månen ---- */
+const moon = new THREE.Mesh(
+  new THREE.SphereGeometry(1, 48, 36),
+  new THREE.MeshPhongMaterial({map:texMoon(), shininess:2, specular:0x0a0a0a})
+);
+const moonPivot = new THREE.Group();
+moonPivot.add(moon);
+world.add(moonPivot);
+
+/* ---- ekliptika: koncentriske ringe + eger ---- */
+const eclGroup = new THREE.Group(); world.add(eclGroup);
+(function ecliptic(){
+  const mat  = new THREE.LineBasicMaterial({color:0x8d7326, transparent:true, opacity:.30});
+  const matS = new THREE.LineBasicMaterial({color:0x8d7326, transparent:true, opacity:.15});
+  for(const R of [100,200,300,400]){
+    const p=[]; for(let i=0;i<=180;i++){ const a=i/180*Math.PI*2; p.push(new THREE.Vector3(R*Math.cos(a),0,R*Math.sin(a))); }
+    eclGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(p), mat));
+  }
+  for(let k=0;k<24;k++){
+    const a=k/24*Math.PI*2;
+    eclGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(30*Math.cos(a),0,30*Math.sin(a)),
+      new THREE.Vector3(415*Math.cos(a),0,415*Math.sin(a))
+    ]), matS));
+  }
+  // forårspunktets retning
+  eclGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(0,0,0), new THREE.Vector3(470,0,0)
+  ]), new THREE.LineBasicMaterial({color:0xc9a227, transparent:true, opacity:.45})));
+})();
+
+/* ---- baneellipse, apside- og knudelinje, solretning, spor ---- */
+function mkLine(color, n, opacity=1, width=1){
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n*3), 3));
+  const l = new THREE.Line(g, new THREE.LineBasicMaterial({color, transparent:true, opacity, linewidth:width}));
+  l.frustumCulled = false;
+  world.add(l);
+  return l;
+}
+const ORB_N = 361;
+const orbitLine = mkLine(0xc9a227, ORB_N, .92);
+const apseLine  = mkLine(0xf2762e, 2, .95);
+const nodeLine  = mkLine(0x4fd1c5, 2, .95);
+const sunLine   = mkLine(0xffd479, 2, .55);
+
+const TRAIL_MAX = 1400;
+const trailGeo  = new THREE.BufferGeometry();
+trailGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(TRAIL_MAX*3),3));
+trailGeo.setAttribute('color',    new THREE.BufferAttribute(new Float32Array(TRAIL_MAX*3),3));
+const trail = new THREE.Line(trailGeo, new THREE.LineBasicMaterial({vertexColors:true, transparent:true, opacity:.9}));
+trail.frustumCulled = false;
+world.add(trail);
+
+const DOT_TEX = (function(){
+  const c=document.createElement('canvas'); c.width=c.height=64;
+  const g=c.getContext('2d').createRadialGradient(32,32,0,32,32,32);
+  g.addColorStop(0,'rgba(255,255,255,1)'); g.addColorStop(.45,'rgba(255,255,255,.9)');
+  g.addColorStop(1,'rgba(255,255,255,0)');
+  const x=c.getContext('2d'); x.fillStyle=g; x.fillRect(0,0,64,64);
+  return new THREE.CanvasTexture(c);
+})();
+function mkDot(color, size){
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({
+    map:DOT_TEX, color, transparent:true, opacity:.95, depthWrite:false
+  }));
+  s.scale.set(size,size,1); world.add(s); return s;
+}
+const perigeeDot = mkDot(0xf2762e, 11);
+const apogeeDot  = mkDot(0xf2762e, 7);
+const nodeDotA   = mkDot(0x4fd1c5, 9);
+const nodeDotD   = mkDot(0x4fd1c5, 6);
+
+/* ══════════════════════════════════════════════════════════
+   3.  TILSTAND OG BETJENING
+   ══════════════════════════════════════════════════════════ */
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const S = {
+  t: todayT(),
+  playing: !reduce,
+  speed: 1.5,          // døgn/sekund
+  dir: 1,              // +1 fremad, −1 baglæns
+  frameSun: false,
+  exE: 4, exI: 3, exR: 8,
+  trailDays: 365,
+  show: {orbit:true, apse:true, node:true, sun:true, ecl:true, trail:true},
+  tab: 'phase'
+};
+
+const $ = id => document.getElementById(id);
+const playBtn = $('playBtn');
+
+function setPlaying(p){
+  S.playing = p;
+  playBtn.textContent = p ? 'Pause' : 'Afspil';
+  playBtn.classList.toggle('on', p);
+}
+setPlaying(S.playing);
+playBtn.onclick = () => setPlaying(!S.playing);
+const revBtn = $('revBtn');
+revBtn.onclick = () => { S.dir = -S.dir; revBtn.classList.toggle('on', S.dir < 0); };
+$('todayBtn').onclick = () => { S.t = todayT(); trailBuf.length = 0; eHist.length = 0; };
+
+const speedEl = $('speed');
+function applySpeed(){
+  S.speed = Math.pow(10, parseFloat(speedEl.value));
+  $('speedVal').textContent = S.speed < 10 ? nf(S.speed,2) : nf(S.speed,0);
+}
+speedEl.oninput = applySpeed; applySpeed();
+
+document.querySelectorAll('[data-period]').forEach(b => {
+  b.onclick = () => {
+    const P = parseFloat(b.dataset.period);
+    speedEl.value = Math.log10(P/22).toFixed(3);   // ét omløb på ca. 22 sekunder
+    applySpeed();
+    setPlaying(true);
+  };
+});
+
+const fi = $('frameInert'), fs = $('frameSun');
+fi.onclick = () => { S.frameSun=false; fi.classList.add('on'); fs.classList.remove('on'); };
+fs.onclick = () => { S.frameSun=true;  fs.classList.add('on'); fi.classList.remove('on'); };
+
+function flyTo(x,y,z){
+  const d = camera.position.length();
+  const v = new THREE.Vector3(x,y,z).normalize().multiplyScalar(Math.max(d, 300));
+  camera.position.copy(v); controls.target.set(0,0,0); controls.update();
+}
+$('viewTop').onclick  = () => flyTo(0, 1, 0.001);
+$('viewEdge').onclick = () => flyTo(0.7, 0.045, 0.7);
+$('viewFree').onclick = () => flyTo(0.62, 0.5, 0.75);
+
+function bindEx(id, key, dec, suffix){
+  const el = $(id), out = $(id+'Val');
+  const upd = () => { S[key] = parseFloat(el.value); out.textContent = nf(S[key],dec)+suffix; };
+  el.oninput = upd; upd();
+}
+bindEx('exE','exE',1,'×'); bindEx('exI','exI',1,'×'); bindEx('exR','exR',1,'×');
+$('realBtn').onclick = () => {
+  ['exE','exI'].forEach(k => { $(k).value = 1; $(k).dispatchEvent(new Event('input')); });
+  $('exR').value = 3; $('exR').dispatchEvent(new Event('input'));
+};
+
+const chkMap = {cOrbit:'orbit', cApse:'apse', cNode:'node', cSun:'sun', cEcl:'ecl', cTrail:'trail'};
+Object.entries(chkMap).forEach(([id,key]) => {
+  $(id).onchange = e => S.show[key] = e.target.checked;
+});
+
+const trailEl = $('trailLen');
+trailEl.oninput = () => {
+  S.trailDays = parseInt(trailEl.value,10);
+  $('trailVal').textContent = S.trailDays < 40 ? '1 måned'
+    : S.trailDays < 200 ? Math.round(S.trailDays/27.32)+' måneder'
+    : S.trailDays < 400 ? '1 år' : nf(S.trailDays/365.26,1)+' år';
+};
+trailEl.dispatchEvent(new Event('input'));
+
+document.querySelectorAll('.tabs button').forEach(b => {
+  b.onclick = () => {
+    document.querySelectorAll('.tabs button').forEach(x => x.classList.remove('on'));
+    b.classList.add('on'); S.tab = b.dataset.tab;
+  };
+});
+
+const sheet = $('sheetToggle');
+sheet.onclick = () => {
+  const open = $('controls').classList.toggle('open');
+  $('instrument').classList.toggle('open', open);
+  sheet.setAttribute('aria-expanded', String(open));
+  sheet.textContent = open ? 'Luk' : 'Betjening';
+};
+
+addEventListener('keydown', e => {
+  if(e.target.matches('input,button')) return;
+  if(e.code === 'Space'){ e.preventDefault(); setPlaying(!S.playing); }
+  if(e.key === 'ArrowRight') S.t += 1;
+  if(e.key === 'ArrowLeft')  S.t -= 1;
+});
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+/* ══════════════════════════════════════════════════════════
+   4.  ANIMATIONSSLØJFE
+   ══════════════════════════════════════════════════════════ */
+const trailBuf = [];              // {x,y,z,Ls,age}
+const tmp = new THREE.Vector3();
+let last = performance.now();
+
+function update(dt){
+  if(S.playing) S.t += S.speed*S.dir*dt;
+  const s  = state(S.t);
+  const p  = position(s, S.exE, S.exI);
+
+  /* -- rotation af hele verden i det solfaste system -- */
+  world.rotation.y = S.frameSun ? -s.Ls : 0;
+
+  /* -- kloder -- */
+  const Re = AST.Re*S.exR, Rm = AST.Rm*S.exR;
+  earth.scale.setScalar(Re); atmo.scale.setScalar(Re);
+  moon.scale.setScalar(Rm);
+  moonPivot.position.set(p.x, p.z, -p.y);         // ekliptisk (x,y,z) → three (x, z, −y)
+
+  // Jorden roterer sideriskt
+  earth.rotation.y = (280.16 + 360.9856235*S.t)*DEG;
+
+  // Månen er bundet: samme side mod Jorden, med optisk libration fra e
+  const uDisp = s.pom - s.node + p.v;
+  const lamDisp = s.node + Math.atan2(Math.sin(uDisp)*Math.cos(p.inc), Math.cos(uDisp));
+  moon.rotation.y = lamDisp - Math.PI;
+
+  // sollys
+  sunLight.position.set(Math.cos(s.Ls)*4000, 0, -Math.sin(s.Ls)*4000);
+
+  /* -- baneellipse -- */
+  if(S.show.orbit){
+    orbitLine.visible = true;
+    const arr = orbitLine.geometry.attributes.position.array;
+    const e = Math.min(0.88, s.e*S.exE);
+    const inc = Math.min(60, AST.inc*S.exI)*DEG;
+    const cO=Math.cos(s.node), sO=Math.sin(s.node), ci=Math.cos(inc), si=Math.sin(inc);
+    for(let i=0;i<ORB_N;i++){
+      const E = i/(ORB_N-1)*Math.PI*2;
+      const vv = Math.atan2(Math.sqrt(1-e*e)*Math.sin(E), Math.cos(E)-e);
+      const rr = AST.a*(1-e*Math.cos(E));
+      const u  = s.pom - s.node + vv;
+      const cu=Math.cos(u), su=Math.sin(u);
+      arr[3*i]   = rr*(cO*cu - sO*su*ci);
+      arr[3*i+1] = rr*(su*si);
+      arr[3*i+2] = -rr*(sO*cu + cO*su*ci);
+    }
+    orbitLine.geometry.attributes.position.needsUpdate = true;
+    orbitLine.geometry.computeBoundingSphere();
+  } else orbitLine.visible = false;
+
+  /* -- apsidelinje -- */
+  const e0 = Math.min(0.88, s.e*S.exE);
+  const inc0 = Math.min(60, AST.inc*S.exI)*DEG;
+  function orbPoint(vv, rr){
+    const u=s.pom-s.node+vv, cu=Math.cos(u), su=Math.sin(u);
+    const cO=Math.cos(s.node), sO=Math.sin(s.node), ci=Math.cos(inc0), si=Math.sin(inc0);
+    return new THREE.Vector3(rr*(cO*cu-sO*su*ci), rr*(su*si), -rr*(sO*cu+cO*su*ci));
+  }
+  const per = orbPoint(0, AST.a*(1-e0));
+  const apo = orbPoint(Math.PI, AST.a*(1+e0));
+  apseLine.visible = perigeeDot.visible = apogeeDot.visible = S.show.apse;
+  if(S.show.apse){
+    const a = apseLine.geometry.attributes.position.array;
+    a[0]=per.x; a[1]=per.y; a[2]=per.z; a[3]=apo.x; a[4]=apo.y; a[5]=apo.z;
+    apseLine.geometry.attributes.position.needsUpdate = true;
+    apseLine.geometry.computeBoundingSphere();
+    perigeeDot.position.copy(per); apogeeDot.position.copy(apo);
+  }
+
+  /* -- knudelinje: skæringen mellem banens plan og ekliptika -- */
+  nodeLine.visible = nodeDotA.visible = nodeDotD.visible = S.show.node;
+  if(S.show.node){
+    const R = AST.a*1.14;
+    const nx = R*Math.cos(s.node), nz = R*Math.sin(s.node);
+    const a = nodeLine.geometry.attributes.position.array;
+    a[0]=nx; a[1]=0; a[2]=-nz; a[3]=-nx; a[4]=0; a[5]=nz;
+    nodeLine.geometry.attributes.position.needsUpdate = true;
+    nodeLine.geometry.computeBoundingSphere();
+    nodeDotA.position.set(nx*0.9, 0, -nz*0.9);
+    nodeDotD.position.set(-nx*0.9, 0, nz*0.9);
+  }
+
+  /* -- solretning -- */
+  sunLine.visible = S.show.sun;
+  if(S.show.sun){
+    const R = AST.a*1.55;
+    const a = sunLine.geometry.attributes.position.array;
+    a[0]=0; a[1]=0; a[2]=0;
+    a[3]=R*Math.cos(s.Ls); a[4]=0; a[5]=-R*Math.sin(s.Ls);
+    sunLine.geometry.attributes.position.needsUpdate = true;
+    sunLine.geometry.computeBoundingSphere();
+  }
+
+  eclGroup.visible = S.show.ecl;
+
+  /* -- spor -- */
+  trail.visible = S.show.trail;
+  if(S.show.trail){
+    const step = S.playing ? S.speed*S.dir*dt : 0;
+    const sampleInt = S.trailDays/900;
+    const nSub = Math.min(14, Math.max(1, Math.ceil(Math.abs(step)/sampleInt)));
+    const lastP = trailBuf[trailBuf.length-1];
+    if(!lastP || Math.abs(S.t - lastP.t) > sampleInt){
+      for(let k=nSub; k>=1; k--){
+        const tk = S.t - step*(k-1)/nSub;
+        const sk = (k === 1) ? s : state(tk);
+        const pk = (k === 1) ? p : position(sk, S.exE, S.exI);
+        trailBuf.push({t:tk, x:pk.x, y:pk.z, z:-pk.y, Ls:sk.Ls});
+      }
+      while(trailBuf.length > TRAIL_MAX) trailBuf.shift();
+    }
+    while(trailBuf.length && Math.abs(S.t - trailBuf[0].t) > S.trailDays) trailBuf.shift();
+
+    const pa = trailGeo.attributes.position.array, ca = trailGeo.attributes.color.array;
+    const N = trailBuf.length;
+    for(let i=0;i<N;i++){
+      const q = trailBuf[i];
+      let X = q.x, Z = q.z;
+      if(S.frameSun){                       // spor tegnet i det solfaste system
+        const d = s.Ls - q.Ls, cd = Math.cos(d), sd = Math.sin(d);
+        X = q.x*cd + q.z*sd;  Z = -q.x*sd + q.z*cd;
+      }
+      pa[3*i]=X; pa[3*i+1]=q.y; pa[3*i+2]=Z;
+      const f = i/Math.max(1,N-1);
+      ca[3*i]=0.91*f; ca[3*i+1]=0.89*f; ca[3*i+2]=0.85*f;
+    }
+    trailGeo.attributes.position.needsUpdate = true;
+    trailGeo.attributes.color.needsUpdate = true;
+    trailGeo.setDrawRange(0, N);
+    trailGeo.computeBoundingSphere();
+  }
+
+  return {s, p};
+}
+
+/* ══════════════════════════════════════════════════════════
+   5.  AFLÆSNING
+   ══════════════════════════════════════════════════════════ */
+let uiClock = 0;
+function refreshUI(s, p){
+  const dt = jdToDate(2451545.0 + S.t);
+  $('stamp').innerHTML = `${dt.d}. ${MDR[dt.m-1]} ${dt.y}` +
+    ` <span>· dag ${Math.round(S.t).toLocaleString('da-DK')} fra J2000</span>`;
+
+  // ægte (ikke overdrevne) størrelser
+  const inc = AST.inc*DEG;
+  const u   = s.pom - s.node + s.v;
+  const beta = Math.asin(Math.sin(u)*Math.sin(inc))/DEG;
+  const lam  = s.node + Math.atan2(Math.sin(u)*Math.cos(inc), Math.cos(u));
+  let D = wrap360((lam - s.Ls)/DEG);
+  const rkm = s.r*1000;
+  const ang = 2*Math.atan(1737.4/rkm)/DEG*60;
+  const lib = (s.v - s.M)/DEG;
+
+  $('rE').textContent   = nf(s.e,4).replace('.',',');
+  $('rR').textContent   = Math.round(rkm).toLocaleString('da-DK') + ' km';
+  $('rAng').textContent = nf(ang,2) + '′';
+  $('rD').textContent   = nf(D,1) + '°';
+  $('rB').textContent   = (beta>=0?'+':'−') + nf(Math.abs(beta),2) + '°';
+  $('rPsi').textContent = nf(wrap360(s.psi/DEG),1) + '°';
+  $('rOm').textContent  = nf(wrap360(s.node/DEG),1) + '°';
+  $('rLib').textContent = (lib>=0?'+':'−') + nf(Math.abs(lib),2) + '°';
+
+  const el = $('eclipse');
+  const near = Math.abs(beta) < 1.5;
+  if(near && Math.abs(D-180) < 12){
+    el.style.display='block'; el.textContent='Måneformørkelse mulig';
+  } else if(near && (D < 12 || D > 348)){
+    el.style.display='block'; el.textContent='Solformørkelse mulig';
+  } else el.style.display='none';
+
+  if(!eHist.length || Math.abs(S.t - eHist[eHist.length-1].t) > 1.2){
+    eHist.push({t:S.t, e:s.e});
+    if(eHist.length > 620) eHist.shift();
+  }
+  drawInset(s, D, beta);
+}
+
+/* ---------- instrumentet ---------- */
+const ins = $('inset'), ix = ins.getContext('2d');
+const eHist = [];
+const CAPS = {
+  phase: 'Månen set fra Jorden. Skivens størrelse følger den virkelige afstand — den vokser 13 % fra apogæum til perigæum.',
+  portrait:'Niveaukurven for evektions-Hamiltonfunktionen. Punktet cirkulerer og trækkes ud langs ψ = 0: dér er e størst.',
+  curve:'Excentriciteten over tid. Perioden er 205,9 døgn — halvdelen af de 411,8 døgn, Solen bruger om apsidelinjen.'
+};
+
+function drawInset(s, D, beta){
+  const W = ins.width, H = ins.height, dpr = 2;
+  ix.setTransform(1,0,0,1,0,0);
+  ix.clearRect(0,0,W,H);
+  ix.fillStyle = '#070b14'; ix.fillRect(0,0,W,H);
+  ix.strokeStyle = 'rgba(201,162,39,.20)'; ix.lineWidth = 2;
+  ix.strokeRect(1,1,W-2,H-2);
+  $('insetCaption').textContent = CAPS[S.tab];
+
+  if(S.tab === 'phase'){
+    // fase og tilsyneladende størrelse
+    const iph = Math.PI - Math.abs(((D*DEG + Math.PI) % (2*Math.PI)) - Math.PI);
+    const k = (1 + Math.cos(iph))/2;                // belyst brøkdel
+    const waxing = D < 180;
+    const rkm = s.r*1000;
+    const Rpx = 118 * (384399/rkm);                 // skalér med 1/r
+    ix.save(); ix.translate(W/2, H/2 - 8);
+    if(!waxing) ix.scale(-1,1);
+    ix.fillStyle = '#10131b';
+    ix.beginPath(); ix.arc(0,0,Rpx,0,7); ix.fill();
+    const b = Rpx*(2*k - 1);
+    ix.beginPath();
+    ix.ellipse(0,0,Rpx,Rpx,0,-Math.PI/2,Math.PI/2,false);
+    if(Math.abs(b) > 0.5)
+      ix.ellipse(0,0,Math.abs(b),Rpx,0,Math.PI/2, b>0 ? 3*Math.PI/2 : -Math.PI/2, b<0);
+    else ix.lineTo(0,-Rpx);
+    ix.closePath();
+    const g = ix.createRadialGradient(-Rpx*.2,-Rpx*.25,Rpx*.1,0,0,Rpx*1.15);
+    g.addColorStop(0,'#f4f1e8'); g.addColorStop(1,'#b9b2a4');
+    ix.fillStyle = g; ix.fill();
+    ix.restore();
+    ix.fillStyle = '#8d93a3'; ix.font = '500 20px "IBM Plex Mono", monospace';
+    ix.textAlign = 'center';
+    ix.fillText(`${Math.round(k*100)} % belyst`, W/2, H-22);
+  }
+
+  if(S.tab === 'portrait'){
+    const cx = W/2, cy = H/2, SC = 1500;
+    ix.strokeStyle='rgba(201,162,39,.13)'; ix.lineWidth=1.5;
+    ix.beginPath(); ix.moveTo(20,cy); ix.lineTo(W-20,cy);
+    ix.moveTo(cx,18); ix.lineTo(cx,H-18); ix.stroke();
+    for(const C of [0.030,0.041,0.052119,0.062]){
+      ix.beginPath();
+      for(let i=0;i<=180;i++){
+        const th = i/180*Math.PI*2;
+        const e = C/Math.sqrt(EA - EB*Math.cos(2*th));
+        const X = cx + SC*e*Math.cos(th), Y = cy - SC*e*Math.sin(th);
+        i ? ix.lineTo(X,Y) : ix.moveTo(X,Y);
+      }
+      ix.closePath();
+      const own = Math.abs(C-0.052119) < 1e-6;
+      ix.strokeStyle = own ? '#f2762e' : 'rgba(201,162,39,.34)';
+      ix.lineWidth = own ? 3 : 1.5;
+      ix.stroke();
+    }
+    const X = cx + SC*s.e*Math.cos(s.psi), Y = cy - SC*s.e*Math.sin(s.psi);
+    ix.fillStyle='#ece3d2'; ix.beginPath(); ix.arc(X,Y,6,0,7); ix.fill();
+    ix.fillStyle='rgba(201,162,39,.75)'; ix.font='500 17px "IBM Plex Mono", monospace';
+    ix.textAlign='right'; ix.fillText('e cos ψ', W-16, cy-10);
+    ix.textAlign='left';  ix.fillText('e sin ψ', cx+10, 30);
+  }
+
+  if(S.tab === 'curve'){
+    const lo = 0.0455, hi = 0.0655;
+    const yOf = e => H-34 - (e-lo)/(hi-lo)*(H-62);
+    ix.strokeStyle='rgba(201,162,39,.16)'; ix.lineWidth=1.5;
+    [0.048,0.052,0.056,0.060,0.064].forEach(e=>{
+      const y=yOf(e); ix.beginPath(); ix.moveTo(30,y); ix.lineTo(W-14,y); ix.stroke();
+      ix.fillStyle='rgba(201,162,39,.5)'; ix.font='400 15px "IBM Plex Mono", monospace';
+      ix.textAlign='right'; ix.fillText(nf(e,3).replace('.',','), 26, y+5);
+    });
+    if(eHist.length > 1){
+      ix.beginPath();
+      const t0 = eHist[0].t, t1 = eHist[eHist.length-1].t, span = Math.max(1e-6, t1-t0);
+      eHist.forEach((q,i)=>{
+        const X = 30 + (q.t-t0)/span*(W-46), Y = yOf(q.e);
+        i ? ix.lineTo(X,Y) : ix.moveTo(X,Y);
+      });
+      ix.strokeStyle='#f2762e'; ix.lineWidth=3; ix.stroke();
+      const q = eHist[eHist.length-1];
+      ix.fillStyle='#ece3d2'; ix.beginPath(); ix.arc(W-16, yOf(q.e), 5, 0, 7); ix.fill();
+    } else {
+      ix.fillStyle='#8d93a3'; ix.font='400 17px Inter, sans-serif'; ix.textAlign='center';
+      ix.fillText('Sæt tiden i gang …', W/2, H/2);
+    }
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   6.  DYBE LINKS  (#evektion, #knude, #fase, #virkelig)
+   ══════════════════════════════════════════════════════════ */
+function setSpeedForPeriod(P){
+  speedEl.value = Math.log10(P/22).toFixed(3); applySpeed();
+}
+function setTab(name){
+  document.querySelectorAll('.tabs button').forEach(x =>
+    x.classList.toggle('on', x.dataset.tab === name));
+  S.tab = name;
+}
+function applyHash(){
+  const h = (location.hash || '').replace('#','').toLowerCase();
+  if(!h) return;
+  if(h === 'evektion'){
+    fs.click(); setSpeedForPeriod(3232.6); setTab('portrait');
+    flyTo(0.35, 0.62, 0.7); setPlaying(true);
+  }
+  if(h === 'knude'){
+    fi.click(); setSpeedForPeriod(6798.4); setTab('curve');
+    $('exI').value = 5; $('exI').dispatchEvent(new Event('input'));
+    flyTo(0.7, 0.045, 0.7); setPlaying(true);
+  }
+  if(h === 'apside'){
+    fs.click(); setSpeedForPeriod(3232.6); setTab('portrait');
+    flyTo(0, 1, 0.001); setPlaying(true);
+  }
+  if(h === 'fase'){
+    fi.click(); setSpeedForPeriod(27.32); setTab('phase');
+    flyTo(0.62, 0.5, 0.75); setPlaying(true);
+  }
+  if(h === 'virkelig'){
+    $('realBtn').click(); setTab('portrait'); setSpeedForPeriod(27.32);
+    flyTo(0, 1, 0.001); setPlaying(true);
+  }
+  trailBuf.length = 0;
+}
+addEventListener('hashchange', applyHash);
+applyHash();
+
+/* ---------- sløjfen ---------- */
+function loop(now){
+  const dt = Math.min(0.05, (now - last)/1000); last = now;
+  const {s, p} = update(dt);
+  uiClock += dt;
+  if(uiClock > 0.08){ refreshUI(s, p); uiClock = 0; }
+  controls.update();
+  renderer.render(scene, camera);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
