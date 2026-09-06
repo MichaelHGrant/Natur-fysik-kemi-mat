@@ -425,10 +425,17 @@ async function step(lang){
   let art;
   try { art = await fetchArticle(lang, title); }
   catch (err){ logLine("kunne ikke hentes: " + title, "err"); return true; }
-  if (!art || art.text.length < 800) return true;
+  if (!art){ logLine("findes ikke: " + title, "err"); return true; }
+  if (art.text.length < 800){
+    logLine(`${art.title} — for kort (${fmt(art.text.length)} tegn), springes over`, "err");
+    return true;
+  }
 
   const tokens = tokenize(art.text).slice(0, 8000);
-  if (tokens.length < 200) return true;
+  if (tokens.length < 200){
+    logLine(`${art.title} — kun ${fmt(tokens.length)} ord, springes over`, "err");
+    return true;
+  }
 
   state.docs++;
   const holdout = state.docs % 10 === 0;      // hver 10. artikel trænes der ikke på
