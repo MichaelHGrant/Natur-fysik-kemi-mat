@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gyroskopet og tippetoppen – Michael Grant</title>
+<meta name="description" content="Interaktive 3D-simulationer af gyroskopets præcession og nutation og af tippetoppen, der vender sig på hovedet. Med teorien bag: Lagrange-formalismen, Jelletts konstant og energilandskabet.">
+<meta name="author" content="Michael Grant">
+<meta name="theme-color" content="#0b0d17">
+<link rel="canonical" href="https://michaelhgrant.github.io/Natur-fysik-kemi-mat/gyroskop-tippetop.html">
+<meta property="og:type" content="article">
+<meta property="og:locale" content="da_DK">
+<meta property="og:title" content="Gyroskopet og tippetoppen">
+<meta property="og:description" content="To snurretoppe i 3D: en der præcesserer, og en der vender sig på hovedet.">
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$','$'], ['\\(','\\)']], displayMath: [['$$','$$']] },
+  chtml: { scale: 1.02 },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] }
+};
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+:root{
+  --space-black:#0b0d17; --space-deep:#050608;
+  --aurora-green:#39ff14; --aurora-purple:#a020f0; --aurora-blue:#4cc9f0;
+  --text-light:#e0e0e0; --text-dim:#a0a0a8;
+  --card-bg:rgba(255,255,255,0.04); --card-border:rgba(57,255,20,0.18);
+  --gold:#f5c878; --gold-bright:#ffe0a0; --fire:#ff7a2a; --red:#ff4d6d;
+  --panel:rgba(255,255,255,0.035); --line:rgba(255,255,255,0.09);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:70px}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{
+  font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
+  background-color:var(--space-black);
+  background-image:radial-gradient(circle at 20% 10%,rgba(160,32,240,0.08),transparent 40%),
+                   radial-gradient(circle at 80% 60%,rgba(76,201,240,0.05),transparent 40%);
+  color:var(--text-light); line-height:1.65; margin:0;
+}
+a{color:var(--aurora-blue)}
+a:focus-visible,button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--aurora-blue);outline-offset:3px}
+
+nav.topnav{position:sticky;top:0;z-index:100;background:rgba(11,13,23,0.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  border-bottom:1px solid rgba(57,255,20,0.25);padding:0.6rem 1rem;overflow-x:auto;white-space:nowrap}
+nav.topnav ul{list-style:none;margin:0;padding:0;display:inline-flex;gap:0.4rem;justify-content:center;width:100%;min-width:max-content}
+nav.topnav a{color:var(--text-dim);text-decoration:none;padding:0.4rem 0.9rem;border-radius:20px;font-size:0.85rem;font-weight:500;border:1px solid transparent;transition:all .2s ease}
+nav.topnav a:hover{color:var(--aurora-green);border-color:rgba(57,255,20,0.4);background:rgba(57,255,20,0.05)}
+nav.topnav a.home{color:var(--aurora-green);border-color:rgba(57,255,20,0.35)}
+
+header.page{padding:3.2rem 1.5rem 2.2rem;text-align:center;background:linear-gradient(to bottom,#1a1a2e,var(--space-black))}
+header.page h1{font-size:clamp(2rem,5vw,3.1rem);color:var(--aurora-green);text-shadow:0 0 25px rgba(57,255,20,0.35);margin:0 0 0.8rem;letter-spacing:0.3px}
+header.page p{max-width:720px;margin:0 auto;color:var(--text-dim);font-size:1.05rem}
+
+main{max-width:1180px;margin:0 auto;padding:1rem 1.5rem 3rem}
+section.block{margin:2.5rem 0 3.5rem}
+.section-header{border-left:4px solid var(--aurora-blue);padding-left:1rem;margin-bottom:1.4rem}
+.section-header h2{margin:0 0 0.3rem;font-size:1.75rem;color:#fff}
+.section-header p{margin:0;color:var(--text-dim);max-width:760px}
+#tippetop .section-header{border-left-color:var(--gold)}
+#teori .section-header{border-left-color:var(--aurora-purple)}
+
+/* === simulator layout === */
+.sim{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:1rem;align-items:start}
+.stage{position:relative;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#07080f;height:min(70vh,600px);min-height:360px}
+.stage canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+.stage canvas:active{cursor:grabbing}
+.stage .hud{position:absolute;left:0.8rem;top:0.7rem;font-size:0.8rem;color:var(--text-dim);pointer-events:none;line-height:1.5;text-shadow:0 1px 3px #000}
+.stage .status{position:absolute;right:0.8rem;top:0.7rem;font-size:0.85rem;padding:0.25rem 0.75rem;border-radius:20px;border:1px solid var(--line);background:rgba(7,8,15,0.75);color:var(--text-light)}
+.stage .hint{position:absolute;left:0.8rem;bottom:0.6rem;font-size:0.75rem;color:rgba(160,160,168,0.8);pointer-events:none}
+.legend{display:flex;flex-wrap:wrap;gap:0.3rem 1.1rem;font-size:0.82rem;color:var(--text-dim);margin:0.55rem 0.2rem 0}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:0.35rem}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1rem 1rem 1.1rem}
+.panel h3{margin:0 0 0.7rem;font-size:1rem;color:#fff;font-weight:600}
+.ctrl{margin-bottom:0.85rem}
+.ctrl label{display:flex;justify-content:space-between;gap:0.5rem;font-size:0.86rem;color:var(--text-light);margin-bottom:0.2rem}
+.ctrl label output{color:var(--aurora-blue);font-variant-numeric:tabular-nums}
+#tippetop .ctrl label output{color:var(--gold)}
+input[type=range]{width:100%;accent-color:var(--aurora-blue)}
+#tippetop input[type=range]{accent-color:var(--gold)}
+.btns{display:flex;flex-wrap:wrap;gap:0.45rem;margin:0.3rem 0 0.9rem}
+button{font:inherit;font-size:0.85rem;font-weight:600;padding:0.45rem 0.9rem;border-radius:22px;border:1.5px solid var(--aurora-blue);background:transparent;color:var(--aurora-blue);cursor:pointer;transition:background .2s,color .2s}
+button:hover{background:var(--aurora-blue);color:var(--space-black)}
+button.primary{background:var(--aurora-blue);color:var(--space-black)}
+#tippetop button{border-color:var(--gold);color:var(--gold)}
+#tippetop button:hover,#tippetop button.primary{background:var(--gold);color:var(--space-black)}
+.checks{display:flex;flex-wrap:wrap;gap:0.3rem 1rem;font-size:0.85rem;margin-bottom:0.8rem}
+.checks label{display:flex;align-items:center;gap:0.35rem;cursor:pointer}
+table.read{width:100%;border-collapse:collapse;font-size:0.84rem;font-variant-numeric:tabular-nums}
+table.read td{padding:0.22rem 0;border-bottom:1px solid rgba(255,255,255,0.05)}
+table.read td:last-child{text-align:right;color:#fff}
+.note{font-size:0.8rem;color:var(--text-dim);margin:0.7rem 0 0}
+.flag{font-size:0.82rem;padding:0.5rem 0.7rem;border-radius:10px;margin-top:0.7rem;border:1px solid var(--line);background:rgba(255,255,255,0.03)}
+.flag.ok{border-color:rgba(57,255,20,0.35);color:#bff5ae}
+.flag.no{border-color:rgba(255,77,109,0.45);color:#ffc2cd}
+
+.plots{display:grid;grid-template-columns:1fr 1fr;gap:1rem;grid-column:1;grid-row:2}
+.sim > .panel{grid-column:2;grid-row:1 / span 2}
+.plot{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:0.8rem 0.9rem 0.9rem}
+.plot h3{margin:0 0 0.2rem;font-size:0.95rem;color:#fff;font-weight:600}
+.plot p{margin:0 0 0.5rem;font-size:0.8rem;color:var(--text-dim)}
+.plot canvas{display:block;width:100%;height:230px}
+
+/* === tekst === */
+.prose{max-width:780px}
+.prose p{margin:0 0 1rem}
+.prose h3{color:#fff;margin:2rem 0 0.6rem;font-size:1.25rem}
+.prose h4{color:var(--aurora-blue);margin:1.4rem 0 0.4rem;font-size:1.02rem}
+.intro-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;margin:0 0 1rem}
+.intro-grid div{background:var(--card-bg);border:1px solid var(--line);border-radius:14px;padding:1.1rem 1.2rem}
+.intro-grid h3{margin:0 0 0.4rem;font-size:1.05rem;color:#fff}
+.intro-grid p{margin:0;font-size:0.95rem;color:var(--text-light)}
+details{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:0.2rem 1rem;margin:0.9rem 0}
+details[open]{padding-bottom:0.6rem}
+summary{cursor:pointer;padding:0.6rem 0;color:var(--aurora-blue);font-weight:600}
+.mjx-scroll,mjx-container[display="true"]{overflow-x:auto;overflow-y:hidden;max-width:100%}
+.tablewrap{overflow-x:auto}
+table.sum{border-collapse:collapse;width:100%;min-width:560px;font-size:0.92rem;margin:0.5rem 0 1rem}
+table.sum th,table.sum td{text-align:left;padding:0.55rem 0.7rem;border-bottom:1px solid var(--line);vertical-align:top}
+table.sum th{color:#fff;font-weight:600}
+table.sum td:first-child{color:var(--text-dim)}
+.refs{font-size:0.9rem;color:var(--text-dim);padding-left:1.1rem}
+.refs li{margin-bottom:0.35rem}
+.downloads{display:flex;flex-wrap:wrap;gap:0.6rem;margin:1rem 0}
+.downloads a{display:inline-block;padding:0.5rem 1.1rem;border-radius:25px;border:1.5px solid var(--aurora-green);color:var(--aurora-green);text-decoration:none;font-weight:600;font-size:0.88rem}
+.downloads a:hover{background:var(--aurora-green);color:var(--space-black)}
+footer{margin-top:3rem;padding:2rem 1.5rem;font-size:0.88rem;color:var(--text-dim);text-align:center;border-top:1px solid rgba(255,255,255,0.05)}
+footer a{text-decoration:none}
+
+@media (max-width:900px){
+  .sim{grid-template-columns:1fr}
+  .plots{grid-template-columns:1fr;grid-column:auto;grid-row:auto}
+  .sim > .panel{grid-column:auto;grid-row:auto}
+  .intro-grid{grid-template-columns:1fr}
+  .stage{height:62vh;min-height:320px}
+}
+@media (max-width:600px){
+  main{padding:0.5rem 1rem 2rem}
+  .section-header h2{font-size:1.4rem}
+  .stage .hud{font-size:0.72rem}
+}
+</style>
+</head>
+<body>
+<nav class="topnav" aria-label="Navigation">
+  <ul>
+    <li><a class="home" href="index.html#mekanik">← Forsiden</a></li>
+    <li><a href="#gyroskop">Gyroskopet</a></li>
+    <li><a href="#tippetop">Tippetoppen</a></li>
+    <li><a href="#teori-gyro">Teori: gyroskop</a></li>
+    <li><a href="#teori-tippe">Teori: tippetop</a></li>
+    <li><a href="#sammenfatning">Sammenfatning</a></li>
+  </ul>
+</nav>
+
+<header class="page">
+  <h1>Gyroskopet og tippetoppen</h1>
+  <p>To snurretoppe, to slags fysik. Gyroskopet præcesserer i stedet for at vælte, fordi et kraftmoment drejer impulsmomentet. Tippetoppen vender sig på hovedet og løfter sit eget massemidtpunkt, fordi friktionen tapper energi, men lader én bestemt størrelse være i fred.</p>
+</header>
+
+<main>
+
+<!-- ============ GYROSKOP ============ -->
+<section class="block" id="gyroskop">
+  <div class="section-header">
+    <h2>Gyroskopet i 3D</h2>
+    <p>Et legetøjsgyroskop hviler med den ene akselende på et tårn. Slip det fra hvile, og du ser nutationens små buer. Start det i stationær præcession, og aksen glider jævnt rundt. Træk i billedet for at dreje, rul eller knib for at zoome.</p>
+  </div>
+  <div class="sim">
+    <div>
+      <div class="stage" id="gStage">
+        <canvas id="gCanvas" aria-label="3D-simulation af et gyroskop"></canvas>
+        <div class="hud" id="gHud"></div>
+        <div class="status" id="gStatus">Præcesserer</div>
+        <div class="hint">Rotoren tegnes med nedgearet omdrejningstal</div>
+      </div>
+      <div class="legend">
+        <span><i style="background:#4cc9f0"></i>Impulsmoment $\mathbf L$</span>
+        <span><i style="background:#ff7a2a"></i>Kraftmoment $\boldsymbol\tau$</span>
+        <span><i style="background:#ff4d6d"></i>Tyngdekraft $M\mathbf g$</span>
+        <span><i style="background:#c77dff"></i>Præcession $\boldsymbol\Omega$</span>
+        <span><i style="background:#39ff14"></i>Akslens spor</span>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Styring</h3>
+      <div class="btns">
+        <button id="gRest" class="primary">Slip fra hvile</button>
+        <button id="gSteady">Stationær præcession</button>
+        <button id="gPause">Pause</button>
+      </div>
+      <div class="ctrl"><label for="gW"><span>Rotorens omdrejningstal</span><output id="gWo"></output></label>
+        <input type="range" id="gW" min="120" max="900" step="10" value="320"></div>
+      <div class="ctrl"><label for="gTh"><span>Startvinkel fra lodret</span><output id="gTho"></output></label>
+        <input type="range" id="gTh" min="15" max="110" step="1" value="80"></div>
+      <div class="ctrl"><label for="gK"><span>Lejefriktion</span><output id="gKo"></output></label>
+        <input type="range" id="gK" min="0" max="0.5" step="0.01" value="0"></div>
+      <div class="ctrl"><label for="gC"><span>Nutationsdæmpning</span><output id="gCo"></output></label>
+        <input type="range" id="gC" min="0" max="15" step="0.5" value="0"></div>
+      <div class="ctrl"><label for="gT"><span>Tempo</span><output id="gTo"></output></label>
+        <input type="range" id="gT" min="0.02" max="1" step="0.01" value="0.25"></div>
+      <div class="checks">
+        <label><input type="checkbox" id="gVec" checked> Vektorer</label>
+        <label><input type="checkbox" id="gTrail" checked> Spor</label>
+      </div>
+      <table class="read">
+        <tr><td>Hældning $\theta$</td><td id="gRth">–</td></tr>
+        <tr><td>Præcession $\dot\phi$, målt</td><td id="gRphi">–</td></tr>
+        <tr><td>$Mgl/(I_3\omega_3)$, teori</td><td id="gRtheo">–</td></tr>
+        <tr><td>Nutationsperiode $2\pi I_1/(I_3\omega_3)$</td><td id="gRnut">–</td></tr>
+        <tr><td>Tid</td><td id="gRt">–</td></tr>
+      </table>
+      <p class="note">Rotor: 100 g, radius 3 cm, 4 cm fra støttepunktet. Ligningerne løses eksakt med Runge–Kutta, ikke med tilnærmelsen for hurtig top.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TIPPETOP ============ -->
+<section class="block" id="tippetop">
+  <div class="section-header">
+    <h2>Tippetoppen i 3D</h2>
+    <p>Kuglen har radius 2 cm, og massemidtpunktet ligger $\alpha R$ under centrum. Toppen startes med en lille hældning og glider med Coulomb-friktion mod bordet. Den gule kurve under toppen er kontaktpunktets spor. Prøv at sætte $I_1/I_3$ uden for vinduet $1-\alpha < I_1/I_3 < 1+\alpha$.</p>
+  </div>
+  <div class="sim">
+    <div>
+      <div class="stage" id="tStage">
+        <canvas id="tCanvas" aria-label="3D-simulation af en tippetop"></canvas>
+        <div class="hud" id="tHud"></div>
+        <div class="status" id="tStatus">Klar</div>
+        <div class="hint">Træk for at dreje, rul eller knib for at zoome</div>
+      </div>
+      <div class="legend">
+        <span><i style="background:#4cc9f0"></i>Impulsmoment $\mathbf L$</span>
+        <span><i style="background:#ff4d6d"></i>$\mathbf a$: massemidtpunkt til kontaktpunkt</span>
+        <span><i style="background:#f5c878"></i>Kontaktpunktets spor</span>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Styring</h3>
+      <div class="btns">
+        <button id="tGo" class="primary">Snur toppen</button>
+        <button id="tPause">Pause</button>
+      </div>
+      <div class="ctrl"><label for="tW"><span>Startrotation $\omega_0$</span><output id="tWo"></output></label>
+        <input type="range" id="tW" min="30" max="300" step="5" value="150"></div>
+      <div class="ctrl"><label for="tA"><span>Forskydning $\alpha$</span><output id="tAo"></output></label>
+        <input type="range" id="tA" min="0.1" max="0.5" step="0.01" value="0.3"></div>
+      <div class="ctrl"><label for="tR"><span>Forhold $I_1/I_3$</span><output id="tRo"></output></label>
+        <input type="range" id="tR" min="0.5" max="1.6" step="0.01" value="0.9"></div>
+      <div class="ctrl"><label for="tM"><span>Friktionskoefficient $\mu$</span><output id="tMo"></output></label>
+        <input type="range" id="tM" min="0.05" max="0.6" step="0.01" value="0.3"></div>
+      <div class="ctrl"><label for="tTh"><span>Starthældning</span><output id="tTho"></output></label>
+        <input type="range" id="tTh" min="1" max="20" step="1" value="3"></div>
+      <div class="ctrl"><label for="tT"><span>Tempo</span><output id="tTo"></output></label>
+        <input type="range" id="tT" min="0.02" max="0.5" step="0.01" value="0.1"></div>
+      <div class="checks">
+        <label><input type="checkbox" id="tVec" checked> Vektorer</label>
+        <label><input type="checkbox" id="tTrail" checked> Spor</label>
+        <label><input type="checkbox" id="tFollow" checked> Følg toppen</label>
+      </div>
+      <table class="read">
+        <tr><td>Hældning $\theta$</td><td id="tRth">–</td></tr>
+        <tr><td>Rotation om lodret $\omega_z$</td><td id="tRwz">–</td></tr>
+        <tr><td>Glidehastighed $|\mathbf v_P|$</td><td id="tRslip">–</td></tr>
+        <tr><td>Energi $E/E_0$</td><td id="tRE">–</td></tr>
+        <tr><td>Jellett $J/J_0$</td><td id="tRJ">–</td></tr>
+        <tr><td>Forudsagt $\omega_1$</td><td id="tRw1">–</td></tr>
+      </table>
+      <div class="flag" id="tWin"></div>
+      <div class="flag" id="tThr"></div>
+    </div>
+  <div class="plots">
+          <div class="plot">
+            <h3>Hældning, energi og Jelletts konstant</h3>
+            <p>Energien falder, mens $J$ ligger helt fladt. Venstre akse: $\theta$. Højre akse: $E/E_0$ og $J/J_0$.</p>
+            <canvas id="tPlot" aria-label="Graf over hældning, energi og J som funktion af tiden"></canvas>
+            <div class="legend">
+              <span><i style="background:#f5c878"></i>$\theta$ (0°–180°)</span>
+              <span><i style="background:#4cc9f0"></i>$E/E_0$</span>
+              <span><i style="background:#39ff14"></i>$J/J_0$</span>
+            </div>
+          </div>
+          <div class="plot">
+            <h3>Energilandskabet ved fast $J$</h3>
+            <p>$E_{\rm rot,min}(\theta)=J^2/(2R^2 f(\theta))$ for de valgte $\alpha$ og $I_1/I_3$. Prikken er toppen lige nu.</p>
+            <canvas id="tLand" aria-label="Energilandskab som funktion af hældningen"></canvas>
+            <div class="legend">
+              <span><i style="background:#c77dff"></i>$E_{\rm rot,min}(\theta)$, normeret</span>
+              <span><i style="background:#f5c878"></i>Toppens hældning</span>
+            </div>
+          </div>
+        </div>
+  </div>
+
+</section>
+
+<!-- ============ TEORI ============ -->
+<section class="block" id="teori">
+  <div class="section-header">
+    <h2>Teorien bag</h2>
+    <p>Begge toppe styres af de samme to ligninger for et stift legeme: $M\dot{\mathbf v}_C=\sum\mathbf F$ og $\dot{\mathbf L}=\boldsymbol\tau$.</p>
+  </div>
+
+  <div class="prose">
+    <h3 id="teori-gyro">Gyroskopet</h3>
+
+    <h4>Vektorbilledet</h4>
+    <p>Roterer rotoren hurtigt, er $\mathbf L\approx I_3\omega_3\,\hat{\mathbf e}_3$. Tyngdekraftens moment om støttepunktet er $\boldsymbol\tau = l\,\hat{\mathbf e}_3\times(-Mg\,\hat{\mathbf z})$. Det er vandret og vinkelret på $\mathbf L$, så kun retningen ændres:</p>
+    $$\dot{\hat{\mathbf e}}_3=\boldsymbol\Omega\times\hat{\mathbf e}_3,\qquad \Omega=\frac{Mgl}{I_3\,\omega_3}.$$
+    <p>Jo hurtigere rotoren snurrer, jo langsommere præcesserer aksen. Det er den orange og den blå vektor i simulationen: $\boldsymbol\tau$ peger hele tiden dér, hvor $\mathbf L$ er på vej hen.</p>
+
+    <h4>Lagrange-funktionen og de bevarede størrelser</h4>
+    <p>Med Euler-vinklerne $\theta$ (hældning), $\phi$ (præcession) og $\psi$ (egenrotation) er</p>
+    $$\mathcal L=\tfrac12 I_1\left(\dot\theta^2+\dot\phi^2\sin^2\theta\right)+\tfrac12 I_3\left(\dot\psi+\dot\phi\cos\theta\right)^2-Mgl\cos\theta .$$
+    <p>$\phi$ og $\psi$ er cykliske, så to impulsmomenter er bevaret sammen med energien:</p>
+    $$L_3=I_3\left(\dot\psi+\dot\phi\cos\theta\right)=I_3\omega_3,\qquad L_z=I_1\dot\phi\sin^2\theta+L_3\cos\theta .$$
+
+    <h4>Stationær præcession</h4>
+    <p>Lagrange-ligningen for $\theta$ er $I_1\ddot\theta=I_1\dot\phi^2\sin\theta\cos\theta-L_3\dot\phi\sin\theta+Mgl\sin\theta$. Med $\ddot\theta=\dot\theta=0$ fås en andengradsligning i $\dot\phi$:</p>
+    $$I_1\cos\theta\,\dot\phi^2-L_3\dot\phi+Mgl=0\quad\Longrightarrow\quad \dot\phi=\frac{2Mgl}{L_3\pm\sqrt{L_3^2-4I_1Mgl\cos\theta}}.$$
+    <p>For en hurtig top giver plus-tegnet den langsomme gren $\dot\phi\approx Mgl/(I_3\omega_3)$, og minus-tegnet den hurtige $\dot\phi\approx I_3\omega_3/(I_1\cos\theta)$. Knappen <em>Stationær præcession</em> starter gyroskopet præcis på den langsomme gren.</p>
+
+    <details>
+      <summary>Nutation: hvorfor aksen slår buer, når den slippes fra hvile</summary>
+      <p>Eliminér $\dot\phi$ og $\dot\psi$ med de bevarede størrelser. Så bliver $\theta$-bevægelsen endimensional i et effektivt potential:</p>
+      $$E'=\tfrac12 I_1\dot\theta^2+\frac{\left(L_z-L_3\cos\theta\right)^2}{2I_1\sin^2\theta}+Mgl\cos\theta .$$
+      <p>$\theta$ svinger mellem to vendepunkter. Slippes aksen fra hvile, er $\dot\phi=0$ i det øverste vendepunkt, og sporet får spidse hjørner (cykloide-agtige buer). Nutationsfrekvensen er for en hurtig top omtrent $I_3\omega_3/I_1$, og amplituden aftager som $1/\omega_3^2$. Skru op for omdrejningstallet i simulationen og se buerne skrumpe.</p>
+    </details>
+
+    <details>
+      <summary>Friktion i lejet: hvorfor gyroskopet til sidst synker</summary>
+      <p>Et moment langs aksen, $\dot L_3=-kL_3$, formindsker $L_3$. Da præcessionen går som $1/L_3$, bliver den hurtigere og hurtigere, og aksen synker. I simulationen stopper gyroskopet, når rotoren rammer tårnet.</p>
+    </details>
+
+    <h3 id="teori-tippe">Tippetoppen</h3>
+
+    <h4>Geometri</h4>
+    <p>Kuglen har radius $R$ og centrum $O$. Massemidtpunktet $C$ ligger $\alpha R$ fra $O$ langs symmetriaksen, og $\hat{\mathbf e}_3$ peger fra $C$ mod skaftet. $\theta=0$ er toppen på kuglen, $\theta=\pi$ på skaftet. Kontaktpunktet $P$ ligger altid lodret under $O$, så</p>
+    $$\mathbf a=\overrightarrow{CP}=R\left(\alpha\hat{\mathbf e}_3-\hat{\mathbf z}\right),\qquad z_C=R\left(1-\alpha\cos\theta\right).$$
+    <p>Ved fuld vending løftes massemidtpunktet $2\alpha R$.</p>
+
+    <h4>Bevægelsesligninger og energitab</h4>
+    <p>Bordets kraft $\mathbf F=N\hat{\mathbf z}+\mathbf F_f$ angriber i $P$:</p>
+    $$M\dot{\mathbf v}_C=\mathbf F-Mg\hat{\mathbf z},\qquad \dot{\mathbf L}=\mathbf a\times\mathbf F,\qquad \mathbf F_f=-\mu N\frac{\mathbf v_P}{|\mathbf v_P|}.$$
+    <p>Glidningshastigheden $\mathbf v_P=\mathbf v_C+\boldsymbol\omega\times\mathbf a$ er vandret, så normalkraften udfører intet arbejde, og $\dot E=\mathbf F_f\cdot\mathbf v_P\le 0$. Simulationen løser netop disse ligninger, med normalkraften bestemt af kravet om, at kuglen bliver på bordet.</p>
+
+    <h4>Jelletts konstant</h4>
+    <p>Sæt $J=\mathbf L\cdot\mathbf a$. Så er $\dot J=(\mathbf a\times\mathbf F)\cdot\mathbf a+\mathbf L\cdot\dot{\mathbf a}$. Første led er nul. Med $\dot{\mathbf a}=\alpha R\,\boldsymbol\omega\times\hat{\mathbf e}_3$ og $\mathbf L=I_1\boldsymbol\omega+(I_3-I_1)\omega_3\hat{\mathbf e}_3$ indeholder begge tredobbelte produkter to ens vektorer:</p>
+    $$\dot J=\alpha R\left[I_1\,\boldsymbol\omega\cdot(\boldsymbol\omega\times\hat{\mathbf e}_3)+(I_3-I_1)\,\omega_3\,\hat{\mathbf e}_3\cdot(\boldsymbol\omega\times\hat{\mathbf e}_3)\right]=0 .$$
+    <p>Altså er $J=R(\alpha L_3-L_z)$ bevaret eksakt, uanset friktionsloven. Det er den grønne, flade linje i grafen ovenfor.</p>
+
+    <h4>Slutspin og energitærskel</h4>
+    <p>Start med $\omega_0$ ved $\theta=0$ og slut med $\omega_1$ ved $\theta=\pi$. Bevarelsen af $J$ giver</p>
+    $$I_3\omega_0(\alpha-1)=-I_3\omega_1(1+\alpha)\quad\Longrightarrow\quad \omega_1=\frac{1-\alpha}{1+\alpha}\,\omega_0 .$$
+    <p>Set fra bordet snurrer toppen samme vej, men i forhold til legemet er rotationen vendt. Da friktionen kun kan fjerne energi, kræver vendingen $E_1\le E_0$, og med $1-\left(\frac{1-\alpha}{1+\alpha}\right)^2=\frac{4\alpha}{(1+\alpha)^2}$ reduceres det til</p>
+    $$\omega_0^2\ge\frac{MgR\,(1+\alpha)^2}{I_3}.$$
+
+    <h4>Stabilitet: energilandskabet</h4>
+    <p>Ved hurtig rotation dominerer rotationsenergien. Minimér $\tfrac12\mathbf L\cdot I^{-1}\mathbf L$ under bibetingelsen $\mathbf L\cdot\mathbf a=J$. Lagrange-multiplikatoren giver $\boldsymbol\omega=\lambda\mathbf a$: toppen roterer om linjen $CP$, og kontaktpunktet glider ikke. Energien er da</p>
+    $$E_{\rm rot,min}(\theta)=\frac{J^2}{2R^2f(\theta)},\qquad f(\theta)=I_1\sin^2\theta+I_3(\alpha-\cos\theta)^2,$$
+    $$f'(\theta)=2\sin\theta\left[(I_1-I_3)\cos\theta+\alpha I_3\right].$$
+    <p>Den oprejste tilstand er et energiminimum, netop når $I_1/I_3 \lt 1-\alpha$. Den vendte tilstand er et minimum, netop når $I_1/I_3 \lt 1+\alpha$. Toppen vender derfor, når</p>
+    $$1-\alpha \lt \frac{I_1}{I_3} \lt 1+\alpha .$$
+    <p>For $I_1/I_3 \gt 1+\alpha$ ender den i en skrå, præcesserende tilstand med $\cos\theta^*=\alpha I_3/(I_3-I_1)$. Friktionen trækker energi ud ved fast $J$, og toppen ruller ned ad landskabet, præcis som prikken i grafen viser.</p>
+
+  </div>
+</section>
+
+<section class="block" id="sammenfatning">
+  <div class="section-header">
+    <h2>Sammenfatning</h2>
+    <p>Gyroskopet er konservativt. Tippetoppen er dissipativ, og én bevaret størrelse afgør, hvor energitabet fører hen.</p>
+  </div>
+  <div class="prose">
+    <div class="tablewrap">
+      <table class="sum">
+        <tr><th></th><th>Gyroskop</th><th>Tippetop</th></tr>
+        <tr><td>Drivende faktor</td><td>Tyngdens moment</td><td>Glidende friktion</td></tr>
+        <tr><td>Bevaret</td><td>$E$, $L_3$, $L_z$</td><td>$J=R(\alpha L_3-L_z)$</td></tr>
+        <tr><td>Nøgleresultat</td><td>$\Omega=Mgl/(I_3\omega_3)$</td><td>$\omega_1=\omega_0(1-\alpha)/(1+\alpha)$</td></tr>
+        <tr><td>Betingelse</td><td>$L_3^2\ge 4I_1Mgl\cos\theta$</td><td>$\omega_0^2\ge MgR(1+\alpha)^2/I_3$ og $1-\alpha \lt I_1/I_3 \lt 1+\alpha$</td></tr>
+      </table>
+    </div>
+    <p>Hele udledningen med figurer findes som rapport:</p>
+    <div class="downloads">
+      <a href="gyroskop-og-tippetop.pdf">Rapport (PDF)</a>
+      <a href="gyroskop-og-tippetop.docx">Rapport (Word)</a>
+    </div>
+    <h3>Litteratur</h3>
+    <ul class="refs">
+      <li>H. Goldstein, C. Poole &amp; J. Safko, <em>Classical Mechanics</em>, 3. udg., Addison-Wesley (2002), kap. 5.</li>
+      <li>J. H. Jellett, <em>A Treatise on the Theory of Friction</em>, Dublin (1872).</li>
+      <li>C. M. Braams, »On the influence of friction on the motion of a top«, <em>Physica</em> 18, 503 (1952).</li>
+      <li>N. M. Hugenholtz, »On tops rising by friction«, <em>Physica</em> 18, 515 (1952).</li>
+      <li>R. J. Cohen, »The tippe top revisited«, <em>Am. J. Phys.</em> 45, 12 (1977).</li>
+      <li>S. Ebenfeld &amp; F. Scheck, »A new analysis of the tippe top«, <em>Ann. Phys.</em> 243, 195 (1995).</li>
+      <li>N. M. Bou-Rabee, J. E. Marsden &amp; L. A. Romero, »Tippe top inversion as a dissipation-induced instability«, <em>SIAM J. Appl. Dyn. Syst.</em> 3, 352 (2004).</li>
+    </ul>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <a href="index.html">Fysik, matematik og kemi</a> · Michael Grant · <a href="mailto:michael.h.grant@gmail.com">michael.h.grant@gmail.com</a>
+</footer>
+<script>
+(function(){
+'use strict';
+const REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $ = id => document.getElementById(id);
+const fmt = (x,d=2) => x.toFixed(d).replace('.',',').replace('-','−');
+const DEG = 180/Math.PI;
+
+/* ---------- Orbit-kamera (træk, hjul, knib) ---------- */
+function orbit(camera, dom, target, st){
+  const s = Object.assign({r:30, az:0.6, el:0.35, minR:8, maxR:90}, st);
+  const ptrs = new Map(); let pinch0 = 0, r0 = s.r;
+  function apply(){
+    s.el = Math.max(-0.1, Math.min(1.45, s.el));
+    s.r = Math.max(s.minR, Math.min(s.maxR, s.r));
+    camera.position.set(
+      target.x + s.r*Math.cos(s.el)*Math.sin(s.az),
+      target.y + s.r*Math.sin(s.el),
+      target.z + s.r*Math.cos(s.el)*Math.cos(s.az));
+    camera.lookAt(target);
+  }
+  dom.addEventListener('pointerdown', e => { dom.setPointerCapture(e.pointerId); ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(ptrs.size===2){ const [a,b]=[...ptrs.values()]; pinch0=Math.hypot(a.x-b.x,a.y-b.y); r0=s.r; } });
+  dom.addEventListener('pointermove', e => {
+    if(!ptrs.has(e.pointerId)) return;
+    const p = ptrs.get(e.pointerId);
+    if(ptrs.size===1){ s.az -= (e.clientX-p.x)*0.008; s.el += (e.clientY-p.y)*0.006; }
+    p.x=e.clientX; p.y=e.clientY;
+    if(ptrs.size===2){ const [a,b]=[...ptrs.values()]; const d=Math.hypot(a.x-b.x,a.y-b.y); if(pinch0>0) s.r = r0*pinch0/d; }
+    apply();
+  });
+  const up = e => { ptrs.delete(e.pointerId); pinch0=0; };
+  dom.addEventListener('pointerup', up); dom.addEventListener('pointercancel', up);
+  dom.addEventListener('wheel', e => { e.preventDefault(); s.r *= Math.exp(e.deltaY*0.001); apply(); }, {passive:false});
+  apply();
+  return {apply, s};
+}
+
+function makeRenderer(canvas){
+  const r = new THREE.WebGLRenderer({canvas, antialias:true});
+  r.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+  r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap;
+  r.setClearColor(0x07080f, 1);
+  return r;
+}
+function fit(renderer, camera, canvas){
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if(!w||!h) return;
+  const c = renderer.domElement;
+  if(c.width !== Math.floor(w*renderer.getPixelRatio()) || c.height !== Math.floor(h*renderer.getPixelRatio())){
+    renderer.setSize(w, h, false); camera.aspect = w/h; camera.updateProjectionMatrix();
+  }
+}
+function lights(scene){
+  scene.add(new THREE.HemisphereLight(0xb8c6ff, 0x1a1208, 0.55));
+  const d = new THREE.DirectionalLight(0xffffff, 0.95);
+  d.position.set(14, 30, 12); d.castShadow = true;
+  d.shadow.mapSize.set(1024,1024);
+  const sc = d.shadow.camera; sc.left=-25; sc.right=25; sc.top=25; sc.bottom=-25; sc.near=1; sc.far=80;
+  scene.add(d); scene.add(d.target);
+  const rim = new THREE.PointLight(0x4cc9f0, 0.35, 80); rim.position.set(-15, 12, -12); scene.add(rim);
+  return d;
+}
+function tableTop(scene, size, color){
+  const m = new THREE.Mesh(new THREE.CircleGeometry(size, 64), new THREE.MeshStandardMaterial({color, roughness:0.85, metalness:0.05}));
+  m.rotation.x = -Math.PI/2; m.receiveShadow = true; scene.add(m);
+  const grid = new THREE.GridHelper(size*2, size, 0x2a3350, 0x161c30);
+  grid.position.y = 0.01; grid.material.transparent = true; grid.material.opacity = 0.55; scene.add(grid);
+  return m;
+}
+function arrow(color){
+  const a = new THREE.ArrowHelper(new THREE.Vector3(0,1,0), new THREE.Vector3(), 1, color, 0.9, 0.55);
+  a.line.material.linewidth = 2;
+  return a;
+}
+function setArrow(a, origin, vec, headScale){
+  const L = vec.length();
+  if(L < 1e-6){ a.visible = false; return; }
+  a.position.copy(origin); a.setDirection(vec.clone().normalize());
+  const hl = Math.min(0.9*(headScale||1), L*0.45);
+  a.setLength(L, hl, hl*0.6);
+}
+function trailLine(color, n){
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n*3), 3));
+  g.setDrawRange(0,0);
+  const l = new THREE.Line(g, new THREE.LineBasicMaterial({color, transparent:true, opacity:0.85}));
+  l.frustumCulled = false;
+  return {line:l, n, count:0, push(v){
+    const a = g.attributes.position.array;
+    if(this.count < n){ a.set([v.x,v.y,v.z], this.count*3); this.count++; }
+    else { a.copyWithin(0,3); a.set([v.x,v.y,v.z], (n-1)*3); }
+    g.setDrawRange(0,this.count); g.attributes.position.needsUpdate = true;
+  }, clear(){ this.count=0; g.setDrawRange(0,0); }};
+}
+function bindSlider(id, fmtFn, onChange){
+  const el = $(id), out = $(id+'o');
+  const upd = () => { out.textContent = fmtFn(+el.value); };
+  el.addEventListener('input', () => { upd(); onChange && onChange(+el.value); });
+  upd(); return el;
+}
+function whenVisible(el, cb){
+  let vis = true;
+  if('IntersectionObserver' in window){
+    new IntersectionObserver(es => { vis = es[0].isIntersecting; cb(vis); }, {threshold:0.02}).observe(el);
+  }
+  return () => vis;
+}
+
+/* =====================================================================
+   GYROSKOP: tung symmetrisk top med fast støttepunkt (Euler-vinkler)
+   ===================================================================== */
+const G = (function(){
+  const g = 9.82, M = 0.1, l = 0.04, Rr = 0.03;
+  const I3 = 0.5*M*Rr*Rr, I1 = 0.25*M*Rr*Rr + M*l*l;
+  const P = {kSpin:0, cNut:0};
+  let s = [1.4, 0, 0, 0, 0, 0], t = 0, fallen = false;
+  function d(s){
+    const th=s[0], thd=s[1], phd=s[3], L3=s[5];
+    const st=Math.sin(th), ct=Math.cos(th);
+    return [thd,
+      (I1*phd*phd*st*ct - L3*phd*st + M*g*l*st)/I1 - P.cNut*thd,
+      phd,
+      (L3*thd*st - 2*I1*phd*thd*st*ct)/(I1*st*st),
+      L3/I3 - phd*ct,
+      -P.kSpin*L3];
+  }
+  function reset(w3, th0, mode){
+    const L3 = I3*w3; let phd = 0;
+    if(mode==='steady'){ const c=Math.cos(th0), D=L3*L3-4*I1*M*g*l*c; phd = D>0 ? 2*M*g*l/(L3+Math.sqrt(D)) : M*g*l/L3; }
+    s = [th0, 0, 0, phd, 0, L3]; t = 0; fallen = false;
+  }
+  function step(h){
+    if(fallen) return;
+    const k1=d(s), a=s.map((x,i)=>x+h/2*k1[i]), k2=d(a), b=s.map((x,i)=>x+h/2*k2[i]), k3=d(b), c=s.map((x,i)=>x+h*k3[i]), k4=d(c);
+    for(let i=0;i<6;i++) s[i] += h/6*(k1[i]+2*k2[i]+2*k3[i]+k4[i]);
+    if(s[0] < 0.03){ s[0]=0.03; s[1]=Math.abs(s[1]); }
+    if(s[0] > 2.25){ s[0]=2.25; fallen = true; }
+    t += h;
+  }
+  return {P, reset, step, get s(){return s;}, get t(){return t;}, get fallen(){return fallen;}, M, g, l, I1, I3};
+})();
+
+(function gyroScene(){
+  const canvas = $('gCanvas'), stage = $('gStage');
+  const renderer = makeRenderer(canvas);
+  const scene = new THREE.Scene(); scene.fog = new THREE.Fog(0x07080f, 60, 140);
+  const camera = new THREE.PerspectiveCamera(40, 1.6, 0.1, 400);
+  const target = new THREE.Vector3(0, 2, 0);
+  const cam = orbit(camera, canvas, target, {r:36, az:0.9, el:0.32, minR:14, maxR:90});
+  const sun = lights(scene);
+  // gulv under tårnet (tårnet er 12 cm højt; støttepunkt i y=0)
+  const floorY = -12;
+  const floor = tableTop(scene, 34, 0x14182a); floor.position.y = floorY;
+  scene.children.filter(o=>o.type==='GridHelper').forEach(o=>o.position.y = floorY+0.01);
+  sun.target.position.set(0, floorY, 0);
+
+  const metal = new THREE.MeshStandardMaterial({color:0xb4bccb, metalness:0.45, roughness:0.35});
+  const dark = new THREE.MeshStandardMaterial({color:0x39425c, metalness:0.3, roughness:0.5});
+  // tårn
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(4.2, 4.8, 1, 48), dark); base.position.y = floorY+0.5; base.castShadow = base.receiveShadow = true; scene.add(base);
+  const tower = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.7, 11, 24), metal); tower.position.y = floorY+1+5.5; tower.castShadow = true; scene.add(tower);
+  const cup = new THREE.Mesh(new THREE.SphereGeometry(0.75, 24, 16, 0, Math.PI*2, Math.PI/2, Math.PI/2), metal); cup.position.y = -0.25; scene.add(cup);
+
+  // gyroskopet: yaw (φ) -> tilt (θ) -> body (lokal y = akse) -> spin (ψ)
+  const yaw = new THREE.Group(), tilt = new THREE.Group(), spin = new THREE.Group();
+  scene.add(yaw); yaw.add(tilt);
+  const axle = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 8.6, 16), metal); axle.position.y = 4.1; axle.castShadow = true; tilt.add(axle);
+  const tipBall = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 12), metal); tipBall.position.y = 8.4; tilt.add(tipBall);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(3.75, 0.2, 12, 72), new THREE.MeshStandardMaterial({color:0x4cc9f0, metalness:0.6, roughness:0.35, emissive:0x0b3a4a, emissiveIntensity:0.5}));
+  ring.position.y = 4; ring.castShadow = true; tilt.add(ring);
+  spin.position.y = 4; tilt.add(spin);
+  const rotorMat = new THREE.MeshStandardMaterial({color:0xd4d9e2, metalness:0.4, roughness:0.3});
+  const rotor = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 0.7, 64), rotorMat); rotor.castShadow = true; spin.add(rotor);
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 1.1, 32), dark); spin.add(hub);
+  // markeringer på rotoren så rotationen kan ses
+  for(let k=0;k<3;k++){
+    const mk = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.74, 1.9), new THREE.MeshStandardMaterial({color: k===0?0xff7a2a:0x3a4260, metalness:0.3, roughness:0.5}));
+    const a = k*2*Math.PI/3; mk.position.set(1.95*Math.cos(a), 0, 1.95*Math.sin(a)); mk.rotation.y = -a; spin.add(mk);
+  }
+
+  // vektorer
+  const aL = arrow(0x4cc9f0), aTau = arrow(0xff7a2a), aMg = arrow(0xff4d6d), aOm = arrow(0xc77dff);
+  [aL,aTau,aMg,aOm].forEach(a=>scene.add(a));
+  const trail = trailLine(0x39ff14, 2400); scene.add(trail.line);
+
+  const up = new THREE.Vector3(0,1,0);
+  let psiDisp = 0, paused = false, mode = 'rest', simStart = 0, lastTrail = null;
+
+  const w = bindSlider('gW', v => Math.round(v*60/(2*Math.PI)) + ' omdr/min', () => restart());
+  const th = bindSlider('gTh', v => v + '°', () => restart());
+  bindSlider('gK', v => fmt(v,2) + ' s⁻¹', v => G.P.kSpin = v);
+  bindSlider('gC', v => fmt(v,1) + ' s⁻¹', v => G.P.cNut = v);
+  const tempo = bindSlider('gT', v => '×' + fmt(v,2));
+  const vecBox = $('gVec'), trailBox = $('gTrail');
+  trailBox.addEventListener('change', () => { trail.line.visible = trailBox.checked; });
+
+  function restart(){ G.reset(+w.value, +th.value/DEG, mode); trail.clear(); lastTrail=null; }
+  function setMode(m){ mode = m; $('gRest').classList.toggle('primary', m==='rest'); $('gSteady').classList.toggle('primary', m==='steady'); restart(); }
+  $('gRest').onclick = () => setMode('rest');
+  $('gSteady').onclick = () => setMode('steady');
+  $('gPause').onclick = () => { paused = !paused; $('gPause').textContent = paused ? 'Fortsæt' : 'Pause'; };
+  if(REDUCED){ paused = true; $('gPause').textContent = 'Fortsæt'; }
+  restart();
+
+  const visible = whenVisible(stage, ()=>{});
+  const e3 = new THREE.Vector3();
+  let prev = performance.now(), hudTimer = 0;
+
+  function frame(now){
+    requestAnimationFrame(frame);
+    const dtReal = Math.min(0.05, (now - prev)/1000); prev = now;
+    if(!visible()) return;
+    fit(renderer, camera, canvas);
+    const s0 = G.s;
+    if(!paused && !G.fallen){
+      const simDt = dtReal * (+tempo.value);
+      const n = Math.max(1, Math.ceil(simDt/1e-4)), h = simDt/n;
+      for(let i=0;i<n;i++) G.step(h);
+      const psid = s0[5]/G.I3 - s0[3]*Math.cos(s0[0]);
+      psiDisp += dtReal*Math.sign(psid)*Math.min(Math.abs(psid)*(+tempo.value), 9);
+    }
+    const s = G.s, thv = s[0], phv = s[2];
+    yaw.rotation.y = phv; tilt.rotation.z = -thv; spin.rotation.y = psiDisp;
+    e3.set(Math.sin(thv)*Math.cos(phv), Math.cos(thv), -Math.sin(thv)*Math.sin(phv));
+
+    // spor af akslens ende
+    const tip = e3.clone().multiplyScalar(8.7);
+    if(!lastTrail || tip.distanceTo(lastTrail) > 0.04){ trail.push(tip); lastTrail = tip; }
+
+    const show = vecBox.checked;
+    [aL,aTau,aMg,aOm].forEach(a=>a.visible = show);
+    if(show){
+      const L3 = s[5], L30 = G.I3*(+w.value);
+      setArrow(aL, new THREE.Vector3(), e3.clone().multiplyScalar(14 + 6*(L3/L30-1)), 1.2);
+      const tau = new THREE.Vector3().crossVectors(e3, new THREE.Vector3(0,-1,0));
+      setArrow(aTau, new THREE.Vector3(), tau.multiplyScalar(7), 1);
+      const cm = e3.clone().multiplyScalar(4);
+      setArrow(aMg, cm, new THREE.Vector3(0,-5,0), 0.9);
+      const om = Math.max(-12, Math.min(12, s[3]*1.6));
+      setArrow(aOm, new THREE.Vector3(0,-0.2,0), new THREE.Vector3(0, om, 0), 0.9);
+      if(Math.abs(om) < 0.2) aOm.visible = false;
+    }
+    renderer.render(scene, camera);
+
+    hudTimer += dtReal;
+    if(hudTimer > 0.12){
+      hudTimer = 0;
+      const w3 = s[5]/G.I3;
+      $('gRth').textContent = fmt(thv*DEG,1) + '°';
+      $('gRphi').textContent = fmt(s[3],2) + ' rad/s';
+      $('gRtheo').textContent = fmt(G.M*G.g*G.l/s[5],2) + ' rad/s';
+      $('gRnut').textContent = fmt(2*Math.PI*G.I1/(G.I3*w3)*1000,0) + ' ms';
+      $('gRt').textContent = fmt(G.t,2) + ' s';
+      $('gHud').innerHTML = 'ω₃ = ' + Math.round(w3*60/(2*Math.PI)) + ' omdr/min<br>θ = ' + fmt(thv*DEG,1) + '°';
+      $('gStatus').textContent = G.fallen ? 'Faldet ned: rotoren ramte tårnet' : (paused ? 'Pause' : (Math.abs(s[1]) > 0.05 ? 'Præcession med nutation' : 'Præcesserer'));
+    }
+  }
+  requestAnimationFrame(frame);
+})();
+
+/* =====================================================================
+   TIPPETOP: kugle med forskudt massemidtpunkt og glidende friktion
+   Tilstand: e3, e1 (legemets akser), ω (verden), x, y, vx, vy
+   ===================================================================== */
+const T = (function(){
+  const g = 9.82, M = 0.02, R = 0.02;
+  const P = {alpha:0.3, ratio:0.9, mu:0.3, eps:0.005};
+  let I3 = 0.4*M*R*R, I1 = P.ratio*I3;
+  const add=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]], mul=(a,k)=>[a[0]*k,a[1]*k,a[2]*k],
+        dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],
+        cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+  const Iw=(e3,w)=>add(mul(w,I1),mul(e3,(I3-I1)*dot(e3,w)));
+  const Iinv=(e3,x)=>add(mul(x,1/I1),mul(e3,(1/I3-1/I1)*dot(e3,x)));
+  let s = new Array(13).fill(0), t = 0, E0 = 1, J0 = 1;
+  function deriv(s){
+    const al=P.alpha;
+    const e3=[s[0],s[1],s[2]], e1=[s[3],s[4],s[5]], w=[s[6],s[7],s[8]];
+    const a=[al*R*e3[0], al*R*e3[1], al*R*e3[2]-R];
+    const e3d=cross(w,e3);
+    const vC=[s[11],s[12],-al*R*e3d[2]];
+    const vP=add(vC,cross(w,a));
+    const vh=Math.hypot(vP[0],vP[1]), f=vh/Math.sqrt(vh*vh+P.eps*P.eps);
+    const u= vh>0 ? [vP[0]/vh*f, vP[1]/vh*f, 0] : [0,0,0];
+    const L=Iw(e3,w);
+    const Fu=[-P.mu*u[0], -P.mu*u[1], 1];
+    const A=Iinv(e3, mul(cross(w,L),-1)), B=Iinv(e3, cross(a,Fu));
+    const c1=-al*R*(cross(A,e3)[2]+cross(w,e3d)[2]), c2=-al*R*cross(B,e3)[2];
+    let N=M*(g+c1)/(1-M*c2); if(N<0) N=0;
+    const wd=add(A,mul(B,N));
+    return [...e3d, ...cross(w,e1), ...wd, s[11], s[12], N*Fu[0]/M, N*Fu[1]/M];
+  }
+  function obs(){
+    const al=P.alpha, e3=[s[0],s[1],s[2]], w=[s[6],s[7],s[8]];
+    const L=Iw(e3,w), a=[al*R*e3[0],al*R*e3[1],al*R*e3[2]-R];
+    const e3d=cross(w,e3), vC=[s[11],s[12],-al*R*e3d[2]];
+    const vP=add(vC,cross(w,a));
+    const E=0.5*M*dot(vC,vC)+0.5*dot(w,L)+M*g*R*(1-al*e3[2]);
+    return {theta:Math.acos(Math.max(-1,Math.min(1,e3[2]))), E, J:dot(L,a), L, a, wz:w[2], slip:Math.hypot(vP[0],vP[1])};
+  }
+  function reset(w0, th0){
+    I3 = 0.4*M*R*R; I1 = P.ratio*I3;
+    s = [Math.sin(th0),0,Math.cos(th0), Math.cos(th0),0,-Math.sin(th0), 0,0,w0, 0,0, 0,0];
+    t = 0; const o = obs(); E0 = o.E; J0 = o.J;
+  }
+  function step(h){
+    const k1=deriv(s), k2=deriv(s.map((x,i)=>x+h/2*k1[i])), k3=deriv(s.map((x,i)=>x+h/2*k2[i])), k4=deriv(s.map((x,i)=>x+h*k3[i]));
+    for(let i=0;i<13;i++) s[i] += h/6*(k1[i]+2*k2[i]+2*k3[i]+k4[i]);
+    let n=Math.hypot(s[0],s[1],s[2]); s[0]/=n; s[1]/=n; s[2]/=n;
+    const d=s[3]*s[0]+s[4]*s[1]+s[5]*s[2]; s[3]-=d*s[0]; s[4]-=d*s[1]; s[5]-=d*s[2];
+    n=Math.hypot(s[3],s[4],s[5]); s[3]/=n; s[4]/=n; s[5]/=n;
+    t += h;
+  }
+  const threshold = () => Math.sqrt(M*g*R*(1+P.alpha)**2/(0.4*M*R*R));
+  return {P, reset, step, obs, threshold, get s(){return s;}, get t(){return t;}, get E0(){return E0;}, get J0(){return J0;}, R};
+})();
+
+/* ---------- små 2D-grafer ---------- */
+function prepCanvas(c){
+  const dpr = Math.min(window.devicePixelRatio||1, 2), w = c.clientWidth, h = c.clientHeight;
+  if(c.width !== Math.round(w*dpr) || c.height !== Math.round(h*dpr)){ c.width = Math.round(w*dpr); c.height = Math.round(h*dpr); }
+  const ctx = c.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,w,h);
+  return {ctx, w, h};
+}
+function axes(ctx, x0, y0, x1, y1){
+  ctx.strokeStyle='rgba(255,255,255,0.18)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x0,y1); ctx.moveTo(x0,y0); ctx.lineTo(x1,y0); ctx.stroke();
+  ctx.font='11px Segoe UI, Tahoma, sans-serif'; ctx.fillStyle='#a0a0a8';
+}
+
+(function tippeScene(){
+  const canvas = $('tCanvas'), stage = $('tStage');
+  const renderer = makeRenderer(canvas);
+  const scene = new THREE.Scene(); scene.fog = new THREE.Fog(0x07080f, 40, 110);
+  const camera = new THREE.PerspectiveCamera(38, 1.6, 0.05, 300);
+  const target = new THREE.Vector3(0, 2, 0);
+  const cam = orbit(camera, canvas, target, {r:16, az:0.7, el:0.42, minR:6, maxR:60});
+  const sun = lights(scene);
+  tableTop(scene, 40, 0x1a1712);
+
+  const R = T.R*100;   // i cm
+  // tekstur med farvede segmenter, så rotationen kan ses
+  const tc = document.createElement('canvas'); tc.width = 512; tc.height = 256;
+  const tx = tc.getContext('2d');
+  const cols = ['#f5c878','#e0b060','#f5c878','#e0b060','#f5c878','#e0b060','#f5c878','#e0b060'];
+  cols.forEach((c,i)=>{ tx.fillStyle = c; tx.fillRect(i*64,0,64,256); });
+  tx.fillStyle = '#a020f0'; tx.fillRect(0,0,64,256);
+  tx.fillStyle = '#4cc9f0'; tx.fillRect(256,0,24,256);
+  tx.fillStyle = 'rgba(40,20,5,0.65)'; tx.fillRect(0,150,512,10);
+  const tex = new THREE.CanvasTexture(tc);
+  const bodyMat = new THREE.MeshStandardMaterial({map:tex, roughness:0.35, metalness:0.1});
+  const woodMat = new THREE.MeshStandardMaterial({color:0xe7c27a, roughness:0.4, metalness:0.1});
+
+  const body = new THREE.Group(); scene.add(body);
+  const cut = Math.PI/3;
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(R, 64, 40, 0, Math.PI*2, cut, Math.PI-cut), bodyMat);
+  ball.castShadow = true; body.add(ball);
+  const lid = new THREE.Mesh(new THREE.CircleGeometry(R*Math.sin(cut), 48), woodMat);
+  lid.rotation.x = -Math.PI/2; lid.position.y = R*Math.cos(cut); body.add(lid);
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.18*R, 0.2*R, 0.32*R, 24), woodMat);
+  stem.position.y = 0.66*R; stem.castShadow = true; body.add(stem);
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.18*R, 24, 16), woodMat); cap.position.y = 0.82*R; body.add(cap);
+  const cmDot = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 8), new THREE.MeshBasicMaterial({color:0xff4d6d, depthTest:false}));
+  cmDot.renderOrder = 5; scene.add(cmDot);
+
+  const aL = arrow(0x4cc9f0), aA = arrow(0xff4d6d);
+  [aL, aA].forEach(a => { a.cone.material.depthTest = false; a.line.material.depthTest = false; a.renderOrder = 6; scene.add(a); });
+  const trail = trailLine(0xf5c878, 5000); scene.add(trail.line);
+
+  const toThree = (v,k=100) => new THREE.Vector3(v[0]*k, v[2]*k, -v[1]*k);
+  const w0 = bindSlider('tW', v => v + ' rad/s', () => { restart(); flags(); });
+  const al = bindSlider('tA', v => fmt(v,2), v => { T.P.alpha = v; restart(); flags(); });
+  const rt = bindSlider('tR', v => fmt(v,2), v => { T.P.ratio = v; restart(); flags(); });
+  bindSlider('tM', v => fmt(v,2), v => T.P.mu = v);
+  const th0 = bindSlider('tTh', v => v + '°', () => restart());
+  const tempo = bindSlider('tT', v => '×' + fmt(v,2));
+  T.P.alpha = +al.value; T.P.ratio = +rt.value; T.P.mu = +$('tM').value;
+  const vecBox = $('tVec'), trailBox = $('tTrail'), followBox = $('tFollow');
+  trailBox.addEventListener('change', () => { trail.line.visible = trailBox.checked; });
+
+  let paused = REDUCED, hist = [], lastP = null, lastTh = 0, thDot = 0;
+  $('tPause').textContent = paused ? 'Fortsæt' : 'Pause';
+  function restart(){ T.reset(+w0.value, +th0.value/DEG); hist = []; trail.clear(); lastP = null; }
+  $('tGo').onclick = () => { restart(); if(paused){ paused=false; $('tPause').textContent='Pause'; } };
+  $('tPause').onclick = () => { paused = !paused; $('tPause').textContent = paused ? 'Fortsæt' : 'Pause'; };
+
+  function flags(){
+    const a = T.P.alpha, r = T.P.ratio, thr = T.threshold(), w = +w0.value;
+    const win = $('tWin'), thf = $('tThr');
+    if(r > 1-a && r < 1+a){ win.className='flag ok'; win.innerHTML = `Vinduet ${fmt(1-a,2)} < I₁/I₃ < ${fmt(1+a,2)} er opfyldt: den oprejste tilstand er ustabil, den vendte stabil.`; }
+    else if(r <= 1-a){ win.className='flag no'; win.innerHTML = `I₁/I₃ ≤ 1−α = ${fmt(1-a,2)}: den oprejste tilstand er stabil, og toppen bliver stående på kuglen.`; }
+    else { const ts = Math.acos(a/(1-r))*DEG; win.className='flag no'; win.innerHTML = `I₁/I₃ ≥ 1+α = ${fmt(1+a,2)}: ingen endetilstand er stabil. Hurtig-top-teorien giver en skrå tilstand ved θ* ≈ ${fmt(ts,0)}°. Tyngden trækker den lidt lavere i simulationen.`; }
+    if(w >= thr){ thf.className='flag ok'; thf.innerHTML = `Energien rækker: ω₀ = ${w} rad/s over tærsklen ${fmt(thr,0)} rad/s.`; }
+    else { thf.className='flag no'; thf.innerHTML = `Under energitærsklen ${fmt(thr,0)} rad/s: toppen kan ikke nå helt rundt.`; }
+    drawLand();
+  }
+
+  const plotC = $('tPlot'), landC = $('tLand');
+  function drawPlot(){
+    const {ctx, w, h} = prepCanvas(plotC);
+    const x0=34, y0=h-24, x1=w-30, y1=8;
+    axes(ctx, x0, y0, x1, y1);
+    ctx.textAlign='left';
+    [0,0.5,1].forEach(v => ctx.fillText(fmt(v,1), x1+4, y0-(y0-y1)*v/1.05+4));
+    const tMax = Math.max(0.5, hist.length ? hist[hist.length-1][0] : 0.5);
+    ctx.textAlign='right';
+    [0,90,180].forEach(d => { const y = y0-(y0-y1)*d/180; ctx.fillText(d+'°', x0-4, y+4);
+      ctx.strokeStyle='rgba(255,255,255,0.05)'; ctx.beginPath(); ctx.moveTo(x0,y); ctx.lineTo(x1,y); ctx.stroke(); });
+    ctx.textAlign='center';
+    const step = tMax > 4 ? 1 : tMax > 1.5 ? 0.5 : 0.2;
+    for(let tt=0; tt<=tMax+1e-9; tt+=step){ const x = x0+(x1-x0)*tt/tMax; ctx.fillText(fmt(tt, step<1?1:0), x, y0+15); }
+    ctx.textAlign='right'; ctx.fillText('t (s)', x1, y0-5);
+    const line = (idx, col, sc, dash) => {
+      ctx.strokeStyle=col; ctx.lineWidth=2; ctx.setLineDash(dash||[]); ctx.beginPath();
+      hist.forEach((p,i) => { const x=x0+(x1-x0)*p[0]/tMax, y=y0-(y0-y1)*sc(p[idx]); i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+      ctx.stroke(); ctx.setLineDash([]);
+    };
+    if(hist.length>1){
+      line(2, '#4cc9f0', v=>Math.max(0,Math.min(1.05,v))/1.05*1);
+      line(3, '#39ff14', v=>Math.max(0,Math.min(1.05,v))/1.05*1, [6,4]);
+      line(1, '#f5c878', v=>v/180);
+    }
+  }
+  function fTheta(th){ const a=T.P.alpha, r=T.P.ratio; return r*Math.sin(th)**2 + (a-Math.cos(th))**2; }
+  function drawLand(thNow){
+    const {ctx, w, h} = prepCanvas(landC);
+    const x0=34, y0=h-24, x1=w-16, y1=8;
+    axes(ctx, x0, y0, x1, y1);
+    const N=240, E=[]; let mx=0, mn=Infinity;
+    for(let i=0;i<=N;i++){ const e=1/fTheta(Math.PI*i/N); E.push(e); mx=Math.max(mx,e); mn=Math.min(mn,e); }
+    const Y = e => y0-(y0-y1)*(e/mx);
+    ctx.textAlign='center';
+    [0,45,90,135,180].forEach(d => ctx.fillText(d+'°', x0+(x1-x0)*d/180, y0+15));
+    ctx.textAlign='right'; ctx.fillText('θ', x1, y0-5);
+    ctx.save(); ctx.translate(12, (y0+y1)/2); ctx.rotate(-Math.PI/2); ctx.textAlign='center'; ctx.fillText('energi', 0, 0); ctx.restore();
+    ctx.strokeStyle='#c77dff'; ctx.lineWidth=2.2; ctx.beginPath();
+    E.forEach((e,i)=>{ const x=x0+(x1-x0)*i/N; i?ctx.lineTo(x,Y(e)):ctx.moveTo(x,Y(e)); }); ctx.stroke();
+    // lokale minima
+    ctx.fillStyle='rgba(199,125,255,0.9)';
+    for(let i=0;i<=N;i++){ const l=i?E[i-1]:Infinity, r=i<N?E[i+1]:Infinity;
+      if(E[i]<=l && E[i]<=r){ ctx.beginPath(); ctx.arc(x0+(x1-x0)*i/N, Y(E[i]), 4, 0, 2*Math.PI); ctx.fill(); } }
+    if(thNow !== undefined){
+      const x = x0+(x1-x0)*thNow/Math.PI, y = Y(1/fTheta(thNow));
+      ctx.fillStyle='#f5c878'; ctx.shadowColor='#f5c878'; ctx.shadowBlur=10;
+      ctx.beginPath(); ctx.arc(x, y, 6, 0, 2*Math.PI); ctx.fill(); ctx.shadowBlur=0;
+    }
+  }
+
+  restart(); flags();
+  const visible = whenVisible(stage, ()=>{});
+  let prev = performance.now(), hud = 0, histT = -1;
+  const O3 = new THREE.Vector3(), camGoal = new THREE.Vector3(0, 2, 0);
+  const basis = new THREE.Matrix4();
+
+  function frame(now){
+    requestAnimationFrame(frame);
+    const dtReal = Math.min(0.05, (now-prev)/1000); prev = now;
+    if(!visible()) return;
+    fit(renderer, camera, canvas);
+    if(!paused){
+      const simDt = dtReal*(+tempo.value), n = Math.max(1, Math.ceil(simDt/1e-4)), h = simDt/n;
+      for(let i=0;i<n;i++) T.step(h);
+    }
+    const s = T.s, o = T.obs();
+    if(dtReal>0 && !paused){ thDot = 0.95*thDot + 0.05*(o.theta-lastTh)/(dtReal*(+tempo.value)); }
+    lastTh = o.theta;
+    // stilling
+    O3.set(s[9]*100, R, -s[10]*100);
+    const e3 = toThree([s[0],s[1],s[2]],1), e1 = toThree([s[3],s[4],s[5]],1);
+    const ez = new THREE.Vector3().crossVectors(e1, e3);
+    basis.makeBasis(e1, e3, ez); body.quaternion.setFromRotationMatrix(basis); body.position.copy(O3);
+    const C = O3.clone().addScaledVector(e3, -T.P.alpha*R);
+    cmDot.position.copy(C);
+    // spor af kontaktpunktet
+    const Pc = new THREE.Vector3(O3.x, 0.03, O3.z);
+    if(!lastP || Pc.distanceTo(lastP) > 0.015){ trail.push(Pc); lastP = Pc; }
+    // vektorer
+    const show = vecBox.checked; aL.visible = aA.visible = cmDot.visible = show;
+    if(show){
+      const L = toThree(o.L,1), L0 = Math.abs(T.J0/(T.R*(T.P.alpha-1)));
+      setArrow(aL, C, L.normalize().multiplyScalar(4.2*Math.hypot(...o.L)/L0 + 0.8), 0.7);
+      setArrow(aA, C, toThree(o.a), 0.5);
+    }
+    // kamera følger toppen
+    if(followBox.checked){ camGoal.set(O3.x, 1.6, O3.z); target.lerp(camGoal, 0.08); cam.apply(); }
+    renderer.render(scene, camera);
+
+    if(!paused && T.t - histT >= 0.004){
+      histT = T.t; hist.push([T.t, o.theta*DEG, o.E/T.E0, o.J/T.J0]);
+      if(hist.length > 3000) hist = hist.filter((_,i)=>i%2===0);
+    }
+    hud += dtReal;
+    if(hud > 0.1){
+      hud = 0;
+      const a = T.P.alpha;
+      $('tRth').textContent = fmt(o.theta*DEG,1) + '°';
+      $('tRwz').textContent = fmt(o.wz,1) + ' rad/s';
+      $('tRslip').textContent = fmt(o.slip*100,2) + ' cm/s';
+      $('tRE').textContent = fmt(o.E/T.E0,3);
+      $('tRJ').textContent = fmt(o.J/T.J0,4);
+      $('tRw1').textContent = fmt(+w0.value*(1-a)/(1+a),1) + ' rad/s';
+      $('tHud').innerHTML = 't = ' + fmt(T.t,2) + ' s<br>θ = ' + fmt(o.theta*DEG,1) + '°';
+      let st;
+      if(paused) st = 'Pause';
+      else if(o.theta*DEG > 165) st = 'Står på skaftet';
+      else if(o.theta*DEG < 15 && T.t > 0.3 && Math.abs(thDot) < 0.05) st = 'Oprejst og stabil';
+      else if(Math.abs(thDot) < 0.03 && T.t > 0.5) st = 'Skrå, præcesserende tilstand';
+      else st = thDot > 0 ? 'Glider og rejser sig' : 'Glider';
+      $('tStatus').textContent = st;
+      drawPlot(); drawLand(o.theta);
+    }
+  }
+  requestAnimationFrame(frame);
+  window.addEventListener('resize', () => { drawPlot(); drawLand(lastTh); });
+})();
+
+})();
+</script>
+</body>
+</html>
