@@ -247,6 +247,32 @@ input[type=email]:focus{outline:none; border-bottom-color:var(--pen)}
 .kclass{margin:.2rem 0 0}
 .kclass legend{font-size:.97rem; font-weight:600; margin-bottom:.3rem}
 .kclass .opt{padding:.3rem .5rem}
+.graf .drop{fill:rgba(79,127,224,.12); stroke:var(--ink); stroke-width:1.4}
+.graf .mp{fill:var(--field); stroke:var(--line); stroke-width:1}
+.graf .mpgiven{fill:var(--pen-soft); stroke:var(--pen); stroke-width:1.2}
+.suvat svg{margin-bottom:.2rem}
+.graf polyline.fit2{fill:none; stroke:var(--pen); stroke-width:2.2}
+.graf polyline.fit3{fill:none; stroke:#4f7fe0; stroke-width:2.2; stroke-dasharray:8 4}
+.graf .vec{stroke:var(--pen); stroke-width:2.4}
+.graf .level{stroke:var(--ink); stroke-width:2}
+.graf .nucleus{fill:var(--pen); stroke:var(--ink); stroke-width:1}
+.graf .electron{fill:#4f7fe0; stroke:var(--ink); stroke-width:1}
+.graf .mpt{fill:var(--pen); stroke:var(--ink); stroke-width:.8}
+.graf .area{fill:rgba(196,18,47,.16); stroke:none}
+.graf line.leg.fit{stroke:var(--ink); stroke-width:2.2}.graf line.leg.fit2{stroke:var(--pen); stroke-width:2.2}.graf line.leg.fit3{stroke:#4f7fe0; stroke-width:2.2; stroke-dasharray:6 3}
+.graf .nneutron{fill:var(--grid-strong); stroke:var(--ink); stroke-width:1}
+.graf .nucbig{fill:rgba(196,18,47,.22); stroke:var(--pen); stroke-width:1.4}
+.graf .vecb{stroke:#4f7fe0; stroke-width:2.4}
+.graf .plateP{fill:var(--pen)}
+.graf .plateN{fill:#4f7fe0}
+.graf .field{stroke:var(--ink-soft); stroke-width:1.3}
+.graf .bx{stroke:var(--ink-soft); stroke-width:1.3}
+.graf .bdot{fill:var(--ink-soft)}
+.graf .bring{fill:none; stroke:var(--ink-soft); stroke-width:1}
+.graf .lead{stroke:var(--ink); stroke-width:4}
+.graf .rod{stroke:var(--pen); stroke-width:6; stroke-linecap:round}
+.graf .coil{fill:none; stroke:#b8860b; stroke-width:2.4}
+.graf .halo{paint-order:stroke; stroke:var(--field); stroke-width:4px; stroke-linejoin:round}
 </style>
 </head>
 <body>
@@ -261,8 +287,8 @@ input[type=email]:focus{outline:none; border-bottom-color:var(--pen)}
 
 <main>
   <header>
-    <h1>Fysiktest for 1.g</h1>
-    <p class="lead"><span id="total"></span> spørgsmål, fra bevægelse til universets udvikling. Ud over multiple choice kan du indtaste tal med enhed, aflæse grafer og diagrammer, tilpasse en linje i et Hubble-diagram og en kometbane og isolere størrelser i formler. Testen retter sig selv og forklarer hvert svar.</p>
+    <h1 id="title">Fysiktest</h1>
+    <p class="lead"><span id="total"></span> spørgsmål efter læreplanerne for fysik på stx. Ud over multiple choice kan du indtaste tal med enhed, aflæse grafer og diagrammer, tilpasse en linje i et Hubble-diagram og en kometbane og isolere størrelser i formler. Testen retter sig selv og forklarer hvert svar.</p>
   </header>
 
   <section id="setup" class="sheet" aria-label="Opsætning">
@@ -273,6 +299,18 @@ input[type=email]:focus{outline:none; border-bottom-color:var(--pen)}
         <input type="email" id="email" autocomplete="email" placeholder="Din e-mail" aria-label="E-mail" hidden>
       </div>
       <p class="hint" id="privacy" hidden>Når testen er færdig, sendes dit navn, din e-mail og dit rettede resultat til <span id="recName"></span>. Oplysningerne bruges kun til at følge op på testen.</p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Niveau</legend>
+      <div class="choices">
+        <label class="chip"><input type="radio" name="niveau" value="C"><span>Fysik C</span></label>
+        <label class="chip"><input type="radio" name="niveau" value="B"><span>Fysik B</span></label>
+        <label class="chip"><input type="radio" name="niveau" value="A"><span>Fysik A</span></label>
+        <label class="chip"><input type="radio" name="niveau" value="alle"><span>Alle spørgsmål</span></label>
+      </div>
+      <label class="chip" style="margin-top:.6rem; display:inline-block"><input type="checkbox" id="suppl" checked><span>Medtag supplerende stof</span></label>
+      <p class="hint">Hvert niveau indeholder kernestoffet fra læreplanen for niveauet og niveauerne under.</p>
     </fieldset>
 
     <fieldset>
@@ -348,13 +386,16 @@ const DB = (typeof SPOERGSMAAL !== "undefined") ? SPOERGSMAAL : [];
 const fmtOf = r => r.format || "mc";
 const FORMATS = [["mc","Multiple choice"],["tal","Indtast tal"],["diagram","Aflæs diagram"],["graf","Tilpas linje"],["keglesnit","Tilpas bane"],["isoler","Isolér"]];
 const catOf = r => r.diagram ? "diagram" : fmtOf(r);
-const TOPICS = [...new Set(DB.map(r => r.emne))];
+const AREAS = ["Verdensbilledet","Energi","Bølger, lyd og lys","Atomer, kvantefysik og radioaktivitet","Elektriske kredsløb","Mekanik","Elektriske og magnetiske felter"];
+const areaOf = r => r.omraade || r.emne;
+const TOPICS = [...AREAS.filter(a => DB.some(r => areaOf(r) === a)), ...[...new Set(DB.map(areaOf))].filter(a => !AREAS.includes(a))];
+const NIV = ["C","B","A"];
 const TEMPLATES = [];
 (() => {
   const map = new Map();
   DB.forEach((r, i) => {
-    const key = r.type === "Begreb" ? "id:" + r.id : r.emne + "|" + r.type + "|" + catOf(r);
-    if (!map.has(key)){ map.set(key, TEMPLATES.length); TEMPLATES.push({t:r.emne, f:fmtOf(r), cat:catOf(r), rows:[]}); }
+    const key = r.type === "Begreb" ? "id:" + r.id : [areaOf(r), r.type, catOf(r), r.niveau, !!r.suppl].join("|");
+    if (!map.has(key)){ map.set(key, TEMPLATES.length); TEMPLATES.push({t:areaOf(r), f:fmtOf(r), cat:catOf(r), niv:r.niveau || "B", sup:!!r.suppl, rows:[]}); }
     TEMPLATES[map.get(key)].rows.push(i);
   });
   TEMPLATES.forEach(t => t.n = t.rows.length);
@@ -397,12 +438,12 @@ const UNITS = {
   Hz:["frekvens",1], kHz:["frekvens",1e3], MHz:["frekvens",1e6], GHz:["frekvens",1e9], THz:["frekvens",1e12],
   m:["længde",1], mm:["længde",1e-3], cm:["længde",1e-2], AU:["længde",1.496e11], km:["længde",1e3], nm:["længde",1e-9],
   s:["tid",1], minutter:["tid",60], timer:["tid",3600], "døgn":["tid",86400], "år":["tid",3.156e7],
-  "m/s":["fart",1], "km/h":["fart",1/3.6], "m/s²":["acceleration",1], "°C":["temperatur",1], Bq:["aktivitet",1], "N/m":["fjederkonstant",1], "°":["vinkel",1], "":["tal",1]
+  "m/s":["fart",1], "km/h":["fart",1/3.6], "m/s²":["acceleration",1], "°C":["temperatur",1], Bq:["aktivitet",1], "N/m":["fjederkonstant",1], "%":["andel",1], kg:["masse",1], kN:["kraft",1e3], eV:["energi",1.602e-19], MeV:["energi",1.602e-13], Pa:["tryk",1], hPa:["tryk",100], kPa:["tryk",1e3], MPa:["tryk",1e6], "kΩ":["resistans",1e3], "N/C":["feltstyrke",1], "V/m":["feltstyrke",1], mN:["kraft",1e-3], "µN":["kraft",1e-6], "kg·m/s":["impuls",1], pm:["længde",1e-12], "µm":["længde",1e-6], "km/s":["fart",1000], "°":["vinkel",1], "":["tal",1]
 };
 const DIM = {energi:"en energi", effekt:"en effekt", kraft:"en kraft", "strøm":"en strømstyrke", "spænding":"en spænding",
   resistans:"en resistans", frekvens:"en frekvens", "længde":"en længde", tid:"en tid", fart:"en fart",
   acceleration:"en acceleration", temperatur:"en temperatur", aktivitet:"en aktivitet",
-  fjederkonstant:"en fjederkonstant", vinkel:"en vinkel", tal:"et rent tal"};
+  fjederkonstant:"en fjederkonstant", tryk:"et tryk", andel:"en procentdel", masse:"en masse", feltstyrke:"en feltstyrke", impuls:"en bevægelsesmængde", vinkel:"en vinkel", tal:"et rent tal"};
 const close = (a, b, tol = 0.02, abs = 0) => Math.abs(a - b) <= Math.max(tol * Math.abs(b), abs);
 const ifrac = (t, n) => n.length ? `<span class="ifrac"><span>${t.join("·")}</span><span>${n.join("·")}</span></span>` : t.join("·");
 
@@ -410,7 +451,7 @@ const ifrac = (t, n) => n.length ? `<span class="ifrac"><span>${t.join("·")}</s
 // ---------- Diagrammer (tegnes ud fra feltet "diagram" i databasen) ----------
 const lblN = v => plain(fmt(Math.abs(v) < 1e-9 ? 0 : v, 4));
 function chartSVG(o){
-  const W = 360, H = 256, ml = 56, mr = 14, mt = 14, mb = 44;
+  const W = 360, H = o.H || 256, ml = 56, mr = 14, mt = 14, mb = 44;
   const X0 = o.x.min || 0, X1 = o.x.max, Y0 = o.y.min || 0, Y1 = o.y.max;
   const px = x => ml + (x - X0) / (X1 - X0) * (W - ml - mr), py = y => H - mb - (y - Y0) / (Y1 - Y0) * (H - mt - mb);
   const nx = Math.round((X1 - X0) / o.x.trin), ny = Math.round((Y1 - Y0) / o.y.trin);
@@ -426,7 +467,10 @@ function chartSVG(o){
   g += `<line class="axis" x1="${px(X0)}" x2="${px(X1)}" y1="${py(y0)}" y2="${py(y0)}"/><line class="axis" x1="${px(X0)}" x2="${px(X0)}" y1="${py(Y0)}" y2="${py(Y1)}"/>`;
   g += `<text x="${(ml + W - mr) / 2}" y="${H - 8}" text-anchor="middle">${o.x.navn}</text>`;
   g += `<text transform="translate(14 ${(mt + H - mb) / 2}) rotate(-90)" text-anchor="middle">${o.y.navn}</text>`;
+  if (o.fyld) g += `<polygon class="area" points="${[[o.fyld[0][0], 0], ...o.fyld, [o.fyld[o.fyld.length - 1][0], 0]].map(p => px(p[0]).toFixed(1) + "," + py(p[1]).toFixed(1)).join(" ")}"/>`;
   (o.serier || []).forEach(s => g += `<polyline class="fit" points="${s.map(p => px(p[0]).toFixed(1) + "," + py(p[1]).toFixed(1)).join(" ")}"/>`);
+  (o.maal || []).forEach(p => g += `<circle class="mpt" cx="${px(p[0]).toFixed(1)}" cy="${py(p[1]).toFixed(1)}" r="4"/>`);
+  (o.etiketter || []).forEach(p => g += `<circle class="body" cx="${px(p[0]).toFixed(1)}" cy="${py(p[1]).toFixed(1)}" r="4"/><text class="starlbl" x="${(px(p[0]) - 8).toFixed(1)}" y="${(py(p[1]) - 8).toFixed(1)}" text-anchor="end">${p[2]}</text>`);
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${o.alt || "Graf"}">${g}</svg>`;
 }
 function circuitSVG(d){
@@ -630,7 +674,7 @@ function pendulSVG(d){
   g += `<line class="wire" x1="${P[0]}" y1="${P[1]}" x2="${C[0].toFixed(1)}" y2="${C[1].toFixed(1)}"/><circle class="bob" cx="${C[0].toFixed(1)}" cy="${C[1].toFixed(1)}" r="11"/>`;
   g += `<polyline class="arcl" points="${polyPts(Array.from({length:12}, (_, k) => pos(th * k / 11).map((v, j) => P[j] + (v - P[j]) * 0.25)))}"/>`;
   g += `<text class="clbl small" x="${(P[0] + 56 * Math.sin(th / 2)).toFixed(1)}" y="${(P[1] + 56 * Math.cos(th / 2) + 4).toFixed(1)}" text-anchor="middle">${d.vinkel}°</text>`;
-  if (d.L) g += `<text class="clbl small" x="${(P[0] + Lp * 0.55 * Math.sin(th) + 10).toFixed(1)}" y="${(P[1] + Lp * 0.55 * Math.cos(th)).toFixed(1)}">L = ${lblN(d.L)} m</text>`;
+  if (d.L || d.Ltekst) g += `<text class="clbl small" x="${(P[0] + Lp * 0.55 * Math.sin(th) + 10).toFixed(1)}" y="${(P[1] + Lp * 0.55 * Math.cos(th)).toFixed(1)}">L = ${d.Ltekst || lblN(d.L) + " m"}</text>`;
   if (d.punkter) [["A", A, -1], ["B", B, 0], ["C", C, 1]].forEach(([t, p, sgn]) => g += `<text class="starlbl" x="${(p[0] + sgn * 22).toFixed(1)}" y="${(p[1] + (sgn ? 5 : 30)).toFixed(1)}" text-anchor="middle">${t}</text>`);
   return svgWrap(W, H, g, "Pendul");
 }
@@ -731,8 +775,452 @@ function spalteSVG(d){
   return svgWrap(W, H, g, "Youngs dobbeltspalteforsøg med interferensmønster");
 }
 
+
+// ---------- Prisme med strålegang, totalrefleksion, regnbue, prisme vs. gitter ----------
+const V = {
+  add:(a, b) => [a[0] + b[0], a[1] + b[1]], sub:(a, b) => [a[0] - b[0], a[1] - b[1]], mul:(a, k) => [a[0] * k, a[1] * k],
+  dot:(a, b) => a[0] * b[0] + a[1] * b[1], norm:a => { const l = Math.hypot(a[0], a[1]); return [a[0] / l, a[1] / l]; },
+  rot:(v, f) => [v[0] * Math.cos(f) - v[1] * Math.sin(f), v[0] * Math.sin(f) + v[1] * Math.cos(f)],
+  cross:(a, b) => a[0] * b[1] - a[1] * b[0]
+};
+function refractV(d, N, eta){ const ci = -V.dot(N, d), k = 1 - eta * eta * (1 - ci * ci); if (k < 0) return null; return V.norm(V.add(V.mul(d, eta), V.mul(N, eta * ci - Math.sqrt(k)))); }
+function lineHit(p, d, a, b){ const e = V.sub(b, a), den = V.cross(d, e); if (Math.abs(den) < 1e-9) return null; const t = V.cross(V.sub(a, p), e) / den; return V.add(p, V.mul(d, t)); }
+function arcPts(c, r, a1, a2){ let da = a2 - a1; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI;
+  return Array.from({length:17}, (_, k) => { const t = a1 + da * k / 16; return [c[0] + r * Math.cos(t), c[1] + r * Math.sin(t)]; }); }
+function prismeVejSVG(d){
+  const W = 360, H = 250, A = deg(d.A || 60), P = [185, 26], h = 190, BL = [P[0] - h * Math.tan(A / 2), P[1] + h], BR = [P[0] + h * Math.tan(A / 2), P[1] + h];
+  const N1 = [Math.cos(A / 2), Math.sin(A / 2)], N2out = [Math.cos(A / 2), -Math.sin(A / 2)];
+  const E = V.add(P, V.mul(V.sub(BL, P), 0.55)), din = V.rot(N1, -deg(d.i)), d1 = refractV(din, V.mul(N1, -1), 1 / d.n);
+  const X = lineHit(E, d1, P, BR), ci2 = V.dot(d1, N2out), sgn = Math.sign(V.cross(N2out, d1)) || 1;
+  const r2 = Math.acos(Math.min(1, ci2)), se = d.n * Math.sin(r2), e = Math.asin(Math.min(1, se)), dout = V.rot(N2out, sgn * e);
+  const S = V.sub(E, V.mul(din, 150)), O = V.add(X, V.mul(dout, 140));
+  let g = `<polygon class="prism" points="${polyPts([P, BL, BR])}"/>`;
+  g += `<text class="clbl small" x="${P[0]}" y="${P[1] + 38}" text-anchor="middle">${d.visA === false ? "" : "A = " + Math.round(d.A || 60) + "°"}</text>`;
+  const nl = (p, N) => `<line class="normal" x1="${(p[0] - N[0] * 34).toFixed(1)}" y1="${(p[1] - N[1] * 34).toFixed(1)}" x2="${(p[0] + N[0] * 30).toFixed(1)}" y2="${(p[1] + N[1] * 30).toFixed(1)}"/>`;
+  g += nl(E, N1) + nl(X, N2out);
+  g += `<line class="ray" x1="${S[0].toFixed(1)}" y1="${S[1].toFixed(1)}" x2="${E[0].toFixed(1)}" y2="${E[1].toFixed(1)}"/>` + arrowHead((S[0] + E[0]) / 2, (S[1] + E[1]) / 2, Math.atan2(din[1], din[0]), 9);
+  g += `<line class="ray" x1="${E[0].toFixed(1)}" y1="${E[1].toFixed(1)}" x2="${X[0].toFixed(1)}" y2="${X[1].toFixed(1)}"/>`;
+  if (se <= 1) g += `<line class="ray" x1="${X[0].toFixed(1)}" y1="${X[1].toFixed(1)}" x2="${O[0].toFixed(1)}" y2="${O[1].toFixed(1)}"/>` + arrowHead((X[0] + O[0]) / 2, (X[1] + O[1]) / 2, Math.atan2(dout[1], dout[0]), 9);
+  const aN = Math.atan2(-N1[1], -N1[0]), aI = Math.atan2(-din[1], -din[0]);
+  g += `<polyline class="arcl" points="${polyPts(arcPts(E, 26, aN, aI))}"/>`;
+  const mv = V.norm(V.add([Math.cos(aN), Math.sin(aN)], [Math.cos(aI), Math.sin(aI)])); g += `<text class="clbl small" x="${(E[0] + 44 * mv[0] - 6).toFixed(1)}" y="${(E[1] + 44 * mv[1] + 4).toFixed(1)}" text-anchor="end">${d.visI === false ? "i" : "i = " + d.i + "°"}</text>`;
+  if (d.delta !== undefined && se <= 1){
+    const Q = lineHit(E, din, X, dout);
+    if (Q){ const ext = V.add(Q, V.mul(din, 95));
+      g += `<line class="normal" x1="${E[0].toFixed(1)}" y1="${E[1].toFixed(1)}" x2="${ext[0].toFixed(1)}" y2="${ext[1].toFixed(1)}"/>`;
+      const a1 = Math.atan2(din[1], din[0]), a2 = Math.atan2(dout[1], dout[0]);
+      const pts = arcPts(Q, 70, a1, a2); g += `<polyline class="arcl" points="${polyPts(pts)}"/>`;
+      const m = pts[8]; g += `<text class="clbl small" x="${(m[0] + 8).toFixed(1)}" y="${(m[1] + 4).toFixed(1)}">δ ${d.delta}</text>`; }
+  }
+  if (d.n && d.visN !== false) g += `<text class="clbl small" x="${P[0]}" y="${P[1] + h - 12}" text-anchor="middle">n = ${lblN(d.n)}</text>`;
+  return svgWrap(W, H, g, "Lysstråle gennem et prisme");
+}
+function totalrefSVG(d){
+  const W = 360, H = 240;
+  let g = "";
+  if (d.mode === "prisme"){
+    const A = [70, 30], B = [70, 210], C = [250, 210];
+    g += `<polygon class="prism" points="${polyPts([A, B, C])}"/><text class="clbl small" x="${(A[0] + C[0]) / 2 + 14}" y="${(A[1] + C[1]) / 2 - 8}">n = ${lblN(d.n)}</text>`;
+    const y = 100, Pin = [10, y], Ph = [70 + (y - 30), y];
+    g += `<line class="ray" x1="${Pin[0]}" y1="${y}" x2="${Ph[0]}" y2="${y}"/>` + arrowHead(45, y, 0, 9);
+    const Nn = V.norm([1, -1]);
+    g += `<line class="normal" x1="${(Ph[0] - Nn[0] * 40).toFixed(1)}" y1="${(Ph[1] - Nn[1] * 40).toFixed(1)}" x2="${(Ph[0] + Nn[0] * 40).toFixed(1)}" y2="${(Ph[1] + Nn[1] * 40).toFixed(1)}"/>`;
+    g += `<polyline class="arcl" points="${polyPts(arcPts(Ph, 28, Math.PI, Math.atan2(Nn[1], Nn[0]) + Math.PI))}"/><text class="clbl small" x="${Ph[0] - 40}" y="${y - 18}">45°</text>`;
+    g += `<text class="clbl" x="${Ph[0] + 26}" y="${y + 30}">?</text>`;
+    return svgWrap(W, H, g, "Retvinklet prisme, hvor lyset rammer den skrå flade under 45°");
+  }
+  const cy = 120, cx = 180, R = 105, gv = Math.asin(1 / d.n);
+  g += `<rect class="glass" x="0" y="${cy}" width="${W}" height="${H - cy}"/><line class="axis" x1="0" x2="${W}" y1="${cy}" y2="${cy}"/><line class="normal" x1="${cx}" x2="${cx}" y1="10" y2="${H - 10}"/>`;
+  g += `<text class="clbl" x="12" y="24">Luft</text><text class="clbl" x="12" y="${H - 12}">${d.medie} (n = ${lblN(d.n)})</text>`;
+  const S = [cx - R * Math.sin(gv), cy + R * Math.cos(gv)];
+  g += `<line class="ray" x1="${S[0].toFixed(1)}" y1="${S[1].toFixed(1)}" x2="${cx}" y2="${cy}"/>` + arrowHead((S[0] + cx) / 2, (S[1] + cy) / 2, Math.atan2(cy - S[1], cx - S[0]), 9);
+  g += `<line class="ray thin" x1="${cx}" y1="${cy - 1}" x2="${cx + 150}" y2="${cy - 1}"/>` + arrowHead(cx + 120, cy - 1, 0, 8);
+  g += `<polyline class="arcl" points="${polyPts(arcPts([cx, cy], 38, Math.PI / 2, Math.atan2(S[1] - cy, S[0] - cx)))}"/>`;
+  g += `<text class="clbl small" x="${cx - 26}" y="${cy + 64}" text-anchor="middle">g = ?</text><text class="clbl small" x="${cx + 70}" y="${cy - 8}">brydningsvinkel 90°</text>`;
+  return svgWrap(W, H, g, "Lys, der rammer grænsefladen under grænsevinklen");
+}
+function regnbueSVG(d){
+  const W = 360, H = 270, C = [238, 104], R = 84;
+  let g = `<circle class="drop" cx="${C[0]}" cy="${C[1]}" r="${R}"/>`;
+  [[1.30, "#d23c2c", "rød"], [1.40, "#7b3fe0", "violet"]].forEach(([n, col, nm], k) => {
+    const i = Math.acos(Math.sqrt((1.333 * 1.333 - 1) / 3)), P1 = [C[0] - R * Math.cos(i), C[1] - R * Math.sin(i)], din = [1, 0];
+    const N1 = V.norm(V.sub(P1, C)), d1 = refractV(din, N1, 1 / n);
+    const hit = (p, dd) => { const pc = V.sub(p, C), b = V.dot(pc, dd), c = V.dot(pc, pc) - R * R; return V.add(p, V.mul(dd, -b + Math.sqrt(b * b - c))); };
+    const P2 = hit(P1, d1), N2 = V.norm(V.sub(P2, C)), d2 = V.sub(d1, V.mul(N2, 2 * V.dot(d1, N2)));
+    const P3 = hit(P2, d2), N3 = V.norm(V.sub(P3, C)), d3 = refractV(d2, V.mul(N3, -1), n), P4 = V.add(P3, V.mul(d3, 95));
+    const st = `stroke:${col}; stroke-width:1.8; fill:none`;
+    if (k === 0) g += `<line class="ray" x1="10" y1="${P1[1].toFixed(1)}" x2="${P1[0].toFixed(1)}" y2="${P1[1].toFixed(1)}"/>` + arrowHead(60, P1[1], 0, 9) + `<text class="clbl small" x="12" y="${(P1[1] - 8).toFixed(1)}">sollys</text>`;
+    g += `<polyline style="${st}" points="${polyPts([P1, P2, P3, P4])}"/><text class="clbl small" x="${(P4[0] - 6).toFixed(1)}" y="${(P4[1] + 4).toFixed(1)}" text-anchor="end" style="fill:${col}">${nm}</text>`;
+  });
+  g += `<text class="clbl small" x="${W - 6}" y="16" text-anchor="end">regndråbe</text><text class="clbl small" x="${W - 6}" y="${H - 6}" text-anchor="end">farvespredningen er overdrevet</text>`;
+  return svgWrap(W, H, g, "Lysets vej gennem en regndråbe");
+}
+function regnbueGeoSVG(d){
+  const W = 360, H = 240, O = [120, 170], hs = deg(d.sol), L = 210;
+  let g = `<line class="axis" x1="0" x2="${W}" y1="${O[1]}" y2="${O[1]}"/><rect class="glass" x="0" y="${O[1]}" width="${W}" height="${H - O[1]}"/>`;
+  const sd = [Math.cos(hs), Math.sin(hs)];
+  [-24, 0, 24].forEach(off => { const s = [O[0] - sd[0] * 110 + off * Math.sin(hs), O[1] - sd[1] * 110 - off * Math.cos(hs)];
+    g += `<line class="ray thin" x1="${(s[0] - sd[0] * 40).toFixed(1)}" y1="${(s[1] - sd[1] * 40).toFixed(1)}" x2="${s[0].toFixed(1)}" y2="${s[1].toFixed(1)}"/>` + arrowHead(s[0], s[1], Math.atan2(sd[1], sd[0]), 7); });
+  g += `<text class="clbl small" x="8" y="${(O[1] - sd[1] * 160 - 6).toFixed(1)}">sollys (Solen ${d.sol}° over horisonten)</text>`;
+  const anti = V.add(O, V.mul(sd, L)); g += `<line class="normal" x1="${O[0]}" y1="${O[1]}" x2="${anti[0].toFixed(1)}" y2="${anti[1].toFixed(1)}"/>`;
+  const top = Math.atan2(sd[1], sd[0]) - deg(42), T = V.add(O, V.mul([Math.cos(top), Math.sin(top)], L));
+  g += `<line class="dim" x1="${O[0]}" y1="${O[1]}" x2="${T[0].toFixed(1)}" y2="${T[1].toFixed(1)}"/>`;
+  g += `<polyline class="arcl" points="${polyPts(arcPts(O, 58, Math.atan2(sd[1], sd[0]), top))}"/><text class="clbl small" x="${(O[0] + 72 * Math.cos((Math.atan2(sd[1], sd[0]) + top) / 2)).toFixed(1)}" y="${(O[1] + 72 * Math.sin((Math.atan2(sd[1], sd[0]) + top) / 2) + 4).toFixed(1)}">42°</text>`;
+  g += `<polyline class="arcl" points="${polyPts(arcPts(O, 100, 0, top))}"/><text class="clbl small" x="${(O[0] + 108 * Math.cos(top / 2)).toFixed(1)}" y="${(O[1] + 108 * Math.sin(top / 2) + 4).toFixed(1)}">?</text>`;
+  g += `<circle class="body" cx="${O[0]}" cy="${O[1] - 8}" r="5"/><line class="wire" x1="${O[0]}" x2="${O[0]}" y1="${O[1] - 3}" y2="${O[1]}"/><text class="clbl small" x="${O[0]}" y="${O[1] + 18}" text-anchor="middle">iagttager</text>`;
+  g += `<text class="clbl small" x="${(anti[0] - 4).toFixed(1)}" y="${(anti[1] + 14).toFixed(1)}" text-anchor="end">modsat Solen</text><text class="clbl small" x="${(T[0] + 4).toFixed(1)}" y="${(T[1] - 4).toFixed(1)}">regnbuens top</text>`;
+  return svgWrap(W, H, g, "Regnbuens geometri");
+}
+function prismeGitterSVG(d){
+  const W = 360, H = 210, cols = [["#d23c2c", 0], ["#e9b21a", 1], ["#2fa84f", 2], ["#4f7fe0", 3], ["#7b3fe0", 4]];
+  let g = `<text class="clbl small" x="88" y="16" text-anchor="middle">Prisme</text><text class="clbl small" x="270" y="16" text-anchor="middle">Gitter</text>`;
+  g += `<polygon class="prism" points="${polyPts([[88, 34], [40, 150], [136, 150]])}"/><line class="ray" x1="6" y1="120" x2="64" y2="96"/>`;
+  cols.forEach(([c, k]) => g += `<line x1="112" y1="100" x2="176" y2="${118 + k * 12}" style="stroke:${c}; stroke-width:2"/>`);
+  g += `<line class="grating" x1="230" x2="230" y1="40" y2="170" style="stroke-width:4"/><line class="ray" x1="186" y1="105" x2="230" y2="105"/><line x1="230" y1="105" x2="354" y2="105" style="stroke:var(--ink); stroke-width:2"/>`;
+  cols.forEach(([c, k]) => { const a = deg(14 + (4 - k) * 0); g += `<line x1="230" y1="105" x2="354" y2="${(105 - (26 + (4 - k) * 11)).toFixed(1)}" style="stroke:${c}; stroke-width:2"/><line x1="230" y1="105" x2="354" y2="${(105 + 26 + (4 - k) * 11).toFixed(1)}" style="stroke:${c}; stroke-width:2"/>`; });
+  g += `<text class="clbl small" x="350" y="101" text-anchor="end">hvid (0. orden)</text>`;
+  return svgWrap(W, H, g, "Hvidt lys gennem et prisme og gennem et gitter");
+}
+
+// ---------- Kinematik: SUVAT-grafer og grafsammenhænge ----------
+function suvatSVG(d){
+  const t1 = d.t1, s0 = d.s0 || 0, sF = t => s0 + d.v0 * t + 0.5 * d.a * t * t, vF = t => d.v0 + d.a * t;
+  const N = 60, ts = Array.from({length:N + 1}, (_, k) => t1 * k / N);
+  const xs = niceStep(t1 / 6), X1 = Math.ceil(t1 / xs - 1e-9) * xs;
+  const rng = (vals) => { let lo = Math.min(0, ...vals), hi = Math.max(0, ...vals); if (hi - lo < 1e-9) hi = lo + 1; const st = niceStep((hi - lo) / 4); return {min:Math.floor(lo / st + 1e-9) * st, max:Math.ceil(hi / st - 1e-9) * st || st, trin:st}; };
+  const mk = (fn, nm) => { const vals = ts.map(fn), r = rng(vals); return chartSVG({H:170, x:{max:X1, trin:xs, navn:"t (s)"}, y:{...r, navn:nm}, serier:[ts.map((t, k) => [t, vals[k]])], alt:nm + " som funktion af t"}); };
+  return `<div class="suvat">${mk(sF, "s (m)")}${mk(vF, "v (m/s)")}${mk(() => d.a, "a (m/s²)")}</div>`;
+}
+const MOTION = {hvile:{v0:0, a:0, s0:3}, konst:{v0:2, a:0, s0:0}, bagl:{v0:-2, a:0, s0:8}, acc:{v0:0, a:1, s0:0}, acc2:{v0:1.5, a:0.6, s0:0}, brems:{v0:4, a:-1, s0:0}, arate:{special:true}};
+function miniPlot(x0, y0, w, h, fn, lbl, yn, highlight){
+  const ts = Array.from({length:41}, (_, k) => 4 * k / 40), vals = ts.map(fn);
+  let lo = Math.min(0, ...vals), hi = Math.max(0, ...vals); if (hi - lo < 1e-9){ hi = 1; lo = -1; } const pad = (hi - lo) * 0.12; lo -= pad; hi += pad;
+  const px = t => x0 + 22 + t / 4 * (w - 30), py = v => y0 + h - 16 - (v - lo) / (hi - lo) * (h - 30);
+  let g = `<rect class="${highlight ? "mpgiven" : "mp"}" x="${x0}" y="${y0}" width="${w}" height="${h}" rx="4"/>`;
+  g += `<line class="axis" x1="${px(0)}" x2="${px(4) + 4}" y1="${py(0)}" y2="${py(0)}"/>` + arrowHead(px(4) + 6, py(0), 0, 5);
+  g += `<line class="axis" x1="${px(0)}" x2="${px(0)}" y1="${py(lo) + 2}" y2="${py(hi) - 2}"/>` + arrowHead(px(0), py(hi) - 4, -Math.PI / 2, 5);
+  g += `<text x="${px(4) + 4}" y="${py(0) - 5}" text-anchor="end">t</text><text x="${px(0) - 5}" y="${py(hi) + 6}" text-anchor="end">${yn}</text>`;
+  g += `<polyline class="fit" points="${polyPts(ts.map((t, k) => [px(t), py(vals[k])]))}"/>`;
+  if (lbl) g += `<text class="starlbl" x="${x0 + w - 8}" y="${y0 + 18}" text-anchor="end">${lbl}</text>`;
+  return g;
+}
+function grafFn(m, kind){
+  if (m === "arate") return kind === "a" ? t => 0.5 * t : kind === "v" ? t => 0.25 * t * t : t => t * t * t / 12;
+  const M = MOTION[m]; return kind === "s" ? t => M.s0 + M.v0 * t + 0.5 * M.a * t * t : kind === "v" ? t => M.v0 + M.a * t : () => M.a;
+}
+function grafmatchSVG(d){
+  const W = 360, H = 356, yn = {s:"s", v:"v", a:"a"};
+  let g = `<text class="clbl small" x="8" y="14">Givet: (${d.givet},t)-graf</text>` + miniPlot(90, 20, 180, 104, grafFn(d.bev, d.givet), "", yn[d.givet], true);
+  g += `<text class="clbl small" x="8" y="148">Hvilken (${d.spurgt},t)-graf passer?</text>`;
+  d.kand.forEach((m, k) => { const x = 8 + (k % 2) * 176, y = 156 + Math.floor(k / 2) * 100; g += miniPlot(x, y, 168, 92, grafFn(m, d.spurgt), ["A","B","C","D"][k], yn[d.spurgt]); });
+  return svgWrap(W, H, g, `En (${d.givet},t)-graf og fire mulige (${d.spurgt},t)-grafer`);
+}
+
+
+// ---------- Hyperbelbaner, pendler, fjedersystemer, Bohrs model og energidiagrammer ----------
+function hyperbelSVG(d){
+  const baner = d.baner || [{e:d.e, q:d.q, navn:d.navn}], W = 360, H = 300;
+  const Rmax = d.R || Math.max(...baner.map(b => b.q)) * 7 + 1;
+  const s = 150 / Rmax, S = [W * 0.62, H / 2];
+  const P = (x, y) => [S[0] + x * s, S[1] - y * s];
+  const styles = ["fit", "fit2", "fit3"];
+  let g = `<circle class="sun" cx="${S[0]}" cy="${S[1]}" r="7"/><text class="clbl small" x="${S[0] + 10}" y="${S[1] + 18}">Solen</text>`;
+  baner.forEach((b, k) => {
+    const nm = Math.acos(-1 / b.e), pts = [];
+    for (let j = 0; j <= 240; j++){ const nu = -nm + 0.02 + (2 * nm - 0.04) * j / 240, r = b.q * (1 + b.e) / (1 + b.e * Math.cos(nu));
+      if (r > 0 && r < Rmax * 2.2) pts.push(P(r * Math.cos(nu), r * Math.sin(nu))); }
+    g += `<polyline class="${styles[k % 3]}" points="${polyPts(pts)}"/>`;
+    const i0 = Math.floor(pts.length * 0.12); g += arrowHead(pts[i0 + 1][0], pts[i0 + 1][1], Math.atan2(pts[i0 + 1][1] - pts[i0][1], pts[i0 + 1][0] - pts[i0][0]), 8);
+    const iE = pts.length - Math.floor(pts.length * 0.12); g += arrowHead(pts[iE][0], pts[iE][1], Math.atan2(pts[iE][1] - pts[iE - 1][1], pts[iE][0] - pts[iE - 1][0]), 8);
+    if (b.navn && baner.length > 1) g += `<line x1="8" x2="30" y1="${14 + k * 18}" y2="${14 + k * 18}" class="leg ${styles[k % 3]}"/><text class="clbl small" x="36" y="${18 + k * 18}">${b.navn}</text>`;
+    if (baner.length === 1){
+      const a = b.q / (b.e - 1), C = [a + b.q, 0], L = Rmax * 2.5;
+      [[Math.cos(nm), Math.sin(nm)], [Math.cos(nm), -Math.sin(nm)]].forEach(u => { const p1 = P(C[0] - u[0] * L * 0.15, C[1] - u[1] * L * 0.15), p2 = P(C[0] + u[0] * L, C[1] + u[1] * L);
+        g += `<line class="normal" x1="${p1[0].toFixed(1)}" y1="${p1[1].toFixed(1)}" x2="${p2[0].toFixed(1)}" y2="${p2[1].toFixed(1)}"/>`; });
+      const O = [306, 238], inDir = Math.atan2(-Math.sin(nm), -Math.cos(nm)), outDir = Math.atan2(-Math.sin(nm), Math.cos(nm));
+      const u1 = [Math.cos(inDir), Math.sin(inDir)], u2 = [Math.cos(outDir), Math.sin(outDir)];
+      g += `<rect class="mp" x="${O[0] - 58}" y="${O[1] - 62}" width="112" height="84" rx="4"/><text class="clbl small" x="${O[0] - 52}" y="${O[1] - 48}">retningsændring</text>`;
+      const Pin = [O[0] - u1[0] * 34, O[1] - u1[1] * 34];
+      g += `<line class="ray thin" x1="${Pin[0].toFixed(1)}" y1="${Pin[1].toFixed(1)}" x2="${O[0]}" y2="${O[1]}"/>` + arrowHead(O[0], O[1], inDir, 6);
+      g += `<line class="normal" x1="${O[0]}" y1="${O[1]}" x2="${(O[0] + u1[0] * 40).toFixed(1)}" y2="${(O[1] + u1[1] * 40).toFixed(1)}"/>`;
+      g += `<line class="ray thin" x1="${O[0]}" y1="${O[1]}" x2="${(O[0] + u2[0] * 40).toFixed(1)}" y2="${(O[1] + u2[1] * 40).toFixed(1)}"/>` + arrowHead(O[0] + u2[0] * 40, O[1] + u2[1] * 40, outDir, 6);
+      const ap = arcPts(O, 22, inDir, outDir); g += `<polyline class="arcl" points="${polyPts(ap)}"/><text class="clbl small" x="${(ap[8][0] + (ap[8][0] - O[0]) * 0.7).toFixed(1)}" y="${(ap[8][1] + (ap[8][1] - O[1]) * 0.7 + 4).toFixed(1)}" text-anchor="middle">δ${d.delta ? " " + d.delta : ""}</text>`;
+      g += `<text class="clbl small" x="6" y="${H - 8}">fra det ydre rum</text><text class="clbl small" x="6" y="16">tilbage ud i rummet</text>`;
+    }
+  });
+  if (d.note !== false && baner.length === 1) g += `<text class="clbl small" x="${W - 6}" y="16" text-anchor="end">stiplet: asymptoter</text>`;
+  if (baner.length > 1) g = g.replace(`<text class="clbl small" x="${W - 6}" y="${H - 6}" text-anchor="end">stiplet: asymptoter</text>`, "");
+  return svgWrap(W, H, g, "Hyperbelbane om Solen");
+}
+function undvigSVG(d){
+  const W = 360, H = 200, S = [50, 110], C = [200, 110];
+  let g = `<circle class="sun" cx="${S[0]}" cy="${S[1]}" r="12"/><text class="clbl small" x="${S[0]}" y="${S[1] + 30}" text-anchor="middle">Solen</text>`;
+  g += `<line class="dim" x1="${S[0] + 14}" x2="${C[0] - 8}" y1="${S[1] + 40}" y2="${C[1] + 40}"/>` + arrowHead(S[0] + 14, S[1] + 40, Math.PI, 6) + arrowHead(C[0] - 8, C[1] + 40, 0, 6);
+  g += `<text class="clbl small" x="${(S[0] + C[0]) / 2}" y="${S[1] + 34}" text-anchor="middle">r = ${d.r}</text>`;
+  g += `<circle class="body" cx="${C[0]}" cy="${C[1]}" r="6"/><text class="clbl small" x="${C[0]}" y="${C[1] + 20}" text-anchor="middle">komet</text>`;
+  g += `<line class="vec" x1="${C[0]}" y1="${C[1]}" x2="${C[0] + 60}" y2="${C[1] - 70}"/>` + arrowHead(C[0] + 60, C[1] - 70, Math.atan2(-70, 60), 10);
+  g += `<text class="clbl" x="${C[0] + 66}" y="${C[1] - 74}">v = ${d.v}</text>`;
+  return svgWrap(W, H, g, "Komet i afstanden r fra Solen med farten v");
+}
+function pendlerSVG(d){
+  const W = 360, n = d.pendler.length, Lmax = Math.max(...d.pendler.map(p => p.L)), s = 180 / Lmax, H = 250, top = 22;
+  let g = `<line class="axis" x1="10" x2="${W - 10}" y1="${top}" y2="${top}"/>` + Array.from({length:34}, (_, k) => `<line class="axis" x1="${14 + k * 10}" x2="${8 + k * 10}" y1="${top}" y2="${top - 7}"/>`).join("");
+  d.pendler.forEach((p, k) => { const x = W / (n + 1) * (k + 1), y = top + p.L * s, r = 5 + 5 * Math.cbrt(p.m);
+    g += `<line class="wire" x1="${x}" y1="${top}" x2="${x}" y2="${y.toFixed(1)}"/><circle class="bob" cx="${x}" cy="${(y + r).toFixed(1)}" r="${r.toFixed(1)}"/>`;
+    g += `<text class="starlbl" x="${x}" y="${(y + 2 * r + 18).toFixed(1)}" text-anchor="middle">${p.navn}</text><text class="clbl small" x="${x}" y="${(y + 2 * r + 32).toFixed(1)}" text-anchor="middle">${lblN(p.L)} m · ${lblN(p.m)} kg</text>`; });
+  return svgWrap(W, H + 20, g, "Penduler med forskellige længder og masser");
+}
+function fjedreSVG(d){
+  const zig = (x, y1, y2, w = 10) => { const n = 10, pts = [[x, y1], [x, y1 + 5]], L = y2 - y1 - 10;
+    for (let k = 0; k < n; k++) pts.push([x + (k % 2 ? -w : w), y1 + 5 + L * (k + 0.5) / n]); pts.push([x, y2 - 5], [x, y2]); return `<polyline class="spring" points="${polyPts(pts)}"/>`; };
+  const W = 360, H = 250, top = 24, cx = 180;
+  let g = `<line class="axis" x1="110" x2="250" y1="${top}" y2="${top}"/>` + Array.from({length:14}, (_, k) => `<line class="axis" x1="${114 + k * 10}" x2="${108 + k * 10}" y1="${top}" y2="${top - 7}"/>`).join("");
+  const kl = (x, y, t) => `<text class="clbl small" x="${x}" y="${y}">${t}</text>`;
+  let yb;
+  if (d.kobling === "serie"){
+    g += zig(cx, top, 100) + `<rect class="massb" x="${cx - 12}" y="100" width="24" height="6"/>` + zig(cx, 106, 180);
+    g += kl(cx + 18, 64, `k₁ = ${lblN(d.k[0])} N/m`) + kl(cx + 18, 146, `k₂ = ${lblN(d.k[1])} N/m`); yb = 180;
+  } else {
+    g += zig(cx - 40, top, 150) + zig(cx + 40, top, 150) + `<rect class="massb" x="${cx - 60}" y="150" width="120" height="7"/><line class="wire" x1="${cx}" x2="${cx}" y1="157" y2="176"/>`;
+    g += kl(cx - 130, 90, `k₁ = ${lblN(d.k[0])} N/m`) + kl(cx + 56, 90, `k₂ = ${lblN(d.k[1])} N/m`); yb = 176;
+  }
+  if (d.m) g += `<rect class="massb" x="${cx - 36}" y="${yb}" width="72" height="30" rx="2"/><text class="clbl small massl" x="${cx}" y="${yb + 19}" text-anchor="middle">${lblN(d.m)} kg</text>`;
+  g += `<text class="clbl small" x="${W - 6}" y="${H - 6}" text-anchor="end">${d.kobling === "serie" ? "fjedre i serie" : "fjedre i parallel"}</text>`;
+  return svgWrap(W, H, g, d.kobling === "serie" ? "To fjedre i serie med et lod" : "To fjedre i parallel med et lod");
+}
+const EV = n => -13.6 / (n * n);
+function lysFarve(nm){ return nm >= 380 && nm <= 750 ? nmCol(nm) : "var(--ink)"; }
+function energiSVG(d){
+  const W = 360, H = 300, x0 = 40, x1 = 262, yT = 20, yB = 270, Y = n => n === Infinity ? yT : yT + (yB - yT) / n;
+  const nmax = d.nmax || 5;
+  let g = `<text class="clbl small" x="${x1 + 8}" y="12">E (eV)</text>`;
+  [...Array.from({length:nmax}, (_, k) => k + 1), Infinity].forEach(n => { const y = Y(n);
+    g += `<line class="${n === Infinity ? "normal" : "level"}" x1="${x0}" x2="${x1}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}"/>`;
+    g += `<text class="clbl small" x="${x0 - 6}" y="${(y + 4).toFixed(1)}" text-anchor="end">${n === Infinity ? "∞" : "n = " + n}</text>`;
+    if (d.visE !== false) g += `<text class="clbl small" x="${x1 + 8}" y="${(y + 4).toFixed(1)}">${n === Infinity ? "0" : plain(fmt(EV(n), 3))}</text>`; });
+  (d.overgange || []).forEach((o0, k, arr) => { const o = {...o0, til:o0.til === "inf" ? Infinity : o0.til}, x = x0 + 30 + k * (x1 - x0 - 50) / Math.max(1, arr.length - 1 || 1), y1 = Y(o.fra), y2 = Y(o.til);
+    const lam = 1240 / Math.abs((o.til === Infinity ? 0 : EV(o.til)) - EV(o.fra)), col = d.farvet && o.til < o.fra ? lysFarve(lam) : "var(--ink)";
+    g += `<line x1="${x}" x2="${x}" y1="${y1.toFixed(1)}" y2="${(y2 + (y2 > y1 ? -8 : 8)).toFixed(1)}" style="stroke:${col}; stroke-width:2.4"/>` +
+         `<polygon points="${x},${y2.toFixed(1)} ${x - 5},${(y2 + (y2 > y1 ? -10 : 10)).toFixed(1)} ${x + 5},${(y2 + (y2 > y1 ? -10 : 10)).toFixed(1)}" style="fill:${col}"/>`;
+    if (o.navn) g += `<text class="starlbl" x="${x + 7}" y="${((y1 + y2) / 2 + 5).toFixed(1)}">${o.navn}</text>`; });
+  g += `<text class="clbl small" x="6" y="${H - 6}">Afstandene mellem niveauerne er ikke målfaste</text>`;
+  return svgWrap(W, H, g, "Energidiagram for brintatomet");
+}
+function bohrSVG(d){
+  const W = 360, H = 330, C = [170, 170], rr = n => 10 * n * n + 4;
+  let g = `<circle class="nucleus" cx="${C[0]}" cy="${C[1]}" r="6"/><text class="clbl small" x="${C[0]}" y="${C[1] - 10}" text-anchor="middle">p⁺</text>`;
+  for (let n = 1; n <= 4; n++) g += `<circle class="orbit" cx="${C[0]}" cy="${C[1]}" r="${rr(n)}"/><text class="clbl small" x="${C[0] + rr(n) * 0.72 + 4}" y="${C[1] + rr(n) * 0.72 + 12}">n = ${n}</text>`;
+  if (d.fra){ const a = deg(-35), p1 = [C[0] + rr(d.fra) * Math.cos(a), C[1] + rr(d.fra) * Math.sin(a)], p2 = [C[0] + rr(d.til) * Math.cos(a), C[1] + rr(d.til) * Math.sin(a)];
+    const down = d.til < d.fra, lam = 1240 / Math.abs(EV(d.til) - EV(d.fra)), col = lysFarve(lam);
+    g += `<circle class="electron" cx="${p1[0].toFixed(1)}" cy="${p1[1].toFixed(1)}" r="5"/><line class="vec" x1="${p1[0].toFixed(1)}" y1="${p1[1].toFixed(1)}" x2="${p2[0].toFixed(1)}" y2="${p2[1].toFixed(1)}"/>` + arrowHead(p2[0], p2[1], Math.atan2(p2[1] - p1[1], p2[0] - p1[0]), 9);
+    const base = down ? p2 : p1, wave = Array.from({length:61}, (_, k) => { const t = k / 60, px0 = base[0] + 12 + t * 100, py0 = base[1] - 12 - t * 100, w = 5 * Math.sin(t * 26);
+      return [px0 + w * 0.707, py0 + w * 0.707]; });
+    const wc = col === "var(--ink)" ? "var(--pen)" : col, tip = wave[down ? 60 : 0], prev = wave[down ? 57 : 3];
+    g += `<polyline points="${polyPts(wave)}" style="fill:none; stroke:${wc}; stroke-width:2"/>` + `<polygon points="${tip[0].toFixed(1)},${tip[1].toFixed(1)} ${(tip[0] - 10 * Math.cos(Math.atan2(tip[1] - prev[1], tip[0] - prev[0]) - 0.45)).toFixed(1)},${(tip[1] - 10 * Math.sin(Math.atan2(tip[1] - prev[1], tip[0] - prev[0]) - 0.45)).toFixed(1)} ${(tip[0] - 10 * Math.cos(Math.atan2(tip[1] - prev[1], tip[0] - prev[0]) + 0.45)).toFixed(1)},${(tip[1] - 10 * Math.sin(Math.atan2(tip[1] - prev[1], tip[0] - prev[0]) + 0.45)).toFixed(1)}" style="fill:${wc}"/>`;
+    g += `<text class="clbl small" x="${W - 6}" y="16" text-anchor="end">${down ? "foton udsendes" : "foton absorberes"}${d.visLambda ? " – λ = " + fmt(lam, 3) + " nm" : ""}</text>`; }
+  g += `<text class="clbl small" x="6" y="${H - 6}">Bohrs model af brintatomet (ikke målfast)</text>`;
+  return svgWrap(W, H, g, "Bohrs model af brintatomet");
+}
+
+
+// ---------- B- og A-emner: kerner, væsker, sensorer, felter, kast, cirkel, stød, gnidning, satellitter, diffraktion ----------
+function kerneSVG(d){
+  const W = 360, H = 150, cy = 66, items = [...d.venstre.map(x => ({...x, side:0})), {pil:true}, ...d.hoejre.map(x => ({...x, side:1}))];
+  const rad = x => x.pil ? 22 : x.s === "n" || x.s === "p" || x.s === "e⁻" ? 10 : 13 + 4.2 * Math.cbrt(x.A);
+  let tot = items.reduce((s, x) => s + 2 * rad(x) + 20, 0), k = Math.min(1, 344 / tot), x = (W - tot * k) / 2;
+  let g = "";
+  items.forEach((it, i) => { const r = rad(it) * k, cx = x + r + 10 * k;
+    if (it.pil) g += `<line class="wire" x1="${cx - r}" x2="${cx + r - 4}" y1="${cy}" y2="${cy}"/>` + arrowHead(cx + r, cy, 0, 8);
+    else { const cls = it.s === "n" ? "nneutron" : it.s === "p" || it.s === "H" && it.A === 1 ? "nucleus" : it.s === "e⁻" ? "electron" : "nucbig";
+      g += `<circle class="${cls}" cx="${cx.toFixed(1)}" cy="${cy}" r="${r.toFixed(1)}"/>`;
+      g += `<text class="clbl small" x="${cx.toFixed(1)}" y="${(cy + r + 16).toFixed(1)}" text-anchor="middle">${(it.antal ? it.antal + " " : "") + (it.s === "n" || it.s === "e⁻" ? it.s : it.s + "-" + it.A)}</text>`; }
+    x += 2 * r + 20 * k;
+    const nxt = items[i + 1]; if (nxt && !nxt.pil && !it.pil) g += `<text class="clbl" x="${(x + 0 * k).toFixed(1)}" y="${cy + 5}" text-anchor="middle">+</text>`;
+  });
+  if (d.masser) g += `<text class="clbl small" x="${W / 2}" y="${H - 8}" text-anchor="middle">${d.masser}</text>`;
+  return svgWrap(W, H, g, "Kernereaktion");
+}
+function vaeskeSVG(d){
+  const W = 360, H = 250, x0 = 80, x1 = 280, ys = 50, yb = 230, hmax = d.hmax || d.dybde * 1.25, s = (yb - ys - 10) / hmax, col = d.farve || "rgba(79,127,224,.2)";
+  const yp = ys + d.dybde * s;
+  let g = `<rect x="${x0}" y="${ys}" width="${x1 - x0}" height="${yb - ys}" style="fill:${col}"/><path class="wire" d="M${x0} 20 V${yb} H${x1} V20"/>`;
+  g += `<line class="axis" x1="${x0}" x2="${x1}" y1="${ys}" y2="${ys}"/><text class="clbl small" x="${x0 + 6}" y="${ys - 8}">p₀ = 101 kPa (luft)</text><text class="clbl small" x="${x1 - 6}" y="${yb - 8}" text-anchor="end">${d.vaeske}</text>`;
+  g += `<line class="dim" x1="${x0 - 16}" x2="${x0 - 16}" y1="${ys}" y2="${yp.toFixed(1)}"/>` + arrowHead(x0 - 16, ys, -Math.PI / 2, 6) + arrowHead(x0 - 16, yp, Math.PI / 2, 6);
+  g += `<text class="clbl small" x="${x0 - 20}" y="${((ys + yp) / 2 + 4).toFixed(1)}" text-anchor="end">h = ${lblN(d.dybde)} m</text>`;
+  g += `<line class="guide2" x1="${x0}" x2="${(x0 + x1) / 2}" y1="${yp.toFixed(1)}" y2="${yp.toFixed(1)}"/><circle class="bob" cx="${(x0 + x1) / 2}" cy="${yp.toFixed(1)}" r="7"/><text class="clbl small" x="${(x0 + x1) / 2 + 12}" y="${(yp + 4).toFixed(1)}">p = ?</text>`;
+  return svgWrap(W, H, g, "Beholder med væske og et punkt i dybden h");
+}
+function opdriftSVG(d){
+  const W = 360, H = 250, x0 = 70, x1 = 290, ys = 110, yb = 235, col = d.farve || "rgba(79,127,224,.2)", bw = 70, bh = 60, cx = 180;
+  const f = d.frac === undefined ? 1 : d.frac, by = d.kraftmaaler ? ys + 30 : ys - bh * (1 - f);
+  let g = `<rect x="${x0}" y="${ys}" width="${x1 - x0}" height="${yb - ys}" style="fill:${col}"/><path class="wire" d="M${x0} 60 V${yb} H${x1} V60"/><line class="axis" x1="${x0}" x2="${x1}" y1="${ys}" y2="${ys}"/>`;
+  if (d.kraftmaaler) g += `<rect class="ruler" x="${cx - 9}" y="4" width="18" height="44" rx="3"/><text class="clbl small" x="${cx + 14}" y="30">kraftmåler</text><line class="wire" x1="${cx}" x2="${cx}" y1="48" y2="${by}"/>`;
+  g += `<rect class="massb" x="${cx - bw / 2}" y="${by.toFixed(1)}" width="${bw}" height="${bh}" rx="2"/><text class="clbl small massl" x="${cx}" y="${(by + bh / 2 + 4).toFixed(1)}" text-anchor="middle">${d.navn || ""}</text>`;
+  if (d.kraefter){ const c = by + bh / 2;
+    g += `<line class="vec" x1="${cx - 20}" x2="${cx - 20}" y1="${c}" y2="${c + 62}"/>` + arrowHead(cx - 20, c + 64, Math.PI / 2, 8) + `<text class="clbl small" x="${cx - 26}" y="${c + 60}" text-anchor="end">F<tspan dy="3" font-size="8">t</tspan></text>`;
+    g += `<line class="vecb" x1="${cx + 20}" x2="${cx + 20}" y1="${c}" y2="${c - 62}"/>` + arrowHead(cx + 20, c - 64, -Math.PI / 2, 8) + `<text class="clbl small" x="${cx + 26}" y="${c - 50}">F<tspan dy="3" font-size="8">op</tspan></text>`; }
+  g += `<text class="clbl small" x="${x1 - 6}" y="${yb - 8}" text-anchor="end">${d.vaeske}</text>`;
+  return svgWrap(W, H, g, "Genstand i en væske");
+}
+function sensorSVG(d){
+  const W = 340, H = 230, L = 40, R = 300, T = 70, B = 185, cx = 170;
+  let g = `<path class="wire" d="M${L} ${T} H${R} V${B} H${L} Z"/>`;
+  g += `<rect class="res" x="${100 - 24}" y="${T - 9}" width="48" height="18"/><text class="clbl" x="100" y="${T + 30}" text-anchor="middle">R = ${d.R}</text>`;
+  const sx = 240;
+  g += `<rect class="res" x="${sx - 24}" y="${T - 9}" width="48" height="18"/>`;
+  if (d.sensor === "NTC") g += `<line class="wire" x1="${sx - 30}" y1="${T + 14}" x2="${sx + 30}" y2="${T - 14}"/><line class="wire" x1="${sx + 30}" y1="${T - 14}" x2="${sx + 40}" y2="${T - 14}"/><text class="clbl small" x="${sx - 32}" y="${T + 22}">−t°</text>`;
+  else g += `<circle class="orbit" cx="${sx}" cy="${T}" r="30"/>` + [[-44, -34], [-30, -40]].map(([dx, dy]) => `<line class="vec" x1="${sx + dx - 14}" y1="${T + dy - 14}" x2="${sx + dx}" y2="${T + dy}"/>` + arrowHead(sx + dx, T + dy, Math.PI / 4, 6)).join("");
+  g += `<text class="clbl" x="${sx}" y="${T + 48}" text-anchor="middle">${d.sensor}</text>`;
+  if (d.voltmeter){ const vx = d.voltmeter === "R" ? 100 : sx;
+    g += `<path class="wire" d="M${vx - 40} ${T} V${T - 44} H${vx - 16} M${vx + 16} ${T - 44} H${vx + 40} V${T}"/><circle class="res" cx="${vx}" cy="${T - 44}" r="16"/><text class="clbl" x="${vx}" y="${T - 39}" text-anchor="middle">V</text>`; }
+  g += `<rect class="gap" x="${cx - 9}" y="${B - 5}" width="18" height="10"/><line class="plate" x1="${cx - 6}" x2="${cx - 6}" y1="${B - 16}" y2="${B + 16}"/><line class="plate thick" x1="${cx + 6}" x2="${cx + 6}" y1="${B - 8}" y2="${B + 8}"/>`;
+  g += `<text class="clbl" x="${cx}" y="${B + 36}" text-anchor="middle">U = ${d.U}</text>`;
+  return svgWrap(W, H, g, `Spændingsdeler med en fast resistor og en ${d.sensor}`);
+}
+function pladerSVG(d){
+  const W = 360, H = 230, x0 = 70, x1 = 262, yt = 50, yb = 170;
+  let g = `<rect class="plateP" x="${x0}" y="${yt - 8}" width="${x1 - x0}" height="8"/><rect class="plateN" x="${x0}" y="${yb}" width="${x1 - x0}" height="8"/>`;
+  g += `<text class="clbl" x="${x0 - 10}" y="${yt}" text-anchor="end">+</text><text class="clbl" x="${x0 - 10}" y="${yb + 10}" text-anchor="end">−</text>`;
+  const down = !d.vendt;
+  for (let x = x0 + 20; x < x1; x += 34) g += `<line class="field" x1="${x}" x2="${x}" y1="${yt + 4}" y2="${yb - 10}"/>` + arrowHead(x, down ? yb - 6 : yt + 6, down ? Math.PI / 2 : -Math.PI / 2, 6);
+  g += `<line class="dim" x1="${x1 + 16}" x2="${x1 + 16}" y1="${yt}" y2="${yb}"/>` + arrowHead(x1 + 16, yt, -Math.PI / 2, 6) + arrowHead(x1 + 16, yb, Math.PI / 2, 6) + `<text class="clbl small" x="${x1 + 20}" y="${(yt + yb) / 2 + 4}">d${d.d ? " = " + d.d : ""}</text>`;
+  if (d.U) g += `<text class="clbl small" x="${x0}" y="${yb + 30}">U = ${d.U}</text>`;
+  if (d.partikel){ const py = (yt + yb) / 2, px = x0 - 40, neg = d.partikel === "elektron";
+    g += `<circle class="${neg ? "electron" : "nucleus"}" cx="${px}" cy="${py}" r="8"/><text class="clbl small" x="${px}" y="${py + 4}" text-anchor="middle" style="fill:#fff">${neg ? "−" : "+"}</text>`;
+    g += `<line class="vec" x1="${px + 10}" x2="${px + 50}" y1="${py}" y2="${py}"/>` + arrowHead(px + 52, py, 0, 8) + `<text class="clbl small" x="${px}" y="${py - 14}" text-anchor="middle">${d.partikel}</text>`; }
+  return svgWrap(W, H, g, "Homogent elektrisk felt mellem to plader");
+}
+function ladningSVG(d){
+  const W = 360, H = 170, y = 80, xa = 80, xb = 280;
+  const q = (x, t, sign) => `<circle class="${sign < 0 ? "electron" : "nucleus"}" cx="${x}" cy="${y}" r="16"/><text class="clbl" x="${x}" y="${y + 6}" text-anchor="middle" style="fill:#fff">${sign < 0 ? "−" : "+"}</text><text class="clbl small" x="${x}" y="${y - 24}" text-anchor="middle">${t}</text>`;
+  let g = q(xa, d.t1, d.s1);
+  if (d.punkt) g += `<circle class="body" cx="${xb}" cy="${y}" r="4"/><text class="clbl small" x="${xb}" y="${y - 12}" text-anchor="middle">P: E = ?</text>`;
+  else g += q(xb, d.t2, d.s2);
+  g += `<line class="dim" x1="${xa}" x2="${xb}" y1="${y + 40}" y2="${y + 40}"/>` + arrowHead(xa, y + 40, Math.PI, 6) + arrowHead(xb, y + 40, 0, 6) + `<text class="clbl small" x="${(xa + xb) / 2}" y="${y + 34}" text-anchor="middle">r = ${d.r}</text>`;
+  return svgWrap(W, H, g, "Elektriske ladninger i afstanden r");
+}
+function bfeltSVG(d){
+  const W = 360, H = 250;
+  let g = "";
+  for (let x = 30; x < W; x += 40) for (let y = 30; y < H - 10; y += 40)
+    g += d.B === "ud" ? `<circle class="bdot" cx="${x}" cy="${y}" r="3"/><circle class="bring" cx="${x}" cy="${y}" r="8"/>` : `<path class="bx" d="M${x - 6} ${y - 6} L${x + 6} ${y + 6} M${x + 6} ${y - 6} L${x - 6} ${y + 6}"/>`;
+  g += `<text class="clbl small halo" x="${W - 6}" y="${H - 4}" text-anchor="end">B ${d.B === "ud" ? "ud af papiret" : "ind i papiret"}${d.Btekst ? ", " + d.Btekst : ""}</text>`;
+  const dirs = {hoejre:[1,0], venstre:[-1,0], op:[0,-1], ned:[0,1]};
+  if (d.mode === "leder"){ const u = dirs[d.I], c = [180, 125];
+    g += `<line class="lead" x1="${c[0] - u[0] * 110}" y1="${c[1] - u[1] * 90}" x2="${c[0] + u[0] * 110}" y2="${c[1] + u[1] * 90}"/>` + arrowHead(c[0] + u[0] * 40, c[1] + u[1] * 40, Math.atan2(u[1], u[0]), 12);
+    g += `<text class="clbl halo" x="${c[0] + u[0] * 40 + (u[1] ? 16 : 0)}" y="${c[1] + u[1] * 40 + (u[0] ? -14 : 4)}">I${d.Itekst ? " = " + d.Itekst : ""}</text>`; }
+  if (d.mode === "partikel"){ const u = dirs[d.v || "hoejre"], p = [60, 125], neg = d.q < 0;
+    g += `<circle class="${neg ? "electron" : "nucleus"}" cx="${p[0]}" cy="${p[1]}" r="9"/><text class="clbl small" x="${p[0]}" y="${p[1] + 4}" text-anchor="middle" style="fill:#fff">${neg ? "−" : "+"}</text>`;
+    g += `<line class="vec" x1="${p[0] + 11}" x2="${p[0] + 60}" y1="${p[1]}" y2="${p[1]}"/>` + arrowHead(p[0] + 62, p[1], 0, 9) + `<text class="clbl small halo" x="${p[0] + 30}" y="${p[1] - 12}">v</text><text class="clbl small halo" x="${p[0]}" y="${p[1] + 26}" text-anchor="middle">${d.navn}</text>`;
+    if (d.bue){ const sgn = d.bue, R = 80, cxx = p[0] + 70, cyy = p[1] + sgn * R;
+      g += `<path d="M${p[0] + 70} ${p[1]} A${R} ${R} 0 0 ${sgn > 0 ? 1 : 0} ${cxx + R} ${cyy}" style="fill:none; stroke:var(--pen); stroke-width:2.2; stroke-dasharray:6 4"/><line class="dim" x1="${cxx}" y1="${cyy}" x2="${cxx + R * 0.7}" y2="${cyy - sgn * R * 0.7}"/><text class="clbl small halo" x="${cxx + 10}" y="${cyy - sgn * 30}">r = ?</text>`; } }
+  if (d.mode === "stav"){ g += `<line class="lead" x1="30" x2="330" y1="60" y2="60"/><line class="lead" x1="30" x2="330" y1="190" y2="190"/><line class="lead" x1="40" x2="40" y1="60" y2="190"/>`;
+    g += `<line class="rod" x1="220" x2="220" y1="52" y2="198"/><line class="vec" x1="226" x2="286" y1="125" y2="125"/>` + arrowHead(288, 125, 0, 9) + `<text class="clbl small halo" x="240" y="112">v = ${d.v}</text>`;
+    g += `<text class="clbl small halo" x="208" y="100" text-anchor="end">L = ${d.L}</text>`; }
+  return svgWrap(W, H, g, "Homogent magnetfelt");
+}
+function spoleSVG(d){
+  const W = 360, H = 200, cx = 200, cy = 90;
+  let g = "";
+  for (let k = 0; k < 7; k++) g += `<ellipse class="coil" cx="${cx - 60 + k * 20}" cy="${cy}" rx="9" ry="36"/>`;
+  g += `<path class="wire" d="M${cx - 60} ${cy + 36} V160 H${cx - 20} M${cx + 20} 160 H${cx + 60} V${cy + 36}"/><circle class="res" cx="${cx}" cy="160" r="18"/><text class="clbl small" x="${cx}" y="164" text-anchor="middle">mV</text>`;
+  g += `<text class="clbl small" x="${cx}" y="${cy - 48}" text-anchor="middle">spole: N = ${d.N}, A = ${d.A}</text>`;
+  if (d.magnet){ const x = 20; g += `<rect x="${x}" y="${cy - 12}" width="40" height="24" style="fill:#d23c2c; stroke:var(--ink)"/><rect x="${x + 40}" y="${cy - 12}" width="40" height="24" style="fill:#4f7fe0; stroke:var(--ink)"/>`;
+    g += `<text class="clbl small" x="${x + 20}" y="${cy + 4}" text-anchor="middle" style="fill:#fff">N</text><text class="clbl small" x="${x + 60}" y="${cy + 4}" text-anchor="middle" style="fill:#fff">S</text>`;
+    g += `<line class="vec" x1="${x + 20}" x2="${x + 70}" y1="${cy + 30}" y2="${cy + 30}"/>` + arrowHead(x + 72, cy + 30, 0, 8); }
+  else for (let k = 0; k < 5; k++) g += `<line class="field" x1="${cx - 110}" x2="${cx + 100}" y1="${cy - 24 + k * 12}" y2="${cy - 24 + k * 12}"/>` + arrowHead(cx + 104, cy - 24 + k * 12, 0, 6);
+  if (d.Btekst) g += `<text class="clbl small" x="8" y="${H - 8}">${d.Btekst}</text>`;
+  return svgWrap(W, H, g, "Spole i et magnetfelt");
+}
+function kastSVG(d){
+  const W = 360, H = 230, th = deg(d.vinkel), g0 = 9.82, v = d.v0, R = v * v * Math.sin(2 * th) / g0, Hm = (v * Math.sin(th)) ** 2 / (2 * g0), h0 = d.h0 || 0;
+  const Tt = (v * Math.sin(th) + Math.sqrt((v * Math.sin(th)) ** 2 + 2 * g0 * h0)) / g0, Rx = v * Math.cos(th) * Tt;
+  const s = Math.min(300 / Math.max(Rx, 1), 170 / Math.max(Hm + h0, 0.5)), O = [30, 200 - h0 * s];
+  const pts = Array.from({length:61}, (_, k) => { const t = Tt * k / 60; return [O[0] + v * Math.cos(th) * t * s, O[1] - (v * Math.sin(th) * t - 0.5 * g0 * t * t) * s]; });
+  let g = `<line class="axis" x1="10" x2="${W - 10}" y1="200" y2="200"/>`;
+  if (h0) g += `<rect class="ramp" x="10" y="${O[1]}" width="24" height="${200 - O[1]}"/>`;
+  g += `<polyline class="fit" points="${polyPts(pts)}" style="stroke-dasharray:5 4"/>`;
+  g += `<line class="vec" x1="${O[0]}" y1="${O[1]}" x2="${O[0] + 60 * Math.cos(th)}" y2="${O[1] - 60 * Math.sin(th)}"/>` + arrowHead(O[0] + 62 * Math.cos(th), O[1] - 62 * Math.sin(th), -th, 9);
+  g += `<text class="clbl small halo" x="${O[0] + 66 * Math.cos(th) - 6}" y="${O[1] - 66 * Math.sin(th) - 10}">v₀ = ${lblN(v)} m/s</text>`;
+  if (d.vinkel) g += `<polyline class="arcl" points="${polyPts(arcPts(O, 28, 0, -th))}"/><text class="clbl small halo" x="${O[0] + 34}" y="${O[1] - 6}">${d.vinkel}°</text>`;
+  if (d.vis === "R") g += `<line class="dim" x1="${O[0]}" x2="${O[0] + Rx * s}" y1="214" y2="214"/>` + arrowHead(O[0], 214, Math.PI, 6) + arrowHead(O[0] + Rx * s, 214, 0, 6) + `<text class="clbl small" x="${O[0] + Rx * s / 2}" y="${H - 2}" text-anchor="middle">kastelængde = ?</text>`;
+  if (d.vis === "H"){ const ax = O[0] + v * Math.cos(th) * (v * Math.sin(th) / g0) * s, ay = O[1] - Hm * s;
+    g += `<line class="dim" x1="${ax}" x2="${ax}" y1="${ay}" y2="${O[1]}"/>` + arrowHead(ax, ay, -Math.PI / 2, 6) + `<text class="clbl small" x="${ax + 6}" y="${(ay + O[1]) / 2}">h<tspan dy="3" font-size="8">max</tspan> = ?</text>`; }
+  if (h0) g += `<text class="clbl small" x="38" y="${(O[1] + 200) / 2}">${lblN(h0)} m</text>`;
+  return svgWrap(W, H, g, "Skråt kast");
+}
+function cirkelSVG(d){
+  const W = 360, H = 250, C = [170, 125], R = 90, a = deg(d.vinkel || 40), P = [C[0] + R * Math.cos(a), C[1] - R * Math.sin(a)];
+  let g = `<circle class="orbit" cx="${C[0]}" cy="${C[1]}" r="${R}" style="stroke-dasharray:4 4"/><circle class="body" cx="${C[0]}" cy="${C[1]}" r="3"/>`;
+  g += `<line class="dim" x1="${C[0]}" y1="${C[1]}" x2="${P[0]}" y2="${P[1]}"/><text class="clbl small halo" x="${(C[0] + P[0]) / 2 + 14 * Math.sin(a) - 6}" y="${(C[1] + P[1]) / 2 + 14 * Math.cos(a) + 10}" text-anchor="end">r${d.r ? " = " + d.r : ""}</text>`;
+  const t = [-Math.sin(a), -Math.cos(a)], q = [P[0] + t[0] * 70, P[1] + t[1] * 70];
+  g += `<line class="vec" x1="${P[0]}" y1="${P[1]}" x2="${q[0]}" y2="${q[1]}"/>` + arrowHead(q[0], q[1], Math.atan2(t[1], t[0]), 9) + `<text class="clbl small" x="${q[0] + 6}" y="${q[1]}">v${d.v ? " = " + d.v : ""}</text>`;
+  if (d.kraft !== false){ const f = [C[0] - P[0], C[1] - P[1]], L = Math.hypot(...f), u = [f[0] / L, f[1] / L], e = [P[0] + u[0] * 45, P[1] + u[1] * 45];
+    g += `<line class="vecb" x1="${P[0]}" y1="${P[1]}" x2="${e[0]}" y2="${e[1]}"/>` + arrowHead(e[0], e[1], Math.atan2(u[1], u[0]), 8) + `<text class="clbl small halo" x="${e[0] + 10}" y="${e[1] - 4}">F</text>`; }
+  g += `<circle class="${d.objekt === "sat" ? "electron" : "bob"}" cx="${P[0]}" cy="${P[1]}" r="9"/>`;
+  if (d.navn) g += `<text class="clbl small" x="${P[0] + 12}" y="${P[1] - 12}">${d.navn}</text>`;
+  if (d.T) g += `<text class="clbl small" x="8" y="${H - 8}">omløbstid T = ${d.T}</text>`;
+  return svgWrap(W, H, g, "Jævn cirkelbevægelse");
+}
+function stoedSVG(d){
+  const W = 360, H = 220;
+  const cart = (x, y, m, lab) => `<rect class="massb" x="${x - 34}" y="${y - 26}" width="68" height="26" rx="3"/><circle class="body" cx="${x - 20}" cy="${y + 4}" r="5"/><circle class="body" cx="${x + 20}" cy="${y + 4}" r="5"/><text class="clbl small massl" x="${x}" y="${y - 9}" text-anchor="middle">${m}</text>` + (lab ? `<text class="starlbl" x="${x}" y="${y - 32}" text-anchor="middle">${lab}</text>` : "");
+  const arrow = (x, y, v, t) => { if (!v) return `<text class="clbl small" x="${x}" y="${y}" text-anchor="middle">${t}</text>`; const s = Math.sign(v), L = 40;
+    return `<line class="vec" x1="${x - s * L / 2}" x2="${x + s * L / 2}" y1="${y}" y2="${y}"/>` + arrowHead(x + s * (L / 2 + 2), y, s > 0 ? 0 : Math.PI, 8) + `<text class="clbl small" x="${x}" y="${y - 8}" text-anchor="middle">${t}</text>`; };
+  let g = `<text class="clbl small" x="8" y="16">Før</text><line class="axis" x1="10" x2="${W - 10}" y1="84" y2="84"/>`;
+  g += cart(100, 76, d.m1, "1") + cart(250, 76, d.m2, "2") + arrow(100, 30, d.v1, d.t1) + arrow(250, 30, d.v2, d.t2);
+  g += `<text class="clbl small" x="8" y="120">Efter</text><line class="axis" x1="10" x2="${W - 10}" y1="196" y2="196"/>`;
+  if (d.samlet) g += `<rect class="massb" x="110" y="162" width="140" height="26" rx="3"/><circle class="body" cx="130" cy="192" r="5"/><circle class="body" cx="230" cy="192" r="5"/><text class="clbl small massl" x="180" y="179" text-anchor="middle">1 + 2</text><text class="clbl small" x="180" y="146" text-anchor="middle">${d.efter}</text>`;
+  else g += cart(120, 188, d.m1, "1") + cart(270, 188, d.m2, "2") + `<text class="clbl small" x="195" y="146" text-anchor="middle">${d.efter}</text>`;
+  return svgWrap(W, H, g, "Stød mellem to vogne");
+}
+function klodsSVG(d){
+  const W = 360, H = 220, x = 180, y = 150, bw = 90, bh = 56;
+  let g = `<line class="axis" x1="20" x2="${W - 20}" y1="${y}" y2="${y}"/>` + Array.from({length:32}, (_, k) => `<line class="axis" x1="${24 + k * 10}" x2="${18 + k * 10}" y1="${y}" y2="${y + 7}"/>`).join("");
+  g += `<rect class="massb" x="${x - bw / 2}" y="${y - bh}" width="${bw}" height="${bh}" rx="2"/><text class="clbl small massl" x="${x}" y="${y - bh / 2 + 4}" text-anchor="middle">${d.m}</text>`;
+  const c = [x, y - bh / 2], ar = (x1, y1, x2, y2, cls, t, tx, ty) => `<line class="${cls}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>` + arrowHead(x2, y2, Math.atan2(y2 - y1, x2 - x1), 8) + `<text class="clbl small" x="${tx}" y="${ty}">${t}</text>`;
+  if (d.mode === "tryk"){ g += ar(x, y - bh - 60, x, y - bh - 4, "vec", `F = ${d.F}`, x + 8, y - bh - 36) + `<text class="clbl small" x="${x}" y="${y + 24}" text-anchor="middle">areal A = ${d.A}</text>`; return svgWrap(W, H, g, "Kraft på et areal"); }
+  if (d.F) g += ar(x + bw / 2, c[1], x + bw / 2 + 70, c[1], "vec", `F = ${d.F}`, x + bw / 2 + 24, c[1] - 8);
+  g += ar(x - bw / 2, y - 8, x - bw / 2 - 60, y - 8, "vecb", "F<tspan dy='3' font-size='8'>gnid</tspan>", x - bw / 2 - 58, y - 16);
+  g += ar(x - 16, y - bh, x - 16, y - bh - 46, "field", "F<tspan dy='3' font-size='8'>N</tspan>", x - 40, y - bh - 30);
+  g += ar(x + 16, c[1] + 10, x + 16, y + 44, "field", "F<tspan dy='3' font-size='8'>t</tspan>", x + 22, y + 40);
+  if (d.mu) g += `<text class="clbl small" x="24" y="${y + 30}">μ = ${d.mu}</text>`;
+  return svgWrap(W, H, g, "Klods på et vandret underlag med kræfter");
+}
+function satellitSVG(d){
+  const W = 360, H = 270, C = [180, 135], Re = 70, Rs = d.hR ? Math.min(118, Re * (1 + d.hR)) : 110, a = deg(35), P = [C[0] + Rs * Math.cos(a), C[1] - Rs * Math.sin(a)];
+  let g = `<circle class="earth" cx="${C[0]}" cy="${C[1]}" r="${Re}"/><text class="clbl small" x="${C[0]}" y="${C[1] + 28}" text-anchor="middle" style="fill:#fff">${d.planet || "Jorden"}</text>`;
+  g += `<circle class="orbit" cx="${C[0]}" cy="${C[1]}" r="${Rs}" style="stroke-dasharray:5 4"/>`;
+  g += `<rect x="${P[0] - 5}" y="${P[1] - 5}" width="10" height="10" style="fill:var(--ink)"/><rect x="${P[0] - 19}" y="${P[1] - 3}" width="12" height="6" style="fill:#4f7fe0"/><rect x="${P[0] + 7}" y="${P[1] - 3}" width="12" height="6" style="fill:#4f7fe0"/>`;
+  if (d.navn) g += `<text class="clbl small" x="${P[0] + 14}" y="${P[1] - 12}">${d.navn}</text>`;
+  const b = deg(-30), E1 = [C[0] + Re * Math.cos(b), C[1] - Re * Math.sin(b)], E2 = [C[0] + Rs * Math.cos(b), C[1] - Rs * Math.sin(b)];
+  if (d.h) g += `<line class="dimred" x1="${E1[0]}" y1="${E1[1]}" x2="${E2[0]}" y2="${E2[1]}"/><text class="clbl small" x="${E2[0] + 6}" y="${E2[1] + 12}">h = ${d.h}</text>`;
+  g += `<line class="dim" x1="${C[0]}" y1="${C[1]}" x2="${C[0] - Re}" y2="${C[1]}"/><text class="clbl small" x="${C[0] - Re / 2}" y="${C[1] - 6}" text-anchor="middle" style="fill:#fff">R</text>`;
+  return svgWrap(W, H, g, "Satellit i cirkelbane om en planet");
+}
+function diffrakSVG(d){
+  const W = 360, H = 200, cy = 100;
+  let g = `<rect class="laser" x="10" y="${cy - 14}" width="70" height="28" rx="4"/><text class="clbl small laserl" x="45" y="${cy + 4}" text-anchor="middle">${d.kilde || "elektronkanon"}</text>`;
+  g += `<line class="field" x1="80" x2="170" y1="${cy}" y2="${cy}"/>` + arrowHead(170, cy, 0, 7) + `<rect class="grating" x="172" y="${cy - 40}" width="6" height="80"/><text class="clbl small" x="175" y="${cy + 56}" text-anchor="middle">${d.folie || "grafitfolie"}</text>`;
+  const sx = 290, id = "rg" + (++SVGID);
+  g += `<defs><radialGradient id="${id}">${Array.from({length:11}, (_, k) => { const r = k / 10, I = Math.cos(r * Math.PI * 3.2) ** 8 * (k === 0 ? 1 : 0.9); return `<stop offset="${r}" stop-color="#39d98a" stop-opacity="${I.toFixed(2)}"/>`; }).join("")}</radialGradient></defs>`;
+  g += `<circle cx="${sx}" cy="${cy}" r="62" fill="#0d0d12"/><circle cx="${sx}" cy="${cy}" r="62" fill="url(#${id})"/><text class="clbl small" x="${sx}" y="${cy + 80}" text-anchor="middle">fluorescerende skærm</text>`;
+  return svgWrap(W, H, g, "Elektrondiffraktion: ringe på en skærm");
+}
+function faldSVG(d){
+  const W = 360, H = 240, x = 180, y = 120;
+  let g = d.skaerm ? `<path class="orbit" d="M${x - 70} ${y - 60} Q${x} ${y - 120} ${x + 70} ${y - 60} Z" style="fill:rgba(210,60,44,.25)"/><line class="wire" x1="${x - 70}" y1="${y - 60}" x2="${x}" y2="${y - 10}"/><line class="wire" x1="${x + 70}" y1="${y - 60}" x2="${x}" y2="${y - 10}"/>` : "";
+  g += `<circle class="bob" cx="${x}" cy="${y}" r="14"/>`;
+  g += `<line class="vec" x1="${x + 24}" x2="${x + 24}" y1="${y}" y2="${y + 80}"/>` + arrowHead(x + 24, y + 82, Math.PI / 2, 8) + `<text class="clbl small" x="${x + 32}" y="${y + 70}">F<tspan dy="3" font-size="8">t</tspan></text>`;
+  g += `<line class="vecb" x1="${x - 24}" x2="${x - 24}" y1="${y}" y2="${y - (d.lige ? 80 : 45)}"/>` + arrowHead(x - 24, y - (d.lige ? 82 : 47), -Math.PI / 2, 8) + `<text class="clbl small" x="${x - 30}" y="${y - 20}" text-anchor="end">F<tspan dy="3" font-size="8">luft</tspan></text>`;
+  if (d.tekst) g += `<text class="clbl small" x="8" y="${H - 8}">${d.tekst}</text>`;
+  return svgWrap(W, H, g, "Faldende genstand med tyngdekraft og luftmodstand");
+}
+
 function diagramSVG(d){
-  if (d.type === "linje") return chartSVG({x:d.x, y:d.y, serier:[d.punkter]});
+  if (d.type === "linje"){ const ser = d.kurve ? [d.kurve] : d.punkter ? [d.punkter] : [];
+    const fyld = d.fyld ? (d.kurve || d.punkter).filter(p => p[0] <= d.fyld + 1e-9) : null;
+    return chartSVG({x:d.x, y:d.y, serier:ser, maal:d.maal, etiketter:d.etiketter, fyld}); }
   if (d.type === "henfald"){
     const pts = Array.from({length:121}, (_, i) => { const t = i / 120 * 4 * d.T; return [t, d.A0 * 2 ** (-t / d.T)]; });
     return chartSVG({x:{max:4 * d.T, trin:d.T / 2, navn:`t (${d.enhed})`}, y:{min:0, max:d.A0 * 9 / 8, trin:d.A0 / 8, navn:"A (Bq)", hver:2}, serier:[pts], alt:"Henfaldskurve"});
@@ -744,7 +1232,7 @@ function diagramSVG(d){
   if (d.type === "kredsloeb") return circuitSVG(d);
   if (d.type === "hr") return hrSVG(d);
   if (d.type === "bane" && (d.maal || d.sektortekst)) return baneMaalSVG(d);
-  const R = {gitter:gitterSVG, dobbeltspalte:spalteSVG, spektrum:spektrumSVG, bane:baneSVG, solsystem:solSVG, linse:linseSVG, brydning:brydSVG, prisme:prismeSVG, skraaplan:skraaSVG, pendul:pendulSVG, fjeder:fjederSVG};
+  const R = {kerne:kerneSVG, vaeske:vaeskeSVG, opdrift:opdriftSVG, sensor:sensorSVG, plader:pladerSVG, ladning:ladningSVG, bfelt:bfeltSVG, spole:spoleSVG, kast:kastSVG, cirkel:cirkelSVG, stoed:stoedSVG, klods:klodsSVG, satellit:satellitSVG, diffraktion:diffrakSVG, fald:faldSVG, hyperbel:hyperbelSVG, undvig:undvigSVG, pendler:pendlerSVG, fjedre:fjedreSVG, energiniveau:energiSVG, bohrmodel:bohrSVG, prismevej:prismeVejSVG, totalref:totalrefSVG, regnbue:regnbueSVG, regnbuegeo:regnbueGeoSVG, prismegitter:prismeGitterSVG, suvat:suvatSVG, grafmatch:grafmatchSVG, gitter:gitterSVG, dobbeltspalte:spalteSVG, spektrum:spektrumSVG, bane:baneSVG, solsystem:solSVG, linse:linseSVG, brydning:brydSVG, prisme:prismeSVG, skraaplan:skraaSVG, pendul:pendulSVG, fjeder:fjederSVG};
   if (R[d.type]) return R[d.type](d);
   return "";
 }
@@ -1037,13 +1525,27 @@ if (SEND){
 }
 const validEmail = s => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s);
 if (!DB.length){ $("setupErr").textContent = "Spørgsmålsfilen spoergsmaal.js blev ikke fundet. Læg den i samme mappe som denne side."; $("startBtn").disabled = true; }
-$("topics").innerHTML = TOPICS.map((t, i) =>
-  `<label class="chip"><input type="checkbox" value="${i}" checked><span>${t} <small>(${DB.filter(r => r.emne === t).length})</small></span></label>`).join("");
-$("formats").innerHTML = FORMATS.filter(([f]) => DB.some(r => catOf(r) === f)).map(([f, name]) =>
-  `<label class="chip"><input type="checkbox" value="${f}" checked><span>${name} <small>(${DB.filter(r => catOf(r) === f).length})</small></span></label>`).join("");
+// Niveau: C, B, A eller alle. Kan forudvælges med ?niveau=B i adressen.
+let LEVEL = (new URLSearchParams(location.search).get("niveau") || "alle").toUpperCase();
+if (!NIV.includes(LEVEL)) LEVEL = "alle";
+const levelOK = tpl => LEVEL === "alle" || (NIV.indexOf(tpl.niv) <= NIV.indexOf(LEVEL) && (!tpl.sup || $("suppl").checked));
+const rowsOK = () => TEMPLATES.filter(levelOK).flatMap(t => t.rows.map(i => DB[i]));
+function renderChips(){
+  const rs = rowsOK();
+  $("topics").innerHTML = TOPICS.map((t, i) => { const n = rs.filter(r => areaOf(r) === t).length;
+    return n ? `<label class="chip"><input type="checkbox" value="${i}" checked><span>${t} <small>(${n})</small></span></label>` : ""; }).join("");
+  $("formats").innerHTML = FORMATS.map(([f, name]) => { const n = rs.filter(r => catOf(r) === f).length;
+    return n ? `<label class="chip"><input type="checkbox" value="${f}" checked><span>${name} <small>(${n})</small></span></label>` : ""; }).join("");
+  $("total").textContent = rs.length.toLocaleString("da-DK");
+  $("title").textContent = LEVEL === "alle" ? "Fysiktest" : `Fysik ${LEVEL}`;
+  document.title = (LEVEL === "alle" ? "Fysiktest" : `Fysik ${LEVEL}`) + " – selvrettende test";
+}
+document.querySelectorAll("input[name=niveau]").forEach(i => { i.checked = i.value === LEVEL; i.addEventListener("change", () => { LEVEL = i.value; renderChips(); }); });
+$("suppl").addEventListener("change", renderChips);
+renderChips();
 
 function buildSet(topics, formats, count){
-  const lists = shuffle(topics).map(t => shuffle(TEMPLATES.map((x, i) => i).filter(i => TEMPLATES[i].t === t && formats.includes(TEMPLATES[i].cat)))).filter(l => l.length);
+  const lists = shuffle(topics).map(t => shuffle(TEMPLATES.map((x, i) => i).filter(i => TEMPLATES[i].t === t && formats.includes(TEMPLATES[i].cat) && levelOK(TEMPLATES[i])))).filter(l => l.length);
   const out = [], used = new Set();
   if (!lists.length) return out;
   const maxLen = Math.max(...lists.map(l => l.length));
@@ -1079,7 +1581,7 @@ $("startBtn").addEventListener("click", () => {
 function startTest(refs, mode, retry = false){
   S = { mode, retry, graded:false, confirm:false,
         items: refs.map(r => { const tpl = TEMPLATES[r.tid]; return {...r, f:tpl.f, cat:tpl.cat, r:DB[tpl.rows[r.idx]], st:{}, done:false, ok:false}; }) };
-  $("barName").textContent = $("name").value.trim() || "Fysiktest";
+  $("barName").textContent = $("name").value.trim() || (LEVEL === "alle" ? "Fysiktest" : "Fysik " + LEVEL);
   $("setup").hidden = true; $("result").hidden = true;
   $("sendStatus").hidden = true; $("resend").hidden = true;
   $("bar").classList.add("on");
@@ -1089,7 +1591,7 @@ function startTest(refs, mode, retry = false){
   box.hidden = false;
   box.innerHTML = S.items.map((it, n) => `<article class="q" id="q${n}" aria-labelledby="qt${n}">
       <span class="num" aria-hidden="true">${n+1}.</span>
-      <p class="topic">${it.r.emne}${it.cat !== "mc" ? " · " + FORMATS.find(x => x[0] === it.cat)[1].toLowerCase() : ""}</p>
+      <p class="topic">${areaOf(it.r)}${it.r.niveau ? " · " + it.r.niveau + "-niveau" : ""}${it.cat !== "mc" ? " · " + FORMATS.find(x => x[0] === it.cat)[1].toLowerCase() : ""}</p>
       <p class="text" id="qt${n}">${it.r.spoergsmaal}</p>
       ${it.r.diagram ? `<div class="graf dia">${diagramSVG(it.r.diagram)}</div>` : ""}
       ${F[it.f].render(it, n)}
@@ -1170,7 +1672,7 @@ function finish(){
   $("comment").textContent = who + (pct === 100 ? "Fuld pot – flot!" : pct >= 80 ? `${pct} % – rigtig godt.` :
     pct >= 60 ? `${pct} % – godt, men læs forklaringerne.` : pct >= 40 ? `${pct} % – gå emnerne efter og prøv igen.` : `${pct} % – start med de forkerte igen.`);
   $("breakdown").innerHTML = TOPICS.map(t => {
-    const its = S.items.filter(x => x.r.emne === t);
+    const its = S.items.filter(x => areaOf(x.r) === t);
     if (!its.length) return "";
     const r = its.filter(x => x.ok).length;
     return `<tr><td>${t}</td><td><div class="meter"><i style="width:${100*r/its.length}%"></i></div></td><td class="n">${r} af ${its.length}</td></tr>`;
@@ -1207,15 +1709,15 @@ function summary(it, nr){
     if (ans) elev = `${r.maal} = ${fracTxt(st.t.map(i => r.fliser[i]), st.n.map(i => r.fliser[i]))}`;
     facit = `${r.maal} = ${fracTxt(r.taeller, r.naevner)}`;
   }
-  return {nr, id:r.id, emne:r.emne, spoergsmaal:txt(r.spoergsmaal), elevsvar: ans ? txt(elev) : "(ikke besvaret)", facit:txt(facit), rigtigt:it.ok};
+  return {nr, id:r.id, emne:areaOf(r), spoergsmaal:txt(r.spoergsmaal), elevsvar: ans ? txt(elev) : "(ikke besvaret)", facit:txt(facit), rigtigt:it.ok};
 }
 function buildPayload(total, right, pct){
   return {
     navn: $("name").value.trim(), email: $("email").value.trim(),
     tidspunkt: new Date().toLocaleString("da-DK"),
-    form: (S.mode === "ovelse" ? "Øvelse" : "Prøve") + (S.retry ? " (de forkerte igen)" : ""),
+    form: (LEVEL === "alle" ? "" : `Fysik ${LEVEL}, `) + (S.mode === "ovelse" ? "øvelse" : "prøve") + (S.retry ? " (de forkerte igen)" : ""),
     point: right, antal: total, procent: pct,
-    emner: TOPICS.map(t => { const its = S.items.filter(x => x.r.emne === t);
+    emner: TOPICS.map(t => { const its = S.items.filter(x => areaOf(x.r) === t);
       return its.length ? {emne:t, rigtige:its.filter(x => x.ok).length, antal:its.length} : null; }).filter(Boolean),
     svar: S.items.map((it, i) => summary(it, i + 1)),
     side: location.href

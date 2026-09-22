@@ -1,6 +1,25 @@
-# Fysiktest for 1.g
+# Fysiktest – Fysik C, B og A (stx)
 
-En selvrettende fysiktest til 1.g med 2.539 spørgsmål i syv emner:
+En selvrettende fysiktest med 3.572 spørgsmål, der følger læreplanerne for fysik på stx (Fysik C 2017, Fysik B 2024, Fysik A 2017).
+
+## Niveauer
+
+Eleven vælger niveau på startsiden, eller man linker direkte:
+
+| Link | Indhold |
+|---|---|
+| `fysiktest.html?niveau=C` | Kernestoffet i Fysik C |
+| `fysiktest.html?niveau=B` | Kernestoffet i Fysik B (inkl. C) |
+| `fysiktest.html?niveau=A` | Kernestoffet i Fysik A (inkl. B og C) |
+| `fysiktest.html` | Alle spørgsmål |
+
+Supplerende stof (fx prismer, regnbuen, hyperbelbaner, HR-diagrammer) kan slås til og fra. Emneknapperne følger læreplanens områder: Verdensbilledet, Energi, Bølger, lyd og lys, Atomer, kvantefysik og radioaktivitet, Elektriske kredsløb, Mekanik samt Elektriske og magnetiske felter.
+
+Hvert spørgsmål har felterne `"niveau"` (det laveste niveau, hvor det er kernestof), `"omraade"` (læreplanens område) og eventuelt `"suppl": true`.
+
+## Emner
+
+Spørgsmålene dækker bl.a.:
 
 - bevægelse og kræfter
 - energi
@@ -14,13 +33,13 @@ Der er seks spørgsmålstyper:
 
 - **Multiple choice** (1.118 spørgsmål).
 - **Indtast tal** (173): eleven skriver tal og vælger enhed. Siden kender typiske fejl og giver målrettet respons, fx "du har glemt at omregne minutter til sekunder" eller "svaret er 10³ gange for lille".
-- **Aflæs diagram** (1.163): en figur tegnes over spørgsmålet, og eleven aflæser, tolker og regner. Svaret er enten multiple choice eller et tal. Figurerne er:
-  - bevægelse: (v,t)- og (s,t)-grafer, skråplaner, penduler, fjedre og Hookes lov
+- **Aflæs diagram** (1.701): en figur tegnes over spørgsmålet, og eleven aflæser, tolker og regner. Svaret er enten multiple choice eller et tal. Figurerne er:
+  - bevægelse: bevægelsesligningerne med tilhørende (s,t)-, (v,t)- og (a,t)-grafer, "hvilken graf passer?", lodret kast, skråplaner, penduler (måling af g, grafmetode, sammenligning af længder og masser), fjedre i serie og parallel, Hookes lov og dens gyldighed, elastisk energi og fjederpendulet
   - energi og varme: opvarmningskurver
   - elektricitet: kredsløbsdiagrammer
-  - bølger og lys: bølgegrafer, linser, lysbrydning, prismer, laser med gitter og Youngs dobbeltspalte
-  - atomfysik: linjespektre og henfaldskurver
-  - astronomi: stjernespektre, rødforskydning, Keplers tre love (banens mål, arealer og omløbstider), modeller af solsystemet og HR-diagrammer
+  - bølger og lys: bølgegrafer, linser, lysbrydning, prismer (strålegang, afbøjning, minimumafbøjning), totalrefleksion, regnbuen, prisme og gitter, laser med gitter og Youngs dobbeltspalte
+  - atomfysik: Bohrs brintmodel, energidiagrammer med overgange, linjespektre og henfaldskurver
+  - astronomi: stjernespektre, rødforskydning, Keplers tre love (banens mål, arealer og omløbstider), hyperbelbaner for interstellare objekter som ʻOumuamua, 2I/Borisov og 3I/ATLAS, modeller af solsystemet og HR-diagrammer
 - **Tilpas linje** (13): eleven tilpasser en linje i et Hubble-diagram, aflæser hældningen og finder H₀ og universets alder. Et af diagrammerne viser Hubbles egne data fra 1929.
 - **Tilpas bane** (40): eleven indstiller excentricitet og periheldistance med skydere, så en ellipse eller hyperbel går gennem observerede kometpositioner, og afgør derefter, om kometen er bundet til Solen.
 - **Isolér** (30): eleven bygger en brøk af brikker for at isolere en størrelse i en formel.
@@ -66,7 +85,7 @@ Det rigtige svar står altid først. Siden blander rækkefølgen for eleven.
 - Svaret godkendes inden for 2 %, uanset hvilken enhed med samme dimension eleven vælger. Både 360 kJ og 360000 J er altså rigtige.
 - En enhed med forkert dimension (fx W i stedet for J) giver sin egen besked.
 - `"tol"` i `facit` ændrer tolerancen, fx `0.05` ved aflæsning af en kurve.
-- Siden kender disse enheder: J, kJ, MJ, kWh, W, kW, N, A, mA, V, Ω, Hz, kHz, MHz, GHz, THz, m, mm, cm, km, nm, AU, s, minutter, timer, døgn, år, m/s, km/h, m/s², °C, Bq, N/m og ° (grader). Enheden "" bruges til rene tal som brydningsindeks.
+- Siden kender disse enheder: J, kJ, MJ, kWh, W, kW, N, A, mA, V, Ω, eV, km/s, Hz, kHz, MHz, GHz, THz, m, mm, cm, km, nm, AU, s, minutter, timer, døgn, år, m/s, km/h, m/s², °C, Bq, N/m og ° (grader). Enheden "" bruges til rene tal som brydningsindeks.
 
 **Diagrammer** (valgfrit felt på mc- og tal-spørgsmål). Siden tegner diagrammet over svaret ud fra disse data:
 
@@ -89,6 +108,19 @@ Det rigtige svar står altid først. Siden blander rækkefølgen for eleven.
 "diagram":{"type":"bane","e":0.6,"sektorer":[[-6,6],[162,198]],"sektortekst":["20 døgn","?"]}   // Keplers 2. lov; sektorer i grader middelanomali
 "diagram":{"type":"gitter","N":600,"lambda":633,"L":"1,00 m","x":"43,0 cm"}  // "skjulN":true skjuler antallet af linjer
 "diagram":{"type":"dobbeltspalte","lambda":633,"d":"0,25 mm","L":"2,00 m","k":4,"afstand":"20,3 mm"}   // k = antal mellemrum mellem markeringerne
+"diagram":{"type":"prismevej","A":60,"i":45,"n":1.52,"delta":"= ?"}      // strålegang beregnes med brydningsloven
+"diagram":{"type":"totalref","medie":"Vand","n":1.33}                   // eller "mode":"prisme" for retvinklet prisme
+"diagram":{"type":"regnbue"}   {"type":"regnbuegeo","sol":20}   {"type":"prismegitter"}
+"diagram":{"type":"hyperbel","e":1.5,"q":1,"delta":"= ?"}              // eller "baner":[{e,q,navn}, …] for flere baner
+"diagram":{"type":"undvig","r":"2 AU","v":"33,7 km/s"}
+"diagram":{"type":"pendler","pendler":[{"navn":"A","L":1,"m":0.5}, …]}
+"diagram":{"type":"fjedre","kobling":"serie","k":[20,30],"m":0.2}
+"diagram":{"type":"energiniveau","overgange":[{"fra":3,"til":2,"navn":"A"}],"farvet":true}   // "til":"inf" = ionisering
+"diagram":{"type":"bohrmodel","fra":3,"til":2}
+"diagram":{"type":"linje", …, "maal":[[x,y],…], "kurve":[[x,y],…], "fyld":x, "etiketter":[[x,y,"A"],…]}   // målepunkter, skravering, mærkede punkter
+"diagram":{"type":"suvat","v0":10,"a":-5,"t1":2}                       // tegner (s,t)-, (v,t)- og (a,t)-graf
+"diagram":{"type":"grafmatch","givet":"v","spurgt":"s","bev":"brems","kand":["hvile","brems","konst","acc"]}
+                                    // bevægelser: hvile, konst, bagl, acc, acc2, brems (og arate til a-grafer)
 ```
 
 **keglesnit** (Tilpas bane)
