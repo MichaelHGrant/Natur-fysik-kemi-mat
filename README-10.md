@@ -1,6 +1,49 @@
-# Fysiktest for 1.g
+# Selvrettende test – otte fag på stx
 
-En selvrettende fysiktest til 1.g med 3.077 spørgsmål i syv emner:
+En samling selvrettende tests, der følger de danske stx-læreplaner. Alle tests bruger samme program (samme retning, forklaringer, prøveform og afsendelse af resultater) med hver sin database af spørgsmål og hver sine tegnefunktioner.
+
+| Fag | Side | Database | Spørgsmål |
+|---|---|---|---|
+| Fysik C, B, A | `fysiktest.html?niveau=C/B/A` | `spoergsmaal.js` | 887 / 2.839 / 3.572 |
+| Astronomi C | `fysiktest.html?niveau=astro` | `spoergsmaal.js` | 746 |
+| Kemi | `kemi.html` | `kemi.js` | 343 |
+| Biologi | `biologi.html` | `biologi.js` | 160 |
+| Historie | `historie.html` | `historie.js` | 308 |
+| Samfundsfag | `samfundsfag.html` | `samfundsfag.js` | 140 |
+| Religion | `religion.html` | `religion.js` | 302 |
+| Matematik | `matematik.html` | `matematik.js` | 173 |
+
+`testoversigt.html` samler links til alle otte. `index.html` (din hjemmeside) linker til oversigten.
+
+Nedenfor beskrives først fysik/astronomi-testen i detaljer (den ældste og mest udbyggede), og til sidst kommer et fælles afsnit om de seks andre fag.
+
+---
+
+# Fysiktest – Fysik C, B og A samt Astronomi C (stx)
+
+En selvrettende test med 3.794 spørgsmål, der følger læreplanerne for fysik på stx (Fysik C 2017, Fysik B 2024, Fysik A 2017) og valgfaget Astronomi C (2017).
+
+## Niveauer
+
+Eleven vælger niveau på startsiden, eller man linker direkte:
+
+| Link | Indhold |
+|---|---|
+| `fysiktest.html?niveau=C` | Kernestoffet i Fysik C |
+| `fysiktest.html?niveau=B` | Kernestoffet i Fysik B (inkl. C) |
+| `fysiktest.html?niveau=A` | Kernestoffet i Fysik A (inkl. B og C) |
+| `fysiktest.html?niveau=astro` | Astronomi C (valgfag) |
+| `fysiktest.html` | Alle spørgsmål |
+
+Supplerende stof (fx prismer, regnbuen, hyperbelbaner, HR-diagrammer) kan slås til og fra. Emneknapperne følger læreplanens områder: Verdensbilledet, Energi, Bølger, lyd og lys, Atomer, kvantefysik og radioaktivitet, Elektriske kredsløb, Mekanik samt Elektriske og magnetiske felter.
+
+Astronomi C har sine egne emneknapper efter læreplanen: Stjernehimlen og himmelfænomener, Verdensbilledets historie, Solsystemet, Planeter og exoplaneter, Mælkevejen og galakser, Afstande i universet, Big Bang og universets udvikling, Stjerners liv samt Mørkt stof og sorte huller. Et spørgsmål hører til astronomitesten, når det har feltet `"astro"` med et af disse områder. Spørgsmål med `"kunAstro": true` indgår kun i astronomitesten.
+
+Hvert spørgsmål har felterne `"niveau"` (det laveste niveau, hvor det er kernestof), `"omraade"` (læreplanens område) og eventuelt `"suppl": true`.
+
+## Emner
+
+Spørgsmålene dækker bl.a.:
 
 - bevægelse og kræfter
 - energi
@@ -98,6 +141,12 @@ Det rigtige svar står altid først. Siden blander rækkefølgen for eleven.
 "diagram":{"type":"fjedre","kobling":"serie","k":[20,30],"m":0.2}
 "diagram":{"type":"energiniveau","overgange":[{"fra":3,"til":2,"navn":"A"}],"farvet":true}   // "til":"inf" = ionisering
 "diagram":{"type":"bohrmodel","fra":3,"til":2}
+"diagram":{"type":"maanefaser","labels":"ABCDEFGH"}   {"type":"maane","fase":45}   {"type":"formoerkelse","art":"sol"|"maane"}
+"diagram":{"type":"aarstider","labels":"ABCD"}   {"type":"solhoejde","h":57,"sted":"Grenaa"}   {"type":"retrograd"}   {"type":"komethale","haler":true}
+"diagram":{"type":"stjernebillede","ra0":12.4,"dec0":56,"stjerner":[[RA timer, dec grader, størrelsesklasse, "etiket"], …],"streger":[[0,1], …]}
+"diagram":{"type":"hz","dmax":2,"inner":0.95,"outer":1.67,"planeter":[{"a":1,"n":"A"}]}   {"type":"galakse","art":"spiral"|"bjaelke"|"elliptisk"|"irregulaer"}
+"diagram":{"type":"maelkevej"}   {"type":"tidslinje","punkter":[{"s":sekunder,"n":"A"}]}   {"type":"stjerneudvikling","skjul":4}   {"type":"planet","navn":"Mars",…}
+"diagram":{"type":"linje", …, "kurver":[{"p":[[x,y],…],"navn":"målt"}, …]}      // flere kurver med signaturforklaring
 "diagram":{"type":"linje", …, "maal":[[x,y],…], "kurve":[[x,y],…], "fyld":x, "etiketter":[[x,y,"A"],…]}   // målepunkter, skravering, mærkede punkter
 "diagram":{"type":"suvat","v0":10,"a":-5,"t1":2}                       // tegner (s,t)-, (v,t)- og (a,t)-graf
 "diagram":{"type":"grafmatch","givet":"v","spurgt":"s","bev":"brems","kand":["hvile","brems","konst","acc"]}
@@ -159,3 +208,45 @@ Når adressen står der, skal eleverne skrive navn og e-mail, før de kan starte
 - Google begrænser, hvor mange e-mails et script må sende pr. døgn. For en almindelig Gmail-konto er det omkring 100. Regnearket får alle resultater uanset loftet.
 - Hvis du senere retter i scriptet, skal du vælge **Implementer → Administrer implementeringer → Rediger → Ny version**. Så bevarer adressen sin værdi.
 - Testen rettes i elevens browser. En teknisk kyndig elev vil derfor kunne sende et falsk resultat. Til selvtest og øvelse betyder det ikke noget, men testen egner sig ikke til karaktergivning.
+
+
+---
+
+## Kemi, biologi, samfundsfag og matematik
+
+De fire nye fag bruger samme program som fysiktesten (samme HTML og JavaScript-motor, kaldet `app.js` i udviklingen), men hver side er bygget uden fysikkens tegnefunktioner og uden niveauvalget, så filerne er langt mindre (ca. 80 kB mod fysiktestens langt større fil).
+
+### Kemi (`kemi.html` / `kemi.js`)
+Atomets opbygning og periodesystemet, kemisk binding, mol og støkiometri, syrer og baser (herunder pH og titrering), redoxreaktioner og elektrokemi, organisk kemi, reaktionshastighed og ligevægt samt eksperimentelt arbejde og sikkerhed (faremærkning).
+
+Diagramtyper: `atom` (atommodel med skaller), `phskala` (pH-skala med markør), `titrering` (titrerudstyr), `molekyle` (kugle-pind-model).
+
+### Biologi (`biologi.html` / `biologi.js`)
+Cellebiologi, genetik og molekylærbiologi (DNA, proteinsyntese, mitose/meiose som rækkefølgeopgaver), evolution, menneskets fysiologi, økologi (fødekæder, energipyramide, bestandsvækst), mikrobiologi og immunforsvar samt bioteknologi.
+
+Diagramtyper: `celle` (dyre-/plantecelle), `dna` (dobbelthelix med baseparring), `foedekaede`, `pyramide` (økologisk pyramide), `punnett` (krydsningsskema), `hjerte` (hjertets fire kamre), `enzym` (nøgle-lås-model). Bruger desuden `funktion` (se matematik) til vækstkurver og enzymaktivitet.
+
+### Samfundsfag (`samfundsfag.html` / `samfundsfag.js`)
+Politik og demokrati (magtens tredeling, Folketingets behandling af et lovforslag, det politiske spektrum), økonomi (udbud/efterspørgsel, BNP, inflation, skat, Lorenzkurven), sociologi, international politik (FN, EU, NATO) samt metode og videnskabsteori.
+
+Diagramtyper: `institution` (proceskæde), `politisk` (venstre-højre-spektrum, samme tegnefunktion som i historie), `forsyning` (udbuds-/efterspørgselskurver), `lorenz` (Lorenzkurve).
+
+### Matematik (`matematik.html` / `matematik.js`)
+Tal og algebra (ligninger, andengradsligninger, potenser, logaritmer), funktioner (lineære, andengrads, eksponentielle), geometri og trigonometri (Pythagoras, sinus-/cosinusrelationerne, enhedscirklen), differential- og integralregning, statistik og sandsynlighed samt vektorer.
+
+Diagramtyper: `funktion` (generel graf, genbruger `"linje"`-motoren med `kurver`), `retvinklet` (retvinklet trekant med mærkede sider/vinkel), `enhedscirkel`.
+
+### Fælles for alle fire
+Alle bruger multiple choice, indtast-tal (med samme enhedstjek og fejlgenkendelse som fysiktesten) og formatet **`orden`** (sæt i rækkefølge – bruges bl.a. til Folketingets lovbehandling, EU's historie, mitosens faser og Jesu liv):
+```js
+{"format":"orden", "spoergsmaal":"Sæt … i rækkefølge.", "elementer":[{"t":"…","aar":"…"}, …]}
+```
+Se hovedafsnittet ovenfor for den fulde beskrivelse af `orden`-formatet og af `"linje"`-diagrammets `kurve`/`kurver`/`maal`/`etiketter`-felter, som genbruges af alle fire fag.
+
+### Kendte forenklinger
+- **Kemi:** Ionladningerne i "Ionforbindelsers formel" er udledt af gruppenummeret efter en fast tabel og dækker ikke overgangsmetallernes variable ladninger (fx Fe²⁺/Fe³⁺).
+- **Biologi:** Bestandsvækstens tal er opdigtede eksempler, ikke målte data.
+- **Samfundsfag:** Udbuds- og efterspørgselskurverne er lineære eksempler til at illustrere metoden, ikke virkelige danske tal.
+- **Matematik:** Alle opgaver er rene regneopgaver uden tekstet kontekst (ingen "hvor mange æbler har Peter").
+
+Som med de øvrige fag: gennemgå gerne spørgsmålene, før de bruges i undervisning – databaserne er skrevet ud fra almindelig faglig viden uden opslag i en bestemt lærebog.
