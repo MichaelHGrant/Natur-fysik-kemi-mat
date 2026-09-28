@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Koblede penduler – Michael Grant</title>
+<meta name="description" content="Interaktiv 3D-simulation af penduler koblet med fjedre. Fjedre eller udspændt snor. Tilføj og fjern penduler, giv dem hver sin masse og længde, og se normalsvingninger, perioder og energiudveksling. Med vejledning til at bygge forsøget selv med snor og møtrikker.">
+<meta name="author" content="Michael Grant">
+<meta name="theme-color" content="#0b0d17">
+<link rel="canonical" href="https://michaelhgrant.github.io/Natur-fysik-kemi-mat/koblede-penduler.html">
+<meta property="og:type" content="article">
+<meta property="og:locale" content="da_DK">
+<meta property="og:title" content="Koblede penduler">
+<meta property="og:description" content="Byg din egen kæde af koblede penduler i 3D og se energien vandre.">
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$','$'], ['\\(','\\)']], displayMath: [['$$','$$']] },
+  chtml: { scale: 1.02 },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] }
+};
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+:root{
+  --space-black:#0b0d17; --space-deep:#050608;
+  --aurora-green:#39ff14; --aurora-purple:#a020f0; --aurora-blue:#4cc9f0;
+  --text-light:#e0e0e0; --text-dim:#a0a0a8;
+  --card-bg:rgba(255,255,255,0.04); --card-border:rgba(57,255,20,0.18);
+  --gold:#f5c878; --gold-bright:#ffe0a0; --fire:#ff7a2a; --red:#ff4d6d;
+  --panel:rgba(255,255,255,0.035); --line:rgba(255,255,255,0.09);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:70px}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{
+  font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
+  background-color:var(--space-black);
+  background-image:radial-gradient(circle at 20% 10%,rgba(160,32,240,0.08),transparent 40%),
+                   radial-gradient(circle at 80% 60%,rgba(76,201,240,0.05),transparent 40%);
+  color:var(--text-light); line-height:1.65; margin:0;
+}
+a{color:var(--aurora-blue)}
+a:focus-visible,button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--aurora-blue);outline-offset:3px}
+
+nav.topnav{position:sticky;top:0;z-index:100;background:rgba(11,13,23,0.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  border-bottom:1px solid rgba(57,255,20,0.25);padding:0.6rem 1rem;overflow-x:auto;white-space:nowrap}
+nav.topnav ul{list-style:none;margin:0;padding:0;display:inline-flex;gap:0.4rem;justify-content:center;width:100%;min-width:max-content}
+nav.topnav a{color:var(--text-dim);text-decoration:none;padding:0.4rem 0.9rem;border-radius:20px;font-size:0.85rem;font-weight:500;border:1px solid transparent;transition:all .2s ease}
+nav.topnav a:hover{color:var(--aurora-green);border-color:rgba(57,255,20,0.4);background:rgba(57,255,20,0.05)}
+nav.topnav a.home{color:var(--aurora-green);border-color:rgba(57,255,20,0.35)}
+
+header.page{padding:3.2rem 1.5rem 2.2rem;text-align:center;background:linear-gradient(to bottom,#1a1a2e,var(--space-black))}
+header.page h1{font-size:clamp(2rem,5vw,3.1rem);color:var(--aurora-green);text-shadow:0 0 25px rgba(57,255,20,0.35);margin:0 0 0.8rem;letter-spacing:0.3px}
+header.page p{max-width:720px;margin:0 auto;color:var(--text-dim);font-size:1.05rem}
+
+main{max-width:1180px;margin:0 auto;padding:1rem 1.5rem 3rem}
+section.block{margin:2.5rem 0 3.5rem}
+.section-header{border-left:4px solid var(--aurora-blue);padding-left:1rem;margin-bottom:1.4rem}
+.section-header h2{margin:0 0 0.3rem;font-size:1.75rem;color:#fff}
+.section-header p{margin:0;color:var(--text-dim);max-width:760px}
+#tippetop .section-header{border-left-color:var(--gold)}
+#teori .section-header{border-left-color:var(--aurora-purple)}
+
+/* === simulator layout === */
+.sim{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:1rem;align-items:start}
+.stage{position:relative;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#07080f;height:min(70vh,600px);min-height:360px}
+.stage canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+.stage canvas:active{cursor:grabbing}
+.stage .hud{position:absolute;left:0.8rem;top:0.7rem;font-size:0.8rem;color:var(--text-dim);pointer-events:none;line-height:1.5;text-shadow:0 1px 3px #000}
+.stage .status{position:absolute;right:0.8rem;top:0.7rem;font-size:0.85rem;padding:0.25rem 0.75rem;border-radius:20px;border:1px solid var(--line);background:rgba(7,8,15,0.75);color:var(--text-light)}
+.stage .hint{position:absolute;left:0.8rem;bottom:0.6rem;font-size:0.75rem;color:rgba(160,160,168,0.8);pointer-events:none}
+.legend{display:flex;flex-wrap:wrap;gap:0.3rem 1.1rem;font-size:0.82rem;color:var(--text-dim);margin:0.55rem 0.2rem 0}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:0.35rem}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1rem 1rem 1.1rem}
+.panel h3{margin:0 0 0.7rem;font-size:1rem;color:#fff;font-weight:600}
+.ctrl{margin-bottom:0.85rem}
+.ctrl label{display:flex;justify-content:space-between;gap:0.5rem;font-size:0.86rem;color:var(--text-light);margin-bottom:0.2rem}
+.ctrl label output{color:var(--aurora-blue);font-variant-numeric:tabular-nums}
+#tippetop .ctrl label output{color:var(--gold)}
+input[type=range]{width:100%;accent-color:var(--aurora-blue)}
+#tippetop input[type=range]{accent-color:var(--gold)}
+.btns{display:flex;flex-wrap:wrap;gap:0.45rem;margin:0.3rem 0 0.9rem}
+button{font:inherit;font-size:0.85rem;font-weight:600;padding:0.45rem 0.9rem;border-radius:22px;border:1.5px solid var(--aurora-blue);background:transparent;color:var(--aurora-blue);cursor:pointer;transition:background .2s,color .2s}
+button:hover{background:var(--aurora-blue);color:var(--space-black)}
+button.primary{background:var(--aurora-blue);color:var(--space-black)}
+#tippetop button{border-color:var(--gold);color:var(--gold)}
+#tippetop button:hover,#tippetop button.primary{background:var(--gold);color:var(--space-black)}
+.checks{display:flex;flex-wrap:wrap;gap:0.3rem 1rem;font-size:0.85rem;margin-bottom:0.8rem}
+.checks label{display:flex;align-items:center;gap:0.35rem;cursor:pointer}
+table.read{width:100%;border-collapse:collapse;font-size:0.84rem;font-variant-numeric:tabular-nums}
+table.read td{padding:0.22rem 0;border-bottom:1px solid rgba(255,255,255,0.05)}
+table.read td:last-child{text-align:right;color:#fff}
+.note{font-size:0.8rem;color:var(--text-dim);margin:0.7rem 0 0}
+.flag{font-size:0.82rem;padding:0.5rem 0.7rem;border-radius:10px;margin-top:0.7rem;border:1px solid var(--line);background:rgba(255,255,255,0.03)}
+.flag.ok{border-color:rgba(57,255,20,0.35);color:#bff5ae}
+.flag.no{border-color:rgba(255,77,109,0.45);color:#ffc2cd}
+
+.plots{display:grid;grid-template-columns:1fr 1fr;gap:1rem;grid-column:1;grid-row:2}
+.sim > .panel{grid-column:2;grid-row:1 / span 2}
+.plot{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:0.8rem 0.9rem 0.9rem}
+.plot h3{margin:0 0 0.2rem;font-size:0.95rem;color:#fff;font-weight:600}
+.plot p{margin:0 0 0.5rem;font-size:0.8rem;color:var(--text-dim)}
+.plot canvas{display:block;width:100%;height:230px}
+
+/* === tekst === */
+.prose{max-width:780px}
+.prose p{margin:0 0 1rem}
+.prose h3{color:#fff;margin:2rem 0 0.6rem;font-size:1.25rem}
+.prose h4{color:var(--aurora-blue);margin:1.4rem 0 0.4rem;font-size:1.02rem}
+.intro-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;margin:0 0 1rem}
+.intro-grid div{background:var(--card-bg);border:1px solid var(--line);border-radius:14px;padding:1.1rem 1.2rem}
+.intro-grid h3{margin:0 0 0.4rem;font-size:1.05rem;color:#fff}
+.intro-grid p{margin:0;font-size:0.95rem;color:var(--text-light)}
+details{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:0.2rem 1rem;margin:0.9rem 0}
+details[open]{padding-bottom:0.6rem}
+summary{cursor:pointer;padding:0.6rem 0;color:var(--aurora-blue);font-weight:600}
+.mjx-scroll,mjx-container[display="true"]{overflow-x:auto;overflow-y:hidden;max-width:100%}
+.tablewrap{overflow-x:auto}
+table.sum{border-collapse:collapse;width:100%;min-width:560px;font-size:0.92rem;margin:0.5rem 0 1rem}
+table.sum th,table.sum td{text-align:left;padding:0.55rem 0.7rem;border-bottom:1px solid var(--line);vertical-align:top}
+table.sum th{color:#fff;font-weight:600}
+table.sum td:first-child{color:var(--text-dim)}
+.refs{font-size:0.9rem;color:var(--text-dim);padding-left:1.1rem}
+.refs li{margin-bottom:0.35rem}
+.downloads{display:flex;flex-wrap:wrap;gap:0.6rem;margin:1rem 0}
+.downloads a{display:inline-block;padding:0.5rem 1.1rem;border-radius:25px;border:1.5px solid var(--aurora-green);color:var(--aurora-green);text-decoration:none;font-weight:600;font-size:0.88rem}
+.downloads a:hover{background:var(--aurora-green);color:var(--space-black)}
+footer{margin-top:3rem;padding:2rem 1.5rem;font-size:0.88rem;color:var(--text-dim);text-align:center;border-top:1px solid rgba(255,255,255,0.05)}
+footer a{text-decoration:none}
+
+@media (max-width:900px){
+  .sim{grid-template-columns:1fr}
+  .plots{grid-template-columns:1fr;grid-column:auto;grid-row:auto}
+  .sim > .panel{grid-column:auto;grid-row:auto}
+  .intro-grid{grid-template-columns:1fr}
+  .stage{height:62vh;min-height:320px}
+}
+@media (max-width:600px){
+  main{padding:0.5rem 1rem 2rem}
+  .section-header h2{font-size:1.4rem}
+  .stage .hud{font-size:0.72rem}
+}
+
+/* === koblede penduler === */
+.psim{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:1rem;align-items:start}
+.pcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:0.7rem;margin:0.9rem 0 1rem}
+.pcard{background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--c);border-radius:12px;padding:0.65rem 0.8rem 0.7rem;cursor:pointer}
+.pcard.sel{background:rgba(255,255,255,0.075);border-color:var(--c)}
+.pcard .phead{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.35rem}
+.pcard h4{margin:0;font-size:0.92rem;color:var(--c)}
+.pcard button.x{padding:0.12rem 0.6rem;font-size:0.75rem;border-color:var(--line);color:var(--text-dim)}
+.pcard button.x:hover{background:var(--red);border-color:var(--red);color:var(--space-black)}
+.pcard .ctrl{margin-bottom:0.4rem}
+.pcard .ctrl label{font-size:0.8rem}
+.pcard input[type=range]{accent-color:var(--c)}
+.pcard table.read{font-size:0.78rem}
+.panel h3 + .btns{margin-top:0}
+button:disabled{opacity:0.35;cursor:not-allowed;background:transparent!important;color:var(--text-dim)!important;border-color:var(--line)!important}
+#pModes{max-height:300px;overflow-y:auto}
+.mode{display:grid;grid-template-columns:1.1rem minmax(0,1fr) auto auto;gap:0.5rem;align-items:center;padding:0.3rem 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:0.82rem;font-variant-numeric:tabular-nums}
+.mode .mn{color:var(--text-dim)}
+.mode .shape{display:flex;gap:2px;height:30px}
+.mode .shape .b{flex:1;position:relative;background:rgba(255,255,255,0.03);border-radius:2px}
+.mode .shape .b::after{content:"";position:absolute;left:0;right:0;top:50%;border-top:1px solid rgba(255,255,255,0.12)}
+.mode .shape i{position:absolute;left:12%;right:12%;border-radius:1px}
+.mode .mt{color:#fff}
+.mode button{padding:0.18rem 0.6rem;font-size:0.75rem}
+.plot canvas#pPlot{height:240px}
+.seg{display:flex;margin:0 0 0.9rem;border:1.5px solid var(--aurora-blue);border-radius:22px;overflow:hidden}
+.seg button{flex:1;border:0;border-radius:0;padding:0.45rem 0.5rem}
+.seg button + button{border-left:1.5px solid var(--aurora-blue)}
+.seg button.on{background:var(--aurora-blue);color:var(--space-black)}
+[hidden]{display:none!important}
+ol.steps{padding-left:1.3rem;margin:0 0 1rem}
+ol.steps li{margin-bottom:0.6rem;padding-left:0.2rem}
+ol.steps li::marker{color:var(--gold);font-weight:700}
+#byg-selv .section-header{border-left-color:var(--gold)}
+#byg-selv table.sum td{height:2.1rem}
+@media (max-width:900px){ .psim{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<nav class="topnav" aria-label="Navigation">
+  <ul>
+    <li><a class="home" href="index.html#mekanik">← Forsiden</a></li>
+    <li><a href="#penduler">Simulationen</a></li>
+    <li><a href="#teori-model">Modellen</a></li>
+    <li><a href="#teori-to">To ens penduler</a></li>
+    <li><a href="#teori-forskellige">Forskellige penduler</a></li>
+    <li><a href="#teori-snor">Snoren</a></li>
+    <li><a href="#teori-kaede">Kæden</a></li>
+    <li><a href="#eksempler">Eksempler</a></li>
+    <li><a href="#byg-selv">Byg dem selv</a></li>
+    <li><a href="#sammenfatning">Sammenfatning</a></li>
+  </ul>
+</nav>
+<header class="page">
+  <h1>Koblede penduler</h1>
+  <p>Hæng to penduler op side om side, forbind dem med en blød fjeder eller hæng dem på en udspændt snor, og skub til det ene. Lidt efter lidt vandrer svingningen over i det andet, det første går helt i stå, og så vender bevægelsen tilbage. Byg din egen kæde med op til otte penduler, giv hvert sin masse og længde, og følg både perioderne og energien. Nederst på siden står, hvordan du bygger forsøget selv med lidt snor og nogle møtrikker.</p>
+</header>
+<main>
+<section class="block" id="penduler">
+  <div class="section-header">
+    <h2>Pendulerne i 3D</h2>
+    <p>Vælg, om pendulerne er koblet med fjedre mellem kuglerne eller hænger på en udspændt snor. Træk en kugle til siden og slip den. Træk i baggrunden for at dreje billedet, rul eller knib for at zoome. Klik på en kugle eller et kort for at vælge pendulet.</p>
+  </div>
+  <div class="psim">
+    <div class="pmain">
+      <div class="stage" id="pStage">
+        <canvas id="pCanvas" aria-label="3D-simulation af penduler koblet med fjedre"></canvas>
+        <div class="hud" id="pHud"></div>
+        <div class="status" id="pStatus">Svinger</div>
+        <div class="hint" id="pHint">Fjederen bliver rødlig, når den strækkes, og blålig, når den trykkes</div>
+      </div>
+      <div class="pcards" id="pCards"></div>
+      <div class="plot">
+        <h3 id="pPlotTitle">Energien i hvert pendul</h3>
+        <p id="pPlotSub">Hvert pendul får sin egen energi plus halvdelen af energien i de fjedre, det hænger i. Summen er 100 %.</p>
+        <canvas id="pPlot" aria-label="Graf over pendulernes energi eller udsving som funktion af tiden"></canvas>
+        <div class="legend" id="pLegend"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Kobling</h3>
+      <div class="seg" role="group" aria-label="Hvordan pendulerne er koblet">
+        <button type="button" id="cSpring" class="on" aria-pressed="true">Fjedre</button>
+        <button type="button" id="cString" aria-pressed="false">Udspændt snor</button>
+      </div>
+      <h3>Penduler</h3>
+      <div class="btns">
+        <button id="pAdd" class="primary" type="button">Tilføj pendul</button>
+        <button id="pRemove" type="button">Fjern valgt</button>
+        <button id="pPause" type="button">Pause</button>
+      </div>
+      <h3>Start</h3>
+      <div class="btns">
+        <button id="pPush" type="button">Skub det første</button>
+        <button id="pRand" type="button">Tilfældigt</button>
+        <button id="pStill" type="button">Stil i ro</button>
+        <button id="pHome" type="button">Hjemmeforsøget</button>
+      </div>
+      <div class="ctrl" id="ctrlS" hidden><label for="pS"><span>Snorens stramning $T$</span><output id="pSo"></output></label>
+        <input type="range" id="pS" min="1" max="60" step="0.5" value="8"></div>
+      <div class="ctrl" id="ctrlK"><label for="pK"><span>Fjederkonstant $k$</span><output id="pKo"></output></label>
+        <input type="range" id="pK" min="0" max="5" step="0.05" value="0.8"></div>
+      <div class="ctrl"><label for="pA"><span>Startudsving</span><output id="pAo"></output></label>
+        <input type="range" id="pA" min="2" max="40" step="1" value="10"></div>
+      <div class="ctrl"><label for="pD"><span>Dæmpning $\gamma$</span><output id="pDo"></output></label>
+        <input type="range" id="pD" min="0" max="0.3" step="0.005" value="0"></div>
+      <div class="ctrl"><label for="pT"><span>Tempo</span><output id="pTo"></output></label>
+        <input type="range" id="pT" min="0.1" max="2" step="0.05" value="1"></div>
+      <div class="checks">
+        <label id="chkSpr"><input type="checkbox" id="pSpr" checked> Vis fjedre</label>
+        <label><input type="checkbox" id="pAng"> Graf over udsving</label>
+      </div>
+      <h3>Normalsvingninger</h3>
+      <p class="note" style="margin:-0.4rem 0 0.4rem">Søjlerne viser, hvor meget og hvilken vej hvert pendul svinger. Periode ved små udsving.</p>
+      <div id="pModes"></div>
+      <table class="read" style="margin-top:0.6rem">
+        <tr><td>Udvekslingsperiode $2\pi/(\omega_2-\omega_1)$</td><td id="pRx">–</td></tr>
+        <tr><td>Samlet energi $E/E_0$</td><td id="pRE">–</td></tr>
+        <tr><td>Tid</td><td id="pRt">–</td></tr>
+      </table>
+      <p class="note">Simulationen løser de fulde, ikke-lineære bevægelsesligninger med Runge–Kutta. »Egen periode« er $2\pi\sqrt{L/g}$ for pendulet alene. »Målt periode« er tiden mellem nulgennemgange, målt mens det svinger.</p>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="teori">
+  <div class="section-header">
+    <h2>Teorien bag</h2>
+    <p>Fjederkoblingen følger af én Lagrange-funktion, som simulationen bruger fuldt ud. Snorkoblingen behandles lineært. Tabellen over normalsvingninger bruger i begge tilfælde de lineariserede ligninger.</p>
+  </div>
+  <div class="prose">
+    <h3 id="teori-model">Modellen med fjedre</h3>
+    <p>Pendul $i$ har massen $m_i$, længden $L_i$ og ophængningspunktet $(x_i^0,0)$. Alle svinger i samme lodrette plan, og kuglen sidder i $\mathbf r_i=\left(x_i^0+L_i\sin\theta_i,\,-L_i\cos\theta_i\right)$. Nabokuglerne er forbundet af fjedre med fjederkonstanten $k$. Hver fjeder har hvilelængden $d_i$, når pendulerne hænger lodret, så fjedrene er slappe i ligevægt. Så er</p>
+    $$\mathcal L=\sum_i\left[\tfrac12 m_iL_i^2\dot\theta_i^2+m_igL_i\cos\theta_i\right]-\sum_i\tfrac12k\left(|\mathbf r_{i+1}-\mathbf r_i|-d_i\right)^2 .$$
+    <p>Fjederkraften $\mathbf F$ på kugle $i$ indgår som den generaliserede kraft $Q_i=\mathbf F\cdot\partial\mathbf r_i/\partial\theta_i=L_i\left(F_x\cos\theta_i+F_y\sin\theta_i\right)$, og bevægelsesligningen er</p>
+    $$m_iL_i^2\,\ddot\theta_i=-m_igL_i\sin\theta_i+Q_i-\gamma\,m_iL_i^2\,\dot\theta_i .$$
+    <h4>Små udsving og normalsvingninger</h4>
+    <p>Ved små udsving bliver ligningerne lineære, $\mathsf M\ddot{\boldsymbol\theta}=-\mathsf K\boldsymbol\theta$, med $\mathsf M=\mathrm{diag}(m_iL_i^2)$ og</p>
+    $$K_{ii}=m_igL_i+\sum_{\rm naboer}k_{\rm eff}L_i^2,\qquad K_{i,i\pm1}=-k_{\rm eff}L_iL_{i\pm1},\qquad k_{\rm eff}=k\cos^2\beta .$$
+    <p>Her er $\beta$ fjederens hældning i hvile. Den er skrå, når nabopendulerne er forskellig lange, og så er det kun den vandrette del af strækningen, der tæller. En normalsvingning er en bevægelse, hvor alle penduler svinger med samme frekvens: $\boldsymbol\theta=\mathbf u\cos\omega t$ giver egenværdiproblemet</p>
+    $$\mathsf K\mathbf u=\omega^2\,\mathsf M\mathbf u .$$
+    <p>Siden løser det ved at diagonalisere den symmetriske matrix $\mathsf M^{-1/2}\mathsf K\mathsf M^{-1/2}$ med Jacobis metode. Søjlerne i tabellen er vektoren $\mathbf u$. Med $N$ penduler er der $N$ normalsvingninger, og enhver bevægelse ved små udsving er en sum af dem. Det er hele hemmeligheden: det, der ligner et kompliceret samspil, er blot $N$ uafhængige svingninger lagt oven i hinanden.</p>
+
+    <h3 id="teori-to">To ens penduler: energien vandrer</h3>
+    <p>Med $m_1=m_2=m$, $L_1=L_2=L$, $\omega_0^2=g/L$ og $\kappa=k/m$ er</p>
+    $$\ddot\theta_1=-\omega_0^2\theta_1-\kappa(\theta_1-\theta_2),\qquad \ddot\theta_2=-\omega_0^2\theta_2-\kappa(\theta_2-\theta_1).$$
+    <p>Summen og differensen skiller ligningerne ad:</p>
+    $$\omega_1=\omega_0\quad(\theta_1=\theta_2),\qquad \omega_2=\sqrt{\omega_0^2+2\kappa}\quad(\theta_1=-\theta_2).$$
+    <p>I den første svingning er fjederen slap hele tiden, så pendulerne svinger, som om den ikke fandtes. I den anden trækker fjederen i begge, og svingningen er hurtigere. Skubbes kun det første pendul, $\theta_1(0)=\theta_0$, er de to svingninger lige kraftige, og summen er</p>
+    $$\theta_1=\theta_0\cos\frac{\Delta\omega\,t}{2}\,\cos\bar\omega t,\qquad \theta_2=\theta_0\sin\frac{\Delta\omega\,t}{2}\,\sin\bar\omega t,$$
+    <p>med $\bar\omega=(\omega_1+\omega_2)/2$ og $\Delta\omega=\omega_2-\omega_1$. Begge penduler svinger med middelfrekvensen, mens amplituden langsomt flytter sig frem og tilbage. Energien har været helt ovre i pendul 2 og er tilbage i pendul 1 efter</p>
+    $$T_{\rm udv}=\frac{2\pi}{\omega_2-\omega_1}\approx\frac{2\pi\,\omega_0}{\kappa}\qquad(\kappa\ll\omega_0^2).$$
+    <p>Det er svævning, ligesom mellem to stemmegafler, der er næsten ens. Svag kobling giver langsom udveksling, men udvekslingen er stadig fuldstændig. Med startværdierne på siden (0,5 kg, 1 m og $k=0{,}8$ N/m) er $T_{\rm udv}\approx 13$ s.</p>
+
+    <h3 id="teori-forskellige">Forskellige penduler</h3>
+    <h4>Forskellig længde: afstemningen afgør alt</h4>
+    <p>Er længderne forskellige, er egenfrekvenserne $\omega_{01}=\sqrt{g/L_1}$ og $\omega_{02}=\sqrt{g/L_2}$ forskellige. For lige store masser og svag kobling kommer højst brøkdelen</p>
+    $$\eta\approx\frac{4\kappa^2}{\left(\omega_{01}^2-\omega_{02}^2\right)^2+4\kappa^2}$$
+    <p>af energien over i det andet pendul. Er forskellen i $\omega^2$ stor sammenlignet med koblingen, bliver det andet pendul næsten liggende stille. Formlen gælder for svag kobling, men viser tendensen også ved stærkere. Gør det andet pendul 30 cm længere med $k=0{,}8$ N/m: kun omkring halvdelen af energien når over, og udvekslingen går hurtigere. Skru $k$ ned til 0,2 N/m, og det andet pendul får under en tiendedel. Det er resonans i sin reneste form: energi flytter sig kun effektivt mellem svingere, der er afstemt til hinanden.</p>
+    <h4>Forskellig masse: som et elastisk stød</h4>
+    <p>Er længderne ens, men masserne forskellige, er afstemningen perfekt, for begge penduler har $\omega_0=\sqrt{g/L}$. Alligevel når ikke al energien over. Den langsomme svingning er stadig $\theta_1=\theta_2$, men i den hurtige står fælles tyngdepunkt stille: $m_1\theta_1=-m_2\theta_2$. Skubbes pendul 1, er den største brøkdel af energien, der når over i pendul 2,</p>
+    $$\eta=\frac{4m_1m_2}{(m_1+m_2)^2}.$$
+    <p>Det er præcis den brøk, et elastisk, centralt stød overfører fra en kugle til en anden, der ligger stille. En tung og en let kugle kan aldrig udveksle al energien, hverken ved et stød eller gennem en fjeder. Prøv 0,5 kg og 2 kg: $\eta=0{,}64$, og simulationen giver omkring 62 %.</p>
+
+    <h3 id="teori-snor">Penduler på en udspændt snor</h3>
+    <p>Det klassiske hjemmeforsøg har ingen fjedre. Pendulerne hænger fra hver sit punkt på en snor, der er spændt ud mellem to stole, og de svinger vinkelret på snoren. Koblingen går gennem snoren selv: når et pendul svinger ud, trækker det sit ophængningspunkt lidt med sig, og snoren giver trækket videre til naboerne.</p>
+    <h4>Ligningerne</h4>
+    <p>Lad $y_j$ være ophængningspunkternes sideudsving og $T$ snorens vandrette stramning. Et snorstykke med længden $a$ virker som en sidefjeder med stivheden $T/a$. Ophængningspunkterne er masseløse, så kræfterne på dem skal gå ud. Pendulsnoren trækker med tyngden $m_jg$ skråt ned mod kuglen, og ved små udsving er den vandrette del $m_jg\,\theta_j$:</p>
+    $$\mathsf S\,\mathbf y=g\,\mathsf D\,\boldsymbol\theta,\qquad S_{jj}=\frac{T}{a_{j-1}}+\frac{T}{a_j},\quad S_{j,j\pm1}=-\frac{T}{a},\qquad \mathsf D=\mathrm{diag}(m_j).$$
+    <p>Kuglen sidder i afstanden $y_j+L_j\theta_j$ ude til siden, og den eneste vandrette kraft på den er snorens træk $-m_jg\,\theta_j$. Altså er $m_j(\ddot y_j+L_j\ddot\theta_j)=-m_jg\theta_j$. Sætter man $\mathbf y$ ind, fås</p>
+    $$\mathsf A\,\ddot{\boldsymbol\theta}=-g\,\boldsymbol\theta,\qquad \mathsf A=\mathrm{diag}(L_j)+g\,\mathsf S^{-1}\mathsf D .$$
+    <p>Snoren gør altså pendulerne effektivt længere, og hvor meget afhænger af, hvordan de andre penduler svinger. Det er koblingen. Normalsvingningerne findes af det symmetriske problem $\mathsf{DA}\,\ddot{\boldsymbol\theta}=-g\,\mathsf D\boldsymbol\theta$.</p>
+    <h4>To ens penduler: nedbøjningen er nøglen</h4>
+    <p>Hænger to ens penduler med afstanden $a$ mellem sig og afstanden $a_0$ til stolene, er de to svingninger</p>
+    $$\omega_1^2=\frac{g}{L+h}\quad(\text{i takt}),\qquad \omega_2^2=\frac{g}{L+h\,\dfrac{1/a_0}{1/a_0+2/a}}\quad(\text{i modtakt}),\qquad h=\frac{mg\,a_0}{T}.$$
+    <p>Her er $h$ netop den lodrette nedbøjning, som pendulernes vægt giver snoren ved ophængningspunkterne, for de lodrette kræfter styres af den samme matrix $\mathsf S$. Når pendulerne svinger i takt, bliver de altså en nedbøjning længere. Når de svinger i modtakt, holder midterstykket dem på plads, og tillægget er mindre: en tredjedel af $h$, når $a=a_0$. Forskellen giver svævningen.</p>
+    <p>Det er en praktisk tommelfingerregel. Med 40 cm lange penduler og en snor, der bøjer 5 cm ned, er $T_{\rm udv}\approx 34$ s. Med 3 cm nedbøjning går der knap et minut. En stram snor giver langsom udveksling, og en slap snor en hurtig.</p>
+    <h4>Forskellig masse spolerer afstemningen</h4>
+    <p>Her er der en forskel fra fjederkoblingen. Et tungt pendul bøjer snoren mere ned og bliver derfor effektivt længere end et let pendul af samme længde. To ens lange penduler med forskellig masse er altså ikke længere afstemt, og udvekslingen bliver både ufuldstændig og hurtigere. Prøv det med en og tre møtrikker.</p>
+
+    <h3 id="teori-kaede">Mange penduler: en kæde og en bølgeleder</h3>
+    <p>For $N$ ens penduler med frie ender er normalsvingningerne stående bølger:</p>
+    $$u_j^{(n)}=\cos\frac{n\pi\left(j-\tfrac12\right)}{N},\qquad \omega_n^2=\frac gL+\frac{4k}{m}\sin^2\frac{n\pi}{2N},\qquad n=0,1,\dots,N-1 .$$
+    <p>Tabellen nummererer dem fra 1 til $N$. Den første har alle penduler i takt, den sidste har nabopendulerne i modfase. Alle frekvenser ligger i et bånd mellem $\sqrt{g/L}$ og $\sqrt{g/L+4k/m}$. Med afstanden $a$ mellem pendulerne og bølgetallet $q=n\pi/(Na)$ er dispersionsrelationen</p>
+    $$\omega^2=\omega_0^2+\frac{4k}{m}\sin^2\frac{qa}{2}.$$
+    <p>Tyngden giver en nedre grænsefrekvens $\omega_0$. Under den kan ingen bølge udbrede sig langs kæden, og en svingning, der drives i den ene ende, dør eksponentielt ud. Det er samme matematik som i en bølgeleder med en grænsefrekvens. I kontinuumgrænsen bliver ligningen Klein–Gordon-ligningen $\ddot\theta=c^2\,\partial_x^2\theta-\omega_0^2\theta$ med $c^2=ka^2/m$.</p>
+    <p>Prøv det: tilføj penduler til der er otte, tryk <em>Skub det første</em>, og se i grafen, hvordan energien vandrer ned ad kæden som en bølgepakke og kastes tilbage fra enden.</p>
+
+    <h3 id="eksempler">Hvor koblede svingninger dukker op</h3>
+    <p><strong>Huygens' ure.</strong> I 1665 lå Christiaan Huygens syg og så, at to penduluré, der hang på samme bjælke, efter en halv times tid altid svang i modfase. Han skubbede til det ene, og de fandt sammen igen. Koblingen gik gennem bjælkens små bevægelser. Forsøget blev gentaget og forklaret i 2002.</p>
+    <p><strong>Molekyler.</strong> CO₂ er tre masser koblet af to fjedre. Den symmetriske strækning, hvor carbonatomet står stille, er infrarødt-inaktiv. Den asymmetriske ved 2349 cm⁻¹ og bøjningen ved 667 cm⁻¹ absorberer infrarødt lys, og det er dem, der gør CO₂ til en drivhusgas.</p>
+    <p><strong>Wilberforce-pendulet.</strong> Et lod i en spiralfjeder kan både hoppe op og ned og dreje om sig selv. Fjederens form kobler de to bevægelser, og er de afstemt, skifter loddet langsomt mellem at hoppe og at dreje, præcis som de to penduler.</p>
+    <p><strong>Kvantemekanik.</strong> Formlen for $\eta$ ved forskellig længde er den samme som Rabis formel for et system med to tilstande, og den samme matematik styrer ammoniakmolekylets tunnelering og neutrinoers oscillationer mellem slagsene.</p>
+    <p><strong>Et pendul på jordens størrelse.</strong> I inertinavigation svinger positionsfejlen som et pendul med jordens radius som længde og perioden 84,4 minutter. Se <a href="gyroskop-tippetop.html#schuler">Schuler-pendulet på siden om gyroskopet</a>.</p>
+  </div>
+</section>
+
+<section class="block" id="byg-selv">
+  <div class="section-header">
+    <h2>Byg dem selv</h2>
+    <p>Det hele kan laves på et køkkenbord med et par meter snor, nogle møtrikker og to stole. Tryk på <em>Hjemmeforsøget</em> ovenfor for at se det samme forsøg i simulationen.</p>
+  </div>
+  <div class="prose">
+    <h3>Det skal du bruge</h3>
+    <p>To stole med ryglæn, 2–3 meter tynd, glat snor (køkkengarn, mursnor eller fiskeline), 6–12 ens møtrikker, en saks, et målebånd og et stopur, fx i telefonen. Møtrikker på M10–M16 er gode, fordi de er tunge nok til at trække snoren lige og små nok til ikke at blive fanget af luften. En M12-møtrik vejer omkring 16 g, men vej dem gerne på en køkkenvægt.</p>
+
+    <h3>Sådan gør du</h3>
+    <ol class="steps">
+      <li><strong>Spænd snoren ud.</strong> Stil stolene med ryggen mod hinanden, ca. 1 m fra hinanden. Bind snoren fast om begge ryglæn i samme højde, så den er let stram. Du justerer stramningen senere ved at skubbe stolene lidt fra eller mod hinanden.</li>
+      <li><strong>Lav to penduler.</strong> Klip to stykker snor på ca. 60 cm. Træk hvert stykke gennem tre møtrikker og bind en dobbeltknude, så møtrikkerne sidder som et lille lod i enden.</li>
+      <li><strong>Hæng dem op.</strong> Bind pendulerne på den udspændte snor ca. 30 cm fra hinanden og ca. 30 cm fra hver stol. Et halvstik, der kan skubbes, gør det let at rette længden til bagefter.</li>
+      <li><strong>Gør dem lige lange.</strong> Mål fra den udspændte snor til midten af møtrikkerne, og ret til, til begge penduler er præcis lige lange, fx 40 cm. Det er det vigtigste trin: en forskel på en halv centimeter kan ses.</li>
+      <li><strong>Se efter nedbøjningen.</strong> Snoren skal bøje en smule ned ved pendulerne, et par centimeter. Er den helt stram, sker udvekslingen meget langsomt. Hænger den meget, sker den hurtigt, men pendulerne begynder let at slingre.</li>
+      <li><strong>Start forsøget.</strong> Hold det ene pendul stille, og træk det andet 5–10 cm ud, vinkelret på den udspændte snor. Slip det forsigtigt, og slip så også det første uden at skubbe til det.</li>
+    </ol>
+    <p>Efter nogle sving begynder det stille pendul at bevæge sig. Efter et halvt til et helt minut står det første pendul næsten stille, og det andet svinger fuldt ud. Så går bevægelsen tilbage igen.</p>
+
+    <h3>Forsøg du kan lave</h3>
+    <p><strong>Pendulets periode.</strong> Tag tid på 10 hele sving af ét pendul, mens det andet holdes stille, og del med 10. Sammenlign med $2\pi\sqrt{L/g}$. For 40 cm er det 1,27 s.</p>
+    <p><strong>Udvekslingsperioden.</strong> Tag tid fra det øjeblik, det første pendul står stille, til det står stille næste gang. Det er $T_{\rm udv}$. Gentag et par gange og tag gennemsnittet.</p>
+    <p><strong>De to normalsvingninger.</strong> Træk begge penduler lige langt ud til samme side og slip dem samtidigt. Nu er der ingen udveksling, for de svinger i den første normalsvingning. Træk dem så ud til hver sin side: den anden normalsvingning, som er en anelse hurtigere. Tag tid på 20 sving af hver, $T_1$ og $T_2$, og beregn</p>
+    $$T_{\rm udv}=\frac{T_1T_2}{T_1-T_2}.$$
+    <p>Sammenlign med den tid, du målte direkte. Periodeforskellen er lille, så tag tid på mange sving.</p>
+    <p><strong>Stramningen.</strong> Skub stolene lidt længere fra hinanden, så snoren bliver strammere og nedbøjningen mindre. Udvekslingen bliver langsommere. Løsn den, og den bliver hurtigere.</p>
+    <p><strong>Afstemningen.</strong> Gør det ene pendul 3–5 cm kortere. Nu når kun en del af bevægelsen over, og det første pendul går aldrig helt i stå.</p>
+    <p><strong>Massen.</strong> Gør pendulerne lige lange igen, men giv det ene én møtrik og det andet tre. Udvekslingen bliver igen ufuldstændig. På snoren skyldes det, at det tunge pendul bøjer snoren mere og bliver effektivt længere.</p>
+    <p><strong>Kæden.</strong> Hæng tre, fire eller flere ens penduler op med samme afstand, og skub til det yderste. Se bevægelsen vandre ned ad rækken og tilbage.</p>
+
+    <h3>Måleskema</h3>
+    <div class="tablewrap">
+      <table class="sum">
+        <tr><th>Forsøg</th><th>Længde $L$</th><th>Møtrikker</th><th>Målt</th><th>Beregnet</th></tr>
+        <tr><td>10 sving, ét pendul</td><td></td><td></td><td>$T=$</td><td>$2\pi\sqrt{L/g}=$</td></tr>
+        <tr><td>20 sving i takt</td><td></td><td></td><td>$T_1=$</td><td></td></tr>
+        <tr><td>20 sving i modtakt</td><td></td><td></td><td>$T_2=$</td><td></td></tr>
+        <tr><td>Udvekslingsperiode</td><td></td><td></td><td>$T_{\rm udv}=$</td><td>$T_1T_2/(T_1-T_2)=$</td></tr>
+      </table>
+    </div>
+
+    <h3>Gode råd</h3>
+    <p>Begynder møtrikkerne at dreje rundt eller svinge i ellipser, så start med et mindre udsving og slip mere forsigtigt. Vil du have pendulerne til at holde sig i ét plan, kan hvert lod hænge i to snore, der samles i et V fra to punkter på den udspændte snor. Brug en glat snor: en snor, der snor sig op, drejer loddet. Og hold dørene lukkede, for selv et lille træk forstyrrer.</p>
+  </div>
+</section>
+
+<section class="block" id="sammenfatning">
+  <div class="section-header">
+    <h2>Sammenfatning</h2>
+    <p>Koblede svingere udveksler energi. Hvor hurtigt afgøres af koblingen, hvor meget af afstemningen og masserne.</p>
+  </div>
+  <div class="prose">
+    <div class="tablewrap">
+      <table class="sum">
+        <tr><th>Situation</th><th>Nøgleresultat</th><th>Udveksling</th></tr>
+        <tr><td>To ens penduler</td><td>$\omega_2^2=\omega_0^2+2k/m$, $T_{\rm udv}=2\pi/(\omega_2-\omega_1)$</td><td>Fuldstændig</td></tr>
+        <tr><td>Forskellig længde</td><td>$\eta\approx 4\kappa^2/\left[(\omega_{01}^2-\omega_{02}^2)^2+4\kappa^2\right]$</td><td>Kræver afstemning</td></tr>
+        <tr><td>Forskellig masse</td><td>$\eta=4m_1m_2/(m_1+m_2)^2$</td><td>Som et elastisk stød</td></tr>
+        <tr><td>To ens på udspændt snor</td><td>$\omega^2=g/(L+\ell)$, $\ell=h$ i takt og $\ell\approx h/3$ i modtakt</td><td>Fuldstændig, styres af nedbøjningen $h$</td></tr>
+        <tr><td>Kæde af $N$ ens</td><td>$\omega_n^2=g/L+(4k/m)\sin^2\left(n\pi/2N\right)$</td><td>Bølger i et frekvensbånd</td></tr>
+      </table>
+    </div>
+    <h3>Litteratur</h3>
+    <ul class="refs">
+      <li>A. P. French, <em>Vibrations and Waves</em>, Norton (1971), kap. 5.</li>
+      <li>H. Goldstein, C. Poole &amp; J. Safko, <em>Classical Mechanics</em>, 3. udg., Addison-Wesley (2002), kap. 6.</li>
+      <li>C. Huygens, <em>Horologium Oscillatorium</em>, Paris (1673).</li>
+      <li>M. Bennett, M. F. Schatz, H. Rockwood &amp; K. Wiesenfeld, »Huygens's clocks«, <em>Proc. R. Soc. Lond. A</em> 458, 563 (2002).</li>
+      <li>R. E. Berg &amp; T. S. Marshall, »Wilberforce pendulum oscillations and normal modes«, <em>Am. J. Phys.</em> 59, 32 (1991).</li>
+    </ul>
+  </div>
+</section>
+</main>
+<footer>
+  <a href="index.html">Fysik, matematik og kemi</a> · Michael Grant · <a href="mailto:michael.h.grant@gmail.com">michael.h.grant@gmail.com</a>
+</footer>
+<script>
+(function(){
+'use strict';
+const REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $ = id => document.getElementById(id);
+const fmt = (x,d=2) => { const s = x.toFixed(d); return (/^-0[,.]?0*$/.test(s) ? s.slice(1) : s).replace('.',',').replace('-','−'); };
+const DEG = 180/Math.PI;
+const g = 9.82, SC = 10, MAXN = 8, SPACING = 0.6, BAR_Y = 2.5;
+const COLORS = ['#4cc9f0','#f5c878','#39ff14','#ff4d6d','#c77dff','#ff7a2a','#7ae7c7','#e8e8f0'];
+
+/* ---------------- Fysik ---------------- */
+let P = [{m:0.5,L:1.0},{m:0.5,L:1.0}];
+let th = [0,0], om = [0,0], cross = [[],[]];
+let k = 0.8, gamma = 0, tempo = 1, amp = 10/DEG, t = 0, E0 = 1;
+let paused = REDUCED, dragging = -1, selected = 0;
+let d0 = [], modes = {w:[], u:[]};
+let mode = 'fjeder', Tstr = 8, SN = null;
+const END = 0.45;   // afstand fra stolpe til yderste ophæng, m
+const x0 = i => (i-(P.length-1)/2)*SPACING;
+
+function restLengths(){ d0 = []; for(let i=0;i<P.length-1;i++) d0.push(Math.hypot(SPACING, P[i].L-P[i+1].L)); }
+
+/* --- lineær algebra --- */
+const zeros = n => Array.from({length:n}, () => new Array(n).fill(0));
+const mv = (M, v) => M.map(r => r.reduce((s,x,j) => s + x*v[j], 0));
+function inv(M){
+  const n = M.length, a = M.map((r,i) => [...r, ...Array.from({length:n}, (_,j) => i===j ? 1 : 0)]);
+  for(let c=0;c<n;c++){
+    let p = c; for(let r=c+1;r<n;r++) if(Math.abs(a[r][c]) > Math.abs(a[p][c])) p = r;
+    [a[c], a[p]] = [a[p], a[c]];
+    const d = a[c][c]; for(let j=0;j<2*n;j++) a[c][j] /= d;
+    for(let r=0;r<n;r++) if(r !== c){ const f = a[r][c]; if(f) for(let j=0;j<2*n;j++) a[r][j] -= f*a[c][j]; }
+  }
+  return a.map(r => r.slice(n));
+}
+/* --- penduler på en udspændt snor ---
+   Ophængningspunkterne er masseløse: S y = g D θ, hvor S er snorens sidestivhed
+   (T/a for hvert snorstykke) og D = diag(m). Kuglen: m (ÿ + L θ̈) = −m g θ.
+   Det giver A θ̈ = −g θ med A = diag(L) + g S⁻¹ D. */
+function snorSetup(){
+  const N = P.length, S = zeros(N);
+  for(let i=0;i<N;i++){
+    const aL = i === 0 ? END : SPACING, aR = i === N-1 ? END : SPACING;
+    S[i][i] = Tstr/aL + Tstr/aR;
+    if(i < N-1){ S[i][i+1] = -Tstr/SPACING; S[i+1][i] = -Tstr/SPACING; }
+  }
+  const Si = inv(S);
+  const G = Si.map(r => r.map((x,j) => g*x*P[j].m));
+  const A = G.map((r,i) => r.map((x,j) => x + (i === j ? P[i].L : 0)));
+  const sag = Si.map(r => r.reduce((s,x,j) => s + x*P[j].m*g, 0));
+  SN = {G, A, Ai: inv(A), sag};
+}
+function setupCoupling(){ restLengths(); snorSetup(); }
+
+function deriv(s, out){
+  if(mode === 'snor'){
+    const N = P.length, Ai = SN.Ai;
+    for(let i=0;i<N;i++){
+      let a = 0; for(let j=0;j<N;j++) a += Ai[i][j]*s[j];
+      out[i] = s[N+i]; out[N+i] = -g*a - gamma*s[N+i];
+    }
+    return;
+  }
+  const N = P.length, xs = new Float64Array(N), ys = new Float64Array(N), Q = new Float64Array(N);
+  for(let i=0;i<N;i++){ xs[i] = x0(i)+P[i].L*Math.sin(s[i]); ys[i] = -P[i].L*Math.cos(s[i]); }
+  if(k > 0) for(let i=0;i<N-1;i++){
+    const dx = xs[i+1]-xs[i], dy = ys[i+1]-ys[i], r = Math.hypot(dx,dy) || 1e-9;
+    const f = k*(r-d0[i]), fx = f*dx/r, fy = f*dy/r;   // kraft på kugle i (mod i+1, når fjederen er strakt)
+    Q[i]   += P[i].L*(fx*Math.cos(s[i]) + fy*Math.sin(s[i]));
+    Q[i+1] -= P[i+1].L*(fx*Math.cos(s[i+1]) + fy*Math.sin(s[i+1]));
+  }
+  for(let i=0;i<N;i++){
+    const m = P[i].m, L = P[i].L;
+    out[i] = s[N+i];
+    out[N+i] = (-m*g*L*Math.sin(s[i]) + Q[i])/(m*L*L) - gamma*s[N+i];
+  }
+}
+function step(h){
+  const N = P.length, n = 2*N;
+  const s = new Float64Array(n), k1 = new Float64Array(n), k2 = new Float64Array(n), k3 = new Float64Array(n), k4 = new Float64Array(n), tmp = new Float64Array(n);
+  for(let i=0;i<N;i++){ s[i] = th[i]; s[N+i] = om[i]; }
+  deriv(s,k1); for(let i=0;i<n;i++) tmp[i] = s[i]+h/2*k1[i];
+  deriv(tmp,k2); for(let i=0;i<n;i++) tmp[i] = s[i]+h/2*k2[i];
+  deriv(tmp,k3); for(let i=0;i<n;i++) tmp[i] = s[i]+h*k3[i];
+  deriv(tmp,k4);
+  for(let i=0;i<N;i++){
+    const a = th[i], b = s[i] + h/6*(k1[i]+2*k2[i]+2*k3[i]+k4[i]);
+    if(a < 0 && b >= 0){ cross[i].push(t + h*(-a)/(b-a)); if(cross[i].length > 6) cross[i].shift(); }
+    th[i] = b;
+    om[i] = s[N+i] + h/6*(k1[N+i]+2*k2[N+i]+2*k3[N+i]+k4[N+i]);
+  }
+  t += h;
+}
+function energies(){
+  if(mode === 'snor'){
+    const y = mv(SN.G, th), yd = mv(SN.G, om);
+    return P.map(({m,L},i) => { const v = yd[i] + L*om[i]; return 0.5*m*v*v + 0.5*m*g*L*th[i]*th[i] + 0.5*m*g*th[i]*y[i]; });
+  }
+  const N = P.length, E = new Array(N).fill(0), xs = [], ys = [];
+  for(let i=0;i<N;i++){
+    const {m,L} = P[i];
+    xs.push(x0(i)+L*Math.sin(th[i])); ys.push(-L*Math.cos(th[i]));
+    E[i] = 0.5*m*L*L*om[i]*om[i] + m*g*L*(1-Math.cos(th[i]));
+  }
+  for(let i=0;i<N-1;i++){
+    const r = Math.hypot(xs[i+1]-xs[i], ys[i+1]-ys[i]), es = 0.5*k*(r-d0[i])**2;
+    E[i] += es/2; E[i+1] += es/2;
+  }
+  return E;
+}
+const sum = a => a.reduce((x,y)=>x+y, 0);
+
+/* ---------------- Normalsvingninger (Jacobi) ---------------- */
+function jacobi(A){
+  const n = A.length, a = A.map(r=>r.slice());
+  const v = Array.from({length:n}, (_,i) => Array.from({length:n}, (_,j) => i===j ? 1 : 0));
+  for(let sweep=0; sweep<60; sweep++){
+    let off = 0;
+    for(let p=0;p<n;p++) for(let q=p+1;q<n;q++) off += a[p][q]*a[p][q];
+    if(off < 1e-22) break;
+    for(let p=0;p<n-1;p++) for(let q=p+1;q<n;q++){
+      if(Math.abs(a[p][q]) < 1e-300) continue;
+      const theta = (a[q][q]-a[p][p])/(2*a[p][q]);
+      const tt = (theta >= 0 ? 1 : -1)/(Math.abs(theta)+Math.sqrt(theta*theta+1));
+      const c = 1/Math.sqrt(tt*tt+1), s = tt*c;
+      for(let r=0;r<n;r++){ const x = a[r][p], y = a[r][q]; a[r][p] = c*x - s*y; a[r][q] = s*x + c*y; }
+      for(let r=0;r<n;r++){ const x = a[p][r], y = a[q][r]; a[p][r] = c*x - s*y; a[q][r] = s*x + c*y; }
+      for(let r=0;r<n;r++){ const x = v[r][p], y = v[r][q]; v[r][p] = c*x - s*y; v[r][q] = s*x + c*y; }
+    }
+  }
+  return {val: a.map((r,i)=>r[i]), vec: v};
+}
+function pushMode(w, u){
+  const mx = Math.max(...u.map(Math.abs)) || 1;
+  let sgn = 1; for(const x of u){ if(Math.abs(x) > 1e-6*mx){ sgn = x > 0 ? 1 : -1; break; } }
+  modes.w.push(w); modes.u.push(u.map(x => sgn*x/mx));
+}
+function computeModes(){
+  if(mode === 'snor'){
+    // D A θ̈ = −g D θ: symmetrisk generaliseret egenværdiproblem; egenværdierne er 1/ω²
+    const N = P.length, ks = P.map(p => Math.sqrt(g*p.m));
+    const Ms = SN.A.map((r,i) => r.map(x => P[i].m*x));
+    const B = Ms.map((r,i) => r.map((x,j) => 0.5*(x + Ms[j][i])/(ks[i]*ks[j])));
+    const {val, vec} = jacobi(B);
+    const idx = val.map((_,i)=>i).sort((a,b) => val[b]-val[a]);
+    modes = {w:[], u:[]};
+    for(const j of idx) pushMode(1/Math.sqrt(val[j]), ks.map((q,i) => vec[i][j]/q));
+    return;
+  }
+  const N = P.length, Mh = P.map(p => Math.sqrt(p.m)*p.L);
+  const K = Array.from({length:N}, () => new Array(N).fill(0));
+  for(let i=0;i<N;i++) K[i][i] = P[i].m*g*P[i].L;
+  for(let i=0;i<N-1;i++){
+    const ux = SPACING/d0[i], ke = k*ux*ux, Li = P[i].L, Lj = P[i+1].L;
+    K[i][i] += ke*Li*Li; K[i+1][i+1] += ke*Lj*Lj; K[i][i+1] -= ke*Li*Lj; K[i+1][i] -= ke*Li*Lj;
+  }
+  const A = K.map((r,i) => r.map((x,j) => x/(Mh[i]*Mh[j])));
+  const {val, vec} = jacobi(A);
+  const idx = val.map((_,i)=>i).sort((a,b)=>val[a]-val[b]);
+  modes = {w:[], u:[]};
+  for(const j of idx) pushMode(Math.sqrt(Math.max(val[j], 0)), Mh.map((m,i) => vec[i][j]/m));
+}
+
+/* ---------------- Three.js-scene ---------------- */
+const canvas = $('pCanvas'), stage = $('pStage');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.setClearColor(0x07080f, 1);
+const scene = new THREE.Scene(); scene.fog = new THREE.Fog(0x07080f, 90, 200);
+const camera = new THREE.PerspectiveCamera(40, 1.6, 0.1, 500);
+const target = new THREE.Vector3(0, 15, 0);
+const cam = {r:62, az:0.32, el:0.16};
+function applyCam(){
+  cam.el = Math.max(-0.05, Math.min(1.4, cam.el)); cam.r = Math.max(20, Math.min(140, cam.r));
+  camera.position.set(target.x + cam.r*Math.cos(cam.el)*Math.sin(cam.az), target.y + cam.r*Math.sin(cam.el), target.z + cam.r*Math.cos(cam.el)*Math.cos(cam.az));
+  camera.lookAt(target);
+}
+applyCam();
+scene.add(new THREE.HemisphereLight(0xb8c6ff, 0x1a1208, 0.55));
+const sun = new THREE.DirectionalLight(0xffffff, 0.95);
+sun.position.set(12, 45, 28); sun.castShadow = true; sun.shadow.mapSize.set(1024,1024);
+Object.assign(sun.shadow.camera, {left:-35, right:35, top:35, bottom:-35, near:1, far:120});
+scene.add(sun); scene.add(sun.target);
+const rim = new THREE.PointLight(0x4cc9f0, 0.35, 120); rim.position.set(-25, 20, -20); scene.add(rim);
+const floor = new THREE.Mesh(new THREE.CircleGeometry(48, 64), new THREE.MeshStandardMaterial({color:0x14182a, roughness:0.85, metalness:0.05}));
+floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; scene.add(floor);
+const grid = new THREE.GridHelper(96, 48, 0x2a3350, 0x161c30); grid.position.y = 0.01; grid.material.transparent = true; grid.material.opacity = 0.55; scene.add(grid);
+
+const metal = new THREE.MeshStandardMaterial({color:0xb4bccb, metalness:0.45, roughness:0.35});
+const dark = new THREE.MeshStandardMaterial({color:0x39425c, metalness:0.3, roughness:0.5});
+const stringMat = new THREE.MeshStandardMaterial({color:0xd8d8e0, roughness:0.6});
+const frame = new THREE.Group(); scene.add(frame);
+let pend = [], bobs = [], nuts = [], springs = [], strSegs = [], bar = null, frameW = 10;
+const BY = BAR_Y*SC;
+const bobR = m => 0.95*Math.cbrt(m/0.5);
+const cyl = new THREE.CylinderGeometry(1, 1, 1, 12);
+
+function clearGroup(gr){ while(gr.children.length){ const c = gr.children.pop(); if(c.geometry && c.geometry !== cyl) c.geometry.dispose(); } }
+function buildScene(){
+  clearGroup(frame);
+  pend.forEach(p => scene.remove(p.group)); springs.forEach(s => { scene.remove(s.line); s.line.geometry.dispose(); });
+  pend = []; bobs = []; nuts = []; springs = []; strSegs = [];
+  const N = P.length, W = (N-1)*SPACING*SC + 2*END*SC; frameW = W;
+  bar = new THREE.Mesh(cyl, metal); bar.visible = mode === 'fjeder'; bar.scale.set(0.35, W, 0.35); bar.rotation.z = Math.PI/2; bar.position.set(0, BY, 0); bar.castShadow = true; frame.add(bar);
+  for(const sx of [-1,1]){
+    const post = new THREE.Mesh(cyl, dark); post.scale.set(0.45, BY, 0.45); post.position.set(sx*W/2, BY/2, 0); post.castShadow = true; frame.add(post);
+    const foot = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.5, 7), dark); foot.position.set(sx*W/2, 0.25, 0); foot.castShadow = foot.receiveShadow = true; frame.add(foot);
+  }
+  for(let i=0;i<N;i++){
+    const group = new THREE.Group(); group.position.set(x0(i)*SC, BY, 0);
+    const hook = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 10), metal); group.add(hook);
+    const str = new THREE.Mesh(cyl, stringMat); str.castShadow = true; group.add(str);
+    const mat = new THREE.MeshStandardMaterial({color:COLORS[i], metalness:0.35, roughness:0.35, emissive:new THREE.Color(COLORS[i]), emissiveIntensity:0});
+    const bob = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 24), mat); bob.castShadow = true; group.add(bob);
+    const nut = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 0.8, 6), mat); nut.rotation.z = Math.PI/2; nut.castShadow = true; group.add(nut);
+    bob.visible = mode === 'fjeder'; nut.visible = mode === 'snor'; hook.visible = mode === 'fjeder';
+    scene.add(group);
+    pend.push({group, str, bob, nut}); bobs.push(bob); nuts.push(nut);
+    shapePend(i);
+  }
+  for(let i=0;i<=N;i++){
+    const seg = new THREE.Mesh(cyl, stringMat); seg.visible = mode === 'snor'; seg.castShadow = true; frame.add(seg); strSegs.push(seg);
+  }
+  for(let i=0;i<N-1;i++){
+    const NP = 220, geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(NP*3), 3));
+    const line = new THREE.Line(geo, new THREE.LineBasicMaterial({color:0x9aa3b8})); line.frustumCulled = false;
+    scene.add(line); springs.push({line, NP});
+  }
+  highlight();
+}
+function shapePend(i){
+  const {m,L} = P[i], p = pend[i], r = bobR(m);
+  p.str.scale.set(0.06, L*SC, 0.06); p.str.position.y = -L*SC/2;
+  p.bob.scale.setScalar(r); p.bob.position.y = -L*SC;
+  p.nut.scale.setScalar(r*1.15); p.nut.position.y = -L*SC - r*0.15;
+}
+function highlight(){ pend.forEach((p,i) => { p.bob.material.emissiveIntensity = i === selected ? 0.35 : 0.0; }); }
+const tmpA = new THREE.Vector3(), tmpB = new THREE.Vector3(), cNeutral = new THREE.Color(0x9aa3b8), cHot = new THREE.Color(0xff6b6b), cCold = new THREE.Color(0x6bb8ff);
+function bobPos(i, v){ const L = P[i].L*SC; return v.set(x0(i)*SC + L*Math.sin(th[i]), BY - L*Math.cos(th[i]), 0); }
+const Y_AXIS = new THREE.Vector3(0,1,0);
+function placeSeg(seg, a, b){
+  const d = b.clone().sub(a), len = d.length();
+  seg.position.copy(a).addScaledVector(d, 0.5);
+  seg.scale.set(0.05, len, 0.05);
+  seg.quaternion.setFromUnitVectors(Y_AXIS, d.normalize());
+}
+function updateScene(){
+  if(mode === 'snor'){
+    const y = mv(SN.G, th), mx = Math.max(...SN.sag), f = mx > 0.3 ? 0.3/mx : 1;
+    const pts = [new THREE.Vector3(-frameW/2, BY, 0)];
+    P.forEach((_,i) => pts.push(new THREE.Vector3(x0(i)*SC, BY - SN.sag[i]*f*SC, y[i]*SC)));
+    pts.push(new THREE.Vector3(frameW/2, BY, 0));
+    pend.forEach((p,i) => { p.group.position.copy(pts[i+1]); p.group.rotation.set(-th[i], 0, 0); });
+    strSegs.forEach((s,i) => placeSeg(s, pts[i], pts[i+1]));
+    springs.forEach(s => { s.line.visible = false; });
+    return;
+  }
+  pend.forEach((p,i) => { p.group.position.set(x0(i)*SC, BY, 0); p.group.rotation.set(0, 0, th[i]); });
+  const show = $('pSpr').checked;
+  springs.forEach((s,i) => {
+    s.line.visible = show && k > 0;
+    if(!s.line.visible) return;
+    bobPos(i, tmpA); bobPos(i+1, tmpB);
+    const e = tmpB.clone().sub(tmpA), len = e.length(); e.normalize();
+    const ra = bobR(P[i].m), rb = bobR(P[i+1].m);
+    const a = tmpA.clone().addScaledVector(e, ra), span = Math.max(0.1, len - ra - rb);
+    const n1 = new THREE.Vector3(0,0,1), n2 = new THREE.Vector3().crossVectors(e, n1).normalize();
+    const arr = s.line.geometry.attributes.position.array, NP = s.NP, coils = 11, R = 0.32;
+    for(let j=0;j<NP;j++){
+      const u = j/(NP-1); let rad = 0, ph = 0;
+      if(u > 0.08 && u < 0.92){ const w = (u-0.08)/0.84; rad = R; ph = w*coils*2*Math.PI; }
+      const px = a.x + e.x*span*u + rad*(Math.cos(ph)*n1.x + Math.sin(ph)*n2.x);
+      const py = a.y + e.y*span*u + rad*(Math.cos(ph)*n1.y + Math.sin(ph)*n2.y);
+      const pz = a.z + e.z*span*u + rad*(Math.cos(ph)*n1.z + Math.sin(ph)*n2.z);
+      arr[3*j] = px; arr[3*j+1] = py; arr[3*j+2] = pz;
+    }
+    s.line.geometry.attributes.position.needsUpdate = true;
+    const strain = (len/SC - d0[i])/d0[i];
+    s.line.material.color.copy(cNeutral).lerp(strain > 0 ? cHot : cCold, Math.min(1, Math.abs(strain)*6));
+  });
+}
+
+/* ---------------- Mus og berøring ---------------- */
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+function setRay(e){ const r = canvas.getBoundingClientRect(); ndc.set((e.clientX-r.left)/r.width*2-1, -(e.clientY-r.top)/r.height*2+1); ray.setFromCamera(ndc, camera); }
+function pick(e){ setRay(e); const list = mode === 'snor' ? nuts : bobs; const h = ray.intersectObjects(list, false); return h.length ? list.indexOf(h[0].object) : -1; }
+function dragAngle(e, i){
+  setRay(e); const o = ray.ray.origin, d = ray.ray.direction;
+  if(mode === 'snor'){
+    const gp = pend[i].group.position;
+    if(Math.abs(d.x) < 0.03) return null;
+    const s = (gp.x - o.x)/d.x; if(s < 0) return null;
+    const a = Math.atan2(o.z + d.z*s - gp.z, gp.y - (o.y + d.y*s));
+    return Math.max(-75/DEG, Math.min(75/DEG, a));
+  }
+  if(Math.abs(d.z) < 1e-4) return null;
+  const s = -o.z/d.z; if(s < 0) return null;
+  const px = o.x + d.x*s, py = o.y + d.y*s;
+  const a = Math.atan2(px - x0(i)*SC, BY - py);
+  return Math.max(-75/DEG, Math.min(75/DEG, a));
+}
+const ptrs = new Map(); let pinch0 = 0, r0 = cam.r, dragId = null;
+canvas.addEventListener('pointerdown', e => {
+  canvas.setPointerCapture(e.pointerId);
+  if(ptrs.size === 0 && dragging < 0){
+    const i = pick(e);
+    if(i >= 0){ dragging = i; dragId = e.pointerId; select(i); om.fill(0); const a = dragAngle(e,i); if(a !== null) th[i] = a; setStatus(); return; }
+  }
+  ptrs.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  if(ptrs.size === 2){ const [a,b] = [...ptrs.values()]; pinch0 = Math.hypot(a.x-b.x, a.y-b.y); r0 = cam.r; }
+});
+canvas.addEventListener('pointermove', e => {
+  if(e.pointerId === dragId && dragging >= 0){ const a = dragAngle(e, dragging); if(a !== null){ th[dragging] = a; om[dragging] = 0; } return; }
+  if(!ptrs.has(e.pointerId)) return;
+  const p = ptrs.get(e.pointerId);
+  if(ptrs.size === 1){ cam.az -= (e.clientX-p.x)*0.008; cam.el += (e.clientY-p.y)*0.006; }
+  p.x = e.clientX; p.y = e.clientY;
+  if(ptrs.size === 2){ const [a,b] = [...ptrs.values()]; const d = Math.hypot(a.x-b.x, a.y-b.y); if(pinch0 > 0) cam.r = r0*pinch0/d; }
+  applyCam();
+});
+function up(e){
+  if(e.pointerId === dragId){ dragId = null; dragging = -1; restart(); return; }
+  ptrs.delete(e.pointerId); pinch0 = 0;
+}
+canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
+canvas.addEventListener('wheel', e => { e.preventDefault(); cam.r *= Math.exp(e.deltaY*0.001); applyCam(); }, {passive:false});
+
+/* ---------------- Brugerflade ---------------- */
+function bindSlider(id, f, cb){
+  const el = $(id), out = $(id+'o');
+  const u = () => { out.textContent = f(+el.value); };
+  el.addEventListener('input', () => { u(); cb(+el.value); }); u(); cb(+el.value);
+}
+function select(i){ selected = i; highlight(); document.querySelectorAll('.pcard').forEach((c,j) => c.classList.toggle('sel', j === i)); }
+let cardRefs = [];
+function renderCards(){
+  const box = $('pCards'); box.innerHTML = ''; cardRefs = [];
+  P.forEach((p,i) => {
+    const c = document.createElement('div');
+    c.className = 'pcard' + (i === selected ? ' sel' : ''); c.style.setProperty('--c', COLORS[i]);
+    c.innerHTML =
+      `<div class="phead"><h4>Pendul ${i+1}</h4><button class="x" type="button" ${P.length <= 1 ? 'disabled' : ''} aria-label="Fjern pendul ${i+1}">Fjern</button></div>
+       <div class="ctrl"><label for="pm${i}"><span>Masse</span><output id="pm${i}o"></output></label>
+         <input type="range" id="pm${i}" min="0.02" max="2" step="0.01" value="${p.m}"></div>
+       <div class="ctrl"><label for="pl${i}"><span>Længde</span><output id="pl${i}o"></output></label>
+         <input type="range" id="pl${i}" min="0.2" max="2" step="0.01" value="${p.L}"></div>
+       <table class="read">
+         <tr><td>Egen periode</td><td class="t0"></td></tr>
+         <tr><td>Målt periode</td><td class="tm">–</td></tr>
+         <tr><td>Energiandel</td><td class="te">–</td></tr>
+       </table>`;
+    box.appendChild(c);
+    const ref = {t0:c.querySelector('.t0'), tm:c.querySelector('.tm'), te:c.querySelector('.te')};
+    cardRefs.push(ref);
+    const showT0 = () => { ref.t0.textContent = fmt(2*Math.PI*Math.sqrt(P[i].L/g)) + ' s'; };
+    const mEl = c.querySelector('#pm'+i), lEl = c.querySelector('#pl'+i), mo = c.querySelector('#pm'+i+'o'), lo = c.querySelector('#pl'+i+'o');
+    mo.textContent = fmt(p.m) + ' kg'; lo.textContent = fmt(p.L) + ' m'; showT0();
+    mEl.addEventListener('input', () => { P[i].m = +mEl.value; mo.textContent = fmt(P[i].m) + ' kg'; shapePend(i); paramsChanged(); });
+    lEl.addEventListener('input', () => { P[i].L = +lEl.value; lo.textContent = fmt(P[i].L) + ' m'; shapePend(i); showT0(); restLengths(); paramsChanged(); });
+    c.addEventListener('pointerdown', () => select(i));
+    c.querySelector('.x').addEventListener('click', ev => { ev.stopPropagation(); removePend(i); });
+  });
+}
+function renderModes(){
+  const box = $('pModes'); box.innerHTML = '';
+  modes.w.forEach((w,n) => {
+    const row = document.createElement('div'); row.className = 'mode';
+    const bars = modes.u[n].map((u,i) => {
+      const h = Math.abs(u)*50;
+      return `<div class="b"><i style="background:${COLORS[i]};height:${h}%;${u >= 0 ? 'bottom:50%' : 'top:50%'}"></i></div>`;
+    }).join('');
+    row.innerHTML = `<span class="mn">${n+1}</span><div class="shape" aria-hidden="true">${bars}</div><span class="mt">${fmt(2*Math.PI/w)} s</span><button type="button" aria-label="Start normalsvingning ${n+1}">Start</button>`;
+    row.querySelector('button').addEventListener('click', () => excite('mode', n));
+    box.appendChild(row);
+  });
+  $('pRx').textContent = modes.w.length >= 2 && modes.w[1] - modes.w[0] > 1e-6 ? fmt(2*Math.PI/(modes.w[1]-modes.w[0]), 1) + ' s' : '–';
+}
+function renderLegend(){ $('pLegend').innerHTML = P.map((_,i) => `<span><i style="background:${COLORS[i]}"></i>Pendul ${i+1}</span>`).join(''); }
+function paramsChanged(){ setupCoupling(); computeModes(); renderModes(); cross = P.map(() => []); E0 = Math.max(sum(energies()), 1e-12); }
+function rebuild(){
+  setupCoupling(); buildScene(); computeModes(); renderCards(); renderModes(); renderLegend();
+  $('pRemove').disabled = P.length <= 1; $('pAdd').disabled = P.length >= MAXN;
+  restart();
+}
+function restart(){ cross = P.map(() => []); hist = []; t = 0; E0 = Math.max(sum(energies()), 1e-12); setStatus(); }
+function excite(kind, n){
+  const N = P.length; om = new Array(N).fill(0);
+  if(kind === 'push'){ th = new Array(N).fill(0); th[0] = amp; }
+  else if(kind === 'rand'){ th = P.map(() => (Math.random()*2-1)*amp); }
+  else if(kind === 'mode'){ th = modes.u[n].map(u => u*amp); }
+  else th = new Array(N).fill(0);
+  restart();
+}
+function addPend(){
+  if(P.length >= MAXN) return;
+  const ref = P[P.length-1] || {m:0.5, L:1.0};
+  P.push({m:ref.m, L:ref.L}); th.push(0); om.push(0);
+  selected = P.length-1; rebuild();
+}
+function removePend(i){
+  if(P.length <= 1) return;
+  P.splice(i,1); th.splice(i,1); om.splice(i,1);
+  if(selected >= P.length) selected = P.length-1;
+  rebuild();
+}
+function setStatus(){
+  const s = $('pStatus');
+  if(dragging >= 0) s.textContent = `Trækker pendul ${dragging+1}`;
+  else if(paused) s.textContent = 'Pause';
+  else if(E0 < 1e-9) s.textContent = 'I ro – træk i en kugle';
+  else s.textContent = 'Svinger';
+}
+function plotText(){
+  const a = $('pAng').checked;
+  $('pPlotTitle').textContent = a ? 'Udsvinget for hvert pendul' : 'Energien i hvert pendul';
+  $('pPlotSub').textContent = a ? 'Vinklen θ i grader. Læg mærke til svævningen: hurtige svingninger inden i en langsom indhylningskurve.'
+    : mode === 'snor' ? 'Hvert pendul får sin egen energi plus sin andel af energien i den udspændte snor. Summen er 100 %.'
+    : 'Hvert pendul får sin egen energi plus halvdelen af energien i de fjedre, det hænger i. Summen er 100 %.';
+}
+function setMode(m){
+  mode = m;
+  const sn = m === 'snor';
+  $('cSpring').classList.toggle('on', !sn); $('cSpring').setAttribute('aria-pressed', String(!sn));
+  $('cString').classList.toggle('on', sn); $('cString').setAttribute('aria-pressed', String(sn));
+  $('ctrlK').hidden = sn; $('ctrlS').hidden = !sn; $('chkSpr').hidden = sn;
+  $('pHint').textContent = sn ? 'Snoren er tegnet med sin beregnede nedbøjning, højst 30 cm i billedet'
+                              : 'Fjederen bliver rødlig, når den strækkes, og blålig, når den trykkes';
+  cam.az = sn ? 1.0 : 0.32; cam.el = sn ? 0.22 : 0.16; applyCam();
+  plotText(); rebuild(); excite('push');
+}
+function homePreset(){
+  P = [{m:0.05, L:0.4}, {m:0.05, L:0.4}]; th = [0,0]; om = [0,0]; selected = 0;
+  const el = $('pS'); el.value = 4.5; el.dispatchEvent(new Event('input'));
+  setMode('snor');
+}
+$('cSpring').addEventListener('click', () => { if(mode !== 'fjeder') setMode('fjeder'); });
+$('cString').addEventListener('click', () => { if(mode !== 'snor') setMode('snor'); });
+$('pHome').addEventListener('click', homePreset);
+$('pAdd').addEventListener('click', addPend);
+$('pRemove').addEventListener('click', () => removePend(selected));
+$('pPause').addEventListener('click', () => { paused = !paused; $('pPause').textContent = paused ? 'Fortsæt' : 'Pause'; setStatus(); });
+$('pPush').addEventListener('click', () => excite('push'));
+$('pRand').addEventListener('click', () => excite('rand'));
+$('pStill').addEventListener('click', () => excite('still'));
+$('pAng').addEventListener('change', plotText);
+if(paused) $('pPause').textContent = 'Fortsæt';
+bindSlider('pK', v => fmt(v) + ' N/m', v => { k = v; if(pend.length){ paramsChanged(); } });
+bindSlider('pS', v => fmt(v,1) + ' N', v => { Tstr = v; if(pend.length){ paramsChanged(); } });
+bindSlider('pA', v => v + '°', v => { amp = v/DEG; });
+bindSlider('pD', v => fmt(v,3) + ' s⁻¹', v => { gamma = v; });
+bindSlider('pT', v => fmt(v) + '×', v => { tempo = v; });
+
+/* ---------------- Graf ---------------- */
+const plot = $('pPlot'), pctx = plot.getContext('2d');
+let hist = [], lastSample = -1;
+const WIN = 40;
+function drawPlot(){
+  const dpr = Math.min(window.devicePixelRatio||1, 2), w = plot.clientWidth, h = plot.clientHeight;
+  if(!w || !h) return;
+  if(plot.width !== Math.round(w*dpr) || plot.height !== Math.round(h*dpr)){ plot.width = Math.round(w*dpr); plot.height = Math.round(h*dpr); }
+  const c = pctx; c.setTransform(dpr,0,0,dpr,0,0); c.clearRect(0,0,w,h);
+  const L = 40, R = 10, T = 10, B = 24, pw = w-L-R, ph = h-T-B;
+  const angle = $('pAng').checked;
+  const tEnd = Math.max(t, WIN), tStart = tEnd - WIN;
+  let ymin = 0, ymax = 1;
+  if(angle){ let mx = 1; for(const s of hist) for(const a of s.th) mx = Math.max(mx, Math.abs(a)); mx = Math.ceil(mx/5)*5; ymin = -mx; ymax = mx; }
+  const X = tt => L + (tt-tStart)/WIN*pw, Y = v => T + (ymax-v)/(ymax-ymin)*ph;
+  c.font = '11px Segoe UI, sans-serif'; c.fillStyle = '#a0a0a8'; c.strokeStyle = 'rgba(255,255,255,0.08)'; c.lineWidth = 1;
+  const ticks = angle ? [ymin, ymin/2, 0, ymax/2, ymax] : [0, 0.25, 0.5, 0.75, 1];
+  c.textAlign = 'right'; c.textBaseline = 'middle';
+  for(const v of ticks){ c.beginPath(); c.moveTo(L, Y(v)); c.lineTo(L+pw, Y(v)); c.stroke(); c.fillText(angle ? fmt(v,0)+'°' : Math.round(v*100)+' %', L-5, Y(v)); }
+  c.textAlign = 'center'; c.textBaseline = 'top';
+  const t0 = Math.ceil(tStart/10)*10;
+  for(let tt=t0; tt<=tEnd+1e-9; tt+=10){ c.fillText(fmt(tt,0)+' s', X(tt), T+ph+6); }
+  if(hist.length < 2) return;
+  c.lineWidth = 1.6;
+  for(let i=0;i<P.length;i++){
+    c.strokeStyle = COLORS[i]; c.beginPath(); let first = true;
+    for(const s of hist){ if(s.t < tStart) continue; const v = angle ? s.th[i] : s.e[i]; if(v === undefined) continue; const x = X(s.t), y = Y(v); if(first){ c.moveTo(x,y); first = false; } else c.lineTo(x,y); }
+    c.stroke();
+  }
+}
+
+/* ---------------- Løkke ---------------- */
+function fit(){
+  const w = canvas.clientWidth, h = canvas.clientHeight; if(!w || !h) return;
+  const pr = renderer.getPixelRatio();
+  if(canvas.width !== Math.floor(w*pr) || canvas.height !== Math.floor(h*pr)){ renderer.setSize(w, h, false); camera.aspect = w/h; camera.updateProjectionMatrix(); }
+}
+let visible = true;
+if('IntersectionObserver' in window) new IntersectionObserver(es => { visible = es[0].isIntersecting; }, {threshold:0.02}).observe(stage);
+let last = performance.now(), lastUI = 0;
+function loop(now){
+  const dt = Math.min(0.05, (now-last)/1000); last = now;
+  if(visible){
+    if(!paused && dragging < 0){
+      const H = dt*tempo, n = Math.max(1, Math.ceil(H/0.0016));
+      for(let j=0;j<n;j++) step(H/n);
+    }
+    const E = energies(), Et = sum(E);
+    if(t - lastSample >= 0.05 || t < lastSample){
+      lastSample = t;
+      hist.push({t, e: E.map(x => Et > 1e-12 ? x/Et : 0), th: th.map(a => a*DEG)});
+      while(hist.length && hist[0].t < t - WIN - 1) hist.shift();
+    }
+    updateScene();
+    if(now - lastUI > 100){
+      lastUI = now;
+      $('pHud').innerHTML = `t = ${fmt(t,1)} s<br>${P.length} ${P.length === 1 ? 'pendul' : 'penduler'} · ${mode === 'snor' ? 'udspændt snor' : 'fjedre'}`;
+      $('pRt').textContent = fmt(t,1) + ' s';
+      $('pRE').textContent = E0 > 1e-9 ? fmt(Et/E0, 3) : '–';
+      cardRefs.forEach((r,i) => {
+        const cr = cross[i], T0 = 2*Math.PI*Math.sqrt(P[i].L/g);
+        r.tm.textContent = cr && cr.length >= 2 && t - cr[cr.length-1] < 2.5*T0 ? fmt((cr[cr.length-1]-cr[0])/(cr.length-1)) + ' s' : '–';
+        r.te.textContent = Et > 1e-9 ? Math.round(E[i]/Et*100) + ' %' : '–';
+      });
+      setStatus();
+    }
+    drawPlot();
+    fit(); renderer.render(scene, camera);
+  }
+  requestAnimationFrame(loop);
+}
+rebuild();
+excite('push');
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
