@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Skovens ekko – og hvad det har med røntgendiffraktion at gøre</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+<script>
+window.MathJax = { tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] } };
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<style>
+:root{
+  --bg:#0d1811; --panel:#132319; --line:#243b2b; --ink:#e8efe6; --muted:#98ab9a;
+  --accent:#9bd48e; --accent-ink:#0b2210; --warm:#e9b54a; --echo:#8cc8f0;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Atkinson Hyperlegible",system-ui,sans-serif;font-size:17px;line-height:1.5}
+a{color:var(--accent)}
+.wrap{max-width:1180px;margin:0 auto;padding:14px 14px 48px}
+.back{font-size:15px;text-decoration:none;color:var(--muted)}
+.back:hover{color:var(--accent)}
+h1{font-family:"Source Serif 4",Georgia,serif;font-weight:600;font-size:clamp(30px,6vw,48px);line-height:1.1;margin:10px 0 6px;letter-spacing:-.01em}
+.lede{color:var(--muted);max-width:64ch;margin:0 0 18px}
+.layout{display:grid;gap:14px;grid-template-areas:"map" "ctrl" "echo" "spec"}
+.a-map{grid-area:map;min-width:0}.a-echo{grid-area:echo;min-width:0}.a-spec{grid-area:spec;min-width:0}.controls{grid-area:ctrl}
+@media(min-width:960px){
+  .layout{grid-template-columns:340px minmax(0,1fr) minmax(0,1fr);grid-template-areas:"ctrl map map" "ctrl echo spec";align-items:start}
+  .controls{position:sticky;top:12px}
+}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+.ctrl{margin-bottom:12px}
+.ctrl .row{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.ctrl .val{font-variant-numeric:tabular-nums;color:var(--accent);font-weight:700}
+.ctrl small{display:block;color:var(--muted);font-size:14px;line-height:1.35}
+input[type=range]{width:100%;height:34px;accent-color:var(--accent);margin:2px 0}
+button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:#1a3222;color:var(--ink);padding:10px 14px;min-height:44px}
+button:hover{border-color:var(--accent)}
+button:focus-visible,input:focus-visible,summary:focus-visible,canvas:focus-visible{outline:3px solid var(--warm);outline-offset:2px}
+button:disabled{opacity:.45;cursor:not-allowed}
+.play{width:100%;background:var(--accent);color:var(--accent-ink);border:0;font-weight:700;font-size:19px;min-height:54px}
+.play:hover{filter:brightness(1.07)}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.btnrow button{flex:1 1 auto;font-size:15px}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:12px}
+.seg button{flex:1;border:0;border-radius:0;min-height:44px;background:transparent;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:#244a30;color:var(--ink);font-weight:700}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:15px;margin:4px 0 12px;cursor:pointer}
+.check input{width:22px;height:22px;accent-color:var(--accent);margin-top:1px;flex:none}
+.status{margin-top:10px;font-size:15px;color:var(--muted);min-height:1.5em}
+.tip{font-size:14px;color:var(--muted);margin:6px 0 0}
+.facts{margin:12px 0 0;padding:0;list-style:none;font-size:15px;border-top:1px solid var(--line)}
+.facts li{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--line)}
+.facts b{font-variant-numeric:tabular-nums;text-align:right}
+.facts span{color:var(--muted)}
+.facts li[hidden]{display:none}
+figure{margin:0}
+figure h2{font-family:"Source Serif 4",Georgia,serif;font-weight:600;font-size:21px;margin:0 0 6px}
+figcaption{color:var(--muted);font-size:15px;margin-top:8px;max-width:70ch}
+.canvasbox{position:relative;width:100%;border-radius:10px;overflow:hidden;background:#08120b;border:1px solid var(--line)}
+.canvasbox canvas{display:block;width:100%;height:100%}
+#mapBox{aspect-ratio:10/13;max-height:80vh;margin:0 auto}
+@media(min-width:960px){#mapBox{aspect-ratio:16/10}}
+#echoBox,#specBox{aspect-ratio:4/3}
+@media(max-width:600px){#specBox{aspect-ratio:4/3.4}}
+#mapBox canvas{touch-action:manipulation;cursor:crosshair}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:14px;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:18px;height:3px;vertical-align:middle;margin-right:6px;border-radius:2px}
+.theory{margin-top:22px;max-width:780px}
+.theory h2{font-family:"Source Serif 4",Georgia,serif;font-weight:600;font-size:clamp(24px,4vw,30px);margin:0 0 8px}
+details{border-top:1px solid var(--line);padding:4px 0}
+details:last-of-type{border-bottom:1px solid var(--line)}
+summary{cursor:pointer;font-family:"Source Serif 4",Georgia,serif;font-size:20px;font-weight:600;padding:10px 0}
+details p,details li{font-family:"Source Serif 4",Georgia,serif;font-size:18px;line-height:1.62}
+details .eq{overflow-x:auto;padding:4px 0}
+table.ana{border-collapse:collapse;font-family:"Source Serif 4",Georgia,serif;font-size:17px;width:100%;margin:6px 0 12px}
+.tablewrap{overflow-x:auto}
+table.ana th,table.ana td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left;vertical-align:top}
+table.ana th{font-family:"Atkinson Hyperlegible",sans-serif;font-size:15px;color:var(--muted);font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="index.html">← Natur, fysik, kemi og matematik</a>
+  <h1>Skovens ekko</h1>
+  <p class="lede">Klap i hænderne i en skov, og hver stamme sender en lille bid af klappet tilbage. I en tilfældig naturskov smelter de sammen til en hvislende hale. I en plantage, hvor træerne står i rækker, bliver ekkoet et regelmæssigt tog af ekkoer, næsten en tone, på samme måde som røntgenstråler giver skarpe pletter, når de spredes i en krystal.</p>
+
+  <div class="layout">
+    <figure class="panel a-map">
+      <h2>Skoven set oppefra</h2>
+      <div class="canvasbox" id="mapBox"><canvas id="map" tabindex="0" aria-label="Kort over skoven. Tryk for at stille dig et sted og klappe."></canvas></div>
+      <figcaption>Tryk et sted for at stille dig dér og klappe. Skoven er 100 × 100 m (1 hektar); forneden ligger en eng, hvor du står og klapper mod skovbrynet. Du kan også gå ind i skoven. Bølgerne vises 20 gange langsommere end i virkeligheden; lyden høres i rigtig tid.</figcaption>
+    </figure>
+
+    <aside class="panel controls" aria-label="Indstillinger">
+      <button id="clap" class="play">Klap</button>
+      <div class="btnrow">
+        <button id="replay" disabled>Afspil igen</button>
+        <button id="wav" disabled>Gem lyd (.wav)</button>
+      </div>
+      <div class="status" id="status" role="status">Tryk på kortet eller på knappen.</div>
+      <p class="tip">Brug gerne høretelefoner; ekkoet er i stereo. På iPhone skal lydløs-knappen være slået fra.</p>
+      <hr style="border:0;border-top:1px solid var(--line);margin:14px 0">
+
+      <div class="seg" role="group" aria-label="Skovtype">
+        <button id="tNat" aria-pressed="true">Naturskov</button>
+        <button id="tPlant" aria-pressed="false">Plantage</button>
+      </div>
+      <div class="ctrl">
+        <div class="row"><label for="dens">Træer pr. hektar</label><span class="val" id="vDens"></span></div>
+        <input type="range" id="dens" min="100" max="1500" step="25" value="400">
+      </div>
+      <div class="ctrl">
+        <div class="row"><label for="diam">Stammetykkelse</label><span class="val" id="vDiam"></span></div>
+        <input type="range" id="diam" min="10" max="80" step="2" value="30">
+        <small>Gennemsnitlig diameter i brysthøjde.</small>
+      </div>
+      <div class="ctrl" id="disWrap" hidden>
+        <div class="row"><label for="dis">Uorden i rækkerne</label><span class="val" id="vDis"></span></div>
+        <input type="range" id="dis" min="0" max="40" step="1" value="0">
+        <small>Hvor meget træerne står skævt, i procent af afstanden mellem dem. Svarer til atomernes varmebevægelse i en krystal.</small>
+      </div>
+      <label class="check"><input type="checkbox" id="noDirect"> <span>Fjern det direkte klap, så du kun hører ekkoet</span></label>
+
+      <ul class="facts">
+        <li><span>Første ekko</span><b id="fFirst">–</b></li>
+        <li><span>Middel fri vejlængde</span><b id="fMfp">–</b></li>
+        <li id="liBragg" hidden><span>Bragg-grundtone \(c/2d\)</span><b id="fBragg">–</b></li>
+        <li id="liDW" hidden><span>Debye–Waller ved 1 kHz</span><b id="fDW">–</b></li>
+      </ul>
+    </aside>
+
+    <figure class="panel a-echo">
+      <h2>Ekkogram</h2>
+      <div class="canvasbox" id="echoBox"><canvas id="echo"></canvas></div>
+      <div class="legend">
+        <span><i style="background:var(--echo)"></i>ekkoets energi</span>
+        <span><i style="background:var(--warm)"></i>\(t^{-2}\)</span>
+        <span><i style="background:var(--muted)"></i>\(t^{-2}\) med dæmpning i skoven</span>
+      </div>
+      <figcaption>Energien i ekkoet mod tiden efter klappet, begge akser logaritmiske. En ret linje betyder en potenslov.</figcaption>
+    </figure>
+
+    <figure class="panel a-spec">
+      <h2>Ekkoet i tid</h2>
+      <div class="canvasbox" id="specBox"><canvas id="spec"></canvas></div>
+      <div class="legend">
+        <span><i style="background:var(--echo)"></i>ekkoets styrke</span>
+        <span id="lgBragg" hidden><i style="background:var(--warm)"></i>forventet ekko fra hver række, afstand \(2d/c\)</span>
+      </div>
+      <figcaption>Selve ekkoet de første 300 ms efter det første ekko (som lydniveau i dB). I naturskoven kommer ekkoerne uregelmæssigt. I plantagen kommer der et ekko fra hver række med fast mellemrum: skovens „krystalgitter“ kan ses direkte.</figcaption>
+    </figure>
+  </div>
+
+  <section class="theory">
+    <h2>Fysikken bag</h2>
+
+    <details open>
+      <summary>Ekkoet fra én stamme</summary>
+      <p>En stamme er en lodret cylinder med radius \(a\). Når klappet rammer den i afstanden \(r\), bliver lyden kastet tilbage fra den del af stammen, der vender mod dig. Lodret virker stammen som et plant spejl, vandret som et krumt spejl, der spreder lyden. Strålegangen giver</p>
+      <div class="eq">\[p_\text{ekko} \approx \frac{p_0}{2r}\sqrt{\frac{a}{2r}}, \qquad E_\text{ekko} \propto \frac{a}{r^3}.\]</div>
+      <p>Det gælder, når bølgelængden er kortere end stammens omkreds (\(ka \gg 1\)). For dybe toner (\(ka &lt; 1\)) glider lyden uden om stammen, og ekkoet svækkes som \((ka)^{3/2}\) i amplitude. En stamme på 30 cm kaster derfor mest tilbage over ca. 350 Hz. Klappets energi ligger omkring 1–2 kHz, så det passer fint.</p>
+      <p>Træets højde betyder næsten intet. Den del af stammen, der bidrager, er en Fresnel-zone med højden ca. \(\sqrt{\lambda r}\), for 1 kHz og 20 m kun et par meter. Stammen er næsten altid højere end det. Derfor er skyderen for træhøjde fjernet og erstattet af stammetykkelsen, som betyder meget.</p>
+    </details>
+
+    <details>
+      <summary>Hvorfor energien falder som \(t^{-2}\)</summary>
+      <p>Et ekko, der kommer tilbage efter tiden \(t\), kommer fra træer i afstanden \(r = ct/2\). Står træerne tilfældigt med tætheden \(n\) pr. m², er antallet af træer i en ring med bredden \(dr\) lig med \(2\pi n r\,dr\). Det vokser med \(t\). Hvert ekko har energien \(\propto a/r^3 \propto t^{-3}\). Samlet:</p>
+      <div class="eq">\[E(t)\,dt \;\propto\; \underbrace{t\,dt}_{\text{antal træer}} \cdot \underbrace{t^{-3}}_{\text{pr. træ}} \;=\; t^{-2}\,dt .\]</div>
+      <p>Potensloven kommer altså af geometrien: en todimensional skov af høje cylindre. Kugleformede spredere i et tredimensionalt rum ville give \(t^{-3}\) i stedet. Ekkogrammet viser, at den beregnede lyd følger \(t^{-2}\), indtil dæmpningen gennem skoven tager over.</p>
+      <p>En tidligere version af siden forklarede \(t^{-2}\) med skovbundens absorption og lyd, der forsvinder op gennem kronerne. De to ting gør ekkoet svagere, men det er ikke dem, der giver eksponenten \(-2\).</p>
+    </details>
+
+    <details>
+      <summary>Det effektive bølgetal: skoven som et medium</summary>
+      <p>Lyden, der når ud til de fjerne træer, er selv blevet svækket af de nærmere træer, fordi de har spredt noget af den væk. Man beskriver det med et komplekst effektivt bølgetal. For et tyndt medium af spredere gælder (Foldy)</p>
+      <div class="eq">\[k_\text{eff} \approx k + \frac{2\pi n}{k} f(0), \qquad \operatorname{Im} k_\text{eff} = \frac{n\,\sigma_\text{ext}}{2},\]</div>
+      <p>hvor \(f(0)\) er spredningsamplituden lige fremad. Den anden ligning er det optiske teorem: den imaginære del af fremad-amplituden fortæller, hvor meget energi der fjernes fra den direkte bølge. For en tyk stamme er ekstinktionsbredden \(\sigma_\text{ext} \approx 4a\), dobbelt så stor som stammens skygge (ekstinktionsparadokset). Den middel frie vejlængde er \(\ell = 1/(n\sigma_\text{ext})\). Ekkoet svækkes med \(e^{-r/\ell}\) i amplitude på vej ud og hjem, og det er den grå kurve i ekkogrammet.</p>
+      <p>Når lyden har gået mange frie vejlængder, bliver bevægelsen fra træ til træ en slags tilfældig vandring (en Wiener-proces), og lyden diffunderer. I en almindelig skov er \(\ell\) typisk 30–100 m, så de første tiendedele sekund af ekkoet domineres af enkeltspredning, som her.</p>
+    </details>
+
+    <details>
+      <summary>Plantagen som krystal: Bragg-ekko</summary>
+      <p>Stil træerne i et kvadratisk gitter med afstanden \(d\). Rækkerne vinkelret på din synsretning ligger i afstandene \(d, 2d, 3d,\dots\), så ekkoerne fra dem kommer med den faste tidsafstand \(2d/c\). Et regelmæssigt tog af ekkoer høres som en tone med grundfrekvensen \(c/2d\) og alle dens overtoner. Det er Braggs lov for tilbagekastning (\(\theta = 90^\circ\)):</p>
+      <div class="eq">\[2d\sin\theta = m\lambda \quad\Longrightarrow\quad f_m = m\,\frac{c}{2d}.\]</div>
+      <p>Andre familier af rækker giver deres egne kamme: de diagonale med \(d/\sqrt2\), de næste med \(d/\sqrt5\) og så videre, præcis som gitterplanerne \((hk)\) i en krystal med \(d_{hk} = d/\sqrt{h^2+k^2}\). Samme fænomen høres ved et stakit eller en lang trappe. Den mest kendte trappe er pyramiden i Chichén Itzá, hvor et klap giver et kvidrende ekko.</p>
+      <p>Stil dig på engen foran plantagen og klap. Hver række sender et ekko tilbage, og i panelet „Ekkoet i tid“ lander de præcis på de stiplede linjer med afstanden \(2d/c\). Øret hører det som en summende, gentaget lyd med grundtonen \(c/2d\). Men kig efter: efter hvert rækkeekko følger en lille hale af svagere ekkoer. De kommer fra stammerne længere ude til siden i samme række, som ligger lidt længere væk. En række af enkelte stammer er nemlig ikke et plant spejl for en lydkilde tæt på; kun de nærmeste stammer ligger inden for Fresnel-zonen. Derfor bliver Bragg-kammen i spektret sløret, og tonen er kun svag i en rigtig plantage.</p>
+      <p>Røntgenstråler har det lettere: kilden er langt væk, så bølgen er plan, og hvert gitterplan indeholder millioner af atomer. Det er derfor, Bragg-pletterne fra en krystal er så skarpe. Inde midt i plantagen er virkningen endnu svagere, fordi de to-tre nærmeste stammer dominerer ekkoet fuldstændig.</p>
+    </details>
+
+    <details>
+      <summary>Uorden og Debye–Waller-faktoren</summary>
+      <p>I en krystal svinger atomerne omkring deres pladser. Et øjebliksbillede viser dem forskudt med en tilfældig afstand \(u\). Den spredte bølge fra hvert atom får derved en tilfældig fase \(\mathbf{q}\cdot\mathbf{u}\), og den kohærente del, Bragg-toppen, svækkes med Debye–Waller-faktoren</p>
+      <div class="eq">\[I = I_0\,e^{-2W}, \qquad 2W = q^2\langle u^2\rangle .\]</div>
+      <p>Ved tilbagekastning er \(q = 2k\). Flytter man plantagens træer tilfældigt med spredningen \(\sigma\), bliver \(2W = 4k^2\sigma^2\). Høje ordener, og dermed høje frekvenser, forsvinder først, præcis som de yderste røntgenpletter svinder, når krystallen varmes op. Energien går ikke tabt; den bliver til diffus støj mellem toppene, svarende til termisk diffus spredning. Prøv at skrue langsomt op for uordenen og se på panelet „Ekkoet i tid“: rækkeekkoerne glider væk fra de stiplede linjer og flyder ud. Allerede nogle få procents uorden er nok, fordi frekvenserne i et klap er høje. Det forklarer også, hvorfor en rigtig plantage sjældent ringer tydeligt: træer plantes ikke med centimeters nøjagtighed.</p>
+    </details>
+
+    <details>
+      <summary>Hvor sammenligningen holder, og hvor den halter</summary>
+      <div class="tablewrap"><table class="ana">
+        <tr><th>Skov</th><th>Krystal og røntgen</th></tr>
+        <tr><td>Stamme</td><td>Atom</td></tr>
+        <tr><td>Plantage i rækker</td><td>Krystalgitter</td></tr>
+        <tr><td>Rækker med afstanden \(d\)</td><td>Gitterplaner \((hk)\)</td></tr>
+        <tr><td>Tone i ekkoet, \(f_m = mc/2d\)</td><td>Bragg-pletter</td></tr>
+        <tr><td>Skævt plantede træer</td><td>Termisk bevægelse, Debye–Waller</td></tr>
+        <tr><td>Naturskov</td><td>Glas eller væske</td></tr>
+      </table></div>
+      <p>Den oprindelige side sammenlignede naturskoven med en krystal, hvis atomer ryster. Det er ikke helt træffende. En naturskov har ingen rækker overhovedet; den svarer til et amorft stof som glas eller en væske. Her giver røntgenspredning ingen skarpe pletter, kun brede, diffuse ringe, fordi atomerne ikke kan komme tættere end en vis afstand. Træer har på samme måde en mindsteafstand, så også naturskoven har lidt kortrækkende orden. Debye–Waller-billedet passer derimod præcist på en plantage med lidt skævt plantede træer.</p>
+      <p>En forskel mere: røntgenstråler spredes svagt, så krystallen kan beskrives med enkeltspredning. I en tæt skov kan lyden spredes flere gange. Modellen her regner kun med enkeltspredning plus den gennemsnitlige dæmpning.</p>
+    </details>
+
+    <details>
+      <summary>Modellens grænser</summary>
+      <p>Stammerne er stive, lodrette cylindre. Kroner, grene, blade og skovbunden er ikke med, heller ikke vind og temperaturlag. Luftens absorption svarer til 20 °C og 50 % luftfugtighed. Retningen høres ved en simpel tidsforskel og lydstyrkeforskel mellem ørerne; du vender mod toppen af kortet.</p>
+    </details>
+  </section>
+</div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const fmt = (x, d=0) => x.toLocaleString('da-DK', {minimumFractionDigits:d, maximumFractionDigits:d, useGrouping:false});
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+function gaussFrom(rnd){ let u=0,v=0; while(u===0) u=rnd(); v=rnd(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+
+function fft(re, im, inverse){
+  const n = re.length;
+  for (let i=1, j=0; i<n; i++){
+    let bit = n>>1; for (; j & bit; bit >>= 1) j ^= bit; j ^= bit;
+    if (i<j){ let t=re[i]; re[i]=re[j]; re[j]=t; t=im[i]; im[i]=im[j]; im[j]=t; }
+  }
+  for (let len=2; len<=n; len<<=1){
+    const ang = 2*Math.PI/len*(inverse?1:-1), wr=Math.cos(ang), wi=Math.sin(ang), half=len>>1;
+    for (let i=0; i<n; i+=len){
+      let cr=1, ci=0;
+      for (let j=0; j<half; j++){
+        const a=i+j, b=a+half, tr=re[b]*cr-im[b]*ci, ti=re[b]*ci+im[b]*cr;
+        re[b]=re[a]-tr; im[b]=im[a]-ti; re[a]+=tr; im[a]+=ti;
+        const t=cr*wr-ci*wi; ci=cr*wi+ci*wr; cr=t;
+      }
+    }
+  }
+  if (inverse){ for (let i=0;i<n;i++){ re[i]/=n; im[i]/=n; } }
+}
+function fitCanvas(c){
+  const dpr = Math.min(window.devicePixelRatio||1, 2), w = c.clientWidth, h = c.clientHeight;
+  c.width = Math.round(w*dpr); c.height = Math.round(h*dpr);
+  const ctx = c.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); return {ctx,w,h};
+}
+
+// ---------- skoven ----------
+const C = 343, WORLD = 100, WH = 130, R_EAR = 0.4, SLOW = 20;   // skov 100×100 m, eng forneden
+const state = { type:'nat', n:400, D:0.30, dis:0, trees:[], L:{x:50,y:118}, d:5 };
+
+function generate(){
+  const rnd = mulberry32(state.type==='nat' ? 1234+state.n : 777);
+  const trees = [];
+  const d = WORLD/Math.sqrt(state.n);
+  if (state.type === 'nat'){
+    const dmin = 0.35*d, cell = dmin, gw = Math.ceil(WORLD/cell), grid = new Map();
+    let tries = 0;
+    while (trees.length < state.n && tries < 60*state.n){
+      tries++;
+      const x = rnd()*WORLD, y = rnd()*WORLD, gx = Math.floor(x/cell), gy = Math.floor(y/cell);
+      let ok = true;
+      for (let i=-2;i<=2 && ok;i++) for (let j=-2;j<=2 && ok;j++){
+        const list = grid.get((gx+i)*1000+(gy+j)); if (!list) continue;
+        for (const t of list) if ((t.x-x)**2+(t.y-y)**2 < dmin*dmin){ ok=false; break; }
+      }
+      if (!ok) continue;
+      const t = {bx:x, by:y, gx:0, gy:0, u:gaussFrom(rnd)};
+      t.x = x; t.y = y; trees.push(t);
+      const key = gx*1000+gy; if (!grid.has(key)) grid.set(key,[]); grid.get(key).push(t);
+    }
+    state.d = d;
+  } else {
+    const m = Math.max(3, Math.round(WORLD/d)), dd = WORLD/m;
+    for (let i=0;i<m;i++) for (let j=0;j<m;j++){
+      trees.push({bx:dd/2+i*dd, by:dd/2+j*dd, gx:gaussFrom(rnd), gy:gaussFrom(rnd), u:gaussFrom(rnd)});
+    }
+    state.d = dd;
+  }
+  state.trees = trees;
+  placeTrees();
+}
+function placeTrees(){
+  const s = state.type==='plant' ? state.dis*state.d : 0;
+  const spread = state.type==='plant' ? 0.08 : 0.25;
+  for (const t of state.trees){
+    t.x = t.bx + s*t.gx; t.y = t.by + s*t.gy;
+    t.a = Math.max(0.03, state.D/2*Math.exp(spread*t.u));
+  }
+  let sa = 0; for (const t of state.trees) sa += t.a; state.aMean = sa/state.trees.length;
+}
+
+// ---------- akustik ----------
+// vandret spredning fra en stiv cylinder: geometrisk for ka≫1, Rayleigh (ka)^{3/2} for ka≪1
+function Gcyl(ka){ const x3 = ka*ka*ka; return Math.sqrt(x3/(1+x3)); }
+// luftens absorption, dB pr. meter (20 °C, 50 %)
+function airDbPerM(f){ return 3e-6*f + 1.5e-9*f*f; }
+function sigmaExt(f, a){ const k = 2*Math.PI*f/C, g = Gcyl(k*a); return 4*a*g*g; }
+
+let audioCtx = null, lastBuffer = null, lastStereo = null, lastSR = 48000, analysis = null;
+function ensureAudio(){
+  if (!audioCtx){ const AC = window.AudioContext||window.webkitAudioContext; audioCtx = new AC(); }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function makeClap(sr){
+  // håndklap: kort støjstød plus en dæmpet resonans i de hule hænder (~1,2 kHz)
+  const n = Math.round(0.012*sr), x = new Float32Array(n), rnd = mulberry32(99);
+  for (let i=0;i<n;i++){
+    const t = i/sr, env = Math.exp(-t/0.0016)*(1-Math.exp(-t/0.00015));
+    x[i] = env*(0.75*Math.sin(2*Math.PI*1200*t) + 0.6*(2*rnd()-1)) + Math.exp(-t/0.0004)*(2*rnd()-1)*0.5;
+  }
+  return x;
+}
+
+function synthesize(sr){
+  const NK = 1024, SH = 256;
+  const clap = makeClap(sr);
+  const cRe = new Float64Array(NK), cIm = new Float64Array(NK);
+  cRe.set(clap); fft(cRe, cIm, false);
+  const nDens = state.trees.length/(WORLD*WORLD);
+  const cache = new Map();
+  function kernel(a, r){
+    const ai = Math.round(a*50), di = Math.round(r/1.5);
+    const key = ai*100000 + di;
+    if (cache.has(key)) return cache.get(key);
+    const aq = ai/50, rq = Math.max(0.5, di*1.5);
+    const re = new Float64Array(NK), im = new Float64Array(NK);
+    for (let j=0;j<=NK/2;j++){
+      const f = j*sr/NK, k = 2*Math.PI*f/C;
+      const g = Gcyl(k*aq) * Math.pow(10, -airDbPerM(f)*2*rq/20) * Math.exp(-nDens*sigmaExt(f, state.aMean)*rq);
+      re[j] = cRe[j]*g; im[j] = cIm[j]*g;
+      if (j>0 && j<NK/2){ re[NK-j] = re[j]; im[NK-j] = -im[j]; }
+    }
+    fft(re, im, true);
+    const out = new Float32Array(NK);
+    for (let i=0;i<NK;i++) out[(i+SH)%NK] = re[i];
+    cache.set(key, out); return out;
+  }
+  const dur = 2*Math.hypot(WORLD, WH)/C + 0.12, len = Math.ceil(dur*sr);
+  const Lc = new Float32Array(len), Rc = new Float32Array(len), E = new Float32Array(len);
+  const t0 = 0.03;
+  function addFrac(buf, k, pos, amp){
+    const i0 = Math.floor(pos), fr = pos - i0, a0 = amp*(1-fr), a1 = amp*fr;
+    for (let j=0;j<k.length;j++){ const idx = i0+j; if (idx<0) continue; if (idx+1>=len) break; buf[idx] += a0*k[j]; buf[idx+1] += a1*k[j]; }
+  }
+  let first = Infinity;
+  const hits = [];
+  for (const t of state.trees){
+    const dx = t.x - state.L.x, dy = t.y - state.L.y, rc = Math.hypot(dx, dy), r = rc - t.a;
+    if (r < 0.3) continue;
+    const amp = Math.sqrt(t.a/(2*r))/(2*r);
+    const k = kernel(t.a, r);
+    const tt = 2*r/C;
+    first = Math.min(first, tt);
+    const s = dx/rc;                                   // sin(azimut); du vender mod kortets top
+    const itd = 0.00033*s, gl = Math.sqrt(0.5*(1-0.55*s)), gr = Math.sqrt(0.5*(1+0.55*s));
+    addFrac(Lc, k, (t0+tt+itd)*sr - SH, amp*gl);
+    addFrac(Rc, k, (t0+tt-itd)*sr - SH, amp*gr);
+    addFrac(E,  k, (t0+tt)*sr - SH, amp);
+    hits.push({t:t, r:rc, amp});
+  }
+  // direkte klap
+  const dir = new Float32Array(len);
+  for (let i=0;i<clap.length;i++) dir[Math.round(t0*sr)+i] = clap[i]/R_EAR;
+  return {Lc, Rc, E, dir, clap, len, sr, first, hits, t0};
+}
+
+function buildOutput(res, noDirect){
+  const {Lc, Rc, dir, len} = res;
+  const L = new Float32Array(len), R = new Float32Array(len);
+  const g = noDirect ? 0 : 0.7071;
+  let pk = 0;
+  for (let i=0;i<len;i++){ L[i] = Lc[i] + g*dir[i]; R[i] = Rc[i] + g*dir[i]; pk = Math.max(pk, Math.abs(L[i]), Math.abs(R[i])); }
+  const s = pk ? 0.9/pk : 1;
+  for (let i=0;i<len;i++){ L[i]*=s; R[i]*=s; }
+  return [L, R];
+}
+
+// ---------- analyse ----------
+function analyse(res){
+  const {E, sr, t0} = res;
+  // ekkogram i logaritmiske tidsintervaller
+  const tMin = 0.004, tMax = 0.95, nb = 42, bins = [];
+  for (let b=0;b<nb;b++){
+    const ta = tMin*Math.pow(tMax/tMin, b/nb), tb = tMin*Math.pow(tMax/tMin, (b+1)/nb);
+    const ia = Math.round((t0+ta)*sr), ib = Math.min(E.length, Math.round((t0+tb)*sr));
+    let s = 0; for (let i=ia;i<ib;i++) s += E[i]*E[i];
+    bins.push({t:Math.sqrt(ta*tb), e:s/Math.max(1,(ib-ia)), n:ib-ia});
+  }
+  return {bins};
+}
+
+// ---------- tegning ----------
+let anim = null;   // {start, hits}
+function drawMap(){
+  const cv = $('map'); const {ctx, w, h} = fitCanvas(cv);
+  const sc = Math.min(w/WORLD, h/WH), side = WORLD*sc, sideH = WH*sc, ox = (w-side)/2, oy = (h-sideH)/2;
+  ctx.fillStyle = '#08120b'; ctx.fillRect(0,0,w,h);
+  ctx.fillStyle = '#0f2014'; ctx.fillRect(ox,oy,side,side);
+  ctx.fillStyle = '#23331a'; ctx.fillRect(ox,oy+side,side,sideH-side);
+  ctx.font = '13px "Atkinson Hyperlegible", sans-serif'; ctx.fillStyle = '#98ab9a'; ctx.textAlign = 'right'; ctx.textBaseline = 'top';
+  ctx.fillText('eng', ox+side-8, oy+side+6);
+  const X = x => ox + x*sc, Y = y => oy + y*sc;
+  const now = performance.now()/1000;
+  let tSim = -1;
+  if (anim) tSim = (now - anim.start)/SLOW;
+  // bølger
+  if (anim && tSim >= 0){
+    const R0 = C*tSim;
+    ctx.save(); ctx.beginPath(); ctx.rect(ox,oy,side,sideH); ctx.clip();
+    if (R0 < WH*1.6){
+      ctx.strokeStyle = `rgba(255,255,255,${Math.max(0, 0.9 - R0/150)})`; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(X(state.L.x), Y(state.L.y), R0*sc, 0, 2*Math.PI); ctx.stroke();
+    }
+    ctx.lineWidth = 1;
+    for (const hh of anim.hits){
+      const rr = C*tSim - hh.r;
+      if (rr <= 0 || rr > hh.r + 3) continue;
+      const alpha = Math.min(0.75, hh.amp*60) * (1 - rr/(hh.r+3));
+      if (alpha < 0.02) continue;
+      ctx.strokeStyle = `rgba(140,200,240,${alpha})`;
+      ctx.beginPath(); ctx.arc(X(hh.t.x), Y(hh.t.y), rr*sc, 0, 2*Math.PI); ctx.stroke();
+    }
+    ctx.restore();
+    if (R0 > 2*Math.hypot(WORLD,WH)) anim = null;
+  }
+  // træer
+  for (const t of state.trees){
+    const lit = anim && tSim >= 0 && Math.abs(C*tSim - Math.hypot(t.x-state.L.x, t.y-state.L.y)) < 3;
+    ctx.fillStyle = lit ? '#e9f7d8' : '#6fae62';
+    ctx.beginPath(); ctx.arc(X(t.x), Y(t.y), Math.max(1.4, t.a*sc), 0, 2*Math.PI); ctx.fill();
+  }
+  // lytteren
+  const lx = X(state.L.x), ly = Y(state.L.y);
+  ctx.fillStyle = '#e9b54a'; ctx.strokeStyle = '#08120b'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(lx, ly-9); ctx.lineTo(lx-6, ly+6); ctx.lineTo(lx+6, ly+6); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.font = '13px "Atkinson Hyperlegible", sans-serif'; ctx.fillStyle = '#e9b54a'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText('dig', lx+10, ly);
+  // målestok
+  const bx = ox+12, by = oy+sideH-14;
+  ctx.strokeStyle = '#e8efe6'; ctx.fillStyle = '#e8efe6'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(bx,by); ctx.lineTo(bx+10*sc,by); ctx.moveTo(bx,by-4); ctx.lineTo(bx,by+4); ctx.moveTo(bx+10*sc,by-4); ctx.lineTo(bx+10*sc,by+4); ctx.stroke();
+  ctx.textAlign = 'left'; ctx.textBaseline = 'bottom'; ctx.fillText('10 m', bx, by-6);
+  if (anim){ ctx.textAlign = 'right'; ctx.fillStyle = '#98ab9a'; ctx.fillText('vist 20× langsommere', ox+side-10, by+2); }
+  if (anim) requestAnimationFrame(drawMap);
+}
+
+function axesLog(ctx, L, T, pw, ph){ ctx.strokeStyle = 'rgba(152,171,154,.5)'; ctx.strokeRect(L+.5,T+.5,pw-1,ph-1); }
+
+function drawEcho(){
+  const cv = $('echo'); const {ctx, w, h} = fitCanvas(cv);
+  const L = 46, R = 10, T = 12, B = 34, pw = w-L-R, ph = h-T-B;
+  ctx.fillStyle = '#08120b'; ctx.fillRect(0,0,w,h);
+  const tLo = 0.004, tHi = 0.85;
+  const xOf = t => L + pw*Math.log(t/tLo)/Math.log(tHi/tLo);
+  ctx.font = '12px "Atkinson Hyperlegible", sans-serif'; ctx.fillStyle = '#98ab9a'; ctx.strokeStyle = 'rgba(152,171,154,.14)';
+  ctx.textAlign='center'; ctx.textBaseline='top';
+  [0.01,0.03,0.1,0.3].forEach(t => { const x = xOf(t); ctx.beginPath(); ctx.moveTo(x,T); ctx.lineTo(x,T+ph); ctx.stroke(); ctx.fillText(fmt(t*1000)+' ms', x, T+ph+6); });
+  ctx.save(); ctx.translate(13, T+ph/2); ctx.rotate(-Math.PI/2); ctx.textAlign='center'; ctx.fillText('energi (dB)',0,0); ctx.restore();
+  if (!analysis){ ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('Klap for at se ekkoet', L+pw/2, T+ph/2); axesLog(ctx,L,T,pw,ph); return; }
+  const pts = analysis.bins.filter(b => b.e > 0 && b.n > 0);
+  if (!pts.length){ axesLog(ctx,L,T,pw,ph); return; }
+  const dB = pts.map(b => 10*Math.log10(b.e));
+  const top = Math.max(...dB) + 3, range = 50;
+  const yOf = v => T + ph*(top - v)/range;
+  ctx.textAlign='right'; ctx.textBaseline='middle';
+  for (let v=0; v<=range; v+=10){ const y = T + ph*v/range; ctx.beginPath(); ctx.moveTo(L,y); ctx.lineTo(L+pw,y); ctx.stroke(); ctx.fillText('−'+v, L-6, y); }
+  // tilpas t^-2 gennem de midterste punkter
+  const tFirst = analysis.first;
+  const inside = state.L.y < WORLD - 8;
+  const fitPts = inside ? pts.filter(b => b.t > 1.6*tFirst && b.t < 0.25) : [];
+  let c0 = null;
+  if (fitPts.length){ let s=0; for (const b of fitPts) s += 10*Math.log10(b.e) + 20*Math.log10(b.t); c0 = s/fitPts.length; }
+  ctx.save(); ctx.beginPath(); ctx.rect(L,T,pw,ph); ctx.clip();
+  if (c0 !== null){
+    const nDens = state.trees.length/(WORLD*WORLD), sig = sigmaExt(1000, state.aMean);
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#e9b54a'; ctx.setLineDash([7,5]); ctx.beginPath();
+    for (let i=0;i<=60;i++){ const t = tFirst*Math.pow(tHi/tFirst, i/60); const v = c0 - 20*Math.log10(t); i?ctx.lineTo(xOf(t),yOf(v)):ctx.moveTo(xOf(t),yOf(v)); }
+    ctx.stroke();
+    ctx.strokeStyle = '#98ab9a'; ctx.setLineDash([3,4]); ctx.beginPath();
+    for (let i=0;i<=60;i++){ const t = tFirst*Math.pow(tHi/tFirst, i/60); const r = C*t/2; const v = c0 - 20*Math.log10(t) + 20*Math.log10(Math.exp(-nDens*sig*r)) + 20*Math.log10(Math.exp(nDens*sig*C*1.6*tFirst/2)); i?ctx.lineTo(xOf(t),yOf(v)):ctx.moveTo(xOf(t),yOf(v)); }
+    ctx.stroke(); ctx.setLineDash([]);
+  }
+  ctx.strokeStyle = '#8cc8f0'; ctx.fillStyle = '#8cc8f0'; ctx.lineWidth = 2.2; ctx.beginPath();
+  pts.forEach((b,i) => { const x = xOf(b.t), y = yOf(10*Math.log10(b.e)); i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+  ctx.stroke();
+  pts.forEach(b => { ctx.beginPath(); ctx.arc(xOf(b.t), yOf(10*Math.log10(b.e)), 2.4, 0, 2*Math.PI); ctx.fill(); });
+  ctx.restore();
+  ctx.fillStyle = '#e9b54a'; ctx.textAlign='right'; ctx.textBaseline='top';
+  ctx.fillText(inside ? 'hældning −2' : 'gå ind i skoven for at se t⁻²', L+pw-6, T+6);
+  axesLog(ctx,L,T,pw,ph);
+}
+
+function rowTimes(){
+  // ankomsttid for ekkoet fra den nærmeste stamme i hver række (samme grund-y)
+  const rows = new Map();
+  for (const t of state.trees){
+    const r = Math.hypot(t.x-state.L.x, t.y-state.L.y) - t.a;
+    const key = t.by.toFixed(3);
+    if (!rows.has(key) || rows.get(key) > r) rows.set(key, r);
+  }
+  return [...rows.values()].filter(r => r > 0.3).map(r => 2*r/C);
+}
+function drawSpec(){
+  const cv = $('spec'); const {ctx, w, h} = fitCanvas(cv);
+  const L = 46, R = 10, T = 12, B = 34, pw = w-L-R, ph = h-T-B;
+  ctx.fillStyle = '#08120b'; ctx.fillRect(0,0,w,h);
+  ctx.font = '12px "Atkinson Hyperlegible", sans-serif'; ctx.fillStyle = '#98ab9a'; ctx.strokeStyle = 'rgba(152,171,154,.14)';
+  ctx.textAlign='right'; ctx.textBaseline='middle';
+  for (let v=0; v<=36; v+=12){ const y = T + ph*v/36; ctx.beginPath(); ctx.moveTo(L,y); ctx.lineTo(L+pw,y); ctx.stroke(); ctx.fillText('−'+v, L-6, y); }
+  ctx.save(); ctx.translate(13, T+ph/2); ctx.rotate(-Math.PI/2); ctx.textAlign='center'; ctx.fillText('dB',0,0); ctx.restore();
+  if (!lastRes || !analysis){ ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('Klap for at se ekkoet', L+pw/2, T+ph/2); axesLog(ctx,L,T,pw,ph); return; }
+  const {E, sr, t0, first} = lastRes;
+  const ta = first - 0.005, tb = ta + 0.31;
+  const xOf = t => L + pw*(t-ta)/(tb-ta);
+  ctx.textAlign='center'; ctx.textBaseline='top';
+  for (let t = Math.ceil(ta*20)/20; t <= tb; t += 0.05){ const x = xOf(t); ctx.beginPath(); ctx.moveTo(x,T); ctx.lineTo(x,T+ph); ctx.stroke(); ctx.fillText(fmt(t*1000)+' ms', x, T+ph+6); }
+  ctx.fillText('tid efter klappet', L+pw/2, T+ph+19);
+  const i0 = Math.max(0, Math.round((t0+ta)*sr)), i1 = Math.min(E.length, Math.round((t0+tb)*sr));
+  let pk = 0; for (let i=i0;i<i1;i++) pk = Math.max(pk, Math.abs(E[i]));
+    ctx.save(); ctx.beginPath(); ctx.rect(L,T,pw,ph); ctx.clip();
+  if (state.type === 'plant'){
+    ctx.strokeStyle = 'rgba(233,181,74,.75)'; ctx.lineWidth = 1.2; ctx.setLineDash([4,4]);
+    for (const t of rowTimes()){ if (t < ta || t > tb) continue; const x = xOf(t); ctx.beginPath(); ctx.moveTo(x,T); ctx.lineTo(x,T+ph); ctx.stroke(); }
+    ctx.setLineDash([]);
+  }
+  // indhylningskurve i dB: max |p| pr. pixelsøjle
+  const cols = Math.floor(pw), per = (i1-i0)/cols, range = 36;
+  const yOf = db => T + ph*(-db)/range;
+  ctx.fillStyle = 'rgba(140,200,240,.35)'; ctx.strokeStyle = '#8cc8f0'; ctx.lineWidth = 1.3;
+  const ys = [];
+  for (let c=0;c<cols;c++){
+    let mx = 0; const a0 = Math.floor(i0 + c*per), a1 = Math.max(a0+1, Math.floor(i0 + (c+1)*per));
+    for (let i=a0;i<a1;i++){ const v = Math.abs(E[i]); if (v>mx) mx=v; }
+    ys.push(Math.min(T+ph, yOf(20*Math.log10(mx/pk + 1e-9))));
+  }
+  ctx.beginPath(); ctx.moveTo(L, T+ph); ys.forEach((y,c) => ctx.lineTo(L+c+0.5, y)); ctx.lineTo(L+cols, T+ph); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ys.forEach((y,c) => c ? ctx.lineTo(L+c+0.5, y) : ctx.moveTo(L+c+0.5, y)); ctx.stroke();
+  ctx.restore();
+  axesLog(ctx,L,T,pw,ph);
+}
+
+// ---------- UI ----------
+function updateLabels(){
+  $('vDens').textContent = $('dens').value;
+  $('vDiam').textContent = $('diam').value+' cm';
+  $('vDis').textContent = $('dis').value+' %';
+}
+function updateFacts(){
+  const nD = state.trees.length/(WORLD*WORLD), mfp = 1/(nD*4*state.aMean);
+  $('fMfp').textContent = fmt(mfp)+' m';
+  const plant = state.type === 'plant';
+  $('liBragg').hidden = !plant; $('liDW').hidden = !plant; $('lgBragg').hidden = !plant; $('disWrap').hidden = !plant;
+  if (plant){
+    $('fBragg').textContent = fmt(C/(2*state.d))+' Hz (d = '+fmt(state.d,1)+' m)';
+    const k = 2*Math.PI*1000/C, sig = state.dis*state.d;
+    $('fDW').textContent = fmt(Math.exp(-4*k*k*sig*sig), 2);
+  }
+}
+function invalidate(){ analysis = null; drawEcho(); drawSpec(); $('replay').disabled = true; $('wav').disabled = true; }
+function setType(t){
+  state.type = t;
+  $('tNat').setAttribute('aria-pressed', t==='nat'); $('tPlant').setAttribute('aria-pressed', t==='plant');
+  generate(); moveListener(state.L.x, state.L.y); updateFacts(); invalidate(); drawMap();
+}
+$('tNat').addEventListener('click', () => setType('nat'));
+$('tPlant').addEventListener('click', () => setType('plant'));
+$('dens').addEventListener('input', () => { state.n = +$('dens').value; updateLabels(); generate(); moveListener(state.L.x, state.L.y); updateFacts(); invalidate(); drawMap(); });
+$('diam').addEventListener('input', () => { state.D = $('diam').value/100; updateLabels(); placeTrees(); updateFacts(); invalidate(); drawMap(); });
+$('dis').addEventListener('input', () => { state.dis = $('dis').value/100; updateLabels(); placeTrees(); updateFacts(); invalidate(); drawMap(); });
+$('noDirect').addEventListener('change', () => { if (lastRes) { makeBuffer(); play(); } });
+
+function moveListener(x, y){
+  x = Math.max(1, Math.min(WORLD-1, x)); y = Math.max(1, Math.min(WH-1, y));
+  // træd ud af en stamme, hvis man har ramt en
+  for (let it=0; it<5; it++){
+    let moved = false;
+    for (const t of state.trees){
+      const dx = x-t.x, dy = y-t.y, r = Math.hypot(dx,dy), need = t.a + 0.6;
+      if (r < need){ const s = r>1e-6 ? need/r : 1; x = t.x + (r>1e-6?dx:need)*s; y = t.y + (r>1e-6?dy:0)*s; moved = true; }
+    }
+    if (!moved) break;
+  }
+  state.L = {x, y};
+}
+
+let lastRes = null;
+function makeBuffer(){
+  const ac = ensureAudio();
+  lastStereo = buildOutput(lastRes, $('noDirect').checked);
+  lastBuffer = ac.createBuffer(2, lastRes.len, lastRes.sr);
+  lastBuffer.getChannelData(0).set(lastStereo[0]);
+  lastBuffer.getChannelData(1).set(lastStereo[1]);
+}
+let src = null;
+function play(){
+  if (!lastBuffer) return;
+  const ac = ensureAudio();
+  if (src){ try{ src.stop(); }catch(e){} }
+  src = ac.createBufferSource(); src.buffer = lastBuffer; src.connect(ac.destination); src.start();
+  anim = {start: performance.now()/1000, hits: lastRes.hits};
+  requestAnimationFrame(drawMap);
+}
+async function clap(){
+  const ac = ensureAudio(); lastSR = ac.sampleRate;
+  $('status').textContent = 'Regner ekkoerne ud …';
+  await new Promise(r => setTimeout(r, 20));
+  lastRes = synthesize(lastSR);
+  const an = analyse(lastRes); an.first = lastRes.first; analysis = an;
+  makeBuffer(); play();
+  $('fFirst').textContent = isFinite(lastRes.first) ? fmt(lastRes.first*1000)+' ms' : '–';
+  $('replay').disabled = false; $('wav').disabled = false;
+  $('status').textContent = lastRes.hits.length+' stammer sendte et ekko tilbage.';
+  drawEcho(); drawSpec();
+}
+$('clap').addEventListener('click', clap);
+$('replay').addEventListener('click', play);
+$('map').addEventListener('pointerdown', e => {
+  const cv = $('map'), rect = cv.getBoundingClientRect();
+  const w = rect.width, h = rect.height, sc = Math.min(w/WORLD, h/WH), ox = (w-WORLD*sc)/2, oy = (h-WH*sc)/2;
+  const x = (e.clientX - rect.left - ox)/sc, y = (e.clientY - rect.top - oy)/sc;
+  if (x < 0 || x > WORLD || y < 0 || y > WH) return;
+  moveListener(x, y); drawMap(); clap();
+});
+$('map').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); clap(); } });
+
+function wavBlob(ch, sr){
+  const n = ch[0].length, nc = ch.length, buf = new ArrayBuffer(44 + n*nc*2), v = new DataView(buf);
+  const ws = (o,s) => { for (let i=0;i<s.length;i++) v.setUint8(o+i, s.charCodeAt(i)); };
+  ws(0,'RIFF'); v.setUint32(4, 36+n*nc*2, true); ws(8,'WAVE'); ws(12,'fmt ');
+  v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,nc,true);
+  v.setUint32(24,sr,true); v.setUint32(28,sr*nc*2,true); v.setUint16(32,nc*2,true); v.setUint16(34,16,true);
+  ws(36,'data'); v.setUint32(40, n*nc*2, true);
+  let o = 44;
+  for (let i=0;i<n;i++) for (let c=0;c<nc;c++){ const s = Math.max(-1, Math.min(1, ch[c][i])); v.setInt16(o, s<0 ? s*0x8000 : s*0x7FFF, true); o += 2; }
+  return new Blob([v], {type:'audio/wav'});
+}
+$('wav').addEventListener('click', () => {
+  if (!lastStereo) return;
+  const url = URL.createObjectURL(wavBlob(lastStereo, lastRes.sr));
+  const a = document.createElement('a'); a.href = url;
+  a.download = state.type==='plant' ? `plantage_${state.n}_uorden${Math.round(state.dis*100)}.wav` : `naturskov_${state.n}.wav`;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
+});
+
+let rT; window.addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { drawMap(); drawEcho(); drawSpec(); }, 120); });
+updateLabels(); generate(); moveListener(50, 118); updateFacts(); drawMap(); drawEcho(); drawSpec();
+if (document.fonts) document.fonts.ready.then(() => { drawMap(); drawEcho(); drawSpec(); });
+</script>
+</body>
+</html>

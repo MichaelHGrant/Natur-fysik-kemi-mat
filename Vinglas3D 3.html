@@ -1,533 +1,440 @@
 <!DOCTYPE html>
 <html lang="da">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Fluid Loading: Det Syngende Vinglas</title>
-    
-    <!-- Tailwind CSS til design -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Chart.js til frekvensspektrum -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <!-- MathJax til at vise de matematiske formler (LaTeX) -->
-    <script>
-      window.MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] } };
-    </script>
-    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-
-    <!-- Three.js og OrbitControls -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-
-    <style>
-        body, html { margin: 0; padding: 0; height: 100%; background-color: #0f172a; color: white; font-family: sans-serif; overflow-x: hidden; }
-        
-        /* 3D Containeren fungerer nu som en fast baggrund */
-        #canvas-container { position: fixed; top: 0; left: 0; width: 100%; height: 100vh; z-index: 1; pointer-events: none; }
-        
-        /* Dette tillader at vi rører ved glasset (OrbitControls) mens baggrunden bliver tegnet over */
-        #canvas-container canvas { pointer-events: auto; }
-
-        /* UI laget er nu rullebart på små skærme */
-        #ui-scroll-container { 
-            position: relative; 
-            z-index: 10; 
-            min-height: 100vh; 
-            display: flex; 
-            flex-direction: column; 
-            padding: 1rem;
-            pointer-events: none; /* Lader klik gå igennem til 3D, undtagen på selve panelerne */
-        }
-        
-        .pointer-events-auto { pointer-events: auto; }
-        input[type=range] { accent-color: #e11d48; cursor: pointer; }
-        
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(71, 85, 105, 0.5); border-radius: 4px; }
-        
-        /* Mobil specifikke justeringer */
-        @media (max-width: 768px) {
-            #ui-scroll-container { padding: 0.5rem; justify-content: flex-start; }
-            .panel-container { margin-bottom: 1rem; }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Det syngende vinglas – væske, masse og tone</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+<script>
+window.MathJax = { tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] } };
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<style>
+:root{
+  --bg:#150f16; --panel:#1f1620; --line:#3a2a3a; --ink:#f1eaee; --muted:#b09fab;
+  --accent:#e7798f; --accent-ink:#2a0710; --warm:#e9c46a;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Atkinson Hyperlegible",system-ui,sans-serif;font-size:17px;line-height:1.5}
+a{color:var(--accent)}
+.wrap{max-width:1180px;margin:0 auto;padding:14px 14px 48px}
+.back{font-size:15px;text-decoration:none;color:var(--muted)}
+.back:hover{color:var(--accent)}
+h1{font-family:"Source Serif 4",Georgia,serif;font-weight:600;font-size:clamp(30px,6vw,48px);line-height:1.1;margin:10px 0 6px;letter-spacing:-.01em}
+.lede{color:var(--muted);max-width:64ch;margin:0 0 18px}
+.layout{display:grid;gap:14px}
+@media(min-width:960px){.layout{grid-template-columns:minmax(0,1fr) 380px;align-items:start}.stage{position:sticky;top:12px}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+.stage{padding:0;overflow:hidden;position:relative}
+#view{width:100%;height:52vh;min-height:300px;display:block;background:radial-gradient(ellipse at 50% 40%,#2b1d2c 0%,#150f16 70%)}
+@media(min-width:960px){#view{height:78vh}}
+#view canvas{display:block;touch-action:none}
+.readout{position:absolute;left:14px;top:12px;pointer-events:none}
+.readout .f{font-family:"Source Serif 4",Georgia,serif;font-size:clamp(34px,7vw,52px);font-weight:600;line-height:1;font-variant-numeric:tabular-nums}
+.readout .n{color:var(--warm);font-size:17px;margin-top:4px}
+.hint{position:absolute;right:12px;bottom:10px;color:var(--muted);font-size:13px;pointer-events:none}
+.nogl{padding:40px 16px;color:var(--muted);text-align:center}
+.side{display:grid;gap:14px}
+.ctrl{margin-bottom:12px}
+.ctrl .row{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.ctrl .val{font-variant-numeric:tabular-nums;color:var(--accent);font-weight:700}
+.ctrl small{display:block;color:var(--muted);font-size:14px;line-height:1.35}
+.lbl{margin:0 0 6px}
+input[type=range]{width:100%;height:34px;accent-color:var(--accent);margin:2px 0}
+button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:#2a1d2b;color:var(--ink);padding:10px 12px;min-height:44px}
+button:hover{border-color:var(--accent)}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--warm);outline-offset:2px}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.play{background:var(--accent);color:var(--accent-ink);border:0;font-weight:700;font-size:18px;min-height:54px}
+.play[aria-pressed="true"]{background:#f3b2bf}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.chips button{min-height:40px;padding:6px 12px;font-size:15px;color:var(--muted);background:transparent}
+.chips button[aria-pressed="true"]{background:#3b2536;color:var(--ink);border-color:var(--accent)}
+.tip{font-size:14px;color:var(--muted);margin:8px 0 0}
+figure{margin:0}
+figure h2{font-family:"Source Serif 4",Georgia,serif;font-weight:600;font-size:21px;margin:0 0 6px}
+figcaption{color:var(--muted);font-size:15px;margin-top:8px}
+.canvasbox{width:100%;aspect-ratio:4/3;border-radius:10px;overflow:hidden;background:#100b11;border:1px solid var(--line)}
+.canvasbox canvas{display:block;width:100%;height:100%}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:14px;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:18px;height:3px;vertical-align:middle;margin-right:6px;border-radius:2px}
+.theory{margin-top:22px;max-width:780px}
+.theory h2{font-family:"Source Serif 4",Georgia,serif;font-weight:600;font-size:clamp(24px,4vw,30px);margin:0 0 8px}
+details{border-top:1px solid var(--line);padding:4px 0}
+details:last-of-type{border-bottom:1px solid var(--line)}
+summary{cursor:pointer;font-family:"Source Serif 4",Georgia,serif;font-size:20px;font-weight:600;padding:10px 0}
+details p,details li{font-family:"Source Serif 4",Georgia,serif;font-size:18px;line-height:1.62}
+details .eq{overflow-x:auto;padding:4px 0}
+</style>
 </head>
 <body>
+<div class="wrap">
+  <a class="back" href="index.html">← Natur, fysik, kemi og matematik</a>
+  <h1>Det syngende vinglas</h1>
+  <p class="lede">Gnid en våd finger rundt langs kanten, og glasset synger. Hæld vin i, og tonen falder. Væsken gør ikke glasset blødere; den skal flyttes med, når væggen svinger, og den ekstra masse sænker tonen.</p>
 
-    <!-- Fast 3D Baggrund -->
-    <div id="canvas-container"></div>
-
-    <!-- Rullebart UI Lag -->
-    <div id="ui-scroll-container">
-        
-        <!-- Top Wrapper for at holde panelerne fra hinanden på desktop -->
-        <div class="flex flex-col md:flex-row justify-between items-start gap-4 w-full max-w-7xl mx-auto h-full flex-1">
-            
-            <!-- Venstre / Top: Kontrolpanel -->
-            <div class="panel-container bg-slate-800/80 backdrop-blur-md rounded-2xl p-5 shadow-2xl pointer-events-auto border border-slate-700 w-full md:w-96 flex-shrink-0">
-                <h1 class="text-xl md:text-2xl font-bold mb-1 text-rose-500">Det Syngende Vinglas</h1>
-                <p class="text-xs md:text-sm text-slate-300 mb-5">Akustisk Fluid Loading Simulator</p>
-                
-                <div class="space-y-5">
-                    <!-- Slider: Volumen -->
-                    <div>
-                        <div class="flex justify-between mb-1">
-                            <label class="text-xs md:text-sm font-medium">Væskestand</label>
-                            <span id="level-val" class="text-xs md:text-sm font-mono text-rose-400">50%</span>
-                        </div>
-                        <input type="range" id="slider-level" min="0" max="100" value="50" class="w-full h-2 bg-slate-700/50 rounded-lg appearance-none">
-                    </div>
-
-                    <!-- Slider: Densitet -->
-                    <div>
-                        <div class="flex justify-between mb-1">
-                            <label class="text-xs md:text-sm font-medium">Væsketype</label>
-                            <span id="density-val" class="text-xs md:text-sm font-mono text-rose-400">Vin (1.0 kg/L)</span>
-                        </div>
-                        <input type="range" id="slider-density" min="0.8" max="1.5" step="0.1" value="1.0" class="w-full h-2 bg-slate-700/50 rounded-lg appearance-none">
-                    </div>
-
-                    <!-- Slider: Dæmpning -->
-                    <div>
-                        <div class="flex justify-between mb-1">
-                            <label class="text-xs md:text-sm font-medium">Dæmpning (Fingertryk)</label>
-                            <span id="damping-val" class="text-xs md:text-sm font-mono text-rose-400">Lav</span>
-                        </div>
-                        <input type="range" id="slider-damping" min="100" max="1200" step="50" value="300" class="w-full h-2 bg-slate-700/50 rounded-lg appearance-none">
-                    </div>
-                </div>
-
-                <div class="mt-6 pt-5 border-t border-slate-700/50">
-                    <div class="flex justify-between items-center mb-4">
-                        <span class="text-sm text-slate-400">Aktuel Frekvens:</span>
-                        <span id="freq-display" class="text-2xl md:text-3xl font-bold text-white font-mono">--- Hz</span>
-                    </div>
-                    
-                    <div class="flex gap-2">
-                        <button id="btn-sound" class="flex-1 bg-rose-600 hover:bg-rose-500 text-white text-sm font-semibold py-2.5 px-3 rounded-lg transition-colors flex items-center justify-center gap-2">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>
-                            Spil Lyd
-                        </button>
-                        <button id="btn-physics" class="bg-slate-700 hover:bg-slate-600 text-white text-sm font-semibold py-2.5 px-3 rounded-lg transition-colors">
-                            Fysik
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Højre / Bund: Graf -->
-            <div class="panel-container w-full md:w-1/2 max-w-lg bg-slate-800/80 backdrop-blur-md rounded-2xl p-4 shadow-2xl pointer-events-auto border border-slate-700 mt-auto md:mt-0">
-                <h3 class="text-xs md:text-sm font-medium text-slate-300 mb-2">Frekvensspektrum (Relativ Intensitet)</h3>
-                <!-- Højden er dynamisk tilpasset mobil -->
-                <div class="h-40 md:h-56 w-full relative">
-                    <canvas id="freqChart"></canvas>
-                </div>
-            </div>
-            
-        </div>
+  <div class="layout">
+    <div class="panel stage">
+      <div id="view"></div>
+      <div class="readout" aria-live="polite"><div class="f" id="freq">– Hz</div><div class="n" id="note"></div></div>
+      <div class="hint">Træk for at dreje glasset</div>
     </div>
 
-    <!-- Pop-up Modal -->
-    <div id="physics-modal" style="display: none;" class="fixed inset-0 bg-slate-950/95 backdrop-blur-md z-50 flex items-center justify-center pointer-events-auto p-4">
-        <div class="bg-slate-900 border border-slate-700 rounded-2xl p-6 md:p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto relative shadow-2xl">
-            <button id="btn-close-modal" class="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors bg-slate-800 p-1 rounded-full">
-                <svg class="w-6 h-6 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-            </button>
-            <h2 class="text-2xl md:text-3xl font-bold text-rose-500 mb-4 md:mb-6 pr-8">Fysikken bag Fluid Loading</h2>
-            <div class="text-sm md:text-base text-slate-300 space-y-4 md:space-y-6 leading-relaxed">
-                <p>Når et vinglas "synger" på grund af <em>stick-slip</em> friktion fra en finger på kanten, vibrerer selve glasset. Det bøjer geometrisk og skifter form lynhurtigt.</p>
-                <p>Når vi hælder væske i glasset, sker der noget kontraintuitivt: <strong>Tonen bliver dybere!</strong> Væsken fungerer som en <em>tilføjet masse</em>, der tvinges til at svinge med glassets vægge. Denne masse forøger systemets samlede inerti og sænker resonansfrekvensen (Fluid Loading).</p>
-                <div class="bg-slate-800 p-3 md:p-4 rounded-lg border border-slate-700 my-4 text-center text-sm md:text-lg overflow-x-auto">
-                    $$f = \frac{f_0}{\sqrt{1 + \alpha \left(\frac{h}{H}\right)^4}}$$
-                </div>
-                <ul class="list-disc pl-5 space-y-1 md:space-y-2">
-                    <li>$f$: Resulterende frekvens (det vi hører).</li>
-                    <li>$f_0$: Frekvens for tomt glas (800 Hz).</li>
-                    <li>$h$: Væskens højde, $H$: Glassets højde.</li>
-                    <li>$\alpha$: Konstant for væskens densitet.</li>
-                </ul>
-                <p class="text-xs md:text-sm text-slate-400">Læg mærke til i formlen, at effekten vokser kraftigt (i fjerde potens), efterhånden som væsken nærmer sig kanten af glasset, fordi det er heroppe vibrationerne (udslaget) er størst.</p>
-            </div>
+    <div class="side">
+      <div class="panel">
+        <div class="actions">
+          <button id="rub" class="play" aria-pressed="false">Gnid kanten</button>
+          <button id="tap" class="play">Slå let</button>
         </div>
+        <p class="tip">På iPhone skal lydløs-knappen være slået fra.</p>
+        <hr style="border:0;border-top:1px solid var(--line);margin:14px 0">
+
+        <div class="ctrl">
+          <div class="row"><label for="fill">Væskestand</label><span class="val" id="vFill"></span></div>
+          <input type="range" id="fill" min="0" max="95" step="1" value="50">
+          <small>I procent af skålens højde.</small>
+        </div>
+        <p class="lbl">Væske</p>
+        <div class="chips" id="liquids" role="group" aria-label="Væske"></div>
+        <p class="lbl">Glas</p>
+        <div class="chips" id="glasses" role="group" aria-label="Glastype"></div>
+        <div class="ctrl">
+          <div class="row"><label for="rev">Fingerens fart</label><span class="val" id="vRev"></span></div>
+          <input type="range" id="rev" min="0.3" max="2.5" step="0.1" value="1">
+          <small>Omgange pr. sekund. Svingningsmønstret følger fingeren, så du hører tonen pulsere fire gange pr. omgang.</small>
+        </div>
+      </div>
+
+      <figure class="panel">
+        <h2>Tonen mod væskestanden</h2>
+        <div class="canvasbox"><canvas id="curve"></canvas></div>
+        <div class="legend">
+          <span><i style="background:var(--accent)"></i>valgt væske</span>
+          <span><i style="background:var(--muted)"></i>vand, til sammenligning</span>
+        </div>
+        <figcaption>Tonen falder næsten ikke, før glasset er halvt fyldt, og så hurtigt. Det er fjerdepotensen i formlen.</figcaption>
+      </figure>
+
+      <figure class="panel">
+        <h2>Spektrum</h2>
+        <div class="canvasbox"><canvas id="spec"></canvas></div>
+        <figcaption>Gnides glasset, svinger det kun i den laveste form (4 bugter), med svage harmoniske overtoner fra fingerens stik-slip. Slås det, ringer også de højere former, som ikke er harmoniske.</figcaption>
+      </figure>
     </div>
+  </div>
 
-    <!-- Hovedscript -->
-    <script>
-        window.onload = function() {
-            
-            if (typeof THREE === 'undefined') {
-                console.error("Three.js blev ikke indlæst.");
-                return;
-            }
+  <section class="theory">
+    <h2>Fysikken bag</h2>
+    <details open>
+      <summary>Hvordan glasset svinger</summary>
+      <p>Glasskålens væg bøjer, så kanten skiftevis bliver oval den ene og den anden vej. Den laveste svingningsform har fire bugter og fire knuder rundt om kanten (her kaldt \(n = 2\), fordi mønstret gentager sig to gange pr. omgang). De næste former har seks og otte bugter. For en tynd cylinderskal er frekvensen</p>
+      <div class="eq">\[f_n \propto \frac{a}{R^2}\,\frac{n(n^2-1)}{\sqrt{n^2+1}},\]</div>
+      <p>hvor \(a\) er vægtykkelsen og \(R\) radius. Et tykkere glas synger altså højere. Forholdet mellem formerne bliver ca. 1 : 2,8 : 5,4; for et rigtigt vinglas med krum skål er det typisk nærmere 1 : 2,7 : 5, som bruges her. Overtonerne er ikke hele multipla af grundtonen. Derfor lyder et anslået glas som en klokke og ikke som en fløjte.</p>
+    </details>
+    <details>
+      <summary>Hvorfor væsken sænker tonen</summary>
+      <p>Når væggen bevæger sig ind og ud, må væsken tæt ved væggen flyttes med. Den kinetiske energi stiger, mens den elastiske energi i glasset er den samme. Frekvensen er \(\omega^2 = K/M\), så den ekstra masse sænker tonen. A.P. French viste i 1983 med energimetoden, at</p>
+      <div class="eq">\[\left(\frac{f_0}{f}\right)^2 = 1 + \beta\,\frac{\rho_\text{væske}\,R}{\rho_\text{glas}\,a}\left(\frac{h}{H}\right)^4 .\]</div>
+      <p>Her er \(h\) væskens dybde, \(H\) skålens højde og \(\beta\) en formfaktor, der afhænger af glassets form; her er \(\beta = 0{,}1\) og for de højere former skaleret med \(2/n\), fordi væsken følger dem mindre. Fjerdepotensen kommer af, at væggen næsten står stille forneden og svinger mest ved kanten. Derfor mærkes væsken først rigtigt, når glasset er over halvt fyldt.</p>
+      <p>Formlen viser også, hvad der betyder noget: væskens massefylde (honning sænker tonen mere end sprit), glassets radius og hvor tynd væggen er. Et tyndt krystalglas påvirkes mere af væsken end et tykt glas.</p>
+    </details>
+    <details>
+      <summary>Fingeren, stik-slip og pulseringen</summary>
+      <p>En våd finger hænger fast i glasset og glider skiftevis (stik-slip). Hver gang glasset svinger, får det et lille skub i takt med sig selv, og derfor svinger det i sin egen egenfrekvens, ligesom en violinstreng under buen. Stik-slip giver en lidt kantet svingning, så der kommer svage overtoner på præcis 2 og 3 gange grundtonen.</p>
+      <p>Svingningsmønstret følger fingeren rundt. Står du stille ved siden af glasset, passerer der fire bugter og fire knuder forbi dig pr. omgang, så lydstyrken pulserer med \(4 f_\text{finger}\). Matematisk er lyden \(\cos(\omega t)\cos(2\Omega t)\), hvor \(\Omega\) er fingerens vinkelhastighed, altså to toner med frekvenserne \(f \pm 2 f_\text{finger}\). Det er målt: med en roterende finger ses to næsten lige store toppe i spektret.</p>
+    </details>
+    <details>
+      <summary>Dæmpning og hvor længe glasset ringer</summary>
+      <p>Et anslået glas ringer med en efterklangstid bestemt af godheden \(Q\): amplituden falder som \(e^{-t/\tau}\) med \(\tau = Q/(\pi f)\). Tyndt krystalglas kan have \(Q\) på flere tusinde og ringe i sekunder; et tykt glas dør hurtigere ud. Væsken dæmper også, især en tyktflydende væske som honning, fordi den skal skubbes frem og tilbage. Olie og honning giver derfor en kortere og mere mat klang.</p>
+    </details>
+  </section>
+</div>
 
-            // --- Globale Variabler ---
-            let scene, camera, renderer, controls;
-            let glassGroup, liquidMesh;
-            let chart;
-            let audioCtx, oscillator, gainNode;
-            let isPlaying = false;
-            
-            const F0 = 800; // Grundtone
-            let currentFreq = F0;
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const fmt = (x, d=0) => x.toLocaleString('da-DK', {minimumFractionDigits:d, maximumFractionDigits:d, useGrouping:false});
 
-            const stemHeight = 4.0;
-            const bowlHeight = 5.5;
-            const glassThickness = 0.08;
-            const totalHeight = stemHeight + bowlHeight;
-            const steps = 50;
+// ---------- data ----------
+const LIQUIDS = [
+  {id:'vand',  name:'Vand',        rho:1000, loss:1e-4, color:0x8fb8d8, opacity:0.35},
+  {id:'vin',   name:'Rødvin',      rho:990,  loss:1.2e-4, color:0x7a0f2a, opacity:0.85},
+  {id:'vodka', name:'Vodka',       rho:950,  loss:1.5e-4, color:0xdfe9f0, opacity:0.25},
+  {id:'olie',  name:'Olivenolie',  rho:910,  loss:2e-3,  color:0xb8a02a, opacity:0.75},
+  {id:'honning',name:'Honning',    rho:1420, loss:2.5e-2, color:0xc8861a, opacity:0.9}
+];
+const GLASSES = [
+  {id:'krystal', name:'Tyndt krystal', a:1.0e-3, f0:560,  Q:3000},
+  {id:'alm',     name:'Almindeligt',   a:1.6e-3, f0:800,  Q:1200},
+  {id:'tykt',    name:'Tykt glas',     a:2.5e-3, f0:1150, Q:450}
+];
+const RHO_GLASS = 2500, R_GLASS = 0.04, BETA = 0.1;
+const MODES = [{n:2, ratio:1, amp:1}, {n:3, ratio:2.7, amp:0.45}, {n:4, ratio:5.1, amp:0.22}];
+const S = { liquid:LIQUIDS[1], glass:GLASSES[1], fill:0.5, rev:1 };
 
-            init3D();
-            initChart();
-            initUI();
-            updatePhysics(); 
-            animate();
+function freqMode(mode, fill, liq, gl){
+  const load = BETA*(2/mode.n)*(liq.rho*R_GLASS)/(RHO_GLASS*gl.a)*Math.pow(fill, 4);
+  return gl.f0*mode.ratio/Math.sqrt(1 + load);
+}
+function qTotal(f, fill, liq, gl){ return 1/(1/gl.Q + liq.loss*fill*fill); }
+function noteName(f){
+  const names = ['C','C♯','D','D♯','E','F','F♯','G','G♯','A','B','H'];
+  const m = 69 + 12*Math.log2(f/440), r = Math.round(m), cents = Math.round((m-r)*100);
+  return names[(r%12+12)%12] + (Math.floor(r/12)-1) + (cents ? `  ${cents>0?'+':'−'}${Math.abs(cents)} cent` : '');
+}
 
-            // --- 1. THREE.JS OPSÆTNING ---
-            function init3D() {
-                const container = document.getElementById('canvas-container');
-                scene = new THREE.Scene();
-                scene.fog = new THREE.FogExp2(0x0f172a, 0.02); 
+// ---------- lyd ----------
+let ac = null, rubNodes = null, master = null;
+function ensureAudio(){
+  if (!ac){ const AC = window.AudioContext||window.webkitAudioContext; ac = new AC(); master = ac.createGain(); master.gain.value = 0.8; master.connect(ac.destination); }
+  if (ac.state === 'suspended') ac.resume();
+  return ac;
+}
+function currentF(){ return freqMode(MODES[0], S.fill, S.liquid, S.glass); }
 
-                // MOBIL-VENLIGT KAMERA
-                // Tjekker skærmens bredde for at beregne hvor langt tilbage kameraet skal være.
-                // På små skærme skal det længere tilbage, så glasset ikke bliver dækket af UI.
-                const isMobile = window.innerWidth < 768;
-                const cameraZ = isMobile ? 32 : 24; 
-                // På mobil rykker vi også kameraet lidt op, så glasset ligger mere centralt under top-menuen
-                const cameraY = isMobile ? 4 : 2;
+function startRub(){
+  ensureAudio();
+  const f = currentF(), now = ac.currentTime;
+  const out = ac.createGain(); out.gain.value = 0; out.connect(master);
+  // amplitudemodulation fra det roterende mønster: gain = 0,2 + 0,8·cos(2Ωt)
+  const am = ac.createGain(); am.gain.value = 0.2; am.connect(out);
+  const lfo = ac.createOscillator(), lfoAmt = ac.createGain();
+  lfo.frequency.value = 2*S.rev; lfoAmt.gain.value = 0.8; lfo.connect(lfoAmt); lfoAmt.connect(am.gain);
+  const oscs = [[1,1],[2,0.07],[3,0.025]].map(([h, g]) => {
+    const o = ac.createOscillator(), gg = ac.createGain(); o.frequency.value = f*h; gg.gain.value = g; o.connect(gg); gg.connect(am); o.start(now); return {o, h};
+  });
+  // svag friktionsstøj, filtreret omkring tonen
+  const nb = ac.createBuffer(1, ac.sampleRate*2, ac.sampleRate), nd = nb.getChannelData(0);
+  for (let i=0;i<nd.length;i++) nd[i] = Math.random()*2-1;
+  const ns = ac.createBufferSource(); ns.buffer = nb; ns.loop = true;
+  const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = f; bp.Q.value = 25;
+  const ng = ac.createGain(); ng.gain.value = 0.05; ns.connect(bp); bp.connect(ng); ng.connect(out); ns.start(now);
+  lfo.start(now);
+  out.gain.setTargetAtTime(0.35, now, 0.18);          // stik-slip bygger sig op
+  rubNodes = {out, lfo, oscs, ns, bp};
+}
+function updateRub(){
+  if (!rubNodes) return;
+  const f = currentF(), now = ac.currentTime;
+  rubNodes.oscs.forEach(({o,h}) => o.frequency.setTargetAtTime(f*h, now, 0.04));
+  rubNodes.bp.frequency.setTargetAtTime(f, now, 0.04);
+  rubNodes.lfo.frequency.setTargetAtTime(2*S.rev, now, 0.05);
+}
+function stopRub(){
+  if (!rubNodes) return;
+  const n = rubNodes, now = ac.currentTime; rubNodes = null;
+  n.out.gain.setTargetAtTime(0, now, 0.08);
+  setTimeout(() => { n.oscs.forEach(({o}) => o.stop()); n.lfo.stop(); n.ns.stop(); n.out.disconnect(); }, 600);
+}
+function tap(){
+  ensureAudio();
+  const sr = ac.sampleRate, dur = 5, len = Math.floor(sr*dur);
+  const buf = ac.createBuffer(1, len, sr), x = buf.getChannelData(0);
+  for (const m of MODES){
+    const f = freqMode(m, S.fill, S.liquid, S.glass), Q = qTotal(f, S.fill, S.liquid, S.glass), tau = Q/(Math.PI*f);
+    const w = 2*Math.PI*f, ph = Math.random()*2*Math.PI;
+    for (let i=0;i<len;i++){ const t = i/sr; x[i] += m.amp*Math.exp(-t/tau)*Math.sin(w*t+ph)*(1-Math.exp(-t/0.0008)); }
+  }
+  // selve anslaget: kort klik
+  for (let i=0;i<Math.floor(0.004*sr);i++) x[i] += 0.5*(Math.random()*2-1)*Math.exp(-i/(0.0007*sr));
+  let pk = 0; for (let i=0;i<len;i++) pk = Math.max(pk, Math.abs(x[i]));
+  for (let i=0;i<len;i++) x[i] *= 0.6/pk;
+  const fade = Math.floor(0.05*sr); for (let i=0;i<fade;i++) x[len-1-i] *= i/fade;
+  const src = ac.createBufferSource(); src.buffer = buf; src.connect(master); src.start();
+  vib.tapT = performance.now()/1000; vib.tapTau = Math.min(3, qTotal(currentF(), S.fill, S.liquid, S.glass)/(Math.PI*currentF()));
+  vib.tapAngle = Math.random()*Math.PI*2;
+  lastPlayed = 'tap'; drawSpec();
+}
 
-                camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-                camera.position.set(0, cameraY, cameraZ); 
+// ---------- grafer ----------
+function fitCanvas(c){
+  const dpr = Math.min(window.devicePixelRatio||1, 2), w = c.clientWidth, h = c.clientHeight;
+  c.width = Math.round(w*dpr); c.height = Math.round(h*dpr);
+  const ctx = c.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); return {ctx,w,h};
+}
+function drawCurve(){
+  const {ctx, w, h} = fitCanvas($('curve'));
+  const L = 50, R = 20, T = 12, B = 34, pw = w-L-R, ph = h-T-B;
+  ctx.fillStyle = '#100b11'; ctx.fillRect(0,0,w,h);
+  const g = S.glass, f0 = g.f0;
+  const fLo = Math.floor(freqMode(MODES[0], 1, LIQUIDS[4], g)/50)*50 - 50, fHi = Math.ceil(f0/50)*50 + 20;
+  const xOf = v => L + pw*v, yOf = f => T + ph*(fHi - f)/(fHi - fLo);
+  ctx.font = '12px "Atkinson Hyperlegible", sans-serif'; ctx.fillStyle = '#b09fab'; ctx.strokeStyle = 'rgba(176,159,171,.15)';
+  ctx.textAlign='center'; ctx.textBaseline='top';
+  for (let v=0; v<=1.001; v+=0.25){ const x = xOf(v); ctx.beginPath(); ctx.moveTo(x,T); ctx.lineTo(x,T+ph); ctx.stroke(); ctx.fillText(fmt(v*100)+' %', x, T+ph+6); }
+  ctx.textAlign='right'; ctx.textBaseline='middle';
+  const step = (fHi-fLo) > 600 ? 200 : 100;
+  for (let f = Math.ceil(fLo/step)*step; f <= fHi; f += step){ const y = yOf(f); ctx.beginPath(); ctx.moveTo(L,y); ctx.lineTo(L+pw,y); ctx.stroke(); ctx.fillText(f, L-6, y); }
+  ctx.save(); ctx.translate(12, T+ph/2); ctx.rotate(-Math.PI/2); ctx.textAlign='center'; ctx.fillText('frekvens (Hz)',0,0); ctx.restore();
+  const line = (liq, col, wdt, dash) => { ctx.strokeStyle = col; ctx.lineWidth = wdt; ctx.setLineDash(dash||[]); ctx.beginPath();
+    for (let i=0;i<=100;i++){ const v = i/100, y = yOf(freqMode(MODES[0], v, liq, g)); i?ctx.lineTo(xOf(v),y):ctx.moveTo(xOf(v),y); } ctx.stroke(); ctx.setLineDash([]); };
+  if (S.liquid.id !== 'vand') line(LIQUIDS[0], '#b09fab', 1.5, [5,4]);
+  line(S.liquid, '#e7798f', 2.5);
+  const f = currentF();
+  ctx.fillStyle = '#e9c46a'; ctx.beginPath(); ctx.arc(xOf(S.fill), yOf(f), 5.5, 0, 2*Math.PI); ctx.fill();
+  ctx.strokeStyle = 'rgba(176,159,171,.5)'; ctx.strokeRect(L+.5,T+.5,pw-1,ph-1);
+}
+let lastPlayed = 'rub';
+function drawSpec(){
+  const {ctx, w, h} = fitCanvas($('spec'));
+  const L = 40, R = 12, T = 12, B = 34, pw = w-L-R, ph = h-T-B;
+  ctx.fillStyle = '#100b11'; ctx.fillRect(0,0,w,h);
+  const fLo = 200, fHi = 8000;
+  const xOf = f => L + pw*Math.log(f/fLo)/Math.log(fHi/fLo), yOf = db => T + ph*(-db)/60;
+  ctx.font = '12px "Atkinson Hyperlegible", sans-serif'; ctx.fillStyle = '#b09fab'; ctx.strokeStyle = 'rgba(176,159,171,.15)';
+  ctx.textAlign='center'; ctx.textBaseline='top';
+  [200,500,1000,2000,5000].forEach(f => { const x = xOf(f); ctx.beginPath(); ctx.moveTo(x,T); ctx.lineTo(x,T+ph); ctx.stroke(); ctx.fillText(f>=1000?(f/1000)+' kHz':f+' Hz', x, T+ph+6); });
+  ctx.textAlign='right'; ctx.textBaseline='middle';
+  for (let v=0; v<=60; v+=20){ const y = yOf(-v); ctx.beginPath(); ctx.moveTo(L,y); ctx.lineTo(L+pw,y); ctx.stroke(); ctx.fillText(v?'−'+v:'0', L-6, y); }
+  ctx.save(); ctx.translate(12, T+ph/2); ctx.rotate(-Math.PI/2); ctx.textAlign='center'; ctx.fillText('dB',0,0); ctx.restore();
+  // toppe som resonanskurver
+  let peaks;
+  const f1 = currentF();
+  if (lastPlayed === 'tap') peaks = MODES.map(m => { const f = freqMode(m, S.fill, S.liquid, S.glass); return {f, a:m.amp, Q:qTotal(f,S.fill,S.liquid,S.glass)}; });
+  else peaks = [[1,1],[2,0.07],[3,0.025]].map(([hh,a]) => ({f:f1*hh, a, Q:300}));
+  ctx.save(); ctx.beginPath(); ctx.rect(L,T,pw,ph); ctx.clip();
+  ctx.strokeStyle = '#e7798f'; ctx.fillStyle = 'rgba(231,121,143,.22)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(L, T+ph);
+  const pts = [];
+  for (let i=0;i<=pw;i++){
+    const f = fLo*Math.pow(fHi/fLo, i/pw);
+    let p = 0; for (const pk of peaks){ const x = (f/pk.f - pk.f/f)*pk.Q; p += pk.a*pk.a/(1 + x*x); }
+    const db = Math.max(-62, 10*Math.log10(p + 1e-9));
+    pts.push([L+i, yOf(db)]);
+  }
+  pts.forEach(([x,y]) => ctx.lineTo(x,y)); ctx.lineTo(L+pw, T+ph); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); pts.forEach(([x,y],i) => i?ctx.lineTo(x,y):ctx.moveTo(x,y)); ctx.stroke();
+  ctx.fillStyle = '#e9c46a'; ctx.textAlign='left'; ctx.textBaseline='bottom';
+  if (lastPlayed === 'tap') peaks.forEach((pk,i) => ctx.fillText(['4 bugter','6','8'][i], xOf(pk.f)+4, yOf(20*Math.log10(pk.a))-2));
+  else { ctx.fillText('grundtone', xOf(f1)+4, yOf(0)+14); }
+  ctx.restore();
+  ctx.fillStyle = '#b09fab'; ctx.textAlign='right'; ctx.textBaseline='top';
+  ctx.fillText(lastPlayed === 'tap' ? 'anslået glas' : 'gnedet glas', L+pw-6, T+6);
+  ctx.strokeStyle = 'rgba(176,159,171,.5)'; ctx.strokeRect(L+.5,T+.5,pw-1,ph-1);
+}
 
-                renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-                renderer.setSize(window.innerWidth, window.innerHeight);
-                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Begræns pixelratio på mobil for performance
-                container.appendChild(renderer.domElement);
+// ---------- 3D ----------
+const vib = { rubAmp:0, tapT:-99, tapTau:1, tapAngle:0 };
+const STEM = 4.0, BOWL = 5.5, THICK = 0.08, STEPS = 50;
+const bowlR = t => 0.15 + 9.0*t - 13.0*t*t + 5.0*t*t*t;
+let scene, camera, renderer, controls, glassGroup, glassMesh, liquidMesh, finger, basePos;
 
-                controls = new THREE.OrbitControls(camera, renderer.domElement);
-                controls.enableDamping = true;
-                controls.dampingFactor = 0.05;
-                controls.minDistance = 10;
-                controls.maxDistance = 50;
-                // Deaktiver panorerig så brugeren ikke rykker glasset væk på touch-skærme
-                controls.enablePan = false; 
-                controls.target.set(0, 0, 0);
+function init3D(){
+  const view = $('view');
+  if (typeof THREE === 'undefined'){ view.innerHTML = '<div class="nogl">3D-visningen kunne ikke indlæses. Lyden og graferne virker stadig.</div>'; return; }
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(40, view.clientWidth/view.clientHeight, 0.1, 100);
+  camera.position.set(0, 3.5, 22);
+  renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(view.clientWidth, view.clientHeight);
+  view.appendChild(renderer.domElement);
+  if (THREE.OrbitControls){
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true; controls.enablePan = false; controls.minDistance = 10; controls.maxDistance = 36;
+    controls.target.set(0, 0.5, 0);
+  }
+  scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+  const l1 = new THREE.DirectionalLight(0xffffff, 0.9); l1.position.set(8, 14, 10); scene.add(l1);
+  const l2 = new THREE.DirectionalLight(0xffc8d4, 0.5); l2.position.set(-10, -4, -8); scene.add(l2);
 
-                const ambient = new THREE.AmbientLight(0xffffff, 0.5);
-                scene.add(ambient);
+  glassGroup = new THREE.Group(); glassGroup.position.y = -(STEM+BOWL)/2; scene.add(glassGroup);
+  const pts = [new THREE.Vector2(0,0), new THREE.Vector2(1.6,0), new THREE.Vector2(1.6,0.12), new THREE.Vector2(0.2,0.3), new THREE.Vector2(0.2,STEM)];
+  for (let i=0;i<=STEPS;i++){ const t = i/STEPS; pts.push(new THREE.Vector2(bowlR(t), STEM + t*BOWL)); }
+  for (let i=STEPS;i>=0;i--){ const t = i/STEPS; pts.push(i===0 ? new THREE.Vector2(0, STEM+THICK) : new THREE.Vector2(Math.max(0, bowlR(t)-THICK), STEM + t*BOWL)); }
+  const geo = new THREE.LatheGeometry(pts, 72);
+  basePos = Float32Array.from(geo.attributes.position.array);
+  glassMesh = new THREE.Mesh(geo, new THREE.MeshPhysicalMaterial({color:0xf4eef6, metalness:0, roughness:0.08, clearcoat:1, transparent:true, opacity:0.26, depthWrite:false, side:THREE.DoubleSide}));
+  glassMesh.renderOrder = 2;
+  glassGroup.add(glassMesh);
+  const rimT = 1, rim = bowlR(rimT);
+  finger = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 12), new THREE.MeshStandardMaterial({color:0xf0c0a8, roughness:0.6}));
+  finger.position.y = STEM + BOWL + 0.1; finger.userData.r = rim; finger.visible = false; glassGroup.add(finger);
+  buildLiquid();
+  window.addEventListener('resize', onResize);
+  requestAnimationFrame(animate);
+}
+function buildLiquid(){
+  if (!glassGroup) return;
+  if (liquidMesh){ glassGroup.remove(liquidMesh); liquidMesh.geometry.dispose(); liquidMesh.material.dispose(); liquidMesh = null; }
+  if (S.fill <= 0.01) return;
+  const yTop = STEM + THICK + (BOWL - THICK)*S.fill, pts = [new THREE.Vector2(0, STEM+THICK)];
+  for (let i=0;i<=STEPS;i++){ const t = i/STEPS, y = STEM + t*BOWL; if (y < STEM+THICK) continue; if (y > yTop) break; pts.push(new THREE.Vector2(Math.max(0.01, bowlR(t)-THICK*1.1), y)); }
+  const tTop = (yTop-STEM)/BOWL; pts.push(new THREE.Vector2(bowlR(tTop)-THICK*1.1, yTop)); pts.push(new THREE.Vector2(0, yTop));
+  const L = S.liquid;
+  liquidMesh = new THREE.Mesh(new THREE.LatheGeometry(pts, 72), new THREE.MeshPhysicalMaterial({color:L.color, roughness:0.15, transparent:true, opacity:L.opacity, side:THREE.DoubleSide, depthWrite:L.opacity>0.6}));
+  liquidMesh.renderOrder = 1;
+  glassGroup.add(liquidMesh);
+}
+function deformGlass(t){
+  const pos = glassMesh.geometry.attributes.position, arr = pos.array;
+  const tapA = Math.exp(-(t - vib.tapT)/Math.max(0.2, vib.tapTau));
+  const A = 0.07*vib.rubAmp, B = 0.07*tapA;
+  if (A < 1e-4 && B < 1e-4){ if (vib.flat) return; arr.set(basePos); vib.flat = true; pos.needsUpdate = true; glassMesh.geometry.computeVertexNormals(); return; }
+  vib.flat = false;
+  const thF = 2*Math.PI*S.rev*t, osc = Math.cos(2*Math.PI*5*t);       // vist langsomt: 5 svingninger pr. sekund
+  for (let i=0;i<arr.length;i+=3){
+    const x = basePos[i], y = basePos[i+1], z = basePos[i+2];
+    if (y <= STEM){ arr[i]=x; arr[i+1]=y; arr[i+2]=z; continue; }
+    const s = Math.pow((y-STEM)/BOWL, 2), th = Math.atan2(z, x);
+    const d = 1 + s*osc*(A*Math.cos(2*(th - thF)) + B*Math.cos(2*(th - vib.tapAngle)));
+    arr[i] = x*d; arr[i+1] = y; arr[i+2] = z*d;
+  }
+  pos.needsUpdate = true; glassMesh.geometry.computeVertexNormals();
+}
+function animate(){
+  requestAnimationFrame(animate);
+  const t = performance.now()/1000;
+  const target = rubNodes ? 1 : 0;
+  vib.rubAmp += (target - vib.rubAmp)*0.05;
+  if (finger){
+    finger.visible = !!rubNodes;
+    const th = 2*Math.PI*S.rev*t; finger.position.x = finger.userData.r*Math.cos(th); finger.position.z = finger.userData.r*Math.sin(th);
+  }
+  if (glassMesh) deformGlass(t);
+  if (controls) controls.update();
+  renderer.render(scene, camera);
+}
+function onResize(){
+  const v = $('view'); if (!renderer) return;
+  camera.aspect = v.clientWidth/v.clientHeight; camera.updateProjectionMatrix(); renderer.setSize(v.clientWidth, v.clientHeight);
+}
 
-                const spotLight = new THREE.SpotLight(0xffffff, 1);
-                spotLight.position.set(10, 15, 10);
-                scene.add(spotLight);
-
-                const spotLight2 = new THREE.SpotLight(0xccccff, 0.8);
-                spotLight2.position.set(-10, -5, -10);
-                scene.add(spotLight2);
-
-                createGlass();
-                
-                window.addEventListener('resize', onWindowResize);
-            }
-
-            function getBowlRadius(t) {
-                return 0.15 + 9.0 * t - 13.0 * t * t + 5.0 * t * t * t;
-            }
-
-            function createGlass() {
-                glassGroup = new THREE.Group();
-                const points = [];
-
-                // Yderside
-                points.push(new THREE.Vector2(0, 0));
-                points.push(new THREE.Vector2(1.5, 0)); 
-                points.push(new THREE.Vector2(1.5, 0.15));
-                points.push(new THREE.Vector2(0.2, 0.3));
-                points.push(new THREE.Vector2(0.2, stemHeight)); 
-                
-                for(let i=0; i<=steps; i++) {
-                    let t = i/steps;
-                    let y = stemHeight + t * bowlHeight;
-                    let r = getBowlRadius(t);
-                    points.push(new THREE.Vector2(r, y));
-                }
-
-                // Inderside
-                for(let i=steps; i>=0; i--) {
-                    let t = i/steps;
-                    let y = stemHeight + t * bowlHeight;
-                    let r = getBowlRadius(t) - glassThickness;
-                    if(r < 0) r = 0;
-                    
-                    if (i===0) points.push(new THREE.Vector2(0, y + glassThickness)); 
-                    else points.push(new THREE.Vector2(r, y));
-                }
-
-                const glassGeom = new THREE.LatheGeometry(points, 64);
-                
-                const glassMat = new THREE.MeshPhysicalMaterial({
-                    color: 0xffffff,
-                    metalness: 0.1,
-                    roughness: 0.1,
-                    transmission: 0.9, 
-                    opacity: 1,
-                    transparent: true,
-                    side: THREE.DoubleSide
-                });
-
-                const glassMesh = new THREE.Mesh(glassGeom, glassMat);
-                glassGroup.add(glassMesh);
-                
-                // På mobil rykker vi selve glasgruppen en anelse ned
-                const isMobile = window.innerWidth < 768;
-                const offsetY = isMobile ? 2 : 0;
-                glassGroup.position.y = (-totalHeight / 2) - offsetY;
-                
-                scene.add(glassGroup);
-            }
-
-            function updateLiquidMesh(levelPercent) {
-                if(liquidMesh) {
-                    glassGroup.remove(liquidMesh);
-                    liquidMesh.geometry.dispose();
-                    liquidMesh.material.dispose();
-                    liquidMesh = null;
-                }
-
-                if(levelPercent <= 0) return;
-
-                const liquidPoints = [];
-                const targetY = stemHeight + glassThickness + (bowlHeight - glassThickness - 0.2) * (levelPercent/100);
-
-                liquidPoints.push(new THREE.Vector2(0, stemHeight + glassThickness)); 
-
-                for(let i=0; i<=steps; i++) {
-                    let t = i/steps;
-                    let y = stemHeight + t * bowlHeight;
-                    
-                    if(y < stemHeight + glassThickness) continue;
-                    if(y > targetY) break; 
-                    
-                    let r = getBowlRadius(t) - glassThickness * 1.05; 
-                    if(r > 0) liquidPoints.push(new THREE.Vector2(r, y));
-                }
-
-                if(liquidPoints.length > 0) {
-                    const lastPoint = liquidPoints[liquidPoints.length-1];
-                    liquidPoints.push(new THREE.Vector2(0, lastPoint.y));
-                }
-
-                const liquidGeom = new THREE.LatheGeometry(liquidPoints, 64);
-                const liquidMat = new THREE.MeshPhysicalMaterial({
-                    color: 0x990033, 
-                    metalness: 0.1,
-                    roughness: 0.2,
-                    transmission: 0.8,
-                    transparent: true,
-                    opacity: 0.9,
-                    side: THREE.DoubleSide
-                });
-
-                liquidMesh = new THREE.Mesh(liquidGeom, liquidMat);
-                glassGroup.add(liquidMesh);
-            }
-
-            // --- 3. FYSIK & LYD ---
-            function updatePhysics() {
-                const levelRaw = document.getElementById('slider-level').value;
-                const densityRaw = document.getElementById('slider-density').value;
-                const dampingRaw = document.getElementById('slider-damping').value;
-                
-                document.getElementById('level-val').innerText = `${levelRaw}%`;
-                
-                let typeStr = "Vin";
-                if(densityRaw < 0.9) typeStr = "Sprit";
-                if(densityRaw > 1.2) typeStr = "Sirup";
-                document.getElementById('density-val').innerText = `${typeStr} (${Number(densityRaw).toFixed(1)} kg/L)`;
-
-                let dampStr = "Mellem";
-                if(dampingRaw < 350) dampStr = "Lav";
-                else if(dampingRaw > 800) dampStr = "Høj";
-                document.getElementById('damping-val').innerText = dampStr;
-
-                const h_over_H = levelRaw / 100.0;
-                const alpha = parseFloat(densityRaw) * 1.5; 
-                
-                currentFreq = F0 / Math.sqrt(1 + alpha * Math.pow(h_over_H, 4));
-                
-                document.getElementById('freq-display').innerText = `${Math.round(currentFreq)} Hz`;
-
-                if(isPlaying && oscillator && audioCtx) {
-                    oscillator.frequency.setTargetAtTime(currentFreq, audioCtx.currentTime, 0.05);
-                    const dynamicGain = 0.5 * (300 / dampingRaw); 
-                    if(gainNode) gainNode.gain.setTargetAtTime(dynamicGain, audioCtx.currentTime, 0.1);
-                }
-
-                updateLiquidMesh(levelRaw);
-                updateChartData(currentFreq, dampingRaw);
-            }
-
-            function toggleSound() {
-                if(!audioCtx) {
-                    const AudioContext = window.AudioContext || window.webkitAudioContext;
-                    if (AudioContext) audioCtx = new AudioContext();
-                    else return;
-                }
-                
-                if(audioCtx.state === 'suspended') audioCtx.resume();
-
-                const btn = document.getElementById('btn-sound');
-                const dampingRaw = document.getElementById('slider-damping').value;
-
-                if(isPlaying) {
-                    if(gainNode) gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
-                    setTimeout(() => {
-                        if(oscillator) { oscillator.stop(); oscillator.disconnect(); oscillator = null; }
-                        isPlaying = false;
-                        btn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg> Spil Lyd';
-                        btn.classList.replace('bg-slate-500', 'bg-rose-600');
-                        btn.classList.replace('hover:bg-slate-400', 'hover:bg-rose-500');
-                    }, 150);
-                } else {
-                    oscillator = audioCtx.createOscillator();
-                    gainNode = audioCtx.createGain();
-                    
-                    oscillator.type = 'sine'; 
-                    oscillator.frequency.value = currentFreq;
-                    
-                    oscillator.connect(gainNode);
-                    gainNode.connect(audioCtx.destination);
-                    
-                    gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-                    const dynamicGain = 0.5 * (300 / dampingRaw);
-                    gainNode.gain.setTargetAtTime(dynamicGain, audioCtx.currentTime, 0.1); 
-                    
-                    oscillator.start();
-                    isPlaying = true;
-
-                    btn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path></svg> Stop Lyd';
-                    btn.classList.replace('bg-rose-600', 'bg-slate-500');
-                    btn.classList.replace('hover:bg-rose-500', 'hover:bg-slate-400');
-                }
-            }
-
-            // --- 4. GRAFIK (Chart.js) ---
-            function initChart() {
-                const ctx = document.getElementById('freqChart');
-                if(!ctx) return;
-                
-                Chart.defaults.color = '#cbd5e1'; 
-
-                chart = new Chart(ctx.getContext('2d'), {
-                    type: 'line',
-                    data: {
-                        labels: [], 
-                        datasets: [{
-                            label: 'Intensitet',
-                            data: [], 
-                            borderColor: '#f43f5e',
-                            backgroundColor: 'rgba(244, 63, 94, 0.2)',
-                            borderWidth: 2,
-                            fill: true,
-                            pointRadius: 0,
-                            tension: 0.4
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        animation: { duration: 0 }, 
-                        scales: {
-                            x: {
-                                min: 300, max: 1200,
-                                title: { display: false }, // Skjult på mobil for at spare plads
-                                grid: { color: 'rgba(255,255,255,0.05)' },
-                                ticks: { font: { size: 10 } }
-                            },
-                            y: {
-                                min: 0, max: 100,
-                                title: { display: false },
-                                grid: { color: 'rgba(255,255,255,0.05)' },
-                                ticks: { display: false } // Skjul y-tal for renere look på mobil
-                            }
-                        },
-                        plugins: { legend: { display: false } }
-                    }
-                });
-            }
-
-            function updateChartData(f, damping) {
-                if(!chart) return;
-                
-                const labels = [];
-                const data = [];
-                const maxIntensity = 100 * (300 / damping);
-
-                for(let x = 300; x <= 1200; x += 10) { // Lidt grovere steps (10) for bedre mobil performance
-                    labels.push(x);
-                    let y = maxIntensity * Math.exp(-Math.pow(x - f, 2) / damping);
-                    y += (maxIntensity * 0.2) * Math.exp(-Math.pow(x - (f * 1.5), 2) / (damping*3));
-                    data.push(y);
-                }
-                
-                chart.data.labels = labels;
-                chart.data.datasets[0].data = data;
-                chart.update();
-            }
-
-            // --- 5. UI & EVENT LISTENERS ---
-            function initUI() {
-                // Brug både 'input' og 'change' for bedre touch-slider support
-                ['input', 'change'].forEach(evt => {
-                    document.getElementById('slider-level').addEventListener(evt, updatePhysics);
-                    document.getElementById('slider-density').addEventListener(evt, updatePhysics);
-                    document.getElementById('slider-damping').addEventListener(evt, updatePhysics); 
-                });
-                
-                document.getElementById('btn-sound').addEventListener('click', toggleSound);
-
-                const modal = document.getElementById('physics-modal');
-                document.getElementById('btn-physics').addEventListener('click', () => {
-                    modal.style.display = 'flex';
-                });
-                document.getElementById('btn-close-modal').addEventListener('click', () => {
-                    modal.style.display = 'none';
-                });
-            }
-
-            function onWindowResize() {
-                if(camera && renderer) {
-                    const isMobile = window.innerWidth < 768;
-                    camera.position.z = isMobile ? 32 : 24;
-                    camera.position.y = isMobile ? 4 : 2;
-                    
-                    if(glassGroup) {
-                        const offsetY = isMobile ? 2 : 0;
-                        glassGroup.position.y = (-totalHeight / 2) - offsetY;
-                    }
-
-                    camera.aspect = window.innerWidth / window.innerHeight;
-                    camera.updateProjectionMatrix();
-                    renderer.setSize(window.innerWidth, window.innerHeight);
-                }
-            }
-
-            function animate() {
-                requestAnimationFrame(animate);
-                if(controls) controls.update();
-                
-                if(glassGroup) {
-                     glassGroup.rotation.y += 0.003;
-                }
-
-                if(renderer && scene && camera) {
-                    renderer.render(scene, camera);
-                }
-            }
-            
-        };
-    </script>
+// ---------- UI ----------
+function chips(el, list, key){
+  el.innerHTML = '';
+  list.forEach(item => {
+    const b = document.createElement('button'); b.textContent = item.name; b.setAttribute('aria-pressed', S[key] === item);
+    b.addEventListener('click', () => { S[key] = item; [...el.children].forEach(c => c.setAttribute('aria-pressed', c === b)); update(); if (key==='liquid') buildLiquid(); });
+    el.appendChild(b);
+  });
+}
+function update(){
+  $('vFill').textContent = Math.round(S.fill*100)+' %';
+  $('vRev').textContent = fmt(S.rev, 1).replace('.', ',')+' pr. s';
+  const f = currentF();
+  $('freq').textContent = fmt(f)+' Hz';
+  $('note').textContent = noteName(f);
+  updateRub(); drawCurve(); drawSpec();
+}
+$('fill').addEventListener('input', () => { S.fill = $('fill').value/100; update(); buildLiquid(); });
+$('rev').addEventListener('input', () => { S.rev = +$('rev').value; update(); });
+$('rub').addEventListener('click', () => {
+  if (rubNodes){ stopRub(); $('rub').setAttribute('aria-pressed','false'); $('rub').textContent = 'Gnid kanten'; }
+  else { startRub(); $('rub').setAttribute('aria-pressed','true'); $('rub').textContent = 'Stop'; lastPlayed = 'rub'; drawSpec(); }
+});
+$('tap').addEventListener('click', tap);
+chips($('liquids'), LIQUIDS, 'liquid');
+chips($('glasses'), GLASSES, 'glass');
+S.fill = $('fill').value/100; S.rev = +$('rev').value;
+let rT; window.addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { drawCurve(); drawSpec(); }, 120); });
+update();
+window.addEventListener('load', init3D);
+if (document.fonts) document.fonts.ready.then(() => { drawCurve(); drawSpec(); });
+</script>
 </body>
 </html>
