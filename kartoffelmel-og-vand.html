@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kartoffelmel og vand – væsken der bliver fast – Michael Grant</title>
+<meta name="description" content="Interaktiv 3D-simulation af kartoffelmel i vand, en forskydningsfortykkende suspension: langsomt tryk flyder, hurtigt slag er fast, en klemt klump er fast og løber, når man slipper, og dryppet knækker. Med Wyart–Cates-modellen og en opskrift til køkkenet.">
+<meta name="author" content="Michael Grant">
+<meta name="theme-color" content="#0b0d17">
+<link rel="canonical" href="https://michaelhgrant.github.io/Natur-fysik-kemi-mat/kartoffelmel-og-vand.html">
+<meta property="og:type" content="article">
+<meta property="og:locale" content="da_DK">
+<meta property="og:title" content="Kartoffelmel og vand – væsken der bliver fast">
+<meta property="og:description" content="Tryk langsomt, og den flyder. Slå hurtigt, og den er fast.">
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$','$'], ['\\(','\\)']], displayMath: [['$$','$$']] },
+  chtml: { scale: 1.02 },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] }
+};
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+:root{
+  --space-black:#0b0d17; --space-deep:#050608;
+  --aurora-green:#39ff14; --aurora-purple:#a020f0; --aurora-blue:#4cc9f0;
+  --text-light:#e0e0e0; --text-dim:#a0a0a8;
+  --card-bg:rgba(255,255,255,0.04); --card-border:rgba(57,255,20,0.18);
+  --gold:#f5c878; --gold-bright:#ffe0a0; --fire:#ff7a2a; --red:#ff4d6d;
+  --panel:rgba(255,255,255,0.035); --line:rgba(255,255,255,0.09);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:70px}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{
+  font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
+  background-color:var(--space-black);
+  background-image:radial-gradient(circle at 20% 10%,rgba(160,32,240,0.08),transparent 40%),
+                   radial-gradient(circle at 80% 60%,rgba(76,201,240,0.05),transparent 40%);
+  color:var(--text-light); line-height:1.65; margin:0;
+}
+a{color:var(--aurora-blue)}
+a:focus-visible,button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--aurora-blue);outline-offset:3px}
+
+nav.topnav{position:sticky;top:0;z-index:100;background:rgba(11,13,23,0.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  border-bottom:1px solid rgba(57,255,20,0.25);padding:0.6rem 1rem;overflow-x:auto;white-space:nowrap}
+nav.topnav ul{list-style:none;margin:0;padding:0;display:inline-flex;gap:0.4rem;justify-content:center;width:100%;min-width:max-content}
+nav.topnav a{color:var(--text-dim);text-decoration:none;padding:0.4rem 0.9rem;border-radius:20px;font-size:0.85rem;font-weight:500;border:1px solid transparent;transition:all .2s ease}
+nav.topnav a:hover{color:var(--aurora-green);border-color:rgba(57,255,20,0.4);background:rgba(57,255,20,0.05)}
+nav.topnav a.home{color:var(--aurora-green);border-color:rgba(57,255,20,0.35)}
+
+header.page{padding:3.2rem 1.5rem 2.2rem;text-align:center;background:linear-gradient(to bottom,#1a1a2e,var(--space-black))}
+header.page h1{font-size:clamp(2rem,5vw,3.1rem);color:var(--aurora-green);text-shadow:0 0 25px rgba(57,255,20,0.35);margin:0 0 0.8rem;letter-spacing:0.3px}
+header.page p{max-width:720px;margin:0 auto;color:var(--text-dim);font-size:1.05rem}
+
+main{max-width:1180px;margin:0 auto;padding:1rem 1.5rem 3rem}
+section.block{margin:2.5rem 0 3.5rem}
+.section-header{border-left:4px solid var(--aurora-blue);padding-left:1rem;margin-bottom:1.4rem}
+.section-header h2{margin:0 0 0.3rem;font-size:1.75rem;color:#fff}
+.section-header p{margin:0;color:var(--text-dim);max-width:760px}
+#tippetop .section-header{border-left-color:var(--gold)}
+#teori .section-header{border-left-color:var(--aurora-purple)}
+
+/* === simulator layout === */
+.sim{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:1rem;align-items:start}
+.stage{position:relative;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#07080f;height:min(70vh,600px);min-height:360px}
+.stage canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+.stage canvas:active{cursor:grabbing}
+.stage .hud{position:absolute;left:0.8rem;top:0.7rem;font-size:0.8rem;color:var(--text-dim);pointer-events:none;line-height:1.5;text-shadow:0 1px 3px #000}
+.stage .status{position:absolute;right:0.8rem;top:0.7rem;font-size:0.85rem;padding:0.25rem 0.75rem;border-radius:20px;border:1px solid var(--line);background:rgba(7,8,15,0.75);color:var(--text-light)}
+.stage .hint{position:absolute;left:0.8rem;bottom:0.6rem;font-size:0.75rem;color:rgba(160,160,168,0.8);pointer-events:none}
+.legend{display:flex;flex-wrap:wrap;gap:0.3rem 1.1rem;font-size:0.82rem;color:var(--text-dim);margin:0.55rem 0.2rem 0}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:0.35rem}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1rem 1rem 1.1rem}
+.panel h3{margin:0 0 0.7rem;font-size:1rem;color:#fff;font-weight:600}
+.ctrl{margin-bottom:0.85rem}
+.ctrl label{display:flex;justify-content:space-between;gap:0.5rem;font-size:0.86rem;color:var(--text-light);margin-bottom:0.2rem}
+.ctrl label output{color:var(--aurora-blue);font-variant-numeric:tabular-nums}
+#tippetop .ctrl label output{color:var(--gold)}
+input[type=range]{width:100%;accent-color:var(--aurora-blue)}
+#tippetop input[type=range]{accent-color:var(--gold)}
+.btns{display:flex;flex-wrap:wrap;gap:0.45rem;margin:0.3rem 0 0.9rem}
+button{font:inherit;font-size:0.85rem;font-weight:600;padding:0.45rem 0.9rem;border-radius:22px;border:1.5px solid var(--aurora-blue);background:transparent;color:var(--aurora-blue);cursor:pointer;transition:background .2s,color .2s}
+button:hover{background:var(--aurora-blue);color:var(--space-black)}
+button.primary{background:var(--aurora-blue);color:var(--space-black)}
+#tippetop button{border-color:var(--gold);color:var(--gold)}
+#tippetop button:hover,#tippetop button.primary{background:var(--gold);color:var(--space-black)}
+.checks{display:flex;flex-wrap:wrap;gap:0.3rem 1rem;font-size:0.85rem;margin-bottom:0.8rem}
+.checks label{display:flex;align-items:center;gap:0.35rem;cursor:pointer}
+table.read{width:100%;border-collapse:collapse;font-size:0.84rem;font-variant-numeric:tabular-nums}
+table.read td{padding:0.22rem 0;border-bottom:1px solid rgba(255,255,255,0.05)}
+table.read td:last-child{text-align:right;color:#fff}
+.note{font-size:0.8rem;color:var(--text-dim);margin:0.7rem 0 0}
+.flag{font-size:0.82rem;padding:0.5rem 0.7rem;border-radius:10px;margin-top:0.7rem;border:1px solid var(--line);background:rgba(255,255,255,0.03)}
+.flag.ok{border-color:rgba(57,255,20,0.35);color:#bff5ae}
+.flag.no{border-color:rgba(255,77,109,0.45);color:#ffc2cd}
+
+.plots{display:grid;grid-template-columns:1fr 1fr;gap:1rem;grid-column:1;grid-row:2}
+.sim > .panel{grid-column:2;grid-row:1 / span 2}
+.plot{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:0.8rem 0.9rem 0.9rem}
+.plot h3{margin:0 0 0.2rem;font-size:0.95rem;color:#fff;font-weight:600}
+.plot p{margin:0 0 0.5rem;font-size:0.8rem;color:var(--text-dim)}
+.plot canvas{display:block;width:100%;height:230px}
+
+/* === tekst === */
+.prose{max-width:780px}
+.prose p{margin:0 0 1rem}
+.prose h3{color:#fff;margin:2rem 0 0.6rem;font-size:1.25rem}
+.prose h4{color:var(--aurora-blue);margin:1.4rem 0 0.4rem;font-size:1.02rem}
+.intro-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;margin:0 0 1rem}
+.intro-grid div{background:var(--card-bg);border:1px solid var(--line);border-radius:14px;padding:1.1rem 1.2rem}
+.intro-grid h3{margin:0 0 0.4rem;font-size:1.05rem;color:#fff}
+.intro-grid p{margin:0;font-size:0.95rem;color:var(--text-light)}
+details{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:0.2rem 1rem;margin:0.9rem 0}
+details[open]{padding-bottom:0.6rem}
+summary{cursor:pointer;padding:0.6rem 0;color:var(--aurora-blue);font-weight:600}
+.mjx-scroll,mjx-container[display="true"]{overflow-x:auto;overflow-y:hidden;max-width:100%}
+.tablewrap{overflow-x:auto}
+table.sum{border-collapse:collapse;width:100%;min-width:560px;font-size:0.92rem;margin:0.5rem 0 1rem}
+table.sum th,table.sum td{text-align:left;padding:0.55rem 0.7rem;border-bottom:1px solid var(--line);vertical-align:top}
+table.sum th{color:#fff;font-weight:600}
+table.sum td:first-child{color:var(--text-dim)}
+.refs{font-size:0.9rem;color:var(--text-dim);padding-left:1.1rem}
+.refs li{margin-bottom:0.35rem}
+.downloads{display:flex;flex-wrap:wrap;gap:0.6rem;margin:1rem 0}
+.downloads a{display:inline-block;padding:0.5rem 1.1rem;border-radius:25px;border:1.5px solid var(--aurora-green);color:var(--aurora-green);text-decoration:none;font-weight:600;font-size:0.88rem}
+.downloads a:hover{background:var(--aurora-green);color:var(--space-black)}
+footer{margin-top:3rem;padding:2rem 1.5rem;font-size:0.88rem;color:var(--text-dim);text-align:center;border-top:1px solid rgba(255,255,255,0.05)}
+footer a{text-decoration:none}
+
+@media (max-width:900px){
+  .sim{grid-template-columns:1fr}
+  .plots{grid-template-columns:1fr;grid-column:auto;grid-row:auto}
+  .sim > .panel{grid-column:auto;grid-row:auto}
+  .intro-grid{grid-template-columns:1fr}
+  .stage{height:62vh;min-height:320px}
+}
+@media (max-width:600px){
+  main{padding:0.5rem 1rem 2rem}
+  .section-header h2{font-size:1.4rem}
+  .stage .hud{font-size:0.72rem}
+}
+
+/* === koblede penduler === */
+.psim{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:1rem;align-items:start}
+.pcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:0.7rem;margin:0.9rem 0 1rem}
+.pcard{background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--c);border-radius:12px;padding:0.65rem 0.8rem 0.7rem;cursor:pointer}
+.pcard.sel{background:rgba(255,255,255,0.075);border-color:var(--c)}
+.pcard .phead{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.35rem}
+.pcard h4{margin:0;font-size:0.92rem;color:var(--c)}
+.pcard button.x{padding:0.12rem 0.6rem;font-size:0.75rem;border-color:var(--line);color:var(--text-dim)}
+.pcard button.x:hover{background:var(--red);border-color:var(--red);color:var(--space-black)}
+.pcard .ctrl{margin-bottom:0.4rem}
+.pcard .ctrl label{font-size:0.8rem}
+.pcard input[type=range]{accent-color:var(--c)}
+.pcard table.read{font-size:0.78rem}
+.panel h3 + .btns{margin-top:0}
+button:disabled{opacity:0.35;cursor:not-allowed;background:transparent!important;color:var(--text-dim)!important;border-color:var(--line)!important}
+#pModes{max-height:300px;overflow-y:auto}
+.mode{display:grid;grid-template-columns:1.1rem minmax(0,1fr) auto auto;gap:0.5rem;align-items:center;padding:0.3rem 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:0.82rem;font-variant-numeric:tabular-nums}
+.mode .mn{color:var(--text-dim)}
+.mode .shape{display:flex;gap:2px;height:30px}
+.mode .shape .b{flex:1;position:relative;background:rgba(255,255,255,0.03);border-radius:2px}
+.mode .shape .b::after{content:"";position:absolute;left:0;right:0;top:50%;border-top:1px solid rgba(255,255,255,0.12)}
+.mode .shape i{position:absolute;left:12%;right:12%;border-radius:1px}
+.mode .mt{color:#fff}
+.mode button{padding:0.18rem 0.6rem;font-size:0.75rem}
+.plot canvas#pPlot{height:240px}
+.seg{display:flex;margin:0 0 0.9rem;border:1.5px solid var(--aurora-blue);border-radius:22px;overflow:hidden}
+.seg button{flex:1;border:0;border-radius:0;padding:0.45rem 0.5rem}
+.seg button + button{border-left:1.5px solid var(--aurora-blue)}
+.seg button.on{background:var(--aurora-blue);color:var(--space-black)}
+[hidden]{display:none!important}
+ol.steps{padding-left:1.3rem;margin:0 0 1rem}
+ol.steps li{margin-bottom:0.6rem;padding-left:0.2rem}
+ol.steps li::marker{color:var(--gold);font-weight:700}
+#byg-selv .section-header{border-left-color:var(--gold)}
+#byg-selv table.sum td{height:2.1rem}
+@media (max-width:900px){ .psim{grid-template-columns:1fr} }
+
+.seg4 button{font-size:0.8rem;padding:0.45rem 0.2rem}
+.holdwrap{margin:0.8rem 0 0}
+button.hold{width:100%;padding:1rem;font-size:1rem;border-radius:14px;border:2px solid var(--gold);color:var(--gold);background:rgba(245,200,120,0.06);touch-action:none;user-select:none;-webkit-user-select:none}
+button.hold.down{background:var(--gold);color:var(--space-black)}
+
+.status.hot{color:#ff4d6d;border-color:rgba(255,77,109,0.6)}
+.plot canvas#oPlot{height:260px}
+</style>
+</head>
+<body>
+<nav class="topnav" aria-label="Navigation">
+  <ul>
+    <li><a class="home" href="index.html#mekanik">← Forsiden</a></li>
+    <li><a href="#forsoeget">Simulationen</a></li>
+    <li><a href="#hvad-er-det">Hvad er det?</a></li>
+    <li><a href="#flydekurven">Flydekurven</a></li>
+    <li><a href="#faenomenerne">Fænomenerne</a></li>
+    <li><a href="#lav-det-selv">Lav det selv</a></li>
+    <li><a href="#sammenfatning">Sammenfatning</a></li>
+  </ul>
+</nav>
+<header class="page">
+  <h1>Kartoffelmel og vand</h1>
+  <p>Rør kartoffelmel ud i lidt vand, og du får et stof, der ikke kan bestemme sig. Tryk langsomt en finger ned i det, og den glider ned som i tyk fløde. Slå hurtigt, og overfladen er hård som et bord. Klem en klump i hånden, og den er fast. Åbn hånden, og den løber ud mellem fingrene. Lad den dryppe, og strålen knækker som glas, inden dråben når at blive til.</p>
+</header>
+<main>
+<section class="block" id="forsoeget">
+  <div class="section-header">
+    <h2>Forsøget i 3D</h2>
+    <p>Vælg <em>Skålen</em> eller <em>Hånden</em>. I skålen kan du trække en finger ned i massen: træk langsomt, og den synker ned, træk hurtigt, og den stopper. Træk i baggrunden for at dreje, rul eller knib for at zoome. Blank overflade betyder væske, mat overflade betyder fast.</p>
+  </div>
+  <div class="psim">
+    <div class="pmain">
+      <div class="stage" id="oStage">
+        <canvas id="oCanvas" aria-label="3D-simulation af kartoffelmel og vand i en skål og i en hånd"></canvas>
+        <div class="hud" id="oHud"></div>
+        <div class="status" id="oStatus">Væske</div>
+        <div class="hint" id="oHint">Træk på overfladen for at trykke med en finger</div>
+      </div>
+      <div class="holdwrap" id="holdWrap" hidden>
+        <button type="button" id="oHold" class="hold">Hold nede: klem klumpen</button>
+      </div>
+      <div class="plot">
+        <h3>Flydekurven</h3>
+        <p>Hvor hurtigt massen flyder, $\dot\gamma$, ved en given spænding $\sigma$. Kurven vender: der er en største hastighed, $\dot\gamma_{\max}$, massen kan flyde med. Presser man hurtigere, bliver den fast. Prikken viser, hvad der sker i 3D-billedet lige nu.</p>
+        <canvas id="oPlot" aria-label="Flydekurve: spænding som funktion af forskydningshastighed"></canvas>
+        <div class="legend">
+          <span><i style="background:#4cc9f0"></i>Flyder (nedre gren)</span>
+          <span><i style="background:rgba(255,77,109,0.6)"></i>Jammet, fast</span>
+          <span><i style="background:#f5c878"></i>Lige nu</span>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Forsøg</h3>
+      <div class="seg" role="group" aria-label="Vælg forsøg">
+        <button type="button" data-m="skaal" class="on" aria-pressed="true">Skålen</button>
+        <button type="button" data-m="haand" aria-pressed="false">Hånden</button>
+      </div>
+      <div id="pSkaal">
+        <div class="btns">
+          <button id="oSlow" type="button">Tryk langsomt</button>
+          <button id="oFast" type="button">Slå hurtigt</button>
+        </div>
+        <div class="ctrl"><label for="oH"><span>Faldhøjde for kuglen</span><output id="oHo"></output></label>
+          <input type="range" id="oH" min="0" max="50" step="1" value="20"></div>
+        <div class="btns">
+          <button id="oDrop" type="button" class="primary">Slip kuglen</button>
+          <button id="oPullSlow" type="button">Træk op langsomt</button>
+          <button id="oPullFast" type="button">Ryk op</button>
+        </div>
+      </div>
+      <div id="pHaand" hidden>
+        <p class="note" style="margin-top:0">Hold knappen under billedet nede (eller mellemrumstasten) for at klemme. Slip, og massen løber ud over fingrene og drypper.</p>
+        <div class="checks">
+          <label><input type="checkbox" id="oFloor"> Hold hånden over bordet i stedet for skålen</label>
+        </div>
+        <div class="btns"><button id="oRefill" type="button">Ny klump</button></div>
+      </div>
+      <h3>Blandingen</h3>
+      <div class="ctrl"><label for="oM"><span>Kartoffelmel pr. 100 ml vand</span><output id="oMo"></output></label>
+        <input type="range" id="oM" min="80" max="240" step="1" value="170"></div>
+      <p class="note" id="mixNote" style="margin-top:-0.3rem"></p>
+      <div class="btns"><button id="oReset" type="button">Nulstil</button><button id="oPause" type="button">Pause</button></div>
+      <table class="read">
+        <tr><td>Volumenbrøk af korn $\phi$</td><td id="rPhi">–</td></tr>
+        <tr><td>Viskositet i hvile $\eta_0$</td><td id="rEta">–</td></tr>
+        <tr><td>Største flydehastighed $\dot\gamma_{\max}$</td><td id="rGmax">–</td></tr>
+        <tr><td>Spænding, hvor den bliver fast $\sigma_J$</td><td id="rSJ">–</td></tr>
+        <tr><td>Hurtigste finger, der kan synke</td><td id="rVf">–</td></tr>
+      </table>
+      <p class="note">Tallene kommer fra Wyart–Cates-modellen med parametre, der er valgt, så de ligner en rigtig blanding. Simulationen er en forenkling: overfladen flyder som et tykt lag, og fingeren, kuglen og dryppet følger modellens flydekurve.</p>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="teori">
+  <div class="section-header">
+    <h2>Teorien bag</h2>
+    <p>Kartoffelmel i vand er ikke en opløsning og ikke en emulsion, men en suspension: faste stivelseskorn, der svæver i vand. Det er kornene, der gør det hele.</p>
+  </div>
+  <div class="prose">
+    <h3 id="hvad-er-det">Suspension, forskydningsfortykkende – ikke thixotrop</h3>
+    <p>Stivelseskornene i kartoffelmel er 15–100 µm store og opløses ikke i koldt vand. Blandingen er altså en <strong>suspension</strong>: faste partikler i en væske. En <em>emulsion</em> er dråber af én væske i en anden, som mayonnaise, og en <em>opløsning</em> er stof fordelt som enkelte molekyler, som sukker i vand.</p>
+    <p>Blandingen er <strong>forskydningsfortykkende</strong> (også kaldet dilatant): jo hårdere man presser, jo tykkere bliver den, og over en vis grænse bliver den fast. Den kaldes ofte thixotrop, men det er faktisk det modsatte. Et thixotropt stof bliver tyndere, jo længere tid man rører i det, og tykner langsomt igen, når det står stille. Ketchup og maling er eksempler.</p>
+    <div class="tablewrap">
+      <table class="sum">
+        <tr><th>Type</th><th>Viskositeten når man presser hårdere</th><th>Eksempel</th></tr>
+        <tr><td>Newtonsk</td><td>uændret</td><td>Vand, olie, honning</td></tr>
+        <tr><td>Forskydningsfortyndende</td><td>falder med det samme</td><td>Blod, sjampo, smeltet plast</td></tr>
+        <tr><td>Thixotrop</td><td>falder langsomt med tiden og kommer langsomt igen</td><td>Ketchup, yoghurt, maling</td></tr>
+        <tr><td>Flydespænding (Bingham)</td><td>fast, til man presser hårdt nok, så flyder det</td><td>Tandpasta, mayonnaise</td></tr>
+        <tr><td><strong>Forskydningsfortykkende</strong></td><td><strong>stiger med det samme, bliver fast ved høj spænding</strong></td><td><strong>Kartoffelmel eller majsstivelse i vand</strong></td></tr>
+      </table>
+    </div>
+
+    <h3 id="flydekurven">Friktion mellem kornene: Wyart–Cates-modellen</h3>
+    <p>Kornene er omgivet af en tynd vandfilm. Ved små spændinger glider de forbi hinanden på filmen, og blandingen er en tyk væske. Presses de hårdere sammen, bliver filmen presset væk, kornene rører hinanden direkte, og der opstår friktion. Friktion gør, at kornene låser sig fast i hinanden ved en lavere pakningstæthed.</p>
+    <p>Matthieu Wyart og Mike Cates beskrev det i 2014 med tre ligninger. Brøkdelen af kontakter med friktion vokser med spændingen $\sigma$:</p>
+    $$f(\sigma)=1-e^{-\sigma/\sigma^*}.$$
+    <p>Den pakningstæthed, hvor kornene låser, falder fra $\phi_0$ (uden friktion) til $\phi_m$ (fuld friktion):</p>
+    $$\phi_J(\sigma)=f\,\phi_m+(1-f)\,\phi_0 .$$
+    <p>Og viskositeten går mod uendelig, når kornenes volumenbrøk $\phi$ nærmer sig $\phi_J$:</p>
+    $$\eta(\sigma)=\frac{\eta_s}{\left(1-\phi/\phi_J(\sigma)\right)^{2}} .$$
+    <p>Simulationen bruger $\phi_0=0{,}60$, $\phi_m=0{,}44$, $\sigma^*=600$ Pa og $\eta_s=0{,}1$ Pa·s. Ligger $\phi$ mellem $\phi_m$ og $\phi_0$, findes der en spænding $\sigma_J$, hvor $\phi_J(\sigma_J)=\phi$:</p>
+    $$\sigma_J=-\sigma^*\ln\!\left(1-\frac{\phi_0-\phi}{\phi_0-\phi_m}\right).$$
+    <p>Her bliver massen fast. Flydehastigheden $\dot\gamma=\sigma/\eta(\sigma)$ vokser først med spændingen, når en største værdi $\dot\gamma_{\max}$ og falder så til nul ved $\sigma_J$. Det er grafen ovenfor. Den forklarer alt på siden: <strong>massen kan ikke flyde hurtigere end $\dot\gamma_{\max}$</strong>. Tvinger man den hurtigere, springer den op på den faste gren.</p>
+    <h4>Derfor skal blandingen være rigtig</h4>
+    <p>Er der for lidt kartoffelmel, $\phi<\phi_m$, kan kornene aldrig låse. Blandingen bliver tykkere, når man presser, men forbliver en væske. Er der for meget, $\phi>\phi_0$, er den fast allerede i hvile og smuldrer som vådt sand. Kun imellem opfører den sig, som den skal. Skyderen for blandingen viser det: prøv 100 g og 220 g pr. 100 ml vand.</p>
+
+    <h3 id="faenomenerne">Fænomenerne</h3>
+    <h4>Langsomt tryk og hurtigt slag</h4>
+    <p>En finger med radius $a$, der skubbes ned med farten $v$, forskyder massen med $\dot\gamma\sim v/a$. Med standardblandingen er $\dot\gamma_{\max}\approx 6\ \mathrm{s^{-1}}$, så en finger på 0,9 cm kan synke med højst godt 5 cm/s. Hurtigere, og massen under fingeren låser. Det faste område breder sig ud fra fingeren som en front, meget hurtigere end fingeren selv bevæger sig. Scott Waitukaitis og Heinrich Jaeger målte i 2012, at fronten løber omkring ti gange så hurtigt som det, der rammer. Det er derfor, man kan løbe hen over et bassin med majsstivelse, men synker, hvis man står stille.</p>
+    <h4>Den matte overflade</h4>
+    <p>Når kornene låser, må de skubbe hinanden lidt fra hinanden for at komme forbi hinanden. Pakningen udvider sig, vandet trækkes ind mellem kornene, og overfladen bliver tør og mat. Osborne Reynolds kaldte det <em>dilatans</em> i 1885 og så det i vådt sand: sandet omkring en fod bliver lyst og tørt, når man træder. I simulationen skifter overfladen fra blank til mat, når massen bliver fast.</p>
+    <h4>Klem og slip</h4>
+    <p>Når man klemmer og ruller en klump, holdes spændingen over $\sigma_J$, og klumpen er fast. Slipper man, falder spændingen til tyngdens beskedne bidrag, klumpen smelter og løber ud over hånden med den lave hvileviskositet $\eta_0$.</p>
+    <h4>Dryppet, der knækker</h4>
+    <p>En tråd med radius $r$, der bærer en dråbe med volumen $V$, har spændingen $\sigma=\rho gV/(\pi r^2)$ øverst. Tråden strækkes med hastigheden $\dot\varepsilon=\sigma/(3\eta)$, bliver tyndere, og spændingen stiger. Når den når $\sigma_J$, låser tråden og knækker som et fast stof i stedet for at snøre sig af som vand. Dråben falder som en fast klump, splintres, når den rammer bordet, og smelter så til små pytter. Med en tyndere blanding bliver tråden længere, inden den knækker.</p>
+  </div>
+</section>
+
+<section class="block" id="lav-det-selv">
+  <div class="section-header">
+    <h2>Lav det selv</h2>
+    <p>Et køkkenforsøg, der kan laves på fem minutter.</p>
+  </div>
+  <div class="prose">
+    <h3>Det skal du bruge</h3>
+    <p>En skål, 1 dl koldt vand, 150–200 g kartoffelmel (ca. 2 dl), en ske, lidt madfarve, hvis du vil, og en avis under skålen.</p>
+    <h3>Sådan gør du</h3>
+    <ol class="steps">
+      <li>Hæld vandet i skålen, og drys kartoffelmelet i lidt ad gangen, mens du rører langsomt.</li>
+      <li>Rør med en ske, til det bliver tungt at røre. Når skeen går næsten i stå ved hurtig omrøring, men massen glider, når du vipper skålen, er blandingen rigtig.</li>
+      <li>Er den for tynd, så drys mere mel i. Smuldrer den, så tilsæt vand en teskefuld ad gangen.</li>
+    </ol>
+    <h3>Forsøg</h3>
+    <p><strong>Finger og slag.</strong> Stik langsomt en finger ned i massen, og træk den langsomt op. Slå så hurtigt på overfladen med knoerne. Den føles som et bord, og der sprøjter intet.</p>
+    <p><strong>Klem og slip.</strong> Tag en håndfuld op, og rul den hurtigt mellem hænderne til en kugle. Stop, og se den smelte og løbe ud mellem fingrene.</p>
+    <p><strong>Dryp.</strong> Lad massen løbe ud over kanten af hånden eller en ske. Se efter, hvor strålen knækker, i stedet for at blive til dråber.</p>
+    <p><strong>Kuglen.</strong> Læg forsigtigt en lille bold på overfladen, og se den synke. Slip den så fra 20 cm højde: den hopper eller bliver liggende oven på massen et øjeblik. Begrav den, og prøv at rykke den op: hele skålen følger med.</p>
+    <p><strong>For de modige.</strong> Læg en plastpose på en højttaler, hæld massen i, og spil en kraftig, dyb tone omkring 40–80 Hz. Der vokser fingre og huller op af overfladen.</p>
+    <h3>Oprydning</h3>
+    <p>Hæld aldrig massen i vasken eller toilettet. Den bundfælder sig og kan stoppe afløbet. Lad den tørre ind eller smid den i skraldespanden, og vask skålen bagefter. Kartoffelmel er helt ufarligt, men det støver, så undgå at hvirvle det op.</p>
+  </div>
+</section>
+
+<section class="block" id="sammenfatning">
+  <div class="section-header">
+    <h2>Sammenfatning</h2>
+    <p>Kartoffelmel og vand er en suspension, der bliver fast, når kornene tvinges til at gnide mod hinanden.</p>
+  </div>
+  <div class="prose">
+    <div class="tablewrap">
+      <table class="sum">
+        <tr><th>Situation</th><th>Hvad kornene gør</th><th>Resultat</th></tr>
+        <tr><td>Langsomt tryk, $\dot\gamma<\dot\gamma_{\max}$</td><td>Glider på vandfilm</td><td>Væske</td></tr>
+        <tr><td>Hurtigt slag, $\dot\gamma>\dot\gamma_{\max}$</td><td>Presses i kontakt, friktion, låser</td><td>Fast, mat overflade</td></tr>
+        <tr><td>Klemt klump</td><td>Holdes låst af spændingen</td><td>Fast kugle</td></tr>
+        <tr><td>Sluppet klump</td><td>Glider fri igen</td><td>Løber som væske</td></tr>
+        <tr><td>Dryp</td><td>Trådens spænding når $\sigma_J$</td><td>Knækker som glas</td></tr>
+        <tr><td>For lidt mel, $\phi<\phi_m$</td><td>Kan ikke låse</td><td>Tyk væske</td></tr>
+        <tr><td>For meget mel, $\phi>\phi_0$</td><td>Låst allerede i hvile</td><td>Smuldrer</td></tr>
+      </table>
+    </div>
+    <h3>Litteratur</h3>
+    <ul class="refs">
+      <li>M. Wyart &amp; M. E. Cates, »Discontinuous shear thickening without inertia in dense non-Brownian suspensions«, <em>Phys. Rev. Lett.</em> 112, 098302 (2014).</li>
+      <li>R. Seto, R. Mari, J. F. Morris &amp; M. M. Denn, »Discontinuous shear thickening of frictional hard-sphere suspensions«, <em>Phys. Rev. Lett.</em> 111, 218301 (2013).</li>
+      <li>S. R. Waitukaitis &amp; H. M. Jaeger, »Impact-activated solidification of dense suspensions via dynamic jamming fronts«, <em>Nature</em> 487, 205 (2012).</li>
+      <li>M. I. Smith, R. Besseling, M. E. Cates &amp; V. Bertola, »Dilatancy in the flow and fracture of stretched colloidal suspensions«, <em>Nature Communications</em> 1, 114 (2010).</li>
+      <li>O. Reynolds, »On the dilatancy of media composed of rigid particles in contact«, <em>Philosophical Magazine</em> 20, 469 (1885).</li>
+      <li>E. Brown &amp; H. M. Jaeger, »Shear thickening in concentrated suspensions: phenomenology, mechanisms and relations to jamming«, <em>Rep. Prog. Phys.</em> 77, 046602 (2014).</li>
+      <li>F. S. Merkt, R. D. Deegan, D. I. Goldman, E. C. Rericha &amp; H. L. Swinney, »Persistent holes in a fluid«, <em>Phys. Rev. Lett.</em> 92, 184501 (2004).</li>
+    </ul>
+  </div>
+</section>
+</main>
+<footer>
+  <a href="index.html">Fysik, matematik og kemi</a> · Michael Grant · <a href="mailto:michael.h.grant@gmail.com">michael.h.grant@gmail.com</a>
+</footer>
+<script>
+(function(){
+'use strict';
+const REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $ = id => document.getElementById(id);
+const fmt = (x,d=2) => { const s = x.toFixed(d); return (/^-0[,.]?0*$/.test(s) ? s.slice(1) : s).replace('.',',').replace('-','−'); };
+const G = 9.82;
+
+/* ---------------- Reologi: Wyart–Cates (SI-enheder) ---------------- */
+const RH = {ETA_S:0.1, PHI0:0.60, PHIM:0.44, SIG_S:600, RHO:1300, phi:0.53};
+let SJ = 0, GMAX = 0, SGMAX = 0, ETA0 = 1, ETA_REF = 7.6;
+const phiFromMix = m => { const Vs = m/1.5; return Vs/(Vs+100); };
+const fC = s => 1 - Math.exp(-s/RH.SIG_S);
+const phiJ = s => { const f = fC(s); return f*RH.PHIM + (1-f)*RH.PHI0; };
+function eta(s){ const pj = phiJ(s); return RH.phi < pj ? RH.ETA_S/Math.pow(1 - RH.phi/pj, 2) : Infinity; }
+function rate(s){ const e = eta(s); return isFinite(e) ? s/e : 0; }
+function sigmaJ(){ const p = RH.phi; if(p <= RH.PHIM) return Infinity; if(p >= RH.PHI0) return 0; return -RH.SIG_S*Math.log(1 - (RH.PHI0-p)/(RH.PHI0-RH.PHIM)); }
+function updateRheo(){
+  SJ = sigmaJ(); ETA0 = eta(0);
+  if(!isFinite(SJ)){ GMAX = Infinity; SGMAX = Infinity; }
+  else if(SJ <= 0){ GMAX = 0; SGMAX = 0; }
+  else { GMAX = 0; SGMAX = 0; for(let i=1;i<600;i++){ const s = SJ*i/600, r = rate(s); if(r > GMAX){ GMAX = r; SGMAX = s; } } }
+}
+function stressAt(gd){   // nedre gren: spændingen ved forskydningshastigheden gd
+  if(gd >= GMAX) return SGMAX;
+  let lo = 0, hi = isFinite(SGMAX) ? SGMAX : 1e5;
+  for(let i=0;i<50;i++){ const m = (lo+hi)/2; rate(m) < gd ? lo = m : hi = m; }
+  return (lo+hi)/2;
+}
+const dry = () => RH.phi >= RH.PHI0;
+const jammable = () => isFinite(SJ);
+let probe = {gd:0, s:0, jam:false, on:false};   // punkt i flydekurven
+
+/* ---------------- Scene (1 enhed = 1 cm) ---------------- */
+const canvas = $('oCanvas'), stage = $('oStage');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.setClearColor(0x07080f, 1);
+const scene = new THREE.Scene(); scene.fog = new THREE.Fog(0x07080f, 110, 240);
+const camera = new THREE.PerspectiveCamera(40, 1.6, 0.5, 600);
+const target = new THREE.Vector3(0, 8, 0);
+const cam = {r:62, az:0.5, el:0.55};
+function applyCam(){
+  cam.el = Math.max(0.02, Math.min(1.45, cam.el)); cam.r = Math.max(18, Math.min(150, cam.r));
+  camera.position.set(target.x + cam.r*Math.cos(cam.el)*Math.sin(cam.az), target.y + cam.r*Math.sin(cam.el), target.z + cam.r*Math.cos(cam.el)*Math.cos(cam.az));
+  camera.lookAt(target);
+}
+applyCam();
+scene.add(new THREE.HemisphereLight(0xc8d4ff, 0x20160c, 0.6));
+const sun = new THREE.DirectionalLight(0xffffff, 1.0);
+sun.position.set(25, 60, 30); sun.castShadow = true; sun.shadow.mapSize.set(1024,1024);
+Object.assign(sun.shadow.camera, {left:-45, right:45, top:45, bottom:-45, near:5, far:160});
+scene.add(sun);
+const rim = new THREE.PointLight(0x4cc9f0, 0.4, 150); rim.position.set(-40, 30, -30); scene.add(rim);
+const table = new THREE.Mesh(new THREE.BoxGeometry(120, 3, 80), new THREE.MeshStandardMaterial({color:0x6b4a2e, roughness:0.7}));
+table.position.y = -1.5; table.receiveShadow = true; scene.add(table);
+
+// skålen
+const bowl = new THREE.Group(); scene.add(bowl);
+const innerR = y => Math.max(0.01, 9.8*Math.sqrt(Math.max(0, 1 - ((8-y)/7.4)**2)));
+const prof = [];
+for(let k=0;k<=24;k++){ const y = 0.6 + 7.4*k/24; prof.push(new THREE.Vector2(innerR(y), y)); }
+const lathePts = [new THREE.Vector2(0.01, 0), new THREE.Vector2(6.5, 0)]
+  .concat(prof.filter(p => p.y > 2.2).map(p => new THREE.Vector2(p.x + 0.55, p.y)))
+  .concat([new THREE.Vector2(prof[24].x + 0.3, 8.3)])
+  .concat(prof.slice().reverse());
+const bowlMesh = new THREE.Mesh(new THREE.LatheGeometry(lathePts, 72), new THREE.MeshStandardMaterial({color:0x2d5a8c, roughness:0.35, metalness:0.05, side:THREE.DoubleSide}));
+bowlMesh.castShadow = true; bowlMesh.receiveShadow = true; bowl.add(bowlMesh);
+const LEVEL = 5.2;                                   // massens overflade i hvile
+const RS = innerR(LEVEL) - 0.05;                      // overfladens radius
+
+/* ---------------- Overfladen som højdefelt ---------------- */
+const NG = 64, DX = 2*RS/(NG-1);
+let H = new Float32Array(NG*NG), Hn = new Float32Array(NG*NG), J = new Float32Array(NG*NG), LOCK = new Uint8Array(NG*NG);
+const MASK = new Uint8Array(NG*NG);
+for(let j=0;j<NG;j++) for(let i=0;i<NG;i++){ const x = -RS + i*DX, z = -RS + j*DX; MASK[j*NG+i] = x*x + z*z <= RS*RS ? 1 : 0; }
+function sampleH(x, z, arr){
+  const a = arr || H;
+  const fi = Math.max(0, Math.min(NG-1.001, (x+RS)/DX)), fj = Math.max(0, Math.min(NG-1.001, (z+RS)/DX));
+  const i = Math.floor(fi), j = Math.floor(fj), u = fi-i, v = fj-j;
+  return (a[j*NG+i]*(1-u) + a[j*NG+i+1]*u)*(1-v) + (a[(j+1)*NG+i]*(1-u) + a[(j+1)*NG+i+1]*u)*v;
+}
+const RINGS = 34, SECT = 96;
+const surfGeo = new THREE.BufferGeometry();
+const sPos = new Float32Array((1 + RINGS*SECT)*3), sUV = new Float32Array((1 + RINGS*SECT)*2), sIdx = [];
+for(let r=1;r<=RINGS;r++) for(let k=0;k<SECT;k++){
+  const id = 1 + (r-1)*SECT + k, rad = RS*r/RINGS, a = 2*Math.PI*k/SECT;
+  sPos[3*id] = rad*Math.cos(a); sPos[3*id+2] = rad*Math.sin(a);
+}
+for(let v=0; v<1+RINGS*SECT; v++){ sUV[2*v] = (sPos[3*v]+RS)/(2*RS); sUV[2*v+1] = (sPos[3*v+2]+RS)/(2*RS); }
+for(let k=0;k<SECT;k++) sIdx.push(0, 1+(k+1)%SECT, 1+k);
+for(let r=1;r<RINGS;r++) for(let k=0;k<SECT;k++){
+  const a = 1+(r-1)*SECT+k, b = 1+(r-1)*SECT+(k+1)%SECT, c = 1+r*SECT+k, d = 1+r*SECT+(k+1)%SECT;
+  sIdx.push(a, b, c, b, d, c);
+}
+surfGeo.setAttribute('position', new THREE.BufferAttribute(sPos, 3));
+surfGeo.setAttribute('uv', new THREE.BufferAttribute(sUV, 2));
+surfGeo.setIndex(sIdx);
+const roughData = new Uint8Array(NG*NG*4), colData = new Uint8Array(NG*NG*4);
+const roughTex = new THREE.DataTexture(roughData, NG, NG, THREE.RGBAFormat); roughTex.magFilter = THREE.LinearFilter;
+const colTex = new THREE.DataTexture(colData, NG, NG, THREE.RGBAFormat); colTex.magFilter = THREE.LinearFilter;
+const oobMat = new THREE.MeshStandardMaterial({color:0xffffff, map:colTex, roughness:1, roughnessMap:roughTex, metalness:0});
+const surf = new THREE.Mesh(surfGeo, oobMat); surf.receiveShadow = true; bowl.add(surf);
+function updateSurface(){
+  for(let v=0; v<sPos.length/3; v++) sPos[3*v+1] = LEVEL + sampleH(sPos[3*v], sPos[3*v+2]);
+  surfGeo.attributes.position.needsUpdate = true; surfGeo.computeVertexNormals();
+  const dryAll = dry();
+  for(let q=0;q<NG*NG;q++){
+    const jam = dryAll ? 1 : J[q];
+    const rgh = 0.12 + 0.83*jam;
+    roughData[4*q] = roughData[4*q+1] = roughData[4*q+2] = Math.round(255*rgh); roughData[4*q+3] = 255;
+    const c0 = [238, 233, 220], c1 = [250, 250, 246];
+    for(let k=0;k<3;k++) colData[4*q+k] = Math.round(c0[k] + (c1[k]-c0[k])*jam);
+    colData[4*q+3] = 255;
+  }
+  roughTex.needsUpdate = true; colTex.needsUpdate = true;
+}
+// massen udglatter sig som et tyktflydende lag; låste (jammede) celler flyder ikke
+function relax(dt){
+  const D = Math.min(9, 1.4*ETA_REF/ETA0);
+  if(!(D > 0) || dry()) return;
+  const n = Math.max(1, Math.ceil(dt*4*D/(DX*DX)*1.05)), h = dt/n, k = D*h/(DX*DX);
+  for(let it=0; it<n; it++){
+    for(let j=0;j<NG;j++) for(let i=0;i<NG;i++){
+      const q = j*NG+i;
+      if(!MASK[q] || LOCK[q]){ Hn[q] = H[q]; continue; }
+      const c = H[q];
+      let lap = 0, qq;
+      qq = q-1;  if(i > 0    && MASK[qq] && !LOCK[qq]) lap += H[qq] - c;
+      qq = q+1;  if(i < NG-1 && MASK[qq] && !LOCK[qq]) lap += H[qq] - c;
+      qq = q-NG; if(j > 0    && MASK[qq] && !LOCK[qq]) lap += H[qq] - c;
+      qq = q+NG; if(j < NG-1 && MASK[qq] && !LOCK[qq]) lap += H[qq] - c;
+      Hn[q] = c + k*(1 - J[q])*lap;
+    }
+    const t = H; H = Hn; Hn = t;
+  }
+}
+// en kugle eller fingerspids presser overfladen ned; den fortrængte masse løftes op i en ring omkring
+function carve(cx, cz, cy, R){
+  let vol = 0; const ring = [];
+  for(let j=0;j<NG;j++) for(let i=0;i<NG;i++){
+    const q = j*NG+i; if(!MASK[q]) continue;
+    const x = -RS + i*DX, z = -RS + j*DX, r2 = (x-cx)*(x-cx) + (z-cz)*(z-cz);
+    if(r2 < R*R){
+      const lim = Math.max(-4.3, cy - LEVEL - Math.sqrt(R*R - r2));
+      if(H[q] > lim){ vol += (H[q]-lim); H[q] = lim; }
+      LOCK[q] = 1;
+    } else if(r2 < 6.25*R*R) ring.push(q);
+  }
+  if(vol > 0 && ring.length) for(const q of ring) H[q] += vol/ring.length;
+}
+function jamSpot(cx, cz, R, amt){
+  for(let j=0;j<NG;j++) for(let i=0;i<NG;i++){
+    const q = j*NG+i; if(!MASK[q]) continue;
+    const x = -RS + i*DX, z = -RS + j*DX, r = Math.hypot(x-cx, z-cz);
+    const w = amt*Math.max(0, Math.min(1, (R - r)/(0.3*R) + 1));
+    if(w > J[q]) J[q] = Math.min(1, w);
+  }
+}
+function decayJam(dt, tau){ const k = Math.exp(-dt/tau); for(let q=0;q<NG*NG;q++) J[q] *= k; }
+function addVolume(cx, cz, V, R){   // V i cm³ fordelt over en plet
+  const cells = [];
+  for(let j=0;j<NG;j++) for(let i=0;i<NG;i++){ const q = j*NG+i; if(!MASK[q]) continue; const x = -RS+i*DX, z = -RS+j*DX; if((x-cx)**2 + (z-cz)**2 < R*R) cells.push(q); }
+  if(cells.length) for(const q of cells) H[q] += V/(cells.length*DX*DX);
+}
+
+/* ---------------- Finger og kugle ---------------- */
+const skinMat = new THREE.MeshStandardMaterial({color:0xe0b894, roughness:0.6});
+const FA = 0.9;   // fingerens radius, cm
+const finger = new THREE.Group(); scene.add(finger); finger.visible = false;
+{ const shaft = new THREE.Mesh(new THREE.CylinderGeometry(FA, FA, 14, 20), skinMat); shaft.position.y = FA + 7; shaft.castShadow = true; finger.add(shaft);
+  const tip = new THREE.Mesh(new THREE.SphereGeometry(FA, 20, 14), skinMat); tip.position.y = FA; tip.castShadow = true; finger.add(tip);
+  const nail = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.12, 1.1), new THREE.MeshStandardMaterial({color:0xf2d6c4, roughness:0.3})); nail.position.set(0, 2.2, -FA+0.02); nail.rotation.x = -0.25; finger.add(nail); }
+const F = {x:0, z:0, y:30, target:30, active:false, script:null, jam:false};
+const BR = 1.6, BM = 0.02;   // kugle: radius i cm, masse i kg
+const ball = new THREE.Mesh(new THREE.SphereGeometry(BR, 32, 22), new THREE.MeshStandardMaterial({color:0xff4d6d, roughness:0.35, metalness:0.1}));
+ball.castShadow = true; scene.add(ball); ball.visible = false;
+const B = {x:2.5, z:1.5, y:30, vy:0, state:'hidden', timer:0};
+let bowlLift = 0, bowlV = 0;
+
+function fingerStep(dt){
+  if(F.script){ F.script.t += dt; F.target = F.script.f(F.script.t); if(F.script.t > F.script.T){ F.script = null; F.active = false; } }
+  const vDes = Math.max(-400, Math.min(400, (F.target - F.y)/0.04));   // cm/s
+  const depth = LEVEL + bowlLift - F.y;                                   // fingerspidsens dybde
+  let v = vDes; F.jam = false;
+  if(depth > -0.05 && !dry()){
+    const gd = Math.abs(vDes)/FA;
+    probe = {on:true, gd:Math.min(gd, GMAX), s:0, jam:false};
+    if(jammable() && gd > GMAX){
+      F.jam = true; v = Math.sign(vDes)*0.1*GMAX*FA;
+      probe.gd = gd; probe.s = SJ; probe.jam = true;
+      const front = FA*(1.5 + 6*Math.min(1, (gd/GMAX - 1)/4));
+      jamSpot(F.x, F.z, front, 1);
+    } else probe.s = stressAt(gd);
+  } else if(depth > -0.05 && dry()){ v = Math.max(0, vDes); F.jam = true; probe = {on:true, gd:Math.abs(vDes)/FA, s:0, jam:true}; }
+  const surfY = LEVEL + bowlLift;
+  const wasAbove = depth <= -0.05;
+  F.y += v*dt;
+  if(wasAbove && v < 0) F.y = Math.max(F.y, surfY - 0.02);   // stop ved overfladen; næste skridt afgør, om den kan trænge ind
+  F.y = Math.max(F.y, 1.2);
+  if(depth > -1) carve(F.x, F.z, F.y + FA - bowlLift, FA);
+  finger.position.set(F.x, F.y, F.z);
+}
+function stokesSink(){   // selvkonsistent synkehastighed (cm/s) for kuglen
+  const R = BR/100; let v = 0.01;
+  for(let i=0;i<40;i++){ const s = Math.min(eta(0)*v/R, 0.98*SJ); const e = eta(s); v = isFinite(e) ? BM*G/(6*Math.PI*e*R) : 0; }
+  return Math.min(v, 0.9*GMAX*R)*100;
+}
+function ballStep(dt){
+  if(B.state === 'hidden') return;
+  const surfY = LEVEL + bowlLift + sampleH(B.x, B.z);
+  if(B.state === 'fall'){
+    B.vy -= 982*dt; B.y += B.vy*dt;
+    if(B.y - BR <= surfY){
+      const v = -B.vy/100, gd = v/(BR/100);
+      if(dry() || (jammable() && gd > GMAX)){
+        jamSpot(B.x, B.z, BR*(2 + 3*Math.min(1, gd/(20*GMAX))), 1);
+        probe = {on:true, gd, s:SJ, jam:true};
+        B.y = surfY + BR - 0.15;
+        B.vy = gd > 3*GMAX ? 0.18*(-B.vy) : 0;
+        if(Math.abs(B.vy) < 8){ B.vy = 0; B.state = 'rest'; B.timer = 0; }
+      } else { B.state = 'sink'; B.vy = 0; }
+    }
+  } else if(B.state === 'rest'){
+    B.timer += dt; B.y = Math.max(B.y, surfY + BR - 0.2);
+    if(B.timer > 0.6) B.state = 'sink';
+  } else if(B.state === 'sink'){
+    if(dry()){ B.state = 'rest'; return; }
+    const v = stokesSink();
+    probe = {on:true, gd:v/BR, s:stressAt(v/BR), jam:false};
+    B.y = Math.max(0.6 + bowlLift + BR, B.y - v*dt);
+  } else if(B.state === 'pullSlow'){
+    const v = Math.min(3, 0.6*GMAX*BR);
+    B.y += v*dt; probe = {on:true, gd:v/BR, s:stressAt(v/BR), jam:false};
+    if(B.y > LEVEL + 14){ B.state = 'hang'; }
+  } else if(B.state === 'pullFast'){
+    // rykket op: massen låser, og skålen følger med et øjeblik
+    B.timer += dt;
+    const embedded = B.y - BR < LEVEL + bowlLift + 0.2;
+    if(embedded && B.timer < 0.45 && !dry() && jammable()){
+      J.fill(1);
+      bowlLift = Math.min(2.2, bowlLift + 60*dt); B.y = LEVEL + bowlLift + BR*0.2;
+      probe = {on:true, gd:60/BR, s:SJ, jam:true};
+    } else { B.state = embedded ? 'pullSlow' : 'hang'; }
+  }
+  if(B.y - BR < surfY + 0.4 && (B.y - LEVEL - bowlLift) > -BR*0.2) carve(B.x, B.z, B.y - bowlLift, BR);
+  ball.position.set(B.x, B.y, B.z);
+}
+
+/* ---------------- Hånden ---------------- */
+const hand = new THREE.Group(); scene.add(hand); hand.visible = false;
+const palm = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 18), skinMat); palm.scale.set(4.6, 1.2, 4.2); palm.castShadow = true; hand.add(palm);
+const fingers = [];
+[[-2.7, 7.6], [-0.9, 8.4], [0.9, 8.0], [2.6, 6.4]].forEach(([z, len]) => {
+  const root = new THREE.Group(); root.position.set(4.0, 0.3, z*1.1); hand.add(root);
+  const segs = [0.45, 0.32, 0.23].map(f => f*len), joints = [];
+  let parent = root;
+  segs.forEach((l, k) => {
+    const jnt = new THREE.Group(); parent.add(jnt); joints.push(jnt);
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(0.72 - 0.06*k, 0.78 - 0.06*k, l, 14), skinMat);
+    m.rotation.z = -Math.PI/2; m.position.x = l/2; m.castShadow = true; jnt.add(m);
+    const kn = new THREE.Mesh(new THREE.SphereGeometry(0.78 - 0.06*k, 14, 10), skinMat); jnt.add(kn);
+    const nxt = new THREE.Group(); nxt.position.x = l; jnt.add(nxt); parent = nxt;
+    if(k === 2){ const tipS = new THREE.Mesh(new THREE.SphereGeometry(0.6, 12, 10), skinMat); tipS.position.x = l; jnt.add(tipS); }
+  });
+  fingers.push({joints, tip:parent});
+});
+const thumb = new THREE.Group(); thumb.position.set(0.5, 0.2, 4.4); hand.add(thumb);
+const thumbJ = [];
+{ let parent = thumb; [3.4, 2.8].forEach((l, k) => { const jnt = new THREE.Group(); parent.add(jnt); thumbJ.push(jnt);
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.9, l, 14), skinMat); m.rotation.z = -Math.PI/2; m.position.x = l/2; m.castShadow = true; jnt.add(m);
+    const kn = new THREE.Mesh(new THREE.SphereGeometry(0.88, 14, 10), skinMat); jnt.add(kn);
+    const nxt = new THREE.Group(); nxt.position.x = l; jnt.add(nxt); parent = nxt; }); }
+const wrist = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.9, 10, 22), skinMat); wrist.rotation.z = Math.PI/2; wrist.position.x = -8; wrist.scale.z = 0.6; wrist.castShadow = true; hand.add(wrist);
+
+// klumpen
+const lumpGeo = new THREE.IcosahedronGeometry(1, 4);
+const lumpBase = lumpGeo.attributes.position.array.slice();
+const lumpNoise = new Float32Array(lumpBase.length/3).map(() => Math.random());
+const lumpMat = new THREE.MeshStandardMaterial({color:0xeee9dc, roughness:0.15});
+const lump = new THREE.Mesh(lumpGeo, lumpMat); lump.castShadow = true; hand.add(lump);
+const V0 = 40;   // klumpens volumen, cm³
+const L = {V:V0, spread:0, squeeze:0, jam:0};
+// tråd og dråbe (SI internt)
+const threadMesh = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 14), lumpMat); threadMesh.castShadow = true; scene.add(threadMesh);
+const dropMesh = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), lumpMat); dropMesh.castShadow = true; scene.add(dropMesh);
+const D = {Vd:0, l:0.006, r0:0.006, l0:0.006, active:false};
+const pieces = [];   // faldende og splintrede stykker
+const pieceGeo = new THREE.DodecahedronGeometry(1, 0), puddleGeo = new THREE.SphereGeometry(1, 16, 10);
+let squeezing = false, overFloor = false, handAmt = 0;
+
+function poseHand(dt){
+  const goal = squeezing ? 1 : 0;
+  handAmt += (goal - handAmt)*(1 - Math.exp(-dt/0.12));
+  const c = handAmt;
+  fingers.forEach(f => f.joints.forEach((j, k) => { j.rotation.z = (6 + (k === 0 ? 62 : 78)*c)*Math.PI/180; }));
+  thumbJ.forEach((j, k) => { j.rotation.set(0, (-35 - 25*c)*Math.PI/180, (10 + 40*c)*Math.PI/180); });
+  hand.rotation.z = (-16 + 16*c)*Math.PI/180;   // åben hånd hælder mod fingerspidserne
+  hand.position.set(overFloor ? 14 : -11.5, 24, 0);
+}
+function lumpShape(){
+  const V = Math.max(L.V, 0.3), R = Math.cbrt(3*V/(4*Math.PI));
+  const sp = L.spread, sx = R*(1 + 1.1*sp), sy = R/Math.pow(1 + 1.1*sp, 2);
+  const pos = lumpGeo.attributes.position.array;
+  for(let i=0;i<pos.length/3;i++){
+    const bx = lumpBase[3*i], by = lumpBase[3*i+1], bz = lumpBase[3*i+2];
+    const bump = 1 + 0.07*L.jam*(lumpNoise[i] - 0.5);
+    pos[3*i] = bx*sx*bump + 1.6*sp*sx*0.4*Math.max(0, bx);   // flyder mod fingrene
+    pos[3*i+1] = by*sy*bump;
+    pos[3*i+2] = bz*sx*bump*0.85;
+  }
+  lumpGeo.attributes.position.needsUpdate = true; lumpGeo.computeVertexNormals();
+  lump.position.set(0.6 + 2.2*sp, 1.1 + sy, 0);
+  lumpMat.roughness = 0.12 + 0.8*Math.max(L.jam, dry() ? 1 : 0);
+}
+function tipWorld(){ hand.updateMatrixWorld(true); return fingers[1].tip.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0.6, -0.6, 0)); }
+function snapThread(){ D.active = false; D.Vd = 0; D.l = D.l0; }
+function spawnPiece(pos, vel, r, solid){
+  const m = new THREE.Mesh(solid ? pieceGeo : puddleGeo, new THREE.MeshStandardMaterial({color:0xeee9dc, roughness: solid ? 0.9 : 0.15}));
+  m.castShadow = true; m.position.copy(pos); m.scale.setScalar(r); scene.add(m);
+  pieces.push({m, v:vel.clone(), r, state:'fly', t:0, spin:new THREE.Vector3(Math.random(), Math.random(), Math.random()).multiplyScalar(8)});
+  if(pieces.length > 60){ const p = pieces.shift(); scene.remove(p.m); p.m.material.dispose(); }
+}
+function handStep(dt){
+  poseHand(dt);
+  // klumpens tilstand
+  if(squeezing){
+    L.spread += (0 - L.spread)*(1 - Math.exp(-dt/0.15));
+    L.jam += (1 - L.jam)*(1 - Math.exp(-dt/0.08));
+    if(D.active) { const tp = tipWorld(); if(D.Vd > 0.05e-6) spawnPiece(tp.clone().add(new THREE.Vector3(0, -D.l*100, 0)), new THREE.Vector3(0, -10, 0), Math.cbrt(3*D.Vd*1e6/(4*Math.PI)), true); snapThread(); }
+    if(jammable() || dry()) probe = {on:true, gd:GMAX*1.3, s:SJ, jam:true};
+  } else {
+    L.jam += (0 - L.jam)*(1 - Math.exp(-dt/0.12));
+    if(!dry()){
+      const tauS = 1.2*ETA0/ETA_REF;
+      L.spread += (1 - L.spread)*(1 - Math.exp(-dt/Math.max(0.15, tauS)));
+    } else L.jam = 1;
+  }
+  lumpShape();
+  // dryp fra fingerspidsen
+  const flowing = !squeezing && !dry() && L.spread > 0.55 && L.V > 0.3;
+  const tp = tipWorld();
+  if(flowing){
+    const Q = 5e-7*Math.min(6, ETA_REF/ETA0);           // m³/s
+    const dV = Q*dt; L.V -= dV*1e6; D.Vd += dV; D.active = true;
+    const rn = D.r0*Math.sqrt(D.l0/D.l);
+    const s = RH.RHO*G*D.Vd/(Math.PI*rn*rn);
+    const floorY = overFloor ? 0 : LEVEL + sampleH(tp.x, tp.z);
+    const maxL = (tp.y - floorY)/100;
+    if(jammable() && s >= SJ){
+      // tråden låser og knækker; dråben falder som et fast stykke
+      const rd = Math.cbrt(3*D.Vd*1e6/(4*Math.PI));
+      spawnPiece(tp.clone().add(new THREE.Vector3(0, -D.l*100 - rd, 0)), new THREE.Vector3(0, -D.l*100*(s/(3*eta(Math.min(s, SJ*0.999)))) , 0), rd, true);
+      probe = {on:true, gd:s/(3*eta(Math.min(s, SJ*0.999))), s:SJ, jam:true};
+      snapThread();
+    } else {
+      const ed = s/(3*eta(s));
+      probe = {on:true, gd:ed, s, jam:false};
+      D.l = Math.min(D.l*(1 + ed*dt), maxL);
+      if(D.l >= maxL - 0.002){   // tynd blanding: strålen når ned og løber sammen med resten
+        if(!overFloor) addVolume(tp.x, tp.z, D.Vd*1e6*0.7, 2.5);
+        else if(Math.random() < dt*6) spawnPiece(new THREE.Vector3(tp.x + (Math.random()-0.5), 0.2, tp.z + (Math.random()-0.5)), new THREE.Vector3(), Math.cbrt(D.Vd*1e6*3/(4*Math.PI))*1.2, false);
+        D.Vd *= 0.3;
+      }
+    }
+  } else if(D.active && !squeezing && L.V <= 0.3){ snapThread(); }
+  // tegn tråd og dråbe
+  threadMesh.visible = dropMesh.visible = D.active && hand.visible;
+  if(threadMesh.visible){
+    const len = D.l*100, rn = D.r0*Math.sqrt(D.l0/D.l)*100, rd = Math.cbrt(3*Math.max(D.Vd, 1e-8)*1e6/(4*Math.PI));
+    threadMesh.scale.set(rn, len, rn); threadMesh.position.set(tp.x, tp.y - len/2, tp.z);
+    dropMesh.scale.set(rd*0.95, rd*1.08, rd*0.95); dropMesh.position.set(tp.x, tp.y - len - rd*0.8, tp.z);
+  }
+}
+function piecesStep(dt){
+  for(const p of pieces){
+    p.t += dt;
+    if(p.state === 'fly'){
+      p.v.y -= 982*dt; p.m.position.addScaledVector(p.v, dt);
+      p.m.rotation.x += p.spin.x*dt; p.m.rotation.y += p.spin.y*dt;
+      const x = p.m.position.x - 0, z = p.m.position.z, inBowl = x*x + z*z < RS*RS;
+      const floorY = inBowl ? LEVEL + bowlLift + sampleH(x, z) : (x*x + z*z < 110 ? 8.3 : 0);
+      if(p.m.position.y - p.r*0.6 <= floorY){
+        const v = -p.v.y;
+        if(inBowl){ p.state = 'sit'; p.t = 0; p.m.position.y = floorY + p.r*0.4; jamSpot(x, z, p.r*2.2, 0.9); }
+        else if(v > 60 && p.r > 0.35 && p.m.geometry === pieceGeo){
+          // splintres på bordet
+          const n = 3 + Math.floor(Math.random()*4), rr = p.r/Math.cbrt(n);
+          for(let k=0;k<n;k++){ const a = Math.random()*2*Math.PI, sp = 20 + 40*Math.random();
+            spawnPiece(p.m.position.clone().setY(floorY + rr), new THREE.Vector3(sp*Math.cos(a), 25 + 40*Math.random(), sp*Math.sin(a)), rr, true); }
+          p.state = 'dead';
+        } else { p.state = 'sit'; p.t = 0; p.m.position.y = floorY + p.r*0.5; p.v.set(0,0,0); }
+      }
+    } else if(p.state === 'sit'){
+      // fast stykke hviler, bliver så til væske og flyder ud
+      const x = p.m.position.x, z = p.m.position.z, inBowl = x*x + z*z < RS*RS;
+      const tMelt = 0.5 + 0.8*Math.min(4, ETA0/ETA_REF);
+      if(p.t > tMelt){
+        const u = Math.min(1, (p.t - tMelt)/(1.5*Math.min(4, ETA0/ETA_REF) + 0.5));
+        if(p.m.geometry !== puddleGeo){ p.m.geometry = puddleGeo; }
+        p.m.material.roughness = 0.12 + 0.78*(1-u);
+        if(inBowl){
+          p.m.scale.set(p.r*(1 + u), p.r*(1 - u)*0.8 + 0.01, p.r*(1 + u));
+          p.m.position.y = LEVEL + bowlLift + sampleH(x, z);
+          if(u >= 1){ addVolume(x, z, 4/3*Math.PI*p.r**3, 1.5*p.r + 1); p.state = 'dead'; }
+        } else {
+          const f = 1 + 1.6*u;
+          p.m.scale.set(p.r*f, p.r/(f*f)*0.9, p.r*f);
+          p.m.position.y = p.m.position.y > 8 ? 8.25 + p.r/(f*f)*0.5 : p.r/(f*f)*0.45;
+        }
+      }
+    }
+  }
+  for(let i=pieces.length-1;i>=0;i--) if(pieces[i].state === 'dead'){ scene.remove(pieces[i].m); pieces[i].m.material.dispose(); pieces.splice(i,1); }
+}
+
+/* ---------------- Interaktion ---------------- */
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+function setRay(e){ const r = canvas.getBoundingClientRect(); ndc.set((e.clientX-r.left)/r.width*2-1, -(e.clientY-r.top)/r.height*2+1); ray.setFromCamera(ndc, camera); }
+const ptrs = new Map(); let pinch0 = 0, r0 = cam.r, press = null;
+canvas.addEventListener('pointerdown', e => {
+  canvas.setPointerCapture(e.pointerId);
+  if(mode === 'skaal' && ptrs.size === 0){
+    setRay(e); const hit = ray.intersectObject(surf, false)[0];
+    if(hit && B.state !== 'fall'){
+      press = {id:e.pointerId, y0:e.clientY};
+      F.script = null; F.active = true; F.x = hit.point.x; F.z = hit.point.z;
+      F.y = LEVEL + bowlLift + sampleH(F.x, F.z) + 0.3; F.target = F.y; finger.visible = true;
+      return;
+    }
+  }
+  ptrs.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  if(ptrs.size === 2){ const [a,b] = [...ptrs.values()]; pinch0 = Math.hypot(a.x-b.x, a.y-b.y); r0 = cam.r; }
+});
+canvas.addEventListener('pointermove', e => {
+  if(press && e.pointerId === press.id){
+    const r = canvas.getBoundingClientRect();
+    const dy = (e.clientY - press.y0)/r.height;           // træk nedad = tryk ned
+    F.target = LEVEL + bowlLift + 0.3 - Math.max(-0.6, dy)*14;
+    return;
+  }
+  if(!ptrs.has(e.pointerId)) return;
+  const p = ptrs.get(e.pointerId);
+  if(ptrs.size === 1){ cam.az -= (e.clientX-p.x)*0.008; cam.el += (e.clientY-p.y)*0.006; }
+  p.x = e.clientX; p.y = e.clientY;
+  if(ptrs.size === 2){ const [a,b] = [...ptrs.values()]; const d = Math.hypot(a.x-b.x, a.y-b.y); if(pinch0 > 0) cam.r = r0*pinch0/d; }
+  applyCam();
+});
+function up(e){
+  if(press && e.pointerId === press.id){ press = null; F.script = {t:0, T:1.5, y0:F.y, f(tt){ return this.y0 + 12*tt; }}; return; }
+  ptrs.delete(e.pointerId); pinch0 = 0;
+}
+canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
+canvas.addEventListener('wheel', e => { e.preventDefault(); cam.r *= Math.exp(e.deltaY*0.001); applyCam(); }, {passive:false});
+
+let mode = 'skaal', paused = REDUCED;
+function setMode(m){
+  mode = m;
+  document.querySelectorAll('.seg button').forEach(b => { const on = b.dataset.m === m; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
+  $('pSkaal').hidden = m !== 'skaal'; $('pHaand').hidden = m !== 'haand'; $('holdWrap').hidden = m !== 'haand';
+  hand.visible = m === 'haand'; finger.visible = false; F.active = false; F.script = null;
+  $('oHint').textContent = m === 'skaal' ? 'Træk nedad på overfladen for at trykke med en finger' : 'Hold knappen nede for at klemme klumpen';
+  if(m === 'haand'){ refill(); cam.az = 0.35; cam.el = 0.3; target.set(0, 12, 0); }
+  else { cam.az = 0.5; cam.el = 0.55; target.set(0, 8, 0); }
+  applyCam();
+}
+function refill(){ L.V = V0; L.spread = 0; L.jam = 0; snapThread(); }
+document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => setMode(b.dataset.m)));
+function fingerScript(speed, depth){   // speed i cm/s ned; hold og træk langsomt op
+  const x = (Math.random()-0.5)*6, z = (Math.random()-0.5)*6;
+  F.x = x; F.z = z; F.y = LEVEL + 12; finger.visible = true; F.active = true;
+  const top = LEVEL + 12, bot = LEVEL - depth, tDown = (top - bot)/speed, approach = (top - LEVEL - 0.5)/Math.max(speed, 40);
+  F.script = {t:0, T:approach + (LEVEL + 0.5 - bot)/speed + 1.0 + 4, f(tt){
+    if(tt < approach) return top - (top - LEVEL - 0.5)*tt/approach;
+    const t2 = tt - approach, dDown = (LEVEL + 0.5 - bot)/speed;
+    if(t2 < dDown) return LEVEL + 0.5 - speed*t2;
+    if(t2 < dDown + 1) return bot;
+    return bot + 3*(t2 - dDown - 1);
+  }};
+  F.y = top;
+}
+$('oSlow').addEventListener('click', () => fingerScript(2.5, 3));
+$('oFast').addEventListener('click', () => fingerScript(150, 3));
+bindSlider('oH', v => v + ' cm', v => {});
+$('oDrop').addEventListener('click', () => {
+  B.x = (Math.random()-0.5)*5; B.z = (Math.random()-0.5)*5;
+  B.y = LEVEL + bowlLift + BR + (+$('oH').value) + 0.01; B.vy = 0; B.state = 'fall'; ball.visible = true;
+  if(+$('oH').value === 0){ B.y = LEVEL + BR*0.95; B.state = 'sink'; }
+});
+$('oPullSlow').addEventListener('click', () => { if(ball.visible && B.state !== 'fall') B.state = 'pullSlow'; });
+$('oPullFast').addEventListener('click', () => { if(ball.visible && B.state !== 'fall'){ B.state = 'pullFast'; B.timer = 0; } });
+$('oFloor').addEventListener('change', e => { overFloor = e.target.checked; snapThread(); });
+$('oRefill').addEventListener('click', refill);
+function resetAll(){
+  H.fill(0); J.fill(0); B.state = 'hidden'; ball.visible = false; bowlLift = 0; bowlV = 0;
+  F.active = false; F.script = null; finger.visible = false;
+  pieces.forEach(p => { scene.remove(p.m); p.m.material.dispose(); }); pieces.length = 0; refill();
+}
+$('oReset').addEventListener('click', resetAll);
+$('oPause').addEventListener('click', () => { paused = !paused; $('oPause').textContent = paused ? 'Fortsæt' : 'Pause'; });
+if(paused) $('oPause').textContent = 'Fortsæt';
+const holdBtn = $('oHold');
+const setSq = v => { squeezing = v; holdBtn.classList.toggle('down', v); };
+holdBtn.addEventListener('pointerdown', e => { e.preventDefault(); try{ holdBtn.setPointerCapture(e.pointerId); }catch(_){} setSq(true); });
+holdBtn.addEventListener('pointerup', () => setSq(false));
+holdBtn.addEventListener('pointercancel', () => setSq(false));
+window.addEventListener('keydown', e => { if(e.code === 'Space' && mode === 'haand' && !/INPUT|TEXTAREA|BUTTON/.test(document.activeElement.tagName)){ e.preventDefault(); setSq(true); } });
+window.addEventListener('keyup', e => { if(e.code === 'Space') setSq(false); });
+
+function bindSlider(id, f, cb){
+  const el = $(id), out = $(id+'o');
+  const u = () => { out.textContent = f(+el.value); };
+  el.addEventListener('input', () => { u(); cb(+el.value); }); u(); cb(+el.value);
+}
+{ const save = RH.phi; RH.phi = phiFromMix(170); ETA_REF = eta(0); RH.phi = save; }
+function mixText(){
+  if(RH.phi <= RH.PHIM) return 'For tynd: kornene kan ikke låse. Massen tykner, men bliver aldrig fast.';
+  if(RH.phi >= RH.PHI0) return 'For tør: kornene er låst allerede i hvile. Massen smuldrer.';
+  if(GMAX > 40) return 'Tynd, men den kan låse ved hurtige stød.';
+  if(GMAX < 0.5) return 'Meget tyk: flyder næsten ikke, selv i hvile.';
+  return 'Rigtig blanding: flyder langsomt, bliver fast ved hurtige tryk.';
+}
+bindSlider('oM', v => v + ' g', v => {
+  RH.phi = phiFromMix(v); updateRheo();
+  $('mixNote').textContent = mixText();
+  $('rPhi').textContent = fmt(RH.phi, 3);
+  $('rEta').textContent = isFinite(ETA0) ? fmt(ETA0, ETA0 < 10 ? 2 : 0) + ' Pa·s' : 'fast';
+  $('rGmax').textContent = isFinite(GMAX) ? fmt(GMAX, GMAX < 1 ? 2 : 1) + ' s⁻¹' : 'ingen';
+  $('rSJ').textContent = isFinite(SJ) ? fmt(SJ, 0) + ' Pa' : 'ingen';
+  $('rVf').textContent = isFinite(GMAX) ? fmt(GMAX*FA, GMAX*FA < 1 ? 2 : 1) + ' cm/s' : 'alle';
+});
+
+/* ---------------- Flydekurven ---------------- */
+const plot = $('oPlot'), pctx = plot.getContext('2d');
+function drawPlot(){
+  const dpr = Math.min(window.devicePixelRatio||1, 2), w = plot.clientWidth, h = plot.clientHeight;
+  if(!w || !h) return;
+  if(plot.width !== Math.round(w*dpr) || plot.height !== Math.round(h*dpr)){ plot.width = Math.round(w*dpr); plot.height = Math.round(h*dpr); }
+  const c = pctx; c.setTransform(dpr,0,0,dpr,0,0); c.clearRect(0,0,w,h);
+  const Lm = 50, Rm = 12, Tm = 12, Bm = 30, pw = w-Lm-Rm, ph = h-Tm-Bm;
+  c.font = '11px Segoe UI, sans-serif';
+  if(dry()){ c.fillStyle = '#ff9aac'; c.textAlign = 'center'; c.fillText('For meget mel: massen er fast allerede i hvile', Lm + pw/2, Tm + ph/2); return; }
+  const sTop = isFinite(SJ) ? SJ*1.35 : 3*RH.SIG_S;
+  const pts = []; const sEnd = isFinite(SJ) ? SJ : sTop;
+  for(let i=0;i<=300;i++){ const s = sEnd*i/300; pts.push([rate(s), s]); }
+  let gTop = Math.max(...pts.map(p => p[0]))*1.35;
+  if(probe.on && isFinite(probe.gd)) gTop = Math.max(gTop, Math.min(probe.gd*1.1, gTop*3));
+  const X = g => Lm + Math.min(1, g/gTop)*pw, Y = s => Tm + (1 - s/sTop)*ph;
+  if(isFinite(SJ)){ c.fillStyle = 'rgba(255,77,109,0.14)'; c.fillRect(Lm, Tm, pw, Y(SJ) - Tm); c.fillStyle = '#ff9aac'; c.textAlign = 'right'; c.textBaseline = 'top'; c.fillText('fast (jammet)', Lm + pw - 4, Tm + 4); }
+  c.strokeStyle = 'rgba(255,255,255,0.08)'; c.fillStyle = '#a0a0a8'; c.lineWidth = 1;
+  c.textAlign = 'right'; c.textBaseline = 'middle';
+  for(let k=0;k<=4;k++){ const s = sTop*k/4; c.beginPath(); c.moveTo(Lm, Y(s)); c.lineTo(Lm+pw, Y(s)); c.stroke(); c.fillText(fmt(s,0), Lm-5, Y(s)); }
+  c.textAlign = 'center'; c.textBaseline = 'top';
+  for(let k=0;k<=4;k++){ const g = gTop*k/4; c.fillText(fmt(g, gTop < 4 ? 2 : 1), X(g), Tm+ph+5); }
+  c.fillText('forskydningshastighed γ̇ (s⁻¹)', Lm + pw/2, Tm + ph + 17);
+  c.save(); c.translate(12, Tm + ph/2); c.rotate(-Math.PI/2); c.fillText('spænding σ (Pa)', 0, -4); c.restore();
+  c.strokeStyle = '#4cc9f0'; c.lineWidth = 2.2; c.beginPath(); pts.forEach((p,i) => i ? c.lineTo(X(p[0]), Y(p[1])) : c.moveTo(X(p[0]), Y(p[1]))); c.stroke();
+  if(isFinite(GMAX)){
+    c.setLineDash([4,4]); c.strokeStyle = 'rgba(245,200,120,0.5)'; c.beginPath(); c.moveTo(X(GMAX), Tm); c.lineTo(X(GMAX), Tm+ph); c.stroke(); c.setLineDash([]);
+    c.fillStyle = '#f5c878'; c.textAlign = 'left'; c.textBaseline = 'bottom'; c.fillText('γ̇max', X(GMAX) + 4, Tm + ph - 4);
+  }
+  if(probe.on){
+    const x = X(probe.gd), y = Y(probe.jam && isFinite(SJ) ? Math.max(SJ, probe.s) : probe.s);
+    c.fillStyle = probe.jam ? '#ff4d6d' : '#f5c878'; c.beginPath(); c.arc(x, y, 6, 0, 2*Math.PI); c.fill();
+    c.strokeStyle = '#fff'; c.lineWidth = 1.5; c.stroke();
+  }
+}
+
+/* ---------------- Løkke ---------------- */
+function fit(){
+  const w = canvas.clientWidth, h = canvas.clientHeight; if(!w || !h) return;
+  const pr = renderer.getPixelRatio();
+  if(canvas.width !== Math.floor(w*pr) || canvas.height !== Math.floor(h*pr)){ renderer.setSize(w, h, false); camera.aspect = w/h; camera.updateProjectionMatrix(); }
+}
+let visible = true;
+if('IntersectionObserver' in window) new IntersectionObserver(es => { visible = es[0].isIntersecting; }, {threshold:0.02}).observe(stage);
+let last = performance.now(), lastUI = 0, probeAge = 0;
+function loop(now){
+  const dt = Math.min(0.04, (now-last)/1000); last = now;
+  if(visible){
+    if(!paused){
+      const prevProbe = probe;
+      probe = {...probe, on:false};
+      LOCK.fill(0);
+      if(mode === 'skaal'){ if(F.active) fingerStep(dt); else finger.visible = false; ballStep(dt); }
+      else { handStep(dt); }
+      piecesStep(dt);
+      // skålen falder tilbage efter et ryk
+      if(bowlLift > 0 && B.state !== 'pullFast'){ bowlV -= 982*dt; bowlLift = Math.max(0, bowlLift + bowlV*dt); if(bowlLift === 0) bowlV = 0; }
+      bowl.position.y = bowlLift;
+      decayJam(dt, 0.35);
+      relax(dt);
+      if(!probe.on){ probeAge += dt; if(probeAge < 0.6) probe = {...prevProbe, on:true}; } else probeAge = 0;
+    }
+    updateSurface();
+    if(now - lastUI > 120){
+      lastUI = now;
+      let st = 'Væske', jammed = probe.on && probe.jam;
+      if(dry()) st = 'Smuldrer';
+      else if(mode === 'haand') st = squeezing ? 'Klemt: fast' : L.spread > 0.5 ? 'Løber som væske' : 'Smelter';
+      else if(jammed) st = 'Fast!';
+      else if(F.active && probe.on) st = 'Flyder';
+      else if(B.state === 'sink') st = 'Kuglen synker';
+      $('oStatus').textContent = st;
+      $('oStatus').classList.toggle('hot', st === 'Fast!' || st === 'Klemt: fast');
+      $('oHud').innerHTML = probe.on ? `γ̇ = ${isFinite(probe.gd) ? fmt(probe.gd, 1) : '∞'} s⁻¹<br>σ = ${fmt(probe.jam && isFinite(SJ) ? SJ : probe.s, 0)} Pa` : `φ = ${fmt(RH.phi, 3)}`;
+    }
+    drawPlot();
+    fit(); renderer.render(scene, camera);
+  }
+  requestAnimationFrame(loop);
+}
+setMode('skaal');
+updateSurface();
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
