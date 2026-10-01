@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Fra diffraktion til billede – linsen som Fourier-transformator | Michael Grant</title>
+<meta name="description" content="Interaktiv 3D-optikbænk: Se hvordan en linse samler diffraktionsmønsteret i brændplanet og bygger billedet op igen. Abbes teori, opløsningsgrænsen, Airy-skiven, Abbe–Porter-forsøget og Zernikes fasekontrast.">
+<meta name="author" content="Michael Grant">
+<meta name="theme-color" content="#0b0d17">
+<link rel="canonical" href="https://michaelhgrant.github.io/Natur-fysik-kemi-mat/linse-og-diffraktion.html">
+<script>
+window.MathJax = { tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] }, svg: { fontCache: 'global' } };
+</script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+:root {
+  --space-black: #0b0d17;
+  --space-deep: #050608;
+  --aurora-green: #39ff14;
+  --aurora-purple: #a020f0;
+  --aurora-blue: #4cc9f0;
+  --text-light: #e0e0e0;
+  --text-dim: #a0a0a8;
+  --card-bg: rgba(255,255,255,0.04);
+  --card-border: rgba(57,255,20,0.18);
+  --sacred-gold: #f5c878;
+  --laser: #39ff14;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { scroll-behavior: smooth; scroll-padding-top: 70px; }
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: var(--space-black);
+  background-image:
+    radial-gradient(circle at 20% 10%, rgba(160,32,240,0.08), transparent 40%),
+    radial-gradient(circle at 80% 60%, rgba(57,255,20,0.05), transparent 40%);
+  color: var(--text-light);
+  line-height: 1.65;
+  margin: 0;
+}
+a { color: var(--aurora-blue); }
+
+/* navigation, som på forsiden */
+nav.topnav {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(11,13,23,0.92);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(57,255,20,0.25);
+  padding: 0.6rem 1rem;
+  overflow-x: auto; white-space: nowrap;
+}
+nav.topnav ul { list-style: none; margin: 0; padding: 0; display: inline-flex; gap: 0.4rem; justify-content: center; width: 100%; min-width: max-content; }
+nav.topnav a {
+  color: var(--text-dim); text-decoration: none; padding: 0.4rem 0.9rem; border-radius: 20px;
+  font-size: 0.85rem; font-weight: 500; border: 1px solid transparent; transition: all .2s ease;
+}
+nav.topnav a:hover { color: var(--aurora-green); border-color: rgba(57,255,20,0.4); background: rgba(57,255,20,0.05); }
+nav.topnav a.home { color: var(--sacred-gold); border-color: rgba(245,200,120,0.35); }
+
+header {
+  text-align: center; padding: 3.5rem 1.5rem 2rem;
+  background: linear-gradient(to bottom, #1a1a2e, var(--space-black));
+}
+header h1 {
+  font-size: clamp(1.9rem, 5vw, 3rem); color: var(--aurora-green);
+  text-shadow: 0 0 25px rgba(57,255,20,0.4); margin: 0 0 0.8rem;
+}
+header .subtitle { color: var(--text-dim); max-width: 720px; margin: 0 auto; font-size: 1.05rem; }
+header .author { color: var(--aurora-purple); margin-top: 1rem; font-size: 0.95rem; }
+
+main { max-width: 1200px; margin: 0 auto; padding: 0 1rem 3rem; }
+
+/* ---------- laboratoriet ---------- */
+#lab { margin-top: 1rem; }
+.stage {
+  position: relative; width: 100%;
+  height: clamp(340px, 60vh, 620px);
+  border-radius: 16px; overflow: hidden;
+  border: 1px solid rgba(76,201,240,0.25);
+  background: #06070d;
+  touch-action: none;
+}
+.stage canvas { display: block; width: 100%; height: 100%; }
+.stage .hud {
+  position: absolute; left: 0.8rem; top: 0.7rem; right: 0.8rem;
+  display: flex; flex-wrap: wrap; gap: 0.4rem; pointer-events: none;
+}
+.stage .hud > * { pointer-events: auto; }
+.chip {
+  font: inherit; font-size: 0.8rem; color: var(--text-light);
+  background: rgba(11,13,23,0.78); border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 18px; padding: 0.3rem 0.8rem; cursor: pointer;
+}
+.chip:hover, .chip[aria-pressed="true"] { border-color: var(--aurora-blue); color: var(--aurora-blue); }
+.stage .hint {
+  position: absolute; right: 0.9rem; bottom: 0.6rem; font-size: 0.75rem; color: var(--text-dim);
+  background: rgba(11,13,23,0.7); padding: 0.2rem 0.6rem; border-radius: 10px; pointer-events: none;
+}
+.guide-note {
+  display: none; margin: 0.8rem 0 0; padding: 0.9rem 1.1rem;
+  border-left: 3px solid var(--sacred-gold); background: rgba(245,200,120,0.07);
+  border-radius: 0 10px 10px 0; font-size: 0.95rem;
+}
+.guide-note.show { display: block; }
+.guide-note strong { color: var(--sacred-gold); }
+
+.controls {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem; margin-top: 1rem;
+}
+.ctrl {
+  background: var(--card-bg); border: 1px solid var(--card-border);
+  border-radius: 14px; padding: 1rem 1.1rem;
+}
+.ctrl h3 { margin: 0 0 0.6rem; font-size: 1rem; color: #fff; }
+.ctrl label { display: block; font-size: 0.85rem; color: var(--text-dim); margin: 0.55rem 0 0.2rem; }
+.ctrl select, .ctrl input[type="text"] {
+  width: 100%; font: inherit; font-size: 0.92rem; color: var(--text-light);
+  background: #11131f; border: 1px solid rgba(255,255,255,0.18); border-radius: 8px; padding: 0.4rem 0.5rem;
+}
+.ctrl input[type="range"] { width: 100%; accent-color: var(--aurora-green); }
+.ctrl .val { float: right; color: var(--text-light); font-variant-numeric: tabular-nums; }
+.ctrl .row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.6rem; }
+.ctrl .row label { margin: 0; display: inline-flex; align-items: center; gap: 0.3rem; color: var(--text-light); }
+.btn {
+  font: inherit; font-size: 0.82rem; cursor: pointer; color: var(--aurora-green);
+  background: transparent; border: 1.5px solid var(--aurora-green); border-radius: 20px; padding: 0.3rem 0.85rem;
+}
+.btn:hover { background: var(--aurora-green); color: var(--space-black); }
+.readout { margin-top: 0.7rem; font-size: 0.85rem; color: var(--aurora-blue); min-height: 1.2em; }
+.swatch { display: inline-block; width: 0.8em; height: 0.8em; border-radius: 50%; vertical-align: -0.05em; margin-right: 0.3em; background: var(--laser); box-shadow: 0 0 8px var(--laser); }
+
+.planes {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 1rem;
+}
+.plane { margin: 0; }
+.plane canvas {
+  width: 100%; aspect-ratio: 1 / 1; display: block; border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.12); background: #000; touch-action: none;
+}
+.plane canvas.paintable { cursor: crosshair; border-color: var(--sacred-gold); }
+.plane figcaption { font-size: 0.85rem; color: var(--text-dim); margin-top: 0.4rem; }
+.plane figcaption b { color: #fff; font-weight: 600; }
+.plane .arrow { color: var(--aurora-purple); }
+
+/* guidede forsøg */
+.experiments { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 0.8rem; margin-top: 1rem; }
+.exp {
+  text-align: left; font: inherit; color: var(--text-light); cursor: pointer;
+  background: rgba(160,32,240,0.06); border: 1px solid rgba(160,32,240,0.35); border-radius: 12px; padding: 0.8rem 1rem;
+}
+.exp:hover { border-color: var(--aurora-purple); background: rgba(160,32,240,0.12); }
+.exp b { display: block; color: #fff; margin-bottom: 0.2rem; }
+.exp span { font-size: 0.85rem; color: var(--text-dim); }
+
+/* tekstafsnit */
+section.text { max-width: 800px; margin: 3.2rem auto 0; }
+section.text h2 { color: var(--aurora-green); font-size: 1.6rem; margin: 0 0 0.6rem; }
+section.text h2 .num { color: var(--aurora-purple); font-weight: 400; margin-right: 0.4rem; }
+section.text h3 { color: #fff; font-size: 1.1rem; margin: 1.6rem 0 0.4rem; }
+section.text p, section.text li { font-size: 1.02rem; }
+.eq { overflow-x: auto; padding: 0.3rem 0; }
+.aside {
+  border: 1px solid rgba(76,201,240,0.3); background: rgba(76,201,240,0.05);
+  border-radius: 12px; padding: 0.9rem 1.1rem; margin: 1.2rem 0;
+}
+.warn { border-color: rgba(255,122,42,0.45); background: rgba(255,122,42,0.06); }
+details {
+  background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px;
+  padding: 0.8rem 1rem; margin: 0.8rem 0;
+}
+details summary { cursor: pointer; color: #fff; font-weight: 600; }
+details .answer { margin-top: 0.6rem; color: var(--text-light); }
+
+footer { text-align: center; color: var(--text-dim); font-size: 0.85rem; padding: 2rem 1rem 3rem; border-top: 1px solid rgba(255,255,255,0.06); margin-top: 3rem; }
+
+:focus-visible { outline: 2px solid var(--aurora-blue); outline-offset: 2px; }
+
+@media (max-width: 700px) {
+  .planes { grid-template-columns: 1fr; max-width: 420px; margin-left: auto; margin-right: auto; }
+  header { padding-top: 2.5rem; }
+  .stage { height: clamp(300px, 50vh, 440px); }
+  .chip { font-size: 0.72rem; padding: 0.22rem 0.6rem; }
+  .stage .hud { gap: 0.3rem; left: 0.5rem; top: 0.5rem; }
+  .stage .hint { font-size: 0.68rem; }
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+
+<nav class="topnav" aria-label="Indhold">
+  <ul>
+    <li><a class="home" href="index.html">← Forsiden</a></li>
+    <li><a href="#lab">Optikbænken</a></li>
+    <li><a href="#forsoeg">Forsøg</a></li>
+    <li><a href="#ide">Idéen</a></li>
+    <li><a href="#matematik">Matematikken</a></li>
+    <li><a href="#oploesning">Opløsning</a></li>
+    <li><a href="#airy">Airy-skiven</a></li>
+    <li><a href="#abbe-porter">Abbe–Porter</a></li>
+    <li><a href="#fasekontrast">Fasekontrast</a></li>
+    <li><a href="#hjemme">Prøv selv</a></li>
+    <li><a href="#opgaver">Opgaver</a></li>
+  </ul>
+</nav>
+
+<header>
+  <h1>Fra diffraktion til billede</h1>
+  <p class="subtitle">En linse laver ikke bare et billede. Den spreder først lyset ud i et diffraktionsmønster i sit brændplan – og samler det derefter igen. Her kan du gå ind mellem de to trin og skære i lyset.</p>
+  <p class="author">Michael Grant</p>
+</header>
+
+<main>
+
+<!-- ================= LABORATORIET ================= -->
+<section id="lab" aria-label="3D-optikbænk">
+  <div class="stage" id="stage">
+    <canvas id="three" aria-label="3D-model af en 4f-opstilling: laser, objekt, linse, Fourier-plan, linse og billedskærm"></canvas>
+    <div class="hud">
+      <button class="chip" data-view="skraa">Skråt</button>
+      <button class="chip" data-view="side">Fra siden</button>
+      <button class="chip" data-view="oppe">Oppefra</button>
+      <button class="chip" data-view="fourier">Kig på Fourier-planet</button>
+      <button class="chip" id="toggleRays" aria-pressed="true">Stråler</button>
+      <button class="chip" id="toggleAnim" aria-pressed="true">Lyset bevæger sig</button>
+    </div>
+    <div class="hint">Træk for at dreje · rul eller knib for at zoome · ikke målfast</div>
+  </div>
+  <div class="guide-note" id="guideNote" aria-live="polite"></div>
+
+  <div class="controls">
+    <div class="ctrl">
+      <h3>Objektet</h3>
+      <label for="objSel">Hvad lyser laseren igennem?</label>
+      <select id="objSel">
+        <option value="gitter">Gitter (lodrette spalter)</option>
+        <option value="net">Trådnet</option>
+        <option value="dobbelt">Dobbeltspalte</option>
+        <option value="enkelt">Enkeltspalte</option>
+        <option value="cirkel">Lille cirkulært hul</option>
+        <option value="kvadrat">Kvadratisk hul</option>
+        <option value="tekst">Tekst</option>
+        <option value="fase">Gennemsigtige celler (faseobjekt)</option>
+        <option value="tegn">Tegn selv</option>
+      </select>
+      <div id="textWrap" hidden>
+        <label for="textIn">Tekst</label>
+        <input type="text" id="textIn" value="Abbe" maxlength="8">
+      </div>
+      <label for="objParam"><span id="objParamLbl">Periode</span> <span class="val" id="objParamVal"></span></label>
+      <input type="range" id="objParam">
+      <div class="row" id="drawObjRow" hidden>
+        <label><input type="checkbox" id="objErase"> Viskelæder</label>
+        <button class="btn" id="objClear">Ryd</button>
+      </div>
+    </div>
+
+    <div class="ctrl">
+      <h3>Lyset</h3>
+      <label for="lam">Bølgelængde <span class="val"><span class="swatch" id="swatch"></span><span id="lamVal"></span></span></label>
+      <input type="range" id="lam" min="400" max="700" step="1" value="532">
+      <label for="dyn">Kontrast i Fourier-planet <span class="val" id="dynVal"></span></label>
+      <input type="range" id="dyn" min="0" max="6" step="0.5" value="4">
+      <div class="readout" id="readout1"></div>
+    </div>
+
+    <div class="ctrl">
+      <h3>Filteret i brændplanet</h3>
+      <label for="filtSel">Hvad sætter du i Fourier-planet?</label>
+      <select id="filtSel">
+        <option value="ingen">Ingenting – alt lys slipper igennem</option>
+        <option value="iris">Iris (lille hul)</option>
+        <option value="moerke">Prik i midten (mørkefelt)</option>
+        <option value="vandret">Vandret spalte</option>
+        <option value="lodret">Lodret spalte</option>
+        <option value="zernike">Zernikes faseplade</option>
+        <option value="tegn">Mal selv med sort tape</option>
+      </select>
+      <label for="filtParam"><span id="filtParamLbl">Størrelse</span> <span class="val" id="filtParamVal"></span></label>
+      <input type="range" id="filtParam">
+      <div class="row" id="drawFiltRow" hidden>
+        <label><input type="checkbox" id="filtErase"> Viskelæder</label>
+        <button class="btn" id="filtClear">Fjern al tape</button>
+      </div>
+      <div class="readout" id="readout2"></div>
+    </div>
+  </div>
+
+  <div class="planes">
+    <figure class="plane">
+      <canvas id="cObj" width="256" height="256"></canvas>
+      <figcaption><b>Objektet</b> <span class="arrow">→</span> <span id="objNote">det lyset passerer igennem</span></figcaption>
+    </figure>
+    <figure class="plane">
+      <canvas id="cFou" width="256" height="256"></canvas>
+      <figcaption><b>Fourier-planet</b> (linsens brændplan) <span class="arrow">→</span> <span id="fouNote">diffraktionsmønsteret</span></figcaption>
+    </figure>
+    <figure class="plane">
+      <canvas id="cImg" width="256" height="256"></canvas>
+      <figcaption><b>Billedet</b> – står på hovedet, som i virkeligheden</figcaption>
+    </figure>
+  </div>
+  <p style="font-size:0.85rem;color:var(--text-dim);margin-top:0.6rem">Alle tre felter er set i lysets retning. Objektfeltet er 4 mm bredt, Fourier-planet 4 mm, og begge linser har brændvidden <i>f</i> = 200 mm. Beregningen er en ægte 2D Fourier-transformation af objektet (256 × 256 punkter), ikke en tegning.</p>
+</section>
+
+<!-- ================= FORSØG ================= -->
+<section class="text" id="forsoeg" style="max-width:1200px">
+  <h2>Seks forsøg at starte med</h2>
+  <p style="max-width:800px">Hvert forsøg stiller optikbænken op for dig og fortæller, hvad du skal kigge efter.</p>
+  <div class="experiments">
+    <button class="exp" data-preset="abbe"><b>Få trådene til at forsvinde</b><span>Abbe–Porter: en spalte i brændplanet sletter halvdelen af et trådnet.</span></button>
+    <button class="exp" data-preset="oploes"><b>Opløsningsgrænsen</b><span>Luk irisen, til gitterets striber pludselig er væk.</span></button>
+    <button class="exp" data-preset="airy"><b>Airy-skiven</b><span>Et lille rundt hul giver ringe – som en stjerne i et teleskop.</span></button>
+    <button class="exp" data-preset="moerke"><b>Mørkefelt</b><span>Fjern det udiffrakterede lys, og kun kanterne lyser.</span></button>
+    <button class="exp" data-preset="fase"><b>Gør det usynlige synligt</b><span>Gennemsigtige celler og Zernikes faseplade.</span></button>
+    <button class="exp" data-preset="farve"><b>Blåt ser skarpere end rødt</b><span>Samme iris, forskellig bølgelængde.</span></button>
+  </div>
+</section>
+
+<!-- ================= TEKST ================= -->
+<section class="text" id="ide">
+  <h2><span class="num">1</span>Idéen: billedet bygges i to trin</h2>
+  <p>I 1873 sad Ernst Abbe hos Carl Zeiss i Jena og prøvede at forstå, hvorfor nogle mikroskopobjektiver viste fine detaljer, og andre ikke gjorde, selv om de var lige godt slebet. Svaret blev en helt ny måde at se på billeddannelse.</p>
+  <p>Når parallelt lys rammer et objekt – et gitter, en celle, et stykke tekst – spredes det i mange retninger. Hver retning svarer til et bestemt detaljeniveau i objektet: grove træk sender lyset en lille smule til siden, fine detaljer sender det langt ud. En linse samler alt lys, der går i <em>samme retning</em>, i <em>ét punkt</em> i sit brændplan. Derfor ligger der i brændplanet et kort over objektets retninger – det er Fraunhofer-diffraktionsmønsteret, som ellers først ville vise sig uendelig langt væk.</p>
+  <p>Lyset stopper ikke dér. Hvert lyspunkt i brændplanet sender en ny bølge videre, og hvor bølgerne mødes igen, interfererer de og danner billedet. Billedet er altså diffraktionsmønsterets diffraktionsmønster. Optikbænken ovenfor viser dette som en såkaldt 4f-opstilling: objekt, linse, brændplan, linse og billede, med afstanden <i>f</i> mellem hvert led.</p>
+  <div class="aside">Den vigtige konsekvens: Alt hvad der ikke kommer igennem brændplanet, kan aldrig dukke op i billedet. En linses kant, en iris eller et stykke tape i brændplanet bestemmer direkte, hvilke detaljer billedet får med.</div>
+</section>
+
+<section class="text" id="matematik">
+  <h2><span class="num">2</span>Matematikken: linsen er en Fourier-transformator</h2>
+  <p>Lad objektets transmission være \(t(x,y)\) – en kompleks funktion, der fortæller, hvor meget af lysets amplitude der slipper igennem, og hvor meget fasen forskydes. Med objektet i linsens forreste brændplan bliver feltet i det bageste brændplan</p>
+  <div class="eq">\[ U(x_F,y_F) \;\propto\; \iint t(x,y)\, e^{-i2\pi\,(u x + v y)}\,dx\,dy \;=\; T(u,v), \qquad u=\frac{x_F}{\lambda f},\quad v=\frac{y_F}{\lambda f}. \]</div>
+  <p>Det er præcis den todimensionale Fourier-transformation af objektet. Størrelserne \(u\) og \(v\) er <em>rumlige frekvenser</em> – antal linjer pr. millimeter – og et punkt i brændplanet i afstanden \(x_F\) fra aksen svarer til frekvensen \(u = x_F/(\lambda f)\).</p>
+  <p>Et gitter med perioden \(p\) har kun frekvenserne \(0, \pm 1/p, \pm 2/p, \dots\). I brændplanet giver det lyspletter i afstandene</p>
+  <div class="eq">\[ x_m = m\,\frac{\lambda f}{p}, \qquad m = 0,\pm1,\pm2,\dots \]</div>
+  <p>– de velkendte diffraktionsordener, nu bare samlet i et plan i stedet for på en fjern væg. Den anden linse udfører endnu en Fourier-transformation. To transformationer efter hinanden giver funktionen tilbage, men spejlet: \(\mathcal{F}\{\mathcal{F}\{t\}\}(x,y) = t(-x,-y)\). Derfor står billedet på hovedet. Har linserne forskellige brændvidder \(f_1\) og \(f_2\), forstørres billedet med \(f_2/f_1\).</p>
+  <p>Sætter vi et filter \(H(x_F,y_F)\) ind i brændplanet, bliver billedfeltet den inverse transformation af \(T\cdot H\). Det er det, siden her regner ud, hver gang du flytter en skyder.</p>
+</section>
+
+<section class="text" id="oploesning">
+  <h2><span class="num">3</span>Opløsningsgrænsen</h2>
+  <p>Abbes vigtigste resultat følger direkte: For at et gitter overhovedet kan ses som striber, skal både 0. orden og mindst én af 1. ordenerne nå frem til billedet. Med kun 0. orden er der ingen interferens, og billedet er jævnt lyst. Hvis åbningen i brændplanet har radius \(R\), skal \(\lambda f/p \le R\), så den mindste periode, der gengives, er</p>
+  <div class="eq">\[ p_{\min} = \frac{\lambda f}{R} = \frac{\lambda}{\mathrm{NA}}, \qquad \mathrm{NA} = n\sin\alpha \approx \frac{R}{f}. \]</div>
+  <p>Belyses objektet skråt, så 0. orden ligger ved kanten af åbningen, kan den modsatte 1. orden komme med fra den anden kant, og grænsen halveres til den berømte</p>
+  <div class="eq">\[ d = \frac{\lambda}{2\,\mathrm{NA}}. \]</div>
+  <p>Med grønt lys og et olieimmersionsobjektiv (NA ≈ 1,4) er det omkring 0,2 µm. Det er ikke et spørgsmål om bedre slibning – det er bølgefysik. Formlen står på Abbes mindesten i Jena. Bemærk også \(\lambda\) i tælleren: kortere bølgelængde giver finere detaljer. Det er grunden til, at elektronmikroskoper (se <a href="optik.html#elektron">optiksiden</a>) kan se atomer.</p>
+</section>
+
+<section class="text" id="airy">
+  <h2><span class="num">4</span>Airy-skiven: billedet af et punkt</h2>
+  <p>Forbindelsen går også den anden vej. Er objektet et enkelt lysende punkt – en stjerne – er dets Fourier-transformation helt jævn, og det er åbningen i linsen, der bestemmer, hvad der kommer igennem. Billedet af punktet bliver derfor Fourier-transformationen af selve linseåbningen. For en cirkulær åbning med diameteren \(D\) er det Airy-mønsteret: en lys skive omgivet af svage ringe, med første mørke ring ved</p>
+  <div class="eq">\[ \sin\theta = 1{,}22\,\frac{\lambda}{D}. \]</div>
+  <p>Det er Rayleighs kriterium for, hvornår to stjerner kan skilles ad. I forsøget <em>Airy-skiven</em> ovenfor er det omvendt: objektet er et lille rundt hul, og mønsteret i brændplanet er dets Fourier-transformation. Matematikken er den samme.</p>
+  <p>Samme tanke forklarer <a href="optik.html#stjerner">diffraktionsspidserne på stjernebilleder</a>: holderen til sekundærspejlet i et spejlteleskop er tynde stænger, og en tynd stang har en Fourier-transformation, der er en lang streg vinkelret på stangen. Fire stænger giver fire spidser. Og <a href="optik.html#bahtinov">Bahtinov-masken</a> virker, fordi dens tre gitre giver tre streger i brændplanet, som kun står symmetrisk, når fokus er præcist.</p>
+</section>
+
+<section class="text" id="abbe-porter">
+  <h2><span class="num">5</span>Abbe–Porter-forsøget</h2>
+  <p>Abbe demonstrerede sin teori med mikroskopet, men det klassiske forsøg blev gjort tydeligt af Albert Porter i 1906. Et fint trådnet belyses med parallelt lys. I brændplanet ser man et kvadratisk gitter af lyspletter: de lodrette tråde giver en vandret række pletter, de vandrette tråde en lodret række.</p>
+  <p>Sætter man en <em>vandret</em> spalte i brændplanet, slipper kun den vandrette række igennem. I billedet er de vandrette tråde forsvundet – kun de lodrette er tilbage. Drej spalten 90°, og det er omvendt. Lad kun en skrå række passere, og billedet viser skrå tråde, som slet ikke findes i nettet! Prøv det med <em>Mal selv med sort tape</em>: dæk alt undtagen en diagonal række pletter.</p>
+  <p>Forsøget er det tydeligste bevis på, at billedet virkelig samles af diffraktionsordenerne. Det er grundlaget for al <em>optisk filtrering</em> – fra at fjerne rasterprikker i gamle avisfotos til mønstergenkendelse med lys.</p>
+</section>
+
+<section class="text" id="fasekontrast">
+  <h2><span class="num">6</span>Fasekontrast: Zernikes Nobelpris</h2>
+  <p>En levende celle i vand er næsten helt gennemsigtig. Den absorberer intet, men forsinker lyset lidt, fordi brydningsindekset er højere. Transmissionen er \(t = e^{i\varphi(x,y)}\), og da \(|t|^2 = 1\), er cellen usynlig i et almindeligt mikroskop. Vælg <em>Gennemsigtige celler</em> uden filter: billedet er jævnt.</p>
+  <p>For en svag fase er \(t \approx 1 + i\varphi\). Ettallet er det udiffrakterede lys, som samles i midterpletten i brændplanet. Leddet \(i\varphi\) er det diffrakterede lys, og faktoren \(i\) betyder, at det er 90° ude af takt med midterlyset. Derfor interfererer de ikke i intensiteten. Frits Zernike indså i 1930'erne, at en lille plade i brændplanet, der kun forsinker midterpletten med en kvart bølgelængde, ganger ettallet med \(i\):</p>
+  <div class="eq">\[ i + i\varphi = i\,(1+\varphi) \quad\Rightarrow\quad I \approx 1 + 2\varphi. \]</div>
+  <p>Nu er fasen blevet til lysstyrke, og cellen træder frem. Zernike fik Nobelprisen i fysik for det i 1953. Blokerer man i stedet midterpletten helt (mørkefelt), bliver \(I \approx \varphi^2\): cellerne lyser svagt på sort baggrund. Begge dele kan du prøve på optikbænken.</p>
+</section>
+
+<section class="text" id="hjemme">
+  <h2><span class="num">7</span>Prøv det selv – uden laboratorium</h2>
+  <p>Dit eget øje er en 4f-opstilling i lommeformat: øjets linse fokuserer på uendelig, og nethinden sidder i brændplanet. Kig på en fjern gadelygte gennem et stykke tæt gardin, en paraply eller et fint dørnet. Lygten er et punkt, så det du ser, er Fourier-transformationen af stoffet: et kvadratisk gitter af lyspletter. Drej stoffet, og mønsteret drejer med. Stræk det, og pletterne rykker <em>tættere</em> sammen – frekvens og periode er omvendt proportionale.</p>
+  <p>Med en laserpointer, et forstørrelsesglas og et stykke tyl kan du lave Abbe–Porter-forsøget: sæt tyllen i strålen, find brændplanet bag linsen med et stykke papir, og læg en spalte af to stykker tape over pletterne. Med en ekstra linse kan billedet af tyllen fanges på en væg.</p>
+  <div class="aside warn"><strong>Pas på øjnene:</strong> Kig aldrig ind i en laser, heller ikke i en reflekteret stråle. Brug en svag pointer (klasse 2, under 1 mW) og lad pletterne lande på papir eller en væg.</div>
+  <p>Ved teleskopet kan du se Airy-skiven direkte: brug høj forstørrelse på en klar stjerne en rolig nat. Sæt en papmaske med et mindre hul foran teleskopet, og ringene bliver større – mindre åbning, bredere Fourier-transformation.</p>
+</section>
+
+<section class="text" id="opgaver">
+  <h2><span class="num">8</span>Opgaver</h2>
+  <details>
+    <summary>1. Pletterne fra et gitter</summary>
+    <p>Et gitter med perioden 0,25 mm belyses med en grøn laser (532 nm). Linsen har brændvidden 200 mm. Hvor langt fra aksen ligger 1. orden i brændplanet? Kontrollér med optikbænken.</p>
+    <div class="answer">\(x_1 = \lambda f/p = 532\cdot10^{-6}\,\text{mm}\cdot 200\,\text{mm}/0{,}25\,\text{mm} \approx 0{,}43\,\text{mm}\).</div>
+  </details>
+  <details>
+    <summary>2. Iris og bølgelængde</summary>
+    <p>En iris med radius 0,30 mm sidder i brændplanet (f = 200 mm). Hvad er den mindste gitterperiode, der kan ses i billedet med rødt lys (650 nm) og med blåt lys (450 nm)?</p>
+    <div class="answer">\(p_{\min} = \lambda f/R\): rødt 0,43 mm, blåt 0,30 mm. Blåt lys gengiver finere detaljer.</div>
+  </details>
+  <details>
+    <summary>3. Et teleskops opløsning</summary>
+    <p>Et teleskop har en åbning på 114 mm. Hvor stor er vinkelradius af Airy-skiven ved 550 nm, i buesekunder?</p>
+    <div class="answer">\(\theta = 1{,}22\,\lambda/D = 1{,}22\cdot 550\cdot10^{-9}/0{,}114 \approx 5{,}9\cdot10^{-6}\) rad ≈ 1,2″. I praksis begrænser luftens uro (seeing) som regel til 2–3″.</div>
+  </details>
+  <details>
+    <summary>4. Mikroskopets grænse</summary>
+    <p>Et objektiv har NA = 0,65. Hvad er den mindste afstand mellem to detaljer, der kan skilles ad i grønt lys (550 nm) med skrå belysning?</p>
+    <div class="answer">\(d = \lambda/(2\,\mathrm{NA}) = 550/1{,}3 \approx 420\) nm.</div>
+  </details>
+  <details>
+    <summary>5. Fasekontrast</summary>
+    <p>En celle forsinker lyset med fasen 0,2 rad i forhold til omgivelserne. Hvor stor er den relative kontrast med Zernikes faseplade, og med mørkefelt?</p>
+    <div class="answer">Fasekontrast: \(I \approx 1 + 2\varphi = 1{,}4\), altså 40 % lysere end baggrunden. Mørkefelt: \(I \approx \varphi^2 = 0{,}04\) på sort baggrund – svagt, men på mørk grund ses det.</div>
+  </details>
+  <details>
+    <summary>6. Hvorfor skrå tråde?</summary>
+    <p>I Abbe–Porter-forsøget lader du kun den diagonale række pletter gennem brændplanet. Forklar, hvorfor billedet viser skrå striber, og hvilken periode de har, når nettets periode er \(p\).</p>
+    <div class="answer">Den diagonale række svarer til frekvenserne \(m(1/p, 1/p)\), dvs. en bølge, der varierer langs diagonalen med frekvensen \(\sqrt2/p\). Striberne står vinkelret på diagonalen og har perioden \(p/\sqrt2\).</div>
+  </details>
+</section>
+
+</main>
+
+<footer>
+  <p><a href="index.html">← Tilbage til forsiden</a> · Se også <a href="optik.html">Optik og linser</a> og <a href="optik.html#young">Youngs dobbeltspalte</a></p>
+  <p>Michael Grant · <a href="mailto:michael.h.grant@gmail.com">michael.h.grant@gmail.com</a></p>
+</footer>
+
+<script>
+(function () {
+"use strict";
+
+/* =========================================================
+   FYSISKE KONSTANTER OG GITRE
+   ========================================================= */
+const N = 256;          // FFT-gitter
+const L = 4.0;          // objektfelt [mm]
+const dx = L / N;
+const F_MM = 200;       // brændvidde [mm]
+const XF = 2.0;         // halv bredde af Fourier-visning [mm]
+const M = 256;          // pixels i Fourier-visning
+const PIX = 2 * XF / M; // mm pr. pixel i Fourier-visning
+const RB = 1.8;         // stråleradius [mm]
+
+const OBJ = {
+  gitter:  { lbl: 'Periode', min: 0.08, max: 0.6, step: 0.01, def: 0.25, fmt: v => v.toFixed(2) + ' mm',
+             note: 'lodrette spalter' },
+  net:     { lbl: 'Maskevidde', min: 0.1, max: 0.6, step: 0.01, def: 0.30, fmt: v => v.toFixed(2) + ' mm',
+             note: 'lodrette og vandrette tråde' },
+  dobbelt: { lbl: 'Afstand mellem spalter', min: 0.15, max: 1.2, step: 0.01, def: 0.5, fmt: v => v.toFixed(2) + ' mm',
+             note: 'to smalle spalter (bredde 0,06 mm)' },
+  enkelt:  { lbl: 'Spaltebredde', min: 0.04, max: 0.8, step: 0.01, def: 0.15, fmt: v => v.toFixed(2) + ' mm',
+             note: 'én spalte' },
+  cirkel:  { lbl: 'Diameter', min: 0.08, max: 2.0, step: 0.01, def: 0.3, fmt: v => v.toFixed(2) + ' mm',
+             note: 'et lille rundt hul' },
+  kvadrat: { lbl: 'Sidelængde', min: 0.08, max: 2.0, step: 0.01, def: 0.4, fmt: v => v.toFixed(2) + ' mm',
+             note: 'et kvadratisk hul' },
+  tekst:   { lbl: 'Skriftstørrelse', min: 20, max: 120, step: 1, def: 64, fmt: v => v.toFixed(0) + ' px',
+             note: 'gennemsigtige bogstaver' },
+  fase:    { lbl: 'Faseforsinkelse', min: 0.05, max: 1.5, step: 0.01, def: 0.4, fmt: v => v.toFixed(2) + ' rad',
+             note: 'gennemsigtige celler – de kan ikke ses' },
+  tegn:    { lbl: 'Penselstørrelse', min: 2, max: 30, step: 1, def: 8, fmt: v => v.toFixed(0) + ' px',
+             note: 'tegn med musen eller fingeren' }
+};
+const FILT = {
+  ingen:   { lbl: null },
+  iris:    { lbl: 'Irisens radius', min: 0.03, max: 2, step: 0.01, def: 1.0, fmt: v => v.toFixed(2) + ' mm' },
+  moerke:  { lbl: 'Prikkens radius', min: 0.02, max: 1, step: 0.01, def: 0.06, fmt: v => v.toFixed(2) + ' mm' },
+  vandret: { lbl: 'Spaltens halve bredde', min: 0.02, max: 1, step: 0.01, def: 0.08, fmt: v => v.toFixed(2) + ' mm' },
+  lodret:  { lbl: 'Spaltens halve bredde', min: 0.02, max: 1, step: 0.01, def: 0.08, fmt: v => v.toFixed(2) + ' mm' },
+  zernike: { lbl: 'Fasepladens radius', min: 0.02, max: 0.3, step: 0.005, def: 0.05, fmt: v => v.toFixed(3) + ' mm' },
+  tegn:    { lbl: 'Penselstørrelse', min: 2, max: 30, step: 1, def: 6, fmt: v => v.toFixed(0) + ' px' }
+};
+
+const state = {
+  obj: 'gitter', objParam: {}, lambda: 532, filter: 'ingen', filtParam: {},
+  dyn: 4, rays: true, anim: !matchMedia('(prefers-reduced-motion: reduce)').matches,
+  text: 'Abbe'
+};
+for (const k in OBJ) state.objParam[k] = OBJ[k].def;
+for (const k in FILT) if (FILT[k].lbl) state.filtParam[k] = FILT[k].def;
+
+/* =========================================================
+   FFT (radix-2, 2D)
+   ========================================================= */
+const LOG2N = Math.log2(N);
+const rev = new Uint16Array(N);
+for (let i = 0; i < N; i++) {
+  let r = 0, x = i;
+  for (let b = 0; b < LOG2N; b++) { r = (r << 1) | (x & 1); x >>= 1; }
+  rev[i] = r;
+}
+const cosT = new Float64Array(N / 2), sinT = new Float64Array(N / 2);
+for (let k = 0; k < N / 2; k++) { cosT[k] = Math.cos(2 * Math.PI * k / N); sinT[k] = Math.sin(2 * Math.PI * k / N); }
+
+function fft1(re, im, inv) {
+  for (let i = 0; i < N; i++) {
+    const j = rev[i];
+    if (j > i) { let t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; }
+  }
+  for (let size = 2; size <= N; size <<= 1) {
+    const half = size >> 1, step = N / size;
+    for (let i = 0; i < N; i += size) {
+      for (let j = 0; j < half; j++) {
+        const k = j * step;
+        const wr = cosT[k], wi = inv ? sinT[k] : -sinT[k];
+        const a = i + j, b = a + half;
+        const tr = wr * re[b] - wi * im[b];
+        const ti = wr * im[b] + wi * re[b];
+        re[b] = re[a] - tr; im[b] = im[a] - ti;
+        re[a] += tr; im[a] += ti;
+      }
+    }
+  }
+}
+const rowR = new Float64Array(N), rowI = new Float64Array(N);
+function fft2(re, im, inv) {
+  for (let y = 0; y < N; y++) {
+    const o = y * N;
+    for (let x = 0; x < N; x++) { rowR[x] = re[o + x]; rowI[x] = im[o + x]; }
+    fft1(rowR, rowI, inv);
+    for (let x = 0; x < N; x++) { re[o + x] = rowR[x]; im[o + x] = rowI[x]; }
+  }
+  for (let x = 0; x < N; x++) {
+    for (let y = 0; y < N; y++) { rowR[y] = re[y * N + x]; rowI[y] = im[y * N + x]; }
+    fft1(rowR, rowI, inv);
+    for (let y = 0; y < N; y++) { re[y * N + x] = rowR[y]; im[y * N + x] = rowI[y]; }
+  }
+  if (inv) { const s = 1 / (N * N); for (let i = 0; i < N * N; i++) { re[i] *= s; im[i] *= s; } }
+}
+
+/* =========================================================
+   ARRAYS
+   Array-indeks n = j*N + i, hvor i er kolonne (x mod højre)
+   og j er række (oppefra, dvs. y nedad), set i lysets retning.
+   ========================================================= */
+const tRe = new Float64Array(N * N), tIm = new Float64Array(N * N);
+const TRe = new Float64Array(N * N), TIm = new Float64Array(N * N);
+const Sp = new Float32Array(N * N);
+let Smax = 1;
+const gRe = new Float64Array(N * N), gIm = new Float64Array(N * N);
+const Iimg = new Float32Array(N * N);
+let peaks = [];
+
+/* Tegne-lærreder (skjulte) */
+const objDraw = document.createElement('canvas'); objDraw.width = objDraw.height = N;
+const objDrawCtx = objDraw.getContext('2d', { willReadFrequently: true });
+objDrawCtx.fillStyle = '#000'; objDrawCtx.fillRect(0, 0, N, N);
+// lille startfigur, så man ser noget
+objDrawCtx.strokeStyle = '#fff'; objDrawCtx.lineWidth = 8; objDrawCtx.lineCap = 'round';
+objDrawCtx.beginPath(); objDrawCtx.moveTo(90, 80); objDrawCtx.lineTo(90, 176); objDrawCtx.lineTo(166, 176); objDrawCtx.stroke();
+
+const fouPaint = document.createElement('canvas'); fouPaint.width = fouPaint.height = M;
+const fouPaintCtx = fouPaint.getContext('2d', { willReadFrequently: true });
+let fouPaintData = null;
+
+const textCanvas = document.createElement('canvas'); textCanvas.width = textCanvas.height = N;
+const textCtx = textCanvas.getContext('2d', { willReadFrequently: true });
+
+/* =========================================================
+   LASERFARVE
+   ========================================================= */
+function lambdaRGB(nm) {
+  let r = 0, g = 0, b = 0;
+  if (nm < 440) { r = -(nm - 440) / 60; b = 1; }
+  else if (nm < 490) { g = (nm - 440) / 50; b = 1; }
+  else if (nm < 510) { g = 1; b = -(nm - 510) / 20; }
+  else if (nm < 580) { r = (nm - 510) / 70; g = 1; }
+  else if (nm < 645) { r = 1; g = -(nm - 645) / 65; }
+  else { r = 1; }
+  let f = 1;
+  if (nm < 420) f = 0.4 + 0.6 * (nm - 400) / 20;
+  else if (nm > 680) f = 0.4 + 0.6 * (700 - nm) / 20;
+  const gam = 0.8;
+  return [Math.pow(r * f, gam), Math.pow(g * f, gam), Math.pow(b * f, gam)];
+}
+let RGB = lambdaRGB(state.lambda);
+
+/* =========================================================
+   OBJEKTER
+   ========================================================= */
+function frac(v) { return v - Math.floor(v); }
+function smooth(e0, e1, v) { const t = Math.min(1, Math.max(0, (v - e0) / (e1 - e0))); return t * t * (3 - 2 * t); }
+const CELLS = [
+  { x: -0.65, y: 0.45, a: 0.48, b: 0.30, r: 0.5 },
+  { x: 0.60, y: 0.55, a: 0.36, b: 0.27, r: -0.4 },
+  { x: 0.10, y: -0.60, a: 0.55, b: 0.33, r: 1.2 },
+  { x: -0.85, y: -0.55, a: 0.22, b: 0.20, r: 0 }
+];
+
+const GEO = {
+  gitter: (x, y, P) => frac(x / P + 0.25) < 0.5 ? 1 : 0,
+  net: (x, y, P) => (Math.abs(frac(x / P) - 0.5) < 0.39 && Math.abs(frac(y / P) - 0.5) < 0.39) ? 1 : 0,
+  dobbelt: (x, y, P) => (Math.abs(Math.abs(x) - P / 2) < 0.03 && Math.abs(y) < 1.4) ? 1 : 0,
+  enkelt: (x, y, P) => (Math.abs(x) < P / 2 && Math.abs(y) < 1.4) ? 1 : 0,
+  cirkel: (x, y, P) => (x * x + y * y < P * P / 4) ? 1 : 0,
+  kvadrat: (x, y, P) => (Math.abs(x) < P / 2 && Math.abs(y) < P / 2) ? 1 : 0
+};
+function buildObject() {
+  const o = state.obj, P = state.objParam[o];
+  let mask = null;
+  if (o === 'tekst') {
+    textCtx.fillStyle = '#000'; textCtx.fillRect(0, 0, N, N);
+    textCtx.fillStyle = '#fff';
+    textCtx.font = 'bold ' + P + 'px "Segoe UI", Helvetica, Arial, sans-serif';
+    textCtx.textAlign = 'center'; textCtx.textBaseline = 'middle';
+    textCtx.fillText(state.text || ' ', N / 2, N / 2 + 2);
+    mask = textCtx.getImageData(0, 0, N, N).data;
+  } else if (o === 'tegn') {
+    mask = objDrawCtx.getImageData(0, 0, N, N).data;
+  }
+  for (let j = 0; j < N; j++) {
+    const y = (N / 2 - j - 0.5) * dx;
+    for (let i = 0; i < N; i++) {
+      const x = (i + 0.5 - N / 2) * dx;
+      const n = j * N + i;
+      const r2 = x * x + y * y;
+      const env = Math.exp(-Math.pow(r2 / (RB * RB), 5));
+      let a = 0, ph = 0;
+      if (GEO[o]) {
+        let acc = 0;
+        for (let sy = 0; sy < 3; sy++) for (let sx = 0; sx < 3; sx++)
+          acc += GEO[o](x + (sx - 1) * dx / 3, y + (sy - 1) * dx / 3, P);
+        a = acc / 9;
+      } else switch (o) {
+        case 'gitter': a = frac(x / P + 0.25) < 0.5 ? 1 : 0; break;
+        case 'net': {
+          const fx = frac(x / P), fy = frac(y / P);
+          a = (Math.abs(fx - 0.5) < 0.39 && Math.abs(fy - 0.5) < 0.39) ? 1 : 0; break;
+        }
+        case 'dobbelt': a = (Math.abs(Math.abs(x) - P / 2) < 0.03 && Math.abs(y) < 1.4) ? 1 : 0; break;
+        case 'enkelt': a = (Math.abs(x) < P / 2 && Math.abs(y) < 1.4) ? 1 : 0; break;
+        case 'cirkel': a = r2 < (P / 2) * (P / 2) ? 1 : 0; break;
+        case 'kvadrat': a = (Math.abs(x) < P / 2 && Math.abs(y) < P / 2) ? 1 : 0; break;
+        case 'tekst':
+        case 'tegn': a = mask[n * 4] / 255; break;
+        case 'fase': {
+          a = 1; let phi = 0;
+          for (const c of CELLS) {
+            const cx = x - c.x, cy = y - c.y;
+            const cs = Math.cos(c.r), sn = Math.sin(c.r);
+            const xr = cx * cs + cy * sn, yr = -cx * sn + cy * cs;
+            const q = 1 - (xr * xr) / (c.a * c.a) - (yr * yr) / (c.b * c.b);
+            const qn = 1 - (xr * xr + yr * yr) / Math.pow(0.36 * c.b, 2);
+            phi += smooth(0, 0.18, q) + 0.8 * smooth(0, 0.3, qn);
+          }
+          ph = P * phi; break;
+        }
+      }
+      a *= env;
+      tRe[n] = a * Math.cos(ph); tIm[n] = a * Math.sin(ph);
+    }
+  }
+  TRe.set(tRe); TIm.set(tIm);
+  fft2(TRe, TIm, false);
+  Smax = 0;
+  for (let n = 0; n < N * N; n++) { const s = TRe[n] * TRe[n] + TIm[n] * TIm[n]; Sp[n] = s; if (s > Smax) Smax = s; }
+  if (Smax <= 0) Smax = 1;
+  findPeaks();
+  drawObject();
+}
+
+/* Lokale maksima i spektret – bruges til strålebundterne i 3D */
+function findPeaks() {
+  const list = [];
+  const thr = Smax * 3e-4;
+  for (let l = -N / 2 + 1; l < N / 2 - 1; l++) {
+    for (let k = -N / 2 + 1; k < N / 2 - 1; k++) {
+      const kk = (k + N) % N, ll = (l + N) % N;
+      const s = Sp[ll * N + kk];
+      if (s < thr) continue;
+      let isMax = true;
+      for (let b = -1; b <= 1 && isMax; b++) for (let a = -1; a <= 1; a++) {
+        if (!a && !b) continue;
+        if (Sp[((ll + b + N) % N) * N + (kk + a + N) % N] > s) { isMax = false; break; }
+      }
+      if (isMax) list.push({ k, l, s });
+    }
+  }
+  list.sort((p, q) => q.s - p.s);
+  peaks = list.slice(0, 200);
+}
+
+/* =========================================================
+   FILTER
+   ========================================================= */
+function filterAt(xF, yF) {   // returnerer [re, im]
+  const f = state.filter, R = state.filtParam[f];
+  switch (f) {
+    case 'iris': return (xF * xF + yF * yF <= R * R) ? [1, 0] : [0, 0];
+    case 'moerke': return (xF * xF + yF * yF <= R * R) ? [0, 0] : [1, 0];
+    case 'vandret': return Math.abs(yF) <= R ? [1, 0] : [0, 0];
+    case 'lodret': return Math.abs(xF) <= R ? [1, 0] : [0, 0];
+    case 'zernike': return (xF * xF + yF * yF <= R * R) ? [0, 1] : [1, 0];
+    case 'tegn': {
+      if (!fouPaintData) return [1, 0];
+      const a = Math.floor(xF / PIX + M / 2), b = Math.floor(-yF / PIX + M / 2);
+      if (a < 0 || b < 0 || a >= M || b >= M) return [1, 0];
+      return fouPaintData[(b * M + a) * 4 + 3] > 100 ? [0, 0] : [1, 0];
+    }
+    default: return [1, 0];
+  }
+}
+
+function lamMM() { return state.lambda * 1e-6; }
+
+function applyFilter() {
+  RGB = lambdaRGB(state.lambda);
+  if (state.filter === 'tegn') fouPaintData = fouPaintCtx.getImageData(0, 0, M, M).data;
+  const lf = lamMM() * F_MM;
+  for (let j = 0; j < N; j++) {
+    const ls = j < N / 2 ? j : j - N;
+    const yF = -ls / L * lf;
+    for (let i = 0; i < N; i++) {
+      const ks = i < N / 2 ? i : i - N;
+      const xF = ks / L * lf;
+      const n = j * N + i;
+      const h = filterAt(xF, yF);
+      gRe[n] = TRe[n] * h[0] - TIm[n] * h[1];
+      gIm[n] = TRe[n] * h[1] + TIm[n] * h[0];
+    }
+  }
+  fft2(gRe, gIm, true);
+  for (let n = 0; n < N * N; n++) Iimg[n] = gRe[n] * gRe[n] + gIm[n] * gIm[n];
+  drawObject();
+  drawFourier();
+  drawImage();
+  buildRays();
+  updateReadouts();
+  markTextures();
+}
+
+/* =========================================================
+   TEGNING AF DE TRE PLANER
+   ========================================================= */
+const cObj = document.getElementById('cObj'), cFou = document.getElementById('cFou'), cImg = document.getElementById('cImg');
+const ctxObj = cObj.getContext('2d'), ctxFou = cFou.getContext('2d'), ctxImg = cImg.getContext('2d');
+const imObj = ctxObj.createImageData(N, N), imFou = ctxFou.createImageData(M, M), imImg = ctxImg.createImageData(N, N);
+
+function putPix(d, p, v) {
+  d[p] = Math.min(255, 255 * v * RGB[0]);
+  d[p + 1] = Math.min(255, 255 * v * RGB[1]);
+  d[p + 2] = Math.min(255, 255 * v * RGB[2]);
+  d[p + 3] = 255;
+}
+
+function drawObject() {
+  const d = imObj.data;
+  for (let n = 0; n < N * N; n++) putPix(d, n * 4, tRe[n] * tRe[n] + tIm[n] * tIm[n]);
+  ctxObj.putImageData(imObj, 0, 0);
+  // stråleomrids
+  ctxObj.save();
+  ctxObj.setLineDash([4, 5]); ctxObj.strokeStyle = 'rgba(255,255,255,0.22)'; ctxObj.lineWidth = 1;
+  ctxObj.beginPath(); ctxObj.arc(N / 2, N / 2, RB / dx, 0, 2 * Math.PI); ctxObj.stroke();
+  ctxObj.restore();
+}
+
+function sampleS(k, l) {
+  if (Math.abs(k) >= N / 2 - 1 || Math.abs(l) >= N / 2 - 1) return 0;
+  const k0 = Math.floor(k), l0 = Math.floor(l), fk = k - k0, fl = l - l0;
+  const a0 = (k0 + N) % N, a1 = (k0 + 1 + N) % N, b0 = (l0 + N) % N, b1 = (l0 + 1 + N) % N;
+  return (Sp[b0 * N + a0] * (1 - fk) + Sp[b0 * N + a1] * fk) * (1 - fl) +
+         (Sp[b1 * N + a0] * (1 - fk) + Sp[b1 * N + a1] * fk) * fl;
+}
+
+function drawFourier() {
+  const d = imFou.data;
+  const scale = PIX / (lamMM() * F_MM) * L;   // frekvensindeks pr. pixel
+  const D = state.dyn, kD = Math.pow(10, D);
+  for (let b = 0; b < M; b++) {
+    const l = (b + 0.5 - M / 2) * scale;
+    const yF = -(b + 0.5 - M / 2) * PIX;
+    for (let a = 0; a < M; a++) {
+      const k = (a + 0.5 - M / 2) * scale;
+      const xF = (a + 0.5 - M / 2) * PIX;
+      const s = sampleS(k, l) / Smax;
+      let v = D > 0 ? Math.log10(1 + kD * s) / D : s;
+      const p = (b * M + a) * 4;
+      const h = filterAt(xF, yF);
+      if (h[0] * h[0] + h[1] * h[1] < 0.25) {
+        d[p] = 26 + 60 * v * RGB[0]; d[p + 1] = 28 + 60 * v * RGB[1]; d[p + 2] = 36 + 60 * v * RGB[2]; d[p + 3] = 255;
+      } else putPix(d, p, v);
+    }
+  }
+  ctxFou.putImageData(imFou, 0, 0);
+  // kontur af filteret
+  const R = state.filtParam[state.filter] / PIX;
+  ctxFou.save();
+  ctxFou.strokeStyle = 'rgba(245,200,120,0.85)'; ctxFou.lineWidth = 1.2;
+  const c = M / 2;
+  switch (state.filter) {
+    case 'iris': case 'moerke': case 'zernike':
+      ctxFou.beginPath(); ctxFou.arc(c, c, Math.max(R, 1.5), 0, 2 * Math.PI); ctxFou.stroke(); break;
+    case 'vandret':
+      ctxFou.beginPath(); ctxFou.moveTo(0, c - R); ctxFou.lineTo(M, c - R); ctxFou.moveTo(0, c + R); ctxFou.lineTo(M, c + R); ctxFou.stroke(); break;
+    case 'lodret':
+      ctxFou.beginPath(); ctxFou.moveTo(c - R, 0); ctxFou.lineTo(c - R, M); ctxFou.moveTo(c + R, 0); ctxFou.lineTo(c + R, M); ctxFou.stroke(); break;
+  }
+  ctxFou.restore();
+}
+
+function drawImage() {
+  let mx = 0;
+  for (let n = 0; n < N * N; n++) if (Iimg[n] > mx) mx = Iimg[n];
+  if (mx < 1e-12) mx = 1;
+  const d = imImg.data;
+  for (let j = 0; j < N; j++) {
+    const js = (N - j) % N;
+    for (let i = 0; i < N; i++) {
+      const is = (N - i) % N;
+      putPix(d, (j * N + i) * 4, Iimg[js * N + is] / mx);
+    }
+  }
+  ctxImg.putImageData(imImg, 0, 0);
+}
+
+/* =========================================================
+   TEKST VED KONTROLLERNE
+   ========================================================= */
+const $ = id => document.getElementById(id);
+function fmtNum(v, d) { return v.toFixed(d).replace('.', ','); }
+function updateReadouts() {
+  const lf = lamMM() * F_MM;
+  const o = state.obj, P = state.objParam[o];
+  let r1 = '';
+  if (o === 'gitter' || o === 'net') r1 = '1. orden i brændplanet: x₁ = λf/p = ' + fmtNum(lf / P, 3) + ' mm';
+  else if (o === 'dobbelt') r1 = 'Stribeafstand i brændplanet: λf/d = ' + fmtNum(lf / P, 3) + ' mm';
+  else if (o === 'enkelt') r1 = 'Første mørke sted: λf/a = ' + fmtNum(lf / P, 3) + ' mm';
+  else if (o === 'cirkel') r1 = 'Første mørke ring: 1,22·λf/D = ' + fmtNum(1.22 * lf / P, 3) + ' mm';
+  else if (o === 'kvadrat') r1 = 'Første mørke linje: λf/a = ' + fmtNum(lf / P, 3) + ' mm';
+  $('readout1').textContent = r1;
+  let r2 = '';
+  const f = state.filter, R = state.filtParam[f];
+  if (f === 'iris') {
+    r2 = 'Mindste periode der kan ses: p_min = λf/R = ' + fmtNum(lf / R, 3) + ' mm';
+    if (o === 'gitter' || o === 'net') r2 += (lf / P <= R) ? ' – 1. orden slipper igennem' : ' – 1. orden er blokeret';
+  } else if (f === 'vandret') r2 = 'Kun lys, der er spredt vandret, slipper igennem';
+  else if (f === 'lodret') r2 = 'Kun lys, der er spredt lodret, slipper igennem';
+  else if (f === 'moerke') r2 = 'Det udiffrakterede lys (0. orden) er blokeret';
+  else if (f === 'zernike') r2 = '0. orden forsinkes en kvart bølgelængde (90°)';
+  else if (f === 'tegn') r2 = 'Mal i Fourier-feltet for at dække lys til';
+  $('readout2').textContent = r2;
+  $('lamVal').textContent = state.lambda + ' nm';
+  const css = 'rgb(' + RGB.map(v => Math.round(255 * v)).join(',') + ')';
+  document.documentElement.style.setProperty('--laser', css);
+  $('objNote').textContent = OBJ[o].note;
+  $('fouNote').textContent = f === 'ingen' ? 'diffraktionsmønsteret' : 'mønsteret – mørke felter er dækket til';
+}
+
+/* =========================================================
+   3D-SCENE
+   ========================================================= */
+const stage = $('stage');
+const canvas3 = $('three');
+const renderer = new THREE.WebGLRenderer({ canvas: canvas3, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setClearColor(0x06070d, 1);
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x06070d, 30, 60);
+const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 200);
+
+scene.add(new THREE.AmbientLight(0x8890a8, 0.7));
+const dl = new THREE.DirectionalLight(0xffffff, 0.9); dl.position.set(5, 10, -4); scene.add(dl);
+const dl2 = new THREE.DirectionalLight(0x6688ff, 0.4); dl2.position.set(-6, -3, 10); scene.add(dl2);
+
+// Positioner langs aksen (scene-enheder): f = 3
+const FS = 3, Z_OBJ = 0, Z_L1 = 3, Z_FOU = 6, Z_L2 = 9, Z_IMG = 12, Z_LASER = -3.4;
+const SZ = 2.4;                 // skærmenes sidelængde
+const S_OBJ = SZ / L;           // scene pr. mm i objekt/billed-plan
+const S_FOU = SZ / (2 * XF);    // scene pr. mm i Fourier-plan
+
+// optisk akse
+{
+  const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, Z_LASER - 0.5), new THREE.Vector3(0, 0, Z_IMG + 1.2)]);
+  const line = new THREE.Line(g, new THREE.LineDashedMaterial({ color: 0x555a70, dashSize: 0.18, gapSize: 0.12 }));
+  line.computeLineDistances(); scene.add(line);
+}
+// bænk
+{
+  const bench = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.12, Z_IMG - Z_LASER + 2.4),
+    new THREE.MeshPhongMaterial({ color: 0x1b1e2c, shininess: 30 }));
+  bench.position.set(0, -2.1, (Z_IMG + Z_LASER) / 2); scene.add(bench);
+}
+function post(z, h) {
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, h, 12), new THREE.MeshPhongMaterial({ color: 0x3a3f55 }));
+  m.position.set(0, -2.1 + h / 2, z); scene.add(m);
+}
+
+// tekstur-skærme
+function makeTex(c) {
+  const t = new THREE.CanvasTexture(c);
+  t.minFilter = THREE.LinearFilter; t.magFilter = THREE.LinearFilter; t.generateMipmaps = false;
+  return t;
+}
+const texObj = makeTex(cObj), texFou = makeTex(cFou), texImg = makeTex(cImg);
+function markTextures() { texObj.needsUpdate = texFou.needsUpdate = texImg.needsUpdate = true; }
+
+function screen(tex, z, frameColor) {
+  const grp = new THREE.Group();
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(SZ, SZ),
+    new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, toneMapped: false }));
+  plane.rotation.y = Math.PI;      // forsiden vender mod lyskilden; lærredets x mod højre set i lysets retning
+  grp.add(plane);
+  const frame = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(SZ + 0.12, SZ + 0.12, 0.06)),
+    new THREE.LineBasicMaterial({ color: frameColor }));
+  grp.add(frame);
+  grp.position.z = z; scene.add(grp);
+  post(z, 2.1 - SZ / 2 - 0.06);
+  return grp;
+}
+screen(texObj, Z_OBJ, 0x6a7090);
+screen(texFou, Z_FOU, 0xf5c878);
+screen(texImg, Z_IMG, 0x6a7090);
+
+// linser
+function lens(z) {
+  const R = 1.75, t0 = 0.42, pts = [];
+  for (let s = 0; s <= 24; s++) { const r = R * s / 24; pts.push(new THREE.Vector2(r, t0 / 2 * (1 - (r / R) ** 2) + 0.01)); }
+  for (let s = 24; s >= 0; s--) { const r = R * s / 24; pts.push(new THREE.Vector2(r, -t0 / 2 * (1 - (r / R) ** 2) - 0.01)); }
+  const g = new THREE.LatheGeometry(pts, 64);
+  const m = new THREE.Mesh(g, new THREE.MeshPhongMaterial({
+    color: 0x9fd8ff, transparent: true, opacity: 0.22, shininess: 120, specular: 0xffffff, side: THREE.DoubleSide, depthWrite: false
+  }));
+  m.rotation.x = Math.PI / 2; m.position.z = z; scene.add(m);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(R + 0.03, 0.045, 10, 64), new THREE.MeshPhongMaterial({ color: 0x4a5070 }));
+  ring.position.z = z; scene.add(ring);
+  post(z, 2.1 - R - 0.05);
+}
+lens(Z_L1); lens(Z_L2);
+
+// laser
+{
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 1.4, 24), new THREE.MeshPhongMaterial({ color: 0x23263a, shininess: 60 }));
+  body.rotation.x = Math.PI / 2; body.position.z = Z_LASER - 0.9; scene.add(body);
+  post(Z_LASER - 0.9, 2.1 - 0.32);
+}
+
+// mærkater
+function label(text, x, y, z, color, size) {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 96;
+  const g = c.getContext('2d');
+  g.font = '500 40px "Segoe UI", Helvetica, Arial, sans-serif';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillStyle = color || '#e0e0e0'; g.fillText(text, 256, 48);
+  const t = new THREE.CanvasTexture(c); t.minFilter = THREE.LinearFilter;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false }));
+  const k = size || 1;
+  s.scale.set(3.6 * k, 0.675 * k, 1); s.position.set(x, y, z); scene.add(s);
+  return s;
+}
+label('Laser', 0, 1.0, Z_LASER - 0.9);
+label('Objekt', 0, 1.65, Z_OBJ);
+label('Linse 1', 0, 2.25, Z_L1);
+label('Fourier-plan', 0, 2.0, Z_FOU, '#f5c878');
+label('(brændplanet)', 0, 1.55, Z_FOU, '#c9a866', 0.8);
+label('Linse 2', 0, 2.25, Z_L2);
+label('Billede', 0, 1.65, Z_IMG);
+for (const z of [1.5, 4.5, 7.5, 10.5]) label('f', 0, -1.75, z, '#a020f0', 0.9);
+
+// stråler
+const rayGeo = new THREE.BufferGeometry();
+const rayMat = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
+const rayLines = new THREE.LineSegments(rayGeo, rayMat); scene.add(rayLines);
+const MAXP = 600;
+const partGeo = new THREE.BufferGeometry();
+const partPos = new Float32Array(MAXP * 3), partCol = new Float32Array(MAXP * 3);
+partGeo.setAttribute('position', new THREE.BufferAttribute(partPos, 3));
+partGeo.setAttribute('color', new THREE.BufferAttribute(partCol, 3));
+const dot = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
+  const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.4, 'rgba(255,255,255,0.5)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c);
+})();
+const partMat = new THREE.PointsMaterial({ size: 0.16, map: dot, vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+const parts = new THREE.Points(partGeo, partMat); scene.add(parts);
+let paths = [];
+// spot-glød i Fourier-planet
+const glowGroup = new THREE.Group(); scene.add(glowGroup);
+const glowMat = new THREE.SpriteMaterial({ map: dot, color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+
+function buildRays() {
+  const lf = lamMM() * F_MM;
+  const pos = [], col = [];
+  paths = [];
+  while (glowGroup.children.length) glowGroup.remove(glowGroup.children[0]);
+  const ring = [[0, 0]];
+  const RR = 0.85;
+  for (let q = 0; q < 4; q++) ring.push([RR * Math.cos(q * Math.PI / 2 + Math.PI / 4), RR * Math.sin(q * Math.PI / 2 + Math.PI / 4)]);
+  const push = (A, B, c) => { pos.push(A[0], A[1], A[2], B[0], B[1], B[2]); col.push(c[0], c[1], c[2], c[0], c[1], c[2]); };
+
+  // indkommende stråle
+  const cin = RGB.map(v => v * 0.55);
+  for (const [x0, y0] of ring) push([x0, y0, Z_LASER - 0.2], [x0, y0, Z_OBJ], cin);
+  paths.push({ pts: [[0, 0, Z_LASER - 0.2], [0, 0, Z_OBJ]], c: RGB, br: 1 });
+  paths.push({ pts: [[RR, 0, Z_LASER - 0.2], [RR, 0, Z_OBJ]], c: RGB, br: 0.7 });
+  paths.push({ pts: [[-RR, 0, Z_LASER - 0.2], [-RR, 0, Z_OBJ]], c: RGB, br: 0.7 });
+
+  // vælg synlige bundter
+  const chosen = [];
+  for (const p of peaks) {
+    const xF = p.k / L * lf, yF = -p.l / L * lf;
+    if (Math.abs(xF) > XF * 0.98 || Math.abs(yF) > XF * 0.98) continue;
+    let ok = true;
+    for (const c of chosen) if (Math.hypot(c.xF - xF, c.yF - yF) < 0.06) { ok = false; break; }
+    if (!ok) continue;
+    chosen.push({ xF, yF, s: p.s });
+    if (chosen.length >= 11) break;
+  }
+  for (const b of chosen) {
+    const br = Math.pow(b.s / Smax, 0.25);
+    const sx = -b.xF * S_FOU, sy = b.yF * S_FOU;   // verdens-x er spejlet ift. lærredet
+    const h = filterAt(b.xF, b.yF);
+    const blocked = (h[0] * h[0] + h[1] * h[1]) < 0.25;
+    const c = RGB.map(v => v * br * 0.75);
+    for (const [x0, y0] of ring) {
+      const P0 = [x0, y0, Z_OBJ], P1 = [x0 + sx, y0 + sy, Z_L1], P2 = [sx, sy, Z_FOU];
+      push(P0, P1, c); push(P1, P2, c);
+      if (!blocked) {
+        const P3 = [sx - x0, sy - y0, Z_L2], P4 = [-x0, -y0, Z_IMG];
+        push(P2, P3, c); push(P3, P4, c);
+      }
+    }
+    const pts = [[0, 0, Z_OBJ], [sx, sy, Z_L1], [sx, sy, Z_FOU]];
+    if (!blocked) pts.push([sx, sy, Z_L2], [0, 0, Z_IMG]);
+    paths.push({ pts, c: RGB, br });
+    if (!blocked) {
+      paths.push({ pts: [[RR, 0, Z_OBJ], [RR + sx, sy, Z_L1], [sx, sy, Z_FOU], [sx - RR, sy, Z_L2], [-RR, 0, Z_IMG]], c: RGB, br: br * 0.7 });
+      paths.push({ pts: [[-RR, 0, Z_OBJ], [-RR + sx, sy, Z_L1], [sx, sy, Z_FOU], [sx + RR, sy, Z_L2], [RR, 0, Z_IMG]], c: RGB, br: br * 0.7 });
+    }
+    const gl = new THREE.Sprite(glowMat.clone());
+    gl.material.color.setRGB(RGB[0], RGB[1], RGB[2]);
+    gl.material.opacity = blocked ? 0.35 * br : br;
+    const sc = 0.12 + 0.35 * br; gl.scale.set(sc, sc, 1);
+    gl.position.set(sx, sy, Z_FOU - 0.02);
+    glowGroup.add(gl);
+  }
+  rayGeo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  rayGeo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  rayGeo.computeBoundingSphere();
+  // forbered partikler
+  for (const p of paths) {
+    let tot = 0; p.seg = [];
+    for (let i = 1; i < p.pts.length; i++) {
+      const a = p.pts[i - 1], b = p.pts[i];
+      const d = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]); p.seg.push(d); tot += d;
+    }
+    p.len = tot;
+  }
+  rayLines.visible = state.rays; parts.visible = state.rays && state.anim; glowGroup.visible = state.rays;
+}
+
+function updateParticles(t) {
+  let n = 0;
+  for (const p of paths) {
+    const per = 3;
+    for (let q = 0; q < per && n < MAXP; q++) {
+      let s = ((t * 3.2 + q * p.len / per + p.len * 0.37) % p.len);
+      let i = 0;
+      while (i < p.seg.length - 1 && s > p.seg[i]) { s -= p.seg[i]; i++; }
+      const a = p.pts[i], b = p.pts[i + 1], u = Math.min(1, s / p.seg[i]);
+      partPos[n * 3] = a[0] + (b[0] - a[0]) * u;
+      partPos[n * 3 + 1] = a[1] + (b[1] - a[1]) * u;
+      partPos[n * 3 + 2] = a[2] + (b[2] - a[2]) * u;
+      partCol[n * 3] = p.c[0] * p.br; partCol[n * 3 + 1] = p.c[1] * p.br; partCol[n * 3 + 2] = p.c[2] * p.br;
+      n++;
+    }
+  }
+  partGeo.setDrawRange(0, n);
+  partGeo.attributes.position.needsUpdate = true;
+  partGeo.attributes.color.needsUpdate = true;
+}
+
+/* Kamerastyring (egen, lille "orbit") */
+const target = new THREE.Vector3(0, 0, 5.5);
+const cam = { r: 16, th: 2.05, ph: 1.2 };
+const camGoal = { r: 16, th: 2.05, ph: 1.2, tz: 4.6 };
+const VIEWS = {
+  skraa: { r: 16, th: 2.05, ph: 1.2, tz: 4.6 },
+  side: { r: 15, th: Math.PI / 2, ph: Math.PI / 2 - 0.05, tz: 5 },
+  oppe: { r: 15, th: Math.PI / 2, ph: 0.12, tz: 5 },
+  fourier: { r: 6.2, th: 2.85, ph: 1.35, tz: 6 }
+};
+function setView(v) { Object.assign(camGoal, VIEWS[v]); }
+function placeCamera() {
+  const rr = cam.r * Math.max(1, 1.15 / camera.aspect);   // smalle skærme: træk kameraet tilbage
+  camera.position.set(
+    target.x + rr * Math.sin(cam.ph) * Math.sin(cam.th),
+    target.y + rr * Math.cos(cam.ph),
+    target.z + rr * Math.sin(cam.ph) * Math.cos(cam.th));
+  camera.lookAt(target);
+}
+const ptrs = new Map(); let pinch0 = 0, r0 = 0;
+canvas3.addEventListener('pointerdown', e => { canvas3.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch0 = Math.hypot(a.x - b.x, a.y - b.y); r0 = camGoal.r; } });
+canvas3.addEventListener('pointermove', e => {
+  if (!ptrs.has(e.pointerId)) return;
+  const prev = ptrs.get(e.pointerId);
+  const dxp = e.clientX - prev.x, dyp = e.clientY - prev.y;
+  ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (ptrs.size === 1) {
+    camGoal.th -= dxp * 0.008; camGoal.ph = Math.min(Math.PI - 0.08, Math.max(0.08, camGoal.ph - dyp * 0.008));
+    cam.th = camGoal.th; cam.ph = camGoal.ph;
+  } else if (ptrs.size === 2) {
+    const [a, b] = [...ptrs.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y);
+    if (pinch0 > 0) { camGoal.r = Math.min(40, Math.max(4, r0 * pinch0 / d)); cam.r = camGoal.r; }
+  }
+});
+const endPtr = e => { ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch0 = 0; };
+canvas3.addEventListener('pointerup', endPtr); canvas3.addEventListener('pointercancel', endPtr);
+canvas3.addEventListener('wheel', e => { e.preventDefault(); camGoal.r = Math.min(40, Math.max(4, camGoal.r * (1 + e.deltaY * 0.0012))); }, { passive: false });
+
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h, false); camera.aspect = w / h;
+  camera.fov = w < 600 ? 55 : 42;
+  camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage);
+resize();
+
+let visible = true;
+new IntersectionObserver(es => { visible = es[0].isIntersecting; }).observe(stage);
+const clock = new THREE.Clock();
+function loop() {
+  requestAnimationFrame(loop);
+  if (!visible) return;
+  const t = clock.getElapsedTime();
+  const k = 0.08;
+  cam.r += (camGoal.r - cam.r) * k; cam.th += (camGoal.th - cam.th) * k; cam.ph += (camGoal.ph - cam.ph) * k;
+  target.z += (camGoal.tz - target.z) * k;
+  placeCamera();
+  if (state.rays && state.anim) updateParticles(t);
+  renderer.render(scene, camera);
+}
+
+/* =========================================================
+   KONTROLLER
+   ========================================================= */
+const objSel = $('objSel'), objParam = $('objParam'), filtSel = $('filtSel'), filtParam = $('filtParam'), lam = $('lam'), dyn = $('dyn');
+
+function syncObjUI() {
+  const d = OBJ[state.obj];
+  $('objParamLbl').textContent = d.lbl;
+  objParam.min = d.min; objParam.max = d.max; objParam.step = d.step; objParam.value = state.objParam[state.obj];
+  $('objParamVal').textContent = d.fmt(state.objParam[state.obj]).replace('.', ',');
+  $('textWrap').hidden = state.obj !== 'tekst';
+  $('drawObjRow').hidden = state.obj !== 'tegn';
+  cObj.classList.toggle('paintable', state.obj === 'tegn');
+}
+function syncFiltUI() {
+  const d = FILT[state.filter];
+  const has = !!d.lbl;
+  filtParam.parentElement.querySelector('label[for="filtParam"]').hidden = !has;
+  filtParam.hidden = !has;
+  if (has) {
+    $('filtParamLbl').textContent = d.lbl;
+    filtParam.min = d.min; filtParam.max = d.max; filtParam.step = d.step; filtParam.value = state.filtParam[state.filter];
+    $('filtParamVal').textContent = d.fmt(state.filtParam[state.filter]).replace('.', ',');
+  }
+  $('drawFiltRow').hidden = state.filter !== 'tegn';
+  cFou.classList.toggle('paintable', state.filter === 'tegn');
+}
+function syncAll() {
+  objSel.value = state.obj; filtSel.value = state.filter; lam.value = state.lambda; dyn.value = state.dyn;
+  $('dynVal').textContent = state.dyn === 0 ? 'lineær' : 'log, ' + String(state.dyn).replace('.', ',') + ' dekader';
+  $('textIn').value = state.text;
+  syncObjUI(); syncFiltUI();
+}
+
+let pendObj = false, pendFilt = false;
+function schedule(obj) {
+  if (obj) pendObj = true; pendFilt = true;
+  requestAnimationFrame(() => {
+    if (pendObj) { pendObj = false; buildObject(); }
+    if (pendFilt) { pendFilt = false; applyFilter(); }
+  });
+}
+
+objSel.addEventListener('change', () => { state.obj = objSel.value; syncObjUI(); schedule(true); hideGuide(); });
+objParam.addEventListener('input', () => {
+  state.objParam[state.obj] = parseFloat(objParam.value);
+  $('objParamVal').textContent = OBJ[state.obj].fmt(state.objParam[state.obj]).replace('.', ',');
+  if (state.obj !== 'tegn') schedule(true);
+});
+$('textIn').addEventListener('input', e => { state.text = e.target.value; schedule(true); });
+filtSel.addEventListener('change', () => { state.filter = filtSel.value; syncFiltUI(); schedule(false); });
+filtParam.addEventListener('input', () => {
+  state.filtParam[state.filter] = parseFloat(filtParam.value);
+  $('filtParamVal').textContent = FILT[state.filter].fmt(state.filtParam[state.filter]).replace('.', ',');
+  if (state.filter !== 'tegn') schedule(false);
+});
+lam.addEventListener('input', () => { state.lambda = parseInt(lam.value, 10); schedule(false); });
+dyn.addEventListener('input', () => {
+  state.dyn = parseFloat(dyn.value);
+  $('dynVal').textContent = state.dyn === 0 ? 'lineær' : 'log, ' + String(state.dyn).replace('.', ',') + ' dekader';
+  drawFourier(); texFou.needsUpdate = true;
+});
+$('objClear').addEventListener('click', () => { objDrawCtx.fillStyle = '#000'; objDrawCtx.fillRect(0, 0, N, N); schedule(true); });
+$('filtClear').addEventListener('click', () => { fouPaintCtx.clearRect(0, 0, M, M); schedule(false); });
+
+document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
+$('toggleRays').addEventListener('click', e => {
+  state.rays = !state.rays; e.currentTarget.setAttribute('aria-pressed', state.rays);
+  rayLines.visible = state.rays; glowGroup.visible = state.rays; parts.visible = state.rays && state.anim;
+});
+$('toggleAnim').addEventListener('click', e => {
+  state.anim = !state.anim; e.currentTarget.setAttribute('aria-pressed', state.anim);
+  parts.visible = state.rays && state.anim;
+});
+$('toggleAnim').setAttribute('aria-pressed', state.anim);
+
+/* Tegning med pointer på objekt- og Fourier-felterne */
+function paintOn(cv, onStroke) {
+  let down = false, last = null;
+  const pos = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * cv.width, (e.clientY - r.top) / r.height * cv.height]; };
+  cv.addEventListener('pointerdown', e => { if (!cv.classList.contains('paintable')) return; down = true; cv.setPointerCapture(e.pointerId); last = pos(e); onStroke(last, last); });
+  cv.addEventListener('pointermove', e => { if (!down) return; const p = pos(e); onStroke(last, p); last = p; });
+  const up = () => { down = false; };
+  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+}
+paintOn(cObj, (a, b) => {
+  const g = objDrawCtx;
+  g.strokeStyle = $('objErase').checked ? '#000' : '#fff';
+  g.lineWidth = state.objParam.tegn; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke();
+  schedule(true);
+});
+paintOn(cFou, (a, b) => {
+  const g = fouPaintCtx;
+  g.globalCompositeOperation = $('filtErase').checked ? 'destination-out' : 'source-over';
+  g.strokeStyle = '#000'; g.lineWidth = state.filtParam.tegn; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke();
+  g.globalCompositeOperation = 'source-over';
+  schedule(false);
+});
+
+/* =========================================================
+   GUIDEDE FORSØG
+   ========================================================= */
+const PRESETS = {
+  abbe: { obj: 'net', op: 0.30, filter: 'vandret', fp: 0.08, lambda: 532, dyn: 4, view: 'skraa',
+    note: '<strong>Abbe–Porter.</strong> Trådnettet giver et kvadratisk gitter af pletter i brændplanet. Den vandrette spalte lader kun den vandrette række igennem – og i billedet er de vandrette tråde væk. Skift til <em>Lodret spalte</em>, eller vælg <em>Mal selv med sort tape</em> og lad kun en diagonal række passere.' },
+  oploes: { obj: 'gitter', op: 0.25, filter: 'iris', fp: 0.60, lambda: 532, dyn: 4, view: 'skraa',
+    note: '<strong>Opløsningsgrænsen.</strong> Irisen lader 0. og ±1. orden passere, så striberne ses. Træk langsomt irisens radius ned under 0,43 mm: i det øjeblik 1. orden blokeres, forsvinder striberne helt – billedet bliver jævnt. Se også, hvordan stregerne bliver bløde, når de højere ordener skæres fra.' },
+  airy: { obj: 'cirkel', op: 0.30, filter: 'ingen', fp: null, lambda: 532, dyn: 3, view: 'fourier',
+    note: '<strong>Airy-skiven.</strong> Et lille rundt hul giver en lys skive med ringe i brændplanet. Gør hullet mindre, og ringene vokser: lille åbning, bredt mønster. Sådan ser en stjerne ud i et teleskop, når man forstørrer nok.' },
+  moerke: { obj: 'tekst', op: 64, filter: 'moerke', fp: 0.06, lambda: 532, dyn: 4, view: 'skraa',
+    note: '<strong>Mørkefelt.</strong> Prikken i midten fjerner det lys, der går lige igennem. Tilbage er kun lyset fra skarpe overgange, så bogstavernes kanter lyser på mørk baggrund. Prøv at gøre prikken større.' },
+  fase: { obj: 'fase', op: 0.40, filter: 'ingen', fp: null, lambda: 532, dyn: 6, view: 'skraa',
+    note: '<strong>Usynlige celler.</strong> Cellerne forsinker kun lyset – billedet er jævnt, og du ser ingenting. Men der <em>er</em> lys i Fourier-planet ud over midterpletten. Vælg nu filteret <em>Zernikes faseplade</em>, og cellerne træder frem. Prøv også <em>Prik i midten</em>.' },
+  farve: { obj: 'gitter', op: 0.20, filter: 'iris', fp: 0.55, lambda: 650, dyn: 4, view: 'skraa',
+    note: '<strong>Rødt mod blåt.</strong> Med rødt lys (650 nm) ligger 1. orden 0,65 mm ude og rammer irisen – ingen striber. Træk bølgelængden ned mod blåt: pletterne rykker indad, og under ca. 550 nm slipper de igennem, og striberne dukker op.' }
+};
+const guide = $('guideNote');
+function hideGuide() { guide.classList.remove('show'); }
+document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => {
+  const p = PRESETS[b.dataset.preset];
+  state.obj = p.obj; state.objParam[p.obj] = p.op; state.filter = p.filter;
+  if (p.fp !== null) state.filtParam[p.filter] = p.fp;
+  state.lambda = p.lambda; state.dyn = p.dyn;
+  syncAll(); schedule(true); setView(p.view);
+  guide.innerHTML = p.note; guide.classList.add('show');
+  $('lab').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+}));
+
+/* =========================================================
+   START
+   ========================================================= */
+syncAll();
+buildObject();
+applyFilter();
+placeCamera();
+loop();
+
+})();
+</script>
+</body>
+</html>
