@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coupled Pendulums – Michael Grant</title>
+<meta name="description" content="Interactive 3D simulation of coupled pendulums – by springs or by a taut string. Add and remove pendulums, give each its own mass and length, and see normal modes, periods and energy exchange. With a guide to building the experiment yourself with string and nuts.">
+<meta name="author" content="Michael Grant">
+<meta name="theme-color" content="#0b0d17">
+<link rel="canonical" href="https://michaelhgrant.github.io/Natur-fysik-kemi-mat/koblede-penduler.html">
+<meta property="og:type" content="article">
+<meta property="og:locale" content="da_DK">
+<meta property="og:title" content="Koblede penduler">
+<meta property="og:description" content="Byg din egen kæde af koblede penduler i 3D og se energien vandre.">
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$','$'], ['\\(','\\)']], displayMath: [['$$','$$']] },
+  chtml: { scale: 1.02 },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] }
+};
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+:root{
+  --space-black:#0b0d17; --space-deep:#050608;
+  --aurora-green:#39ff14; --aurora-purple:#a020f0; --aurora-blue:#4cc9f0;
+  --text-light:#e0e0e0; --text-dim:#a0a0a8;
+  --card-bg:rgba(255,255,255,0.04); --card-border:rgba(57,255,20,0.18);
+  --gold:#f5c878; --gold-bright:#ffe0a0; --fire:#ff7a2a; --red:#ff4d6d;
+  --panel:rgba(255,255,255,0.035); --line:rgba(255,255,255,0.09);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:70px}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{
+  font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
+  background-color:var(--space-black);
+  background-image:radial-gradient(circle at 20% 10%,rgba(160,32,240,0.08),transparent 40%),
+                   radial-gradient(circle at 80% 60%,rgba(76,201,240,0.05),transparent 40%);
+  color:var(--text-light); line-height:1.65; margin:0;
+}
+a{color:var(--aurora-blue)}
+a:focus-visible,button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--aurora-blue);outline-offset:3px}
+
+nav.topnav{position:sticky;top:0;z-index:100;background:rgba(11,13,23,0.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  border-bottom:1px solid rgba(57,255,20,0.25);padding:0.6rem 1rem;overflow-x:auto;white-space:nowrap}
+nav.topnav ul{list-style:none;margin:0;padding:0;display:inline-flex;gap:0.4rem;justify-content:center;width:100%;min-width:max-content}
+nav.topnav a{color:var(--text-dim);text-decoration:none;padding:0.4rem 0.9rem;border-radius:20px;font-size:0.85rem;font-weight:500;border:1px solid transparent;transition:all .2s ease}
+nav.topnav a:hover{color:var(--aurora-green);border-color:rgba(57,255,20,0.4);background:rgba(57,255,20,0.05)}
+nav.topnav a.home{color:var(--aurora-green);border-color:rgba(57,255,20,0.35)}
+
+header.page{padding:3.2rem 1.5rem 2.2rem;text-align:center;background:linear-gradient(to bottom,#1a1a2e,var(--space-black))}
+header.page h1{font-size:clamp(2rem,5vw,3.1rem);color:var(--aurora-green);text-shadow:0 0 25px rgba(57,255,20,0.35);margin:0 0 0.8rem;letter-spacing:0.3px}
+header.page p{max-width:720px;margin:0 auto;color:var(--text-dim);font-size:1.05rem}
+
+main{max-width:1180px;margin:0 auto;padding:1rem 1.5rem 3rem}
+section.block{margin:2.5rem 0 3.5rem}
+.section-header{border-left:4px solid var(--aurora-blue);padding-left:1rem;margin-bottom:1.4rem}
+.section-header h2{margin:0 0 0.3rem;font-size:1.75rem;color:#fff}
+.section-header p{margin:0;color:var(--text-dim);max-width:760px}
+#tippetop .section-header{border-left-color:var(--gold)}
+#teori .section-header{border-left-color:var(--aurora-purple)}
+
+/* === simulator layout === */
+.sim{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:1rem;align-items:start}
+.stage{position:relative;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#07080f;height:min(70vh,600px);min-height:360px}
+.stage canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+.stage canvas:active{cursor:grabbing}
+.stage .hud{position:absolute;left:0.8rem;top:0.7rem;font-size:0.8rem;color:var(--text-dim);pointer-events:none;line-height:1.5;text-shadow:0 1px 3px #000}
+.stage .status{position:absolute;right:0.8rem;top:0.7rem;font-size:0.85rem;padding:0.25rem 0.75rem;border-radius:20px;border:1px solid var(--line);background:rgba(7,8,15,0.75);color:var(--text-light)}
+.stage .hint{position:absolute;left:0.8rem;bottom:0.6rem;font-size:0.75rem;color:rgba(160,160,168,0.8);pointer-events:none}
+.legend{display:flex;flex-wrap:wrap;gap:0.3rem 1.1rem;font-size:0.82rem;color:var(--text-dim);margin:0.55rem 0.2rem 0}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:0.35rem}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1rem 1rem 1.1rem}
+.panel h3{margin:0 0 0.7rem;font-size:1rem;color:#fff;font-weight:600}
+.ctrl{margin-bottom:0.85rem}
+.ctrl label{display:flex;justify-content:space-between;gap:0.5rem;font-size:0.86rem;color:var(--text-light);margin-bottom:0.2rem}
+.ctrl label output{color:var(--aurora-blue);font-variant-numeric:tabular-nums}
+#tippetop .ctrl label output{color:var(--gold)}
+input[type=range]{width:100%;accent-color:var(--aurora-blue)}
+#tippetop input[type=range]{accent-color:var(--gold)}
+.btns{display:flex;flex-wrap:wrap;gap:0.45rem;margin:0.3rem 0 0.9rem}
+button{font:inherit;font-size:0.85rem;font-weight:600;padding:0.45rem 0.9rem;border-radius:22px;border:1.5px solid var(--aurora-blue);background:transparent;color:var(--aurora-blue);cursor:pointer;transition:background .2s,color .2s}
+button:hover{background:var(--aurora-blue);color:var(--space-black)}
+button.primary{background:var(--aurora-blue);color:var(--space-black)}
+#tippetop button{border-color:var(--gold);color:var(--gold)}
+#tippetop button:hover,#tippetop button.primary{background:var(--gold);color:var(--space-black)}
+.checks{display:flex;flex-wrap:wrap;gap:0.3rem 1rem;font-size:0.85rem;margin-bottom:0.8rem}
+.checks label{display:flex;align-items:center;gap:0.35rem;cursor:pointer}
+table.read{width:100%;border-collapse:collapse;font-size:0.84rem;font-variant-numeric:tabular-nums}
+table.read td{padding:0.22rem 0;border-bottom:1px solid rgba(255,255,255,0.05)}
+table.read td:last-child{text-align:right;color:#fff}
+.note{font-size:0.8rem;color:var(--text-dim);margin:0.7rem 0 0}
+.flag{font-size:0.82rem;padding:0.5rem 0.7rem;border-radius:10px;margin-top:0.7rem;border:1px solid var(--line);background:rgba(255,255,255,0.03)}
+.flag.ok{border-color:rgba(57,255,20,0.35);color:#bff5ae}
+.flag.no{border-color:rgba(255,77,109,0.45);color:#ffc2cd}
+
+.plots{display:grid;grid-template-columns:1fr 1fr;gap:1rem;grid-column:1;grid-row:2}
+.sim > .panel{grid-column:2;grid-row:1 / span 2}
+.plot{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:0.8rem 0.9rem 0.9rem}
+.plot h3{margin:0 0 0.2rem;font-size:0.95rem;color:#fff;font-weight:600}
+.plot p{margin:0 0 0.5rem;font-size:0.8rem;color:var(--text-dim)}
+.plot canvas{display:block;width:100%;height:230px}
+
+/* === tekst === */
+.prose{max-width:780px}
+.prose p{margin:0 0 1rem}
+.prose h3{color:#fff;margin:2rem 0 0.6rem;font-size:1.25rem}
+.prose h4{color:var(--aurora-blue);margin:1.4rem 0 0.4rem;font-size:1.02rem}
+.intro-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;margin:0 0 1rem}
+.intro-grid div{background:var(--card-bg);border:1px solid var(--line);border-radius:14px;padding:1.1rem 1.2rem}
+.intro-grid h3{margin:0 0 0.4rem;font-size:1.05rem;color:#fff}
+.intro-grid p{margin:0;font-size:0.95rem;color:var(--text-light)}
+details{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:0.2rem 1rem;margin:0.9rem 0}
+details[open]{padding-bottom:0.6rem}
+summary{cursor:pointer;padding:0.6rem 0;color:var(--aurora-blue);font-weight:600}
+.mjx-scroll,mjx-container[display="true"]{overflow-x:auto;overflow-y:hidden;max-width:100%}
+.tablewrap{overflow-x:auto}
+table.sum{border-collapse:collapse;width:100%;min-width:560px;font-size:0.92rem;margin:0.5rem 0 1rem}
+table.sum th,table.sum td{text-align:left;padding:0.55rem 0.7rem;border-bottom:1px solid var(--line);vertical-align:top}
+table.sum th{color:#fff;font-weight:600}
+table.sum td:first-child{color:var(--text-dim)}
+.refs{font-size:0.9rem;color:var(--text-dim);padding-left:1.1rem}
+.refs li{margin-bottom:0.35rem}
+.downloads{display:flex;flex-wrap:wrap;gap:0.6rem;margin:1rem 0}
+.downloads a{display:inline-block;padding:0.5rem 1.1rem;border-radius:25px;border:1.5px solid var(--aurora-green);color:var(--aurora-green);text-decoration:none;font-weight:600;font-size:0.88rem}
+.downloads a:hover{background:var(--aurora-green);color:var(--space-black)}
+footer{margin-top:3rem;padding:2rem 1.5rem;font-size:0.88rem;color:var(--text-dim);text-align:center;border-top:1px solid rgba(255,255,255,0.05)}
+footer a{text-decoration:none}
+
+@media (max-width:900px){
+  .sim{grid-template-columns:1fr}
+  .plots{grid-template-columns:1fr;grid-column:auto;grid-row:auto}
+  .sim > .panel{grid-column:auto;grid-row:auto}
+  .intro-grid{grid-template-columns:1fr}
+  .stage{height:62vh;min-height:320px}
+}
+@media (max-width:600px){
+  main{padding:0.5rem 1rem 2rem}
+  .section-header h2{font-size:1.4rem}
+  .stage .hud{font-size:0.72rem}
+}
+
+/* === koblede penduler === */
+.psim{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:1rem;align-items:start}
+.pcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:0.7rem;margin:0.9rem 0 1rem}
+.pcard{background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--c);border-radius:12px;padding:0.65rem 0.8rem 0.7rem;cursor:pointer}
+.pcard.sel{background:rgba(255,255,255,0.075);border-color:var(--c)}
+.pcard .phead{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.35rem}
+.pcard h4{margin:0;font-size:0.92rem;color:var(--c)}
+.pcard button.x{padding:0.12rem 0.6rem;font-size:0.75rem;border-color:var(--line);color:var(--text-dim)}
+.pcard button.x:hover{background:var(--red);border-color:var(--red);color:var(--space-black)}
+.pcard .ctrl{margin-bottom:0.4rem}
+.pcard .ctrl label{font-size:0.8rem}
+.pcard input[type=range]{accent-color:var(--c)}
+.pcard table.read{font-size:0.78rem}
+.panel h3 + .btns{margin-top:0}
+button:disabled{opacity:0.35;cursor:not-allowed;background:transparent!important;color:var(--text-dim)!important;border-color:var(--line)!important}
+#pModes{max-height:300px;overflow-y:auto}
+.mode{display:grid;grid-template-columns:1.1rem minmax(0,1fr) auto auto;gap:0.5rem;align-items:center;padding:0.3rem 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:0.82rem;font-variant-numeric:tabular-nums}
+.mode .mn{color:var(--text-dim)}
+.mode .shape{display:flex;gap:2px;height:30px}
+.mode .shape .b{flex:1;position:relative;background:rgba(255,255,255,0.03);border-radius:2px}
+.mode .shape .b::after{content:"";position:absolute;left:0;right:0;top:50%;border-top:1px solid rgba(255,255,255,0.12)}
+.mode .shape i{position:absolute;left:12%;right:12%;border-radius:1px}
+.mode .mt{color:#fff}
+.mode button{padding:0.18rem 0.6rem;font-size:0.75rem}
+.plot canvas#pPlot{height:240px}
+.seg{display:flex;margin:0 0 0.9rem;border:1.5px solid var(--aurora-blue);border-radius:22px;overflow:hidden}
+.seg button{flex:1;border:0;border-radius:0;padding:0.45rem 0.5rem}
+.seg button + button{border-left:1.5px solid var(--aurora-blue)}
+.seg button.on{background:var(--aurora-blue);color:var(--space-black)}
+[hidden]{display:none!important}
+ol.steps{padding-left:1.3rem;margin:0 0 1rem}
+ol.steps li{margin-bottom:0.6rem;padding-left:0.2rem}
+ol.steps li::marker{color:var(--gold);font-weight:700}
+#byg-selv .section-header{border-left-color:var(--gold)}
+#byg-selv table.sum td{height:2.1rem}
+@media (max-width:900px){ .psim{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<nav class="topnav" aria-label="Navigation">
+  <ul>
+    <li><a class="home" href="index-en.html#mekanik">← Home</a></li>
+    <li><a href="#penduler">The simulation</a></li>
+    <li><a href="#teori-model">The model</a></li>
+    <li><a href="#teori-to">Two identical pendulums</a></li>
+    <li><a href="#teori-forskellige">Different pendulums</a></li>
+    <li><a href="#teori-snor">The string</a></li>
+    <li><a href="#teori-kaede">The chain</a></li>
+    <li><a href="#eksempler">Examples</a></li>
+    <li><a href="#byg-selv">Build them yourself</a></li>
+    <li><a href="#sammenfatning">Summary</a></li>
+  </ul>
+</nav>
+<header class="page">
+  <h1>Coupled Pendulums</h1>
+  <p>Hang two pendulums side by side, connect them with a soft spring or hang them from a taut string, and push one of them. Little by little the swing travels over to the other, the first comes completely to rest, and then the motion comes back. Build your own chain of up to eight pendulums, give each its own mass and length, and follow both the periods and the energy. At the bottom of the page you can read how to build the experiment yourself with a little string and some nuts.</p>
+</header>
+<main>
+<section class="block" id="penduler">
+  <div class="section-header">
+    <h2>The pendulums in 3D</h2>
+    <p>Choose whether the pendulums are coupled by springs between the bobs or hang from a taut string. Pull a bob to the side and let go. Drag the background to rotate the picture; scroll or pinch to zoom. Click a bob or a card to select that pendulum.</p>
+  </div>
+  <div class="psim">
+    <div class="pmain">
+      <div class="stage" id="pStage">
+        <canvas id="pCanvas" aria-label="3D simulation of pendulums coupled by springs"></canvas>
+        <div class="hud" id="pHud"></div>
+        <div class="status" id="pStatus">Swinging</div>
+        <div class="hint" id="pHint">The spring turns reddish when stretched and bluish when compressed</div>
+      </div>
+      <div class="pcards" id="pCards"></div>
+      <div class="plot">
+        <h3 id="pPlotTitle">The energy in each pendulum</h3>
+        <p id="pPlotSub">Each pendulum gets its own energy plus half the energy in the springs it hangs from. The total is 100%.</p>
+        <canvas id="pPlot" aria-label="Graph of the pendulums' energy or displacement against time"></canvas>
+        <div class="legend" id="pLegend"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Coupling</h3>
+      <div class="seg" role="group" aria-label="How the pendulums are coupled">
+        <button type="button" id="cSpring" class="on" aria-pressed="true">Springs</button>
+        <button type="button" id="cString" aria-pressed="false">Taut string</button>
+      </div>
+      <h3>Pendulums</h3>
+      <div class="btns">
+        <button id="pAdd" class="primary" type="button">Add pendulum</button>
+        <button id="pRemove" type="button">Remove selected</button>
+        <button id="pPause" type="button">Pause</button>
+      </div>
+      <h3>Start</h3>
+      <div class="btns">
+        <button id="pPush" type="button">Push the first</button>
+        <button id="pRand" type="button">Random</button>
+        <button id="pStill" type="button">Bring to rest</button>
+        <button id="pHome" type="button">The home experiment</button>
+      </div>
+      <div class="ctrl" id="ctrlS" hidden><label for="pS"><span>String tension $T$</span><output id="pSo"></output></label>
+        <input type="range" id="pS" min="1" max="60" step="0.5" value="8"></div>
+      <div class="ctrl" id="ctrlK"><label for="pK"><span>Spring constant $k$</span><output id="pKo"></output></label>
+        <input type="range" id="pK" min="0" max="5" step="0.05" value="0.8"></div>
+      <div class="ctrl"><label for="pA"><span>Initial displacement</span><output id="pAo"></output></label>
+        <input type="range" id="pA" min="2" max="40" step="1" value="10"></div>
+      <div class="ctrl"><label for="pD"><span>Damping $\gamma$</span><output id="pDo"></output></label>
+        <input type="range" id="pD" min="0" max="0.3" step="0.005" value="0"></div>
+      <div class="ctrl"><label for="pT"><span>Speed</span><output id="pTo"></output></label>
+        <input type="range" id="pT" min="0.1" max="2" step="0.05" value="1"></div>
+      <div class="checks">
+        <label id="chkSpr"><input type="checkbox" id="pSpr" checked> Show springs</label>
+        <label><input type="checkbox" id="pAng"> Graph of displacement</label>
+      </div>
+      <h3>Normal modes</h3>
+      <p class="note" style="margin:-0.4rem 0 0.4rem">The bars show how much, and in which direction, each pendulum swings. Period at small amplitude.</p>
+      <div id="pModes"></div>
+      <table class="read" style="margin-top:0.6rem">
+        <tr><td>Exchange period $2\pi/(\omega_2-\omega_1)$</td><td id="pRx">–</td></tr>
+        <tr><td>Total energy $E/E_0$</td><td id="pRE">–</td></tr>
+        <tr><td>Time</td><td id="pRt">–</td></tr>
+      </table>
+      <p class="note">The simulation solves the full, non-linear equations of motion with Runge–Kutta. ‘Own period’ is $2\pi\sqrt{L/g}$ for the pendulum on its own. ‘Measured period’ is the time between zero crossings, measured while it swings.</p>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="teori">
+  <div class="section-header">
+    <h2>The theory behind it</h2>
+    <p>The spring coupling follows from a single Lagrangian, which the simulation uses in full. The string coupling is treated linearly. In both cases the table of normal modes uses the linearised equations.</p>
+  </div>
+  <div class="prose">
+    <h3 id="teori-model">The model with springs</h3>
+    <p>Pendulum $i$ has mass $m_i$, length $L_i$ and point of suspension $(x_i^0,0)$. All swing in the same vertical plane, and the bob sits at $\mathbf r_i=\left(x_i^0+L_i\sin\theta_i,\,-L_i\cos\theta_i\right)$. Neighbouring bobs are connected by springs with spring constant $k$. Each spring has natural length $d_i$ when the pendulums hang vertically, so the springs are slack at equilibrium. Then</p>
+    $$\mathcal L=\sum_i\left[\tfrac12 m_iL_i^2\dot\theta_i^2+m_igL_i\cos\theta_i\right]-\sum_i\tfrac12k\left(|\mathbf r_{i+1}-\mathbf r_i|-d_i\right)^2 .$$
+    <p>The spring force $\mathbf F$ on bob $i$ enters as the generalised force $Q_i=\mathbf F\cdot\partial\mathbf r_i/\partial\theta_i=L_i\left(F_x\cos\theta_i+F_y\sin\theta_i\right)$, and the equation of motion is</p>
+    $$m_iL_i^2\,\ddot\theta_i=-m_igL_i\sin\theta_i+Q_i-\gamma\,m_iL_i^2\,\dot\theta_i .$$
+    <h4>Small oscillations and normal modes</h4>
+    <p>For small oscillations the equations become linear, $\mathsf M\ddot{\boldsymbol\theta}=-\mathsf K\boldsymbol\theta$, with $\mathsf M=\mathrm{diag}(m_iL_i^2)$ and</p>
+    $$K_{ii}=m_igL_i+\sum_{\rm neighbours}k_{\rm eff}L_i^2,\qquad K_{i,i\pm1}=-k_{\rm eff}L_iL_{i\pm1},\qquad k_{\rm eff}=k\cos^2\beta .$$
+    <p>Here $\beta$ is the inclination of the spring at rest. It is slanted when neighbouring pendulums have different lengths, and then only the horizontal part of the stretch counts. A normal mode is a motion in which all the pendulums swing at the same frequency: $\boldsymbol\theta=\mathbf u\cos\omega t$ gives the eigenvalue problem</p>
+    $$\mathsf K\mathbf u=\omega^2\,\mathsf M\mathbf u .$$
+    <p>The page solves it by diagonalising the symmetric matrix $\mathsf M^{-1/2}\mathsf K\mathsf M^{-1/2}$ with Jacobi's method. The bars in the table are the vector $\mathbf u$. With $N$ pendulums there are $N$ normal modes, and any small-amplitude motion is a sum of them. That is the whole secret: what looks like a complicated interplay is simply $N$ independent oscillations superposed.</p>
+
+    <h3 id="teori-to">Two identical pendulums: the energy wanders</h3>
+    <p>With $m_1=m_2=m$, $L_1=L_2=L$, $\omega_0^2=g/L$ and $\kappa=k/m$,</p>
+    $$\ddot\theta_1=-\omega_0^2\theta_1-\kappa(\theta_1-\theta_2),\qquad \ddot\theta_2=-\omega_0^2\theta_2-\kappa(\theta_2-\theta_1).$$
+    <p>The sum and the difference separate the equations:</p>
+    $$\omega_1=\omega_0\quad(\theta_1=\theta_2),\qquad \omega_2=\sqrt{\omega_0^2+2\kappa}\quad(\theta_1=-\theta_2).$$
+    <p>In the first mode the spring stays slack the whole time, so the pendulums swing as if it were not there. In the second the spring pulls on both, and the oscillation is faster. If only the first pendulum is pushed, $\theta_1(0)=\theta_0$, the two modes are equally strong, and their sum is</p>
+    $$\theta_1=\theta_0\cos\frac{\Delta\omega\,t}{2}\,\cos\bar\omega t,\qquad \theta_2=\theta_0\sin\frac{\Delta\omega\,t}{2}\,\sin\bar\omega t,$$
+    <p>with $\bar\omega=(\omega_1+\omega_2)/2$ and $\Delta\omega=\omega_2-\omega_1$. Both pendulums swing at the mean frequency, while the amplitude slowly moves back and forth. The energy has been entirely over in pendulum 2 and is back in pendulum 1 after</p>
+    $$T_{\rm exch}=\frac{2\pi}{\omega_2-\omega_1}\approx\frac{2\pi\,\omega_0}{\kappa}\qquad(\kappa\ll\omega_0^2).$$
+    <p>These are beats, just as between two nearly identical tuning forks. Weak coupling gives slow exchange, but the exchange is still complete. With the page's starting values (0.5 kg, 1 m and $k=0.8$ N/m), $T_{\rm exch}\approx 13$ s.</p>
+
+    <h3 id="teori-forskellige">Different pendulums</h3>
+    <h4>Different lengths: tuning decides everything</h4>
+    <p>If the lengths differ, the natural frequencies $\omega_{01}=\sqrt{g/L_1}$ and $\omega_{02}=\sqrt{g/L_2}$ differ. For equal masses and weak coupling, at most the fraction</p>
+    $$\eta\approx\frac{4\kappa^2}{\left(\omega_{01}^2-\omega_{02}^2\right)^2+4\kappa^2}$$
+    <p>of the energy reaches the other pendulum. If the difference in $\omega^2$ is large compared with the coupling, the other pendulum stays almost still. The formula holds for weak coupling but shows the trend for stronger coupling too. Make the second pendulum 30 cm longer with $k=0.8$ N/m: only about half the energy gets across, and the exchange is quicker. Turn $k$ down to 0.2 N/m, and the second pendulum gets less than a tenth. This is resonance in its purest form: energy moves efficiently only between oscillators that are tuned to each other.</p>
+    <h4>Different masses: like an elastic collision</h4>
+    <p>If the lengths are equal but the masses differ, the tuning is perfect, because both pendulums have $\omega_0=\sqrt{g/L}$. Even so, not all the energy gets across. The slow mode is still $\theta_1=\theta_2$, but in the fast one the common centre of mass stays still: $m_1\theta_1=-m_2\theta_2$. If pendulum 1 is pushed, the largest fraction of the energy that reaches pendulum 2 is</p>
+    $$\eta=\frac{4m_1m_2}{(m_1+m_2)^2}.$$
+    <p>This is exactly the fraction that an elastic head-on collision transfers from one ball to another at rest. A heavy and a light ball can never exchange all the energy, neither in a collision nor through a spring. Try 0.5 kg and 2 kg: $\eta=0.64$, and the simulation gives about 62%.</p>
+
+    <h3 id="teori-snor">Pendulums on a taut string</h3>
+    <p>The classic home experiment has no springs. The pendulums hang from their own points on a string stretched between two chairs, and they swing perpendicular to the string. The coupling goes through the string itself: when a pendulum swings out, it drags its point of suspension a little with it, and the string passes the pull on to its neighbours.</p>
+    <h4>The equations</h4>
+    <p>Let $y_j$ be the sideways displacements of the suspension points and $T$ the horizontal tension in the string. A piece of string of length $a$ acts as a sideways spring of stiffness $T/a$. The suspension points are massless, so the forces on them must cancel. The pendulum string pulls with the weight $m_jg$ obliquely down towards the bob, and for small swings the horizontal part is $m_jg\,\theta_j$:</p>
+    $$\mathsf S\,\mathbf y=g\,\mathsf D\,\boldsymbol\theta,\qquad S_{jj}=\frac{T}{a_{j-1}}+\frac{T}{a_j},\quad S_{j,j\pm1}=-\frac{T}{a},\qquad \mathsf D=\mathrm{diag}(m_j).$$
+    <p>The bob sits a distance $y_j+L_j\theta_j$ out to the side, and the only horizontal force on it is the pull of the string, $-m_jg\,\theta_j$. So $m_j(\ddot y_j+L_j\ddot\theta_j)=-m_jg\theta_j$. Substituting $\mathbf y$ gives</p>
+    $$\mathsf A\,\ddot{\boldsymbol\theta}=-g\,\boldsymbol\theta,\qquad \mathsf A=\mathrm{diag}(L_j)+g\,\mathsf S^{-1}\mathsf D .$$
+    <p>The string thus makes the pendulums effectively longer, and by how much depends on how the other pendulums are swinging. That is the coupling. The normal modes are found from the symmetric problem $\mathsf{DA}\,\ddot{\boldsymbol\theta}=-g\,\mathsf D\boldsymbol\theta$.</p>
+    <h4>Two identical pendulums: the sag is the key</h4>
+    <p>If two identical pendulums hang a distance $a$ apart and a distance $a_0$ from the chairs, the two modes are</p>
+    $$\omega_1^2=\frac{g}{L+h}\quad(\text{in phase}),\qquad \omega_2^2=\frac{g}{L+h\,\dfrac{1/a_0}{1/a_0+2/a}}\quad(\text{in antiphase}),\qquad h=\frac{mg\,a_0}{T}.$$
+    <p>Here $h$ is precisely the vertical sag that the pendulums' weight gives the string at the suspension points, since the vertical forces are governed by the same matrix $\mathsf S$. When the pendulums swing in phase, they thus become one sag longer. When they swing in antiphase, the middle section holds them in place, and the addition is smaller: a third of $h$ when $a=a_0$. The difference gives the beats.</p>
+    <p>It makes a practical rule of thumb. With 40 cm pendulums and a string that sags 5 cm, $T_{\rm exch}\approx 34$ s. With a 3 cm sag it takes just under a minute. A tight string gives slow exchange, and a slack string a fast one.</p>
+    <h4>Different masses spoil the tuning</h4>
+    <p>Here there is a difference from the spring coupling. A heavy pendulum makes the string sag more and so becomes effectively longer than a light pendulum of the same length. Two pendulums of equal length but different mass are therefore no longer tuned, and the exchange becomes both incomplete and quicker. Try it with one nut and with three.</p>
+
+    <h3 id="teori-kaede">Many pendulums: a chain and a waveguide</h3>
+    <p>For $N$ identical pendulums with free ends the normal modes are standing waves:</p>
+    $$u_j^{(n)}=\cos\frac{n\pi\left(j-\tfrac12\right)}{N},\qquad \omega_n^2=\frac gL+\frac{4k}{m}\sin^2\frac{n\pi}{2N},\qquad n=0,1,\dots,N-1 .$$
+    <p>The table numbers them from 1 to $N$. The first has all the pendulums in phase; the last has neighbours in antiphase. All the frequencies lie in a band between $\sqrt{g/L}$ and $\sqrt{g/L+4k/m}$. With spacing $a$ between the pendulums and wavenumber $q=n\pi/(Na)$, the dispersion relation is</p>
+    $$\omega^2=\omega_0^2+\frac{4k}{m}\sin^2\frac{qa}{2}.$$
+    <p>Gravity gives a lower cut-off frequency $\omega_0$. Below it no wave can travel along the chain, and an oscillation driven at one end dies away exponentially. It is the same mathematics as in a waveguide with a cut-off frequency. In the continuum limit the equation becomes the Klein–Gordon equation $\ddot\theta=c^2\,\partial_x^2\theta-\omega_0^2\theta$ with $c^2=ka^2/m$.</p>
+    <p>Try it: add pendulums until there are eight, press <em>Push the first</em>, and watch in the graph how the energy travels down the chain as a wave packet and is thrown back from the end.</p>
+
+    <h3 id="eksempler">Where coupled oscillations turn up</h3>
+    <p><strong>Huygens' clocks.</strong> In 1665 Christiaan Huygens lay ill and noticed that two pendulum clocks hanging on the same beam always ended up swinging in antiphase after half an hour or so. He disturbed one of them, and they found each other again. The coupling went through the tiny movements of the beam. The experiment was repeated and explained in 2002.</p>
+    <p><strong>Molecules.</strong> CO₂ is three masses coupled by two springs. The symmetric stretch, in which the carbon atom stays still, is infrared-inactive. The asymmetric stretch at 2349 cm⁻¹ and the bend at 667 cm⁻¹ absorb infrared light, and it is they that make CO₂ a greenhouse gas.</p>
+    <p><strong>The Wilberforce pendulum.</strong> A weight on a helical spring can both bob up and down and twist about itself. The shape of the spring couples the two motions, and if they are tuned the weight slowly alternates between bobbing and twisting, exactly like the two pendulums.</p>
+    <p><strong>Quantum mechanics.</strong> The formula for $\eta$ with different lengths is the same as Rabi's formula for a two-state system, and the same mathematics governs the tunnelling of the ammonia molecule and the oscillations of neutrinos between flavours.</p>
+    <p><strong>A pendulum the size of the Earth.</strong> In inertial navigation the position error oscillates like a pendulum with the Earth's radius as its length and a period of 84.4 minutes. See <a href="gyroskop-tippetop-en.html#schuler">the Schuler pendulum on the gyroscope page</a>.</p>
+  </div>
+</section>
+
+<section class="block" id="byg-selv">
+  <div class="section-header">
+    <h2>Build them yourself</h2>
+    <p>It can all be done on a kitchen table with a couple of metres of string, some nuts and two chairs. Press <em>The home experiment</em> above to see the same experiment in the simulation.</p>
+  </div>
+  <div class="prose">
+    <h3>What you need</h3>
+    <p>Two chairs with backs, 2–3 metres of thin, smooth string (kitchen string, builder's line or fishing line), 6–12 identical nuts, scissors, a tape measure and a stopwatch, e.g. on your phone. M10–M16 nuts are good, because they are heavy enough to pull the string straight and small enough not to be caught by the air. An M12 nut weighs about 16 g, but do weigh them on kitchen scales.</p>
+
+    <h3>What to do</h3>
+    <ol class="steps">
+      <li><strong>Stretch out the string.</strong> Stand the chairs back to back, about 1 m apart. Tie the string round both chair backs at the same height so that it is slightly taut. You adjust the tension later by pushing the chairs a little further apart or closer together.</li>
+      <li><strong>Make two pendulums.</strong> Cut two pieces of string about 60 cm long. Thread each piece through three nuts and tie a double knot, so that the nuts sit like a small weight at the end.</li>
+      <li><strong>Hang them up.</strong> Tie the pendulums to the taut string about 30 cm apart and about 30 cm from each chair. A half hitch that can be slid along makes it easy to adjust the length afterwards.</li>
+      <li><strong>Make them the same length.</strong> Measure from the taut string to the middle of the nuts, and adjust until both pendulums are exactly the same length, e.g. 40 cm. This is the most important step: a difference of half a centimetre is visible.</li>
+      <li><strong>Check the sag.</strong> The string should sag a little at the pendulums – a couple of centimetres. If it is completely taut, the exchange happens very slowly. If it hangs a lot, it happens quickly, but the pendulums easily start to wobble.</li>
+      <li><strong>Start the experiment.</strong> Hold one pendulum still, and pull the other out 5–10 cm, perpendicular to the taut string. Release it gently, and then let go of the first one too, without pushing it.</li>
+    </ol>
+    <p>After a few swings the still pendulum begins to move. After half a minute to a minute the first pendulum is almost still and the second is swinging fully. Then the motion goes back again.</p>
+
+    <h3>Experiments you can do</h3>
+    <p><strong>The period of a pendulum.</strong> Time 10 full swings of one pendulum while the other is held still, and divide by 10. Compare with $2\pi\sqrt{L/g}$. For 40 cm it is 1.27 s.</p>
+    <p><strong>The exchange period.</strong> Time from the moment the first pendulum is still until it is still the next time. That is $T_{\rm exch}$. Repeat a few times and take the average.</p>
+    <p><strong>The two normal modes.</strong> Pull both pendulums out equally far to the same side and release them together. Now there is no exchange, because they are swinging in the first normal mode. Then pull them out to opposite sides: the second normal mode, which is slightly faster. Time 20 swings of each, $T_1$ and $T_2$, and calculate</p>
+    $$T_{\rm exch}=\frac{T_1T_2}{T_1-T_2}.$$
+    <p>Compare with the time you measured directly. The difference in period is small, so time many swings.</p>
+    <p><strong>The tension.</strong> Push the chairs a little further apart, so that the string becomes tighter and the sag smaller. The exchange becomes slower. Slacken it, and it becomes faster.</p>
+    <p><strong>The tuning.</strong> Make one pendulum 3–5 cm shorter. Now only part of the motion gets across, and the first pendulum never comes completely to rest.</p>
+    <p><strong>The mass.</strong> Make the pendulums the same length again, but give one of them one nut and the other three. The exchange is again incomplete. On the string this is because the heavy pendulum makes the string sag more and becomes effectively longer.</p>
+    <p><strong>The chain.</strong> Hang up three, four or more identical pendulums at equal spacing, and push the end one. Watch the motion travel down the row and back.</p>
+
+    <h3>Measurement sheet</h3>
+    <div class="tablewrap">
+      <table class="sum">
+        <tr><th>Experiment</th><th>Length $L$</th><th>Nuts</th><th>Measured</th><th>Calculated</th></tr>
+        <tr><td>10 swings, one pendulum</td><td></td><td></td><td>$T=$</td><td>$2\pi\sqrt{L/g}=$</td></tr>
+        <tr><td>20 swings in phase</td><td></td><td></td><td>$T_1=$</td><td></td></tr>
+        <tr><td>20 swings in antiphase</td><td></td><td></td><td>$T_2=$</td><td></td></tr>
+        <tr><td>Exchange period</td><td></td><td></td><td>$T_{\rm exch}=$</td><td>$T_1T_2/(T_1-T_2)=$</td></tr>
+      </table>
+    </div>
+
+    <h3>Tips</h3>
+    <p>If the nuts start to rotate or swing in ellipses, start with a smaller displacement and release more gently. If you want the pendulums to stay in one plane, each weight can hang from two strings joined in a V from two points on the taut string. Use a smooth string: a string that twists up will turn the weight. And keep the doors shut, because even a slight draught disturbs it.</p>
+  </div>
+</section>
+
+<section class="block" id="sammenfatning">
+  <div class="section-header">
+    <h2>Summary</h2>
+    <p>Coupled oscillators exchange energy. How fast is decided by the coupling; how much by the tuning and the masses.</p>
+  </div>
+  <div class="prose">
+    <div class="tablewrap">
+      <table class="sum">
+        <tr><th>Situation</th><th>Key result</th><th>Exchange</th></tr>
+        <tr><td>Two identical pendulums</td><td>$\omega_2^2=\omega_0^2+2k/m$, $T_{\rm exch}=2\pi/(\omega_2-\omega_1)$</td><td>Complete</td></tr>
+        <tr><td>Different lengths</td><td>$\eta\approx 4\kappa^2/\left[(\omega_{01}^2-\omega_{02}^2)^2+4\kappa^2\right]$</td><td>Requires tuning</td></tr>
+        <tr><td>Different masses</td><td>$\eta=4m_1m_2/(m_1+m_2)^2$</td><td>Like an elastic collision</td></tr>
+        <tr><td>Two identical on a taut string</td><td>$\omega^2=g/(L+\ell)$, $\ell=h$ in phase and $\ell\approx h/3$ in antiphase</td><td>Complete, governed by the sag $h$</td></tr>
+        <tr><td>Chain of $N$ identical</td><td>$\omega_n^2=g/L+(4k/m)\sin^2\left(n\pi/2N\right)$</td><td>Waves in a frequency band</td></tr>
+      </table>
+    </div>
+    <h3>References</h3>
+    <ul class="refs">
+      <li>A. P. French, <em>Vibrations and Waves</em>, Norton (1971), ch. 5.</li>
+      <li>H. Goldstein, C. Poole &amp; J. Safko, <em>Classical Mechanics</em>, 3rd ed., Addison-Wesley (2002), ch. 6.</li>
+      <li>C. Huygens, <em>Horologium Oscillatorium</em>, Paris (1673).</li>
+      <li>M. Bennett, M. F. Schatz, H. Rockwood &amp; K. Wiesenfeld, ‘Huygens's clocks’, <em>Proc. R. Soc. Lond. A</em> 458, 563 (2002).</li>
+      <li>R. E. Berg &amp; T. S. Marshall, ‘Wilberforce pendulum oscillations and normal modes’, <em>Am. J. Phys.</em> 59, 32 (1991).</li>
+    </ul>
+  </div>
+</section>
+</main>
+<footer>
+  <a href="index-en.html">Physics, Mathematics and Chemistry</a> · Michael Grant · <a href="mailto:michael.h.grant@gmail.com">michael.h.grant@gmail.com</a>
+</footer>
+<script>
+(function(){
+'use strict';
+const REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $ = id => document.getElementById(id);
+const fmt = (x,d=2) => { const s = x.toFixed(d); return (/^-0[,.]?0*$/.test(s) ? s.slice(1) : s).replace('-','−'); };
+const DEG = 180/Math.PI;
+const g = 9.82, SC = 10, MAXN = 8, SPACING = 0.6, BAR_Y = 2.5;
+const COLORS = ['#4cc9f0','#f5c878','#39ff14','#ff4d6d','#c77dff','#ff7a2a','#7ae7c7','#e8e8f0'];
+
+/* ---------------- Fysik ---------------- */
+let P = [{m:0.5,L:1.0},{m:0.5,L:1.0}];
+let th = [0,0], om = [0,0], cross = [[],[]];
+let k = 0.8, gamma = 0, tempo = 1, amp = 10/DEG, t = 0, E0 = 1;
+let paused = REDUCED, dragging = -1, selected = 0;
+let d0 = [], modes = {w:[], u:[]};
+let mode = 'fjeder', Tstr = 8, SN = null;
+const END = 0.45;   // afstand fra stolpe til yderste ophæng, m
+const x0 = i => (i-(P.length-1)/2)*SPACING;
+
+function restLengths(){ d0 = []; for(let i=0;i<P.length-1;i++) d0.push(Math.hypot(SPACING, P[i].L-P[i+1].L)); }
+
+/* --- lineær algebra --- */
+const zeros = n => Array.from({length:n}, () => new Array(n).fill(0));
+const mv = (M, v) => M.map(r => r.reduce((s,x,j) => s + x*v[j], 0));
+function inv(M){
+  const n = M.length, a = M.map((r,i) => [...r, ...Array.from({length:n}, (_,j) => i===j ? 1 : 0)]);
+  for(let c=0;c<n;c++){
+    let p = c; for(let r=c+1;r<n;r++) if(Math.abs(a[r][c]) > Math.abs(a[p][c])) p = r;
+    [a[c], a[p]] = [a[p], a[c]];
+    const d = a[c][c]; for(let j=0;j<2*n;j++) a[c][j] /= d;
+    for(let r=0;r<n;r++) if(r !== c){ const f = a[r][c]; if(f) for(let j=0;j<2*n;j++) a[r][j] -= f*a[c][j]; }
+  }
+  return a.map(r => r.slice(n));
+}
+/* --- penduler på en udspændt snor ---
+   Ophængningspunkterne er masseløse: S y = g D θ, hvor S er snorens sidestivhed
+   (T/a for hvert snorstykke) og D = diag(m). Kuglen: m (ÿ + L θ̈) = −m g θ.
+   Det giver A θ̈ = −g θ med A = diag(L) + g S⁻¹ D. */
+function snorSetup(){
+  const N = P.length, S = zeros(N);
+  for(let i=0;i<N;i++){
+    const aL = i === 0 ? END : SPACING, aR = i === N-1 ? END : SPACING;
+    S[i][i] = Tstr/aL + Tstr/aR;
+    if(i < N-1){ S[i][i+1] = -Tstr/SPACING; S[i+1][i] = -Tstr/SPACING; }
+  }
+  const Si = inv(S);
+  const G = Si.map(r => r.map((x,j) => g*x*P[j].m));
+  const A = G.map((r,i) => r.map((x,j) => x + (i === j ? P[i].L : 0)));
+  const sag = Si.map(r => r.reduce((s,x,j) => s + x*P[j].m*g, 0));
+  SN = {G, A, Ai: inv(A), sag};
+}
+function setupCoupling(){ restLengths(); snorSetup(); }
+
+function deriv(s, out){
+  if(mode === 'snor'){
+    const N = P.length, Ai = SN.Ai;
+    for(let i=0;i<N;i++){
+      let a = 0; for(let j=0;j<N;j++) a += Ai[i][j]*s[j];
+      out[i] = s[N+i]; out[N+i] = -g*a - gamma*s[N+i];
+    }
+    return;
+  }
+  const N = P.length, xs = new Float64Array(N), ys = new Float64Array(N), Q = new Float64Array(N);
+  for(let i=0;i<N;i++){ xs[i] = x0(i)+P[i].L*Math.sin(s[i]); ys[i] = -P[i].L*Math.cos(s[i]); }
+  if(k > 0) for(let i=0;i<N-1;i++){
+    const dx = xs[i+1]-xs[i], dy = ys[i+1]-ys[i], r = Math.hypot(dx,dy) || 1e-9;
+    const f = k*(r-d0[i]), fx = f*dx/r, fy = f*dy/r;   // kraft på kugle i (mod i+1, når fjederen er strakt)
+    Q[i]   += P[i].L*(fx*Math.cos(s[i]) + fy*Math.sin(s[i]));
+    Q[i+1] -= P[i+1].L*(fx*Math.cos(s[i+1]) + fy*Math.sin(s[i+1]));
+  }
+  for(let i=0;i<N;i++){
+    const m = P[i].m, L = P[i].L;
+    out[i] = s[N+i];
+    out[N+i] = (-m*g*L*Math.sin(s[i]) + Q[i])/(m*L*L) - gamma*s[N+i];
+  }
+}
+function step(h){
+  const N = P.length, n = 2*N;
+  const s = new Float64Array(n), k1 = new Float64Array(n), k2 = new Float64Array(n), k3 = new Float64Array(n), k4 = new Float64Array(n), tmp = new Float64Array(n);
+  for(let i=0;i<N;i++){ s[i] = th[i]; s[N+i] = om[i]; }
+  deriv(s,k1); for(let i=0;i<n;i++) tmp[i] = s[i]+h/2*k1[i];
+  deriv(tmp,k2); for(let i=0;i<n;i++) tmp[i] = s[i]+h/2*k2[i];
+  deriv(tmp,k3); for(let i=0;i<n;i++) tmp[i] = s[i]+h*k3[i];
+  deriv(tmp,k4);
+  for(let i=0;i<N;i++){
+    const a = th[i], b = s[i] + h/6*(k1[i]+2*k2[i]+2*k3[i]+k4[i]);
+    if(a < 0 && b >= 0){ cross[i].push(t + h*(-a)/(b-a)); if(cross[i].length > 6) cross[i].shift(); }
+    th[i] = b;
+    om[i] = s[N+i] + h/6*(k1[N+i]+2*k2[N+i]+2*k3[N+i]+k4[N+i]);
+  }
+  t += h;
+}
+function energies(){
+  if(mode === 'snor'){
+    const y = mv(SN.G, th), yd = mv(SN.G, om);
+    return P.map(({m,L},i) => { const v = yd[i] + L*om[i]; return 0.5*m*v*v + 0.5*m*g*L*th[i]*th[i] + 0.5*m*g*th[i]*y[i]; });
+  }
+  const N = P.length, E = new Array(N).fill(0), xs = [], ys = [];
+  for(let i=0;i<N;i++){
+    const {m,L} = P[i];
+    xs.push(x0(i)+L*Math.sin(th[i])); ys.push(-L*Math.cos(th[i]));
+    E[i] = 0.5*m*L*L*om[i]*om[i] + m*g*L*(1-Math.cos(th[i]));
+  }
+  for(let i=0;i<N-1;i++){
+    const r = Math.hypot(xs[i+1]-xs[i], ys[i+1]-ys[i]), es = 0.5*k*(r-d0[i])**2;
+    E[i] += es/2; E[i+1] += es/2;
+  }
+  return E;
+}
+const sum = a => a.reduce((x,y)=>x+y, 0);
+
+/* ---------------- Normalsvingninger (Jacobi) ---------------- */
+function jacobi(A){
+  const n = A.length, a = A.map(r=>r.slice());
+  const v = Array.from({length:n}, (_,i) => Array.from({length:n}, (_,j) => i===j ? 1 : 0));
+  for(let sweep=0; sweep<60; sweep++){
+    let off = 0;
+    for(let p=0;p<n;p++) for(let q=p+1;q<n;q++) off += a[p][q]*a[p][q];
+    if(off < 1e-22) break;
+    for(let p=0;p<n-1;p++) for(let q=p+1;q<n;q++){
+      if(Math.abs(a[p][q]) < 1e-300) continue;
+      const theta = (a[q][q]-a[p][p])/(2*a[p][q]);
+      const tt = (theta >= 0 ? 1 : -1)/(Math.abs(theta)+Math.sqrt(theta*theta+1));
+      const c = 1/Math.sqrt(tt*tt+1), s = tt*c;
+      for(let r=0;r<n;r++){ const x = a[r][p], y = a[r][q]; a[r][p] = c*x - s*y; a[r][q] = s*x + c*y; }
+      for(let r=0;r<n;r++){ const x = a[p][r], y = a[q][r]; a[p][r] = c*x - s*y; a[q][r] = s*x + c*y; }
+      for(let r=0;r<n;r++){ const x = v[r][p], y = v[r][q]; v[r][p] = c*x - s*y; v[r][q] = s*x + c*y; }
+    }
+  }
+  return {val: a.map((r,i)=>r[i]), vec: v};
+}
+function pushMode(w, u){
+  const mx = Math.max(...u.map(Math.abs)) || 1;
+  let sgn = 1; for(const x of u){ if(Math.abs(x) > 1e-6*mx){ sgn = x > 0 ? 1 : -1; break; } }
+  modes.w.push(w); modes.u.push(u.map(x => sgn*x/mx));
+}
+function computeModes(){
+  if(mode === 'snor'){
+    // D A θ̈ = −g D θ: symmetrisk generaliseret egenværdiproblem; egenværdierne er 1/ω²
+    const N = P.length, ks = P.map(p => Math.sqrt(g*p.m));
+    const Ms = SN.A.map((r,i) => r.map(x => P[i].m*x));
+    const B = Ms.map((r,i) => r.map((x,j) => 0.5*(x + Ms[j][i])/(ks[i]*ks[j])));
+    const {val, vec} = jacobi(B);
+    const idx = val.map((_,i)=>i).sort((a,b) => val[b]-val[a]);
+    modes = {w:[], u:[]};
+    for(const j of idx) pushMode(1/Math.sqrt(val[j]), ks.map((q,i) => vec[i][j]/q));
+    return;
+  }
+  const N = P.length, Mh = P.map(p => Math.sqrt(p.m)*p.L);
+  const K = Array.from({length:N}, () => new Array(N).fill(0));
+  for(let i=0;i<N;i++) K[i][i] = P[i].m*g*P[i].L;
+  for(let i=0;i<N-1;i++){
+    const ux = SPACING/d0[i], ke = k*ux*ux, Li = P[i].L, Lj = P[i+1].L;
+    K[i][i] += ke*Li*Li; K[i+1][i+1] += ke*Lj*Lj; K[i][i+1] -= ke*Li*Lj; K[i+1][i] -= ke*Li*Lj;
+  }
+  const A = K.map((r,i) => r.map((x,j) => x/(Mh[i]*Mh[j])));
+  const {val, vec} = jacobi(A);
+  const idx = val.map((_,i)=>i).sort((a,b)=>val[a]-val[b]);
+  modes = {w:[], u:[]};
+  for(const j of idx) pushMode(Math.sqrt(Math.max(val[j], 0)), Mh.map((m,i) => vec[i][j]/m));
+}
+
+/* ---------------- Three.js-scene ---------------- */
+const canvas = $('pCanvas'), stage = $('pStage');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.setClearColor(0x07080f, 1);
+const scene = new THREE.Scene(); scene.fog = new THREE.Fog(0x07080f, 90, 200);
+const camera = new THREE.PerspectiveCamera(40, 1.6, 0.1, 500);
+const target = new THREE.Vector3(0, 15, 0);
+const cam = {r:62, az:0.32, el:0.16};
+function applyCam(){
+  cam.el = Math.max(-0.05, Math.min(1.4, cam.el)); cam.r = Math.max(20, Math.min(140, cam.r));
+  camera.position.set(target.x + cam.r*Math.cos(cam.el)*Math.sin(cam.az), target.y + cam.r*Math.sin(cam.el), target.z + cam.r*Math.cos(cam.el)*Math.cos(cam.az));
+  camera.lookAt(target);
+}
+applyCam();
+scene.add(new THREE.HemisphereLight(0xb8c6ff, 0x1a1208, 0.55));
+const sun = new THREE.DirectionalLight(0xffffff, 0.95);
+sun.position.set(12, 45, 28); sun.castShadow = true; sun.shadow.mapSize.set(1024,1024);
+Object.assign(sun.shadow.camera, {left:-35, right:35, top:35, bottom:-35, near:1, far:120});
+scene.add(sun); scene.add(sun.target);
+const rim = new THREE.PointLight(0x4cc9f0, 0.35, 120); rim.position.set(-25, 20, -20); scene.add(rim);
+const floor = new THREE.Mesh(new THREE.CircleGeometry(48, 64), new THREE.MeshStandardMaterial({color:0x14182a, roughness:0.85, metalness:0.05}));
+floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; scene.add(floor);
+const grid = new THREE.GridHelper(96, 48, 0x2a3350, 0x161c30); grid.position.y = 0.01; grid.material.transparent = true; grid.material.opacity = 0.55; scene.add(grid);
+
+const metal = new THREE.MeshStandardMaterial({color:0xb4bccb, metalness:0.45, roughness:0.35});
+const dark = new THREE.MeshStandardMaterial({color:0x39425c, metalness:0.3, roughness:0.5});
+const stringMat = new THREE.MeshStandardMaterial({color:0xd8d8e0, roughness:0.6});
+const frame = new THREE.Group(); scene.add(frame);
+let pend = [], bobs = [], nuts = [], springs = [], strSegs = [], bar = null, frameW = 10;
+const BY = BAR_Y*SC;
+const bobR = m => 0.95*Math.cbrt(m/0.5);
+const cyl = new THREE.CylinderGeometry(1, 1, 1, 12);
+
+function clearGroup(gr){ while(gr.children.length){ const c = gr.children.pop(); if(c.geometry && c.geometry !== cyl) c.geometry.dispose(); } }
+function buildScene(){
+  clearGroup(frame);
+  pend.forEach(p => scene.remove(p.group)); springs.forEach(s => { scene.remove(s.line); s.line.geometry.dispose(); });
+  pend = []; bobs = []; nuts = []; springs = []; strSegs = [];
+  const N = P.length, W = (N-1)*SPACING*SC + 2*END*SC; frameW = W;
+  bar = new THREE.Mesh(cyl, metal); bar.visible = mode === 'fjeder'; bar.scale.set(0.35, W, 0.35); bar.rotation.z = Math.PI/2; bar.position.set(0, BY, 0); bar.castShadow = true; frame.add(bar);
+  for(const sx of [-1,1]){
+    const post = new THREE.Mesh(cyl, dark); post.scale.set(0.45, BY, 0.45); post.position.set(sx*W/2, BY/2, 0); post.castShadow = true; frame.add(post);
+    const foot = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.5, 7), dark); foot.position.set(sx*W/2, 0.25, 0); foot.castShadow = foot.receiveShadow = true; frame.add(foot);
+  }
+  for(let i=0;i<N;i++){
+    const group = new THREE.Group(); group.position.set(x0(i)*SC, BY, 0);
+    const hook = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 10), metal); group.add(hook);
+    const str = new THREE.Mesh(cyl, stringMat); str.castShadow = true; group.add(str);
+    const mat = new THREE.MeshStandardMaterial({color:COLORS[i], metalness:0.35, roughness:0.35, emissive:new THREE.Color(COLORS[i]), emissiveIntensity:0});
+    const bob = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 24), mat); bob.castShadow = true; group.add(bob);
+    const nut = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 0.8, 6), mat); nut.rotation.z = Math.PI/2; nut.castShadow = true; group.add(nut);
+    bob.visible = mode === 'fjeder'; nut.visible = mode === 'snor'; hook.visible = mode === 'fjeder';
+    scene.add(group);
+    pend.push({group, str, bob, nut}); bobs.push(bob); nuts.push(nut);
+    shapePend(i);
+  }
+  for(let i=0;i<=N;i++){
+    const seg = new THREE.Mesh(cyl, stringMat); seg.visible = mode === 'snor'; seg.castShadow = true; frame.add(seg); strSegs.push(seg);
+  }
+  for(let i=0;i<N-1;i++){
+    const NP = 220, geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(NP*3), 3));
+    const line = new THREE.Line(geo, new THREE.LineBasicMaterial({color:0x9aa3b8})); line.frustumCulled = false;
+    scene.add(line); springs.push({line, NP});
+  }
+  highlight();
+}
+function shapePend(i){
+  const {m,L} = P[i], p = pend[i], r = bobR(m);
+  p.str.scale.set(0.06, L*SC, 0.06); p.str.position.y = -L*SC/2;
+  p.bob.scale.setScalar(r); p.bob.position.y = -L*SC;
+  p.nut.scale.setScalar(r*1.15); p.nut.position.y = -L*SC - r*0.15;
+}
+function highlight(){ pend.forEach((p,i) => { p.bob.material.emissiveIntensity = i === selected ? 0.35 : 0.0; }); }
+const tmpA = new THREE.Vector3(), tmpB = new THREE.Vector3(), cNeutral = new THREE.Color(0x9aa3b8), cHot = new THREE.Color(0xff6b6b), cCold = new THREE.Color(0x6bb8ff);
+function bobPos(i, v){ const L = P[i].L*SC; return v.set(x0(i)*SC + L*Math.sin(th[i]), BY - L*Math.cos(th[i]), 0); }
+const Y_AXIS = new THREE.Vector3(0,1,0);
+function placeSeg(seg, a, b){
+  const d = b.clone().sub(a), len = d.length();
+  seg.position.copy(a).addScaledVector(d, 0.5);
+  seg.scale.set(0.05, len, 0.05);
+  seg.quaternion.setFromUnitVectors(Y_AXIS, d.normalize());
+}
+function updateScene(){
+  if(mode === 'snor'){
+    const y = mv(SN.G, th), mx = Math.max(...SN.sag), f = mx > 0.3 ? 0.3/mx : 1;
+    const pts = [new THREE.Vector3(-frameW/2, BY, 0)];
+    P.forEach((_,i) => pts.push(new THREE.Vector3(x0(i)*SC, BY - SN.sag[i]*f*SC, y[i]*SC)));
+    pts.push(new THREE.Vector3(frameW/2, BY, 0));
+    pend.forEach((p,i) => { p.group.position.copy(pts[i+1]); p.group.rotation.set(-th[i], 0, 0); });
+    strSegs.forEach((s,i) => placeSeg(s, pts[i], pts[i+1]));
+    springs.forEach(s => { s.line.visible = false; });
+    return;
+  }
+  pend.forEach((p,i) => { p.group.position.set(x0(i)*SC, BY, 0); p.group.rotation.set(0, 0, th[i]); });
+  const show = $('pSpr').checked;
+  springs.forEach((s,i) => {
+    s.line.visible = show && k > 0;
+    if(!s.line.visible) return;
+    bobPos(i, tmpA); bobPos(i+1, tmpB);
+    const e = tmpB.clone().sub(tmpA), len = e.length(); e.normalize();
+    const ra = bobR(P[i].m), rb = bobR(P[i+1].m);
+    const a = tmpA.clone().addScaledVector(e, ra), span = Math.max(0.1, len - ra - rb);
+    const n1 = new THREE.Vector3(0,0,1), n2 = new THREE.Vector3().crossVectors(e, n1).normalize();
+    const arr = s.line.geometry.attributes.position.array, NP = s.NP, coils = 11, R = 0.32;
+    for(let j=0;j<NP;j++){
+      const u = j/(NP-1); let rad = 0, ph = 0;
+      if(u > 0.08 && u < 0.92){ const w = (u-0.08)/0.84; rad = R; ph = w*coils*2*Math.PI; }
+      const px = a.x + e.x*span*u + rad*(Math.cos(ph)*n1.x + Math.sin(ph)*n2.x);
+      const py = a.y + e.y*span*u + rad*(Math.cos(ph)*n1.y + Math.sin(ph)*n2.y);
+      const pz = a.z + e.z*span*u + rad*(Math.cos(ph)*n1.z + Math.sin(ph)*n2.z);
+      arr[3*j] = px; arr[3*j+1] = py; arr[3*j+2] = pz;
+    }
+    s.line.geometry.attributes.position.needsUpdate = true;
+    const strain = (len/SC - d0[i])/d0[i];
+    s.line.material.color.copy(cNeutral).lerp(strain > 0 ? cHot : cCold, Math.min(1, Math.abs(strain)*6));
+  });
+}
+
+/* ---------------- Mus og berøring ---------------- */
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+function setRay(e){ const r = canvas.getBoundingClientRect(); ndc.set((e.clientX-r.left)/r.width*2-1, -(e.clientY-r.top)/r.height*2+1); ray.setFromCamera(ndc, camera); }
+function pick(e){ setRay(e); const list = mode === 'snor' ? nuts : bobs; const h = ray.intersectObjects(list, false); return h.length ? list.indexOf(h[0].object) : -1; }
+function dragAngle(e, i){
+  setRay(e); const o = ray.ray.origin, d = ray.ray.direction;
+  if(mode === 'snor'){
+    const gp = pend[i].group.position;
+    if(Math.abs(d.x) < 0.03) return null;
+    const s = (gp.x - o.x)/d.x; if(s < 0) return null;
+    const a = Math.atan2(o.z + d.z*s - gp.z, gp.y - (o.y + d.y*s));
+    return Math.max(-75/DEG, Math.min(75/DEG, a));
+  }
+  if(Math.abs(d.z) < 1e-4) return null;
+  const s = -o.z/d.z; if(s < 0) return null;
+  const px = o.x + d.x*s, py = o.y + d.y*s;
+  const a = Math.atan2(px - x0(i)*SC, BY - py);
+  return Math.max(-75/DEG, Math.min(75/DEG, a));
+}
+const ptrs = new Map(); let pinch0 = 0, r0 = cam.r, dragId = null;
+canvas.addEventListener('pointerdown', e => {
+  canvas.setPointerCapture(e.pointerId);
+  if(ptrs.size === 0 && dragging < 0){
+    const i = pick(e);
+    if(i >= 0){ dragging = i; dragId = e.pointerId; select(i); om.fill(0); const a = dragAngle(e,i); if(a !== null) th[i] = a; setStatus(); return; }
+  }
+  ptrs.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  if(ptrs.size === 2){ const [a,b] = [...ptrs.values()]; pinch0 = Math.hypot(a.x-b.x, a.y-b.y); r0 = cam.r; }
+});
+canvas.addEventListener('pointermove', e => {
+  if(e.pointerId === dragId && dragging >= 0){ const a = dragAngle(e, dragging); if(a !== null){ th[dragging] = a; om[dragging] = 0; } return; }
+  if(!ptrs.has(e.pointerId)) return;
+  const p = ptrs.get(e.pointerId);
+  if(ptrs.size === 1){ cam.az -= (e.clientX-p.x)*0.008; cam.el += (e.clientY-p.y)*0.006; }
+  p.x = e.clientX; p.y = e.clientY;
+  if(ptrs.size === 2){ const [a,b] = [...ptrs.values()]; const d = Math.hypot(a.x-b.x, a.y-b.y); if(pinch0 > 0) cam.r = r0*pinch0/d; }
+  applyCam();
+});
+function up(e){
+  if(e.pointerId === dragId){ dragId = null; dragging = -1; restart(); return; }
+  ptrs.delete(e.pointerId); pinch0 = 0;
+}
+canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
+canvas.addEventListener('wheel', e => { e.preventDefault(); cam.r *= Math.exp(e.deltaY*0.001); applyCam(); }, {passive:false});
+
+/* ---------------- Brugerflade ---------------- */
+function bindSlider(id, f, cb){
+  const el = $(id), out = $(id+'o');
+  const u = () => { out.textContent = f(+el.value); };
+  el.addEventListener('input', () => { u(); cb(+el.value); }); u(); cb(+el.value);
+}
+function select(i){ selected = i; highlight(); document.querySelectorAll('.pcard').forEach((c,j) => c.classList.toggle('sel', j === i)); }
+let cardRefs = [];
+function renderCards(){
+  const box = $('pCards'); box.innerHTML = ''; cardRefs = [];
+  P.forEach((p,i) => {
+    const c = document.createElement('div');
+    c.className = 'pcard' + (i === selected ? ' sel' : ''); c.style.setProperty('--c', COLORS[i]);
+    c.innerHTML =
+      `<div class="phead"><h4>Pendulum ${i+1}</h4><button class="x" type="button" ${P.length <= 1 ? 'disabled' : ''} aria-label="Remove pendulum ${i+1}">Remove</button></div>
+       <div class="ctrl"><label for="pm${i}"><span>Mass</span><output id="pm${i}o"></output></label>
+         <input type="range" id="pm${i}" min="0.02" max="2" step="0.01" value="${p.m}"></div>
+       <div class="ctrl"><label for="pl${i}"><span>Length</span><output id="pl${i}o"></output></label>
+         <input type="range" id="pl${i}" min="0.2" max="2" step="0.01" value="${p.L}"></div>
+       <table class="read">
+         <tr><td>Own period</td><td class="t0"></td></tr>
+         <tr><td>Measured period</td><td class="tm">–</td></tr>
+         <tr><td>Share of energy</td><td class="te">–</td></tr>
+       </table>`;
+    box.appendChild(c);
+    const ref = {t0:c.querySelector('.t0'), tm:c.querySelector('.tm'), te:c.querySelector('.te')};
+    cardRefs.push(ref);
+    const showT0 = () => { ref.t0.textContent = fmt(2*Math.PI*Math.sqrt(P[i].L/g)) + ' s'; };
+    const mEl = c.querySelector('#pm'+i), lEl = c.querySelector('#pl'+i), mo = c.querySelector('#pm'+i+'o'), lo = c.querySelector('#pl'+i+'o');
+    mo.textContent = fmt(p.m) + ' kg'; lo.textContent = fmt(p.L) + ' m'; showT0();
+    mEl.addEventListener('input', () => { P[i].m = +mEl.value; mo.textContent = fmt(P[i].m) + ' kg'; shapePend(i); paramsChanged(); });
+    lEl.addEventListener('input', () => { P[i].L = +lEl.value; lo.textContent = fmt(P[i].L) + ' m'; shapePend(i); showT0(); restLengths(); paramsChanged(); });
+    c.addEventListener('pointerdown', () => select(i));
+    c.querySelector('.x').addEventListener('click', ev => { ev.stopPropagation(); removePend(i); });
+  });
+}
+function renderModes(){
+  const box = $('pModes'); box.innerHTML = '';
+  modes.w.forEach((w,n) => {
+    const row = document.createElement('div'); row.className = 'mode';
+    const bars = modes.u[n].map((u,i) => {
+      const h = Math.abs(u)*50;
+      return `<div class="b"><i style="background:${COLORS[i]};height:${h}%;${u >= 0 ? 'bottom:50%' : 'top:50%'}"></i></div>`;
+    }).join('');
+    row.innerHTML = `<span class="mn">${n+1}</span><div class="shape" aria-hidden="true">${bars}</div><span class="mt">${fmt(2*Math.PI/w)} s</span><button type="button" aria-label="Start normal mode ${n+1}">Start</button>`;
+    row.querySelector('button').addEventListener('click', () => excite('mode', n));
+    box.appendChild(row);
+  });
+  $('pRx').textContent = modes.w.length >= 2 && modes.w[1] - modes.w[0] > 1e-6 ? fmt(2*Math.PI/(modes.w[1]-modes.w[0]), 1) + ' s' : '–';
+}
+function renderLegend(){ $('pLegend').innerHTML = P.map((_,i) => `<span><i style="background:${COLORS[i]}"></i>Pendulum ${i+1}</span>`).join(''); }
+function paramsChanged(){ setupCoupling(); computeModes(); renderModes(); cross = P.map(() => []); E0 = Math.max(sum(energies()), 1e-12); }
+function rebuild(){
+  setupCoupling(); buildScene(); computeModes(); renderCards(); renderModes(); renderLegend();
+  $('pRemove').disabled = P.length <= 1; $('pAdd').disabled = P.length >= MAXN;
+  restart();
+}
+function restart(){ cross = P.map(() => []); hist = []; t = 0; E0 = Math.max(sum(energies()), 1e-12); setStatus(); }
+function excite(kind, n){
+  const N = P.length; om = new Array(N).fill(0);
+  if(kind === 'push'){ th = new Array(N).fill(0); th[0] = amp; }
+  else if(kind === 'rand'){ th = P.map(() => (Math.random()*2-1)*amp); }
+  else if(kind === 'mode'){ th = modes.u[n].map(u => u*amp); }
+  else th = new Array(N).fill(0);
+  restart();
+}
+function addPend(){
+  if(P.length >= MAXN) return;
+  const ref = P[P.length-1] || {m:0.5, L:1.0};
+  P.push({m:ref.m, L:ref.L}); th.push(0); om.push(0);
+  selected = P.length-1; rebuild();
+}
+function removePend(i){
+  if(P.length <= 1) return;
+  P.splice(i,1); th.splice(i,1); om.splice(i,1);
+  if(selected >= P.length) selected = P.length-1;
+  rebuild();
+}
+function setStatus(){
+  const s = $('pStatus');
+  if(dragging >= 0) s.textContent = `Dragging pendulum ${dragging+1}`;
+  else if(paused) s.textContent = 'Pause';
+  else if(E0 < 1e-9) s.textContent = 'At rest – drag a bob';
+  else s.textContent = 'Swinging';
+}
+function plotText(){
+  const a = $('pAng').checked;
+  $('pPlotTitle').textContent = a ? 'The displacement of each pendulum' : 'The energy in each pendulum';
+  $('pPlotSub').textContent = a ? 'The angle θ in degrees. Notice the beats: fast oscillations inside a slow envelope.'
+    : mode === 'snor' ? 'Each pendulum gets its own energy plus its share of the energy in the taut string. The total is 100%.'
+    : 'Each pendulum gets its own energy plus half the energy in the springs it hangs from. The total is 100%.';
+}
+function setMode(m){
+  mode = m;
+  const sn = m === 'snor';
+  $('cSpring').classList.toggle('on', !sn); $('cSpring').setAttribute('aria-pressed', String(!sn));
+  $('cString').classList.toggle('on', sn); $('cString').setAttribute('aria-pressed', String(sn));
+  $('ctrlK').hidden = sn; $('ctrlS').hidden = !sn; $('chkSpr').hidden = sn;
+  $('pHint').textContent = sn ? 'The string is drawn with its calculated sag, at most 30 cm in the picture'
+                              : 'The spring turns reddish when stretched and bluish when compressed';
+  cam.az = sn ? 1.0 : 0.32; cam.el = sn ? 0.22 : 0.16; applyCam();
+  plotText(); rebuild(); excite('push');
+}
+function homePreset(){
+  P = [{m:0.05, L:0.4}, {m:0.05, L:0.4}]; th = [0,0]; om = [0,0]; selected = 0;
+  const el = $('pS'); el.value = 4.5; el.dispatchEvent(new Event('input'));
+  setMode('snor');
+}
+$('cSpring').addEventListener('click', () => { if(mode !== 'fjeder') setMode('fjeder'); });
+$('cString').addEventListener('click', () => { if(mode !== 'snor') setMode('snor'); });
+$('pHome').addEventListener('click', homePreset);
+$('pAdd').addEventListener('click', addPend);
+$('pRemove').addEventListener('click', () => removePend(selected));
+$('pPause').addEventListener('click', () => { paused = !paused; $('pPause').textContent = paused ? 'Resume' : 'Pause'; setStatus(); });
+$('pPush').addEventListener('click', () => excite('push'));
+$('pRand').addEventListener('click', () => excite('rand'));
+$('pStill').addEventListener('click', () => excite('still'));
+$('pAng').addEventListener('change', plotText);
+if(paused) $('pPause').textContent = 'Resume';
+bindSlider('pK', v => fmt(v) + ' N/m', v => { k = v; if(pend.length){ paramsChanged(); } });
+bindSlider('pS', v => fmt(v,1) + ' N', v => { Tstr = v; if(pend.length){ paramsChanged(); } });
+bindSlider('pA', v => v + '°', v => { amp = v/DEG; });
+bindSlider('pD', v => fmt(v,3) + ' s⁻¹', v => { gamma = v; });
+bindSlider('pT', v => fmt(v) + '×', v => { tempo = v; });
+
+/* ---------------- Graf ---------------- */
+const plot = $('pPlot'), pctx = plot.getContext('2d');
+let hist = [], lastSample = -1;
+const WIN = 40;
+function drawPlot(){
+  const dpr = Math.min(window.devicePixelRatio||1, 2), w = plot.clientWidth, h = plot.clientHeight;
+  if(!w || !h) return;
+  if(plot.width !== Math.round(w*dpr) || plot.height !== Math.round(h*dpr)){ plot.width = Math.round(w*dpr); plot.height = Math.round(h*dpr); }
+  const c = pctx; c.setTransform(dpr,0,0,dpr,0,0); c.clearRect(0,0,w,h);
+  const L = 40, R = 10, T = 10, B = 24, pw = w-L-R, ph = h-T-B;
+  const angle = $('pAng').checked;
+  const tEnd = Math.max(t, WIN), tStart = tEnd - WIN;
+  let ymin = 0, ymax = 1;
+  if(angle){ let mx = 1; for(const s of hist) for(const a of s.th) mx = Math.max(mx, Math.abs(a)); mx = Math.ceil(mx/5)*5; ymin = -mx; ymax = mx; }
+  const X = tt => L + (tt-tStart)/WIN*pw, Y = v => T + (ymax-v)/(ymax-ymin)*ph;
+  c.font = '11px Segoe UI, sans-serif'; c.fillStyle = '#a0a0a8'; c.strokeStyle = 'rgba(255,255,255,0.08)'; c.lineWidth = 1;
+  const ticks = angle ? [ymin, ymin/2, 0, ymax/2, ymax] : [0, 0.25, 0.5, 0.75, 1];
+  c.textAlign = 'right'; c.textBaseline = 'middle';
+  for(const v of ticks){ c.beginPath(); c.moveTo(L, Y(v)); c.lineTo(L+pw, Y(v)); c.stroke(); c.fillText(angle ? fmt(v,0)+'°' : Math.round(v*100)+'%', L-5, Y(v)); }
+  c.textAlign = 'center'; c.textBaseline = 'top';
+  const t0 = Math.ceil(tStart/10)*10;
+  for(let tt=t0; tt<=tEnd+1e-9; tt+=10){ c.fillText(fmt(tt,0)+' s', X(tt), T+ph+6); }
+  if(hist.length < 2) return;
+  c.lineWidth = 1.6;
+  for(let i=0;i<P.length;i++){
+    c.strokeStyle = COLORS[i]; c.beginPath(); let first = true;
+    for(const s of hist){ if(s.t < tStart) continue; const v = angle ? s.th[i] : s.e[i]; if(v === undefined) continue; const x = X(s.t), y = Y(v); if(first){ c.moveTo(x,y); first = false; } else c.lineTo(x,y); }
+    c.stroke();
+  }
+}
+
+/* ---------------- Løkke ---------------- */
+function fit(){
+  const w = canvas.clientWidth, h = canvas.clientHeight; if(!w || !h) return;
+  const pr = renderer.getPixelRatio();
+  if(canvas.width !== Math.floor(w*pr) || canvas.height !== Math.floor(h*pr)){ renderer.setSize(w, h, false); camera.aspect = w/h; camera.updateProjectionMatrix(); }
+}
+let visible = true;
+if('IntersectionObserver' in window) new IntersectionObserver(es => { visible = es[0].isIntersecting; }, {threshold:0.02}).observe(stage);
+let last = performance.now(), lastUI = 0;
+function loop(now){
+  const dt = Math.min(0.05, (now-last)/1000); last = now;
+  if(visible){
+    if(!paused && dragging < 0){
+      const H = dt*tempo, n = Math.max(1, Math.ceil(H/0.0016));
+      for(let j=0;j<n;j++) step(H/n);
+    }
+    const E = energies(), Et = sum(E);
+    if(t - lastSample >= 0.05 || t < lastSample){
+      lastSample = t;
+      hist.push({t, e: E.map(x => Et > 1e-12 ? x/Et : 0), th: th.map(a => a*DEG)});
+      while(hist.length && hist[0].t < t - WIN - 1) hist.shift();
+    }
+    updateScene();
+    if(now - lastUI > 100){
+      lastUI = now;
+      $('pHud').innerHTML = `t = ${fmt(t,1)} s<br>${P.length} ${P.length === 1 ? 'pendulum' : 'pendulums'} · ${mode === 'snor' ? 'taut string' : 'springs'}`;
+      $('pRt').textContent = fmt(t,1) + ' s';
+      $('pRE').textContent = E0 > 1e-9 ? fmt(Et/E0, 3) : '–';
+      cardRefs.forEach((r,i) => {
+        const cr = cross[i], T0 = 2*Math.PI*Math.sqrt(P[i].L/g);
+        r.tm.textContent = cr && cr.length >= 2 && t - cr[cr.length-1] < 2.5*T0 ? fmt((cr[cr.length-1]-cr[0])/(cr.length-1)) + ' s' : '–';
+        r.te.textContent = Et > 1e-9 ? Math.round(E[i]/Et*100) + '%' : '–';
+      });
+      setStatus();
+    }
+    drawPlot();
+    fit(); renderer.render(scene, camera);
+  }
+  requestAnimationFrame(loop);
+}
+rebuild();
+excite('push');
+requestAnimationFrame(loop);
+})();
+</script>
+<script src="lang-switch.js" defer></script>
+</body>
+</html>
