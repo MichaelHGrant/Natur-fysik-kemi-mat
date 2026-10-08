@@ -26,7 +26,8 @@
     "carnot.html": "carnot-en.html",
     "det-elektromagnetiske-spektrum.html": "det-elektromagnetiske-spektrum-en.html",
     "kartoffelmel-og-vand.html": "kartoffelmel-og-vand-en.html",
-    "krydssoe.html": "krydssoe-en.html"
+    "krydssoe.html": "krydssoe-en.html",
+    "Periodisk Tabel 3.html": "periodisk-tabel-en.html"
     // "optik.html": "optik-en.html",
   };
 
