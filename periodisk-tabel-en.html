@@ -201,18 +201,20 @@
 
                 <section class="spectra-section">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                        <div style="font-size: 0.85rem; color: #8b949e;">Calculated spectrum & intensity (hover over the lines)</div>
-                        <button id="toggleSpectrumBtn" style="background: #21262d; color: #c9d1d9; border: 1px solid #30363d; padding: 4px 8px; border-radius: 4px; outline: none; cursor: pointer; font-size: 0.75rem;">Show only the visible spectrum</button>
+                        <div id="spectrum-label" style="font-size: 0.85rem; color: #8b949e;">Measured spectrum of the neutral atom, 380–750 nm – brightness ∝ g<sub>k</sub>A<sub>ki</sub> (hover over the lines)</div>
+                        <span style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;"><button id="spectrumModeBtn" style="background: #21262d; color: #c9d1d9; border: 1px solid #30363d; padding: 4px 8px; border-radius: 4px; outline: none; cursor: pointer; font-size: 0.75rem;">Show the hydrogen-like model</button><button id="toggleSpectrumBtn" style="background: #21262d; color: #c9d1d9; border: 1px solid #30363d; padding: 4px 8px; border-radius: 4px; outline: none; cursor: pointer; font-size: 0.75rem; display:none;">Show only the visible spectrum</button></span>
                     </div>
                     <div class="canvas-wrapper">
                         <canvas id="spectra-canvas"></canvas>
                         <div id="spectra-tooltip"></div>
                     </div>
+                    <div id="spectrum-note" style="font-size: 0.72rem; color: #8b949e; margin-top: 6px; line-height: 1.4;"></div>
                 </section>
             </div>
         </div>
     </dialog>
 
+    <script src="atomic-lines.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const gridContainer = document.getElementById('periodic-table-grid');
@@ -231,6 +233,46 @@
             const orbitalName = document.getElementById('orbital-name');
             
             let currentLines = new Array();
+            let currentRealLines = [];
+            let currentZ = 1;
+            let spectrumMode = 'real';
+            const TXT = { labReal: 'Measured spectrum of the neutral atom, 380–750 nm – brightness ∝ g<sub>k</sub>A<sub>ki</sub> (hover over the lines)', labModel: 'Hydrogen-like model with Z<sub>eff</sub> (Slater) – calculated spectrum & intensity (hover over the lines)', toModel: 'Show the hydrogen-like model', toReal: 'Show the measured spectrum',
+                noteReal: 'Line data: R. L. Kurucz, gfall line list (air wavelengths). The brightness of each line is proportional to its transition rate g<sub>k</sub>A<sub>ki</sub> – the Einstein coefficient A<sub>ki</sub> times the degeneracy g<sub>k</sub> = 2J<sub>k</sub>+1 of the upper level, i.e. the photon emission rate if every upper state is equally populated. Lines below 1 % of the strongest are left out.', noteModel: 'Teaching model: every atom treated as hydrogen with E<sub>n</sub> = −13.6 eV·Z<sub>eff</sub>²/n². In the full view, lines outside the visible band are moved into it (displayed λ ≠ true λ); real visible lines come from transitions between subshells, which this model does not include.', noData: 'No transition-rate data for this element in the line list',
+                upper: 'Upper level', lower: 'Lower level', bright: 'Brightness', ofmax: '% of the strongest line', air: '(in air)', comp: 'summed over unresolved components' };
+            const spectrumModeBtn = document.getElementById('spectrumModeBtn');
+            function num(x, d) { return x.toFixed(d).replace('.', '.'); }
+            function fmtJ(j) { return (Math.abs(j - Math.round(j)) > 0.01) ? (Math.round(2 * j) + '/2') : String(Math.round(j)); }
+            function fmtSci(x) { let e = Math.floor(Math.log10(x)); let m = x / Math.pow(10, e); return num(m, 2) + '&middot;10<sup>' + e + '</sup>'; }
+            function buildRealLines(Z) {
+                let raw = (window.ATOMIC_LINES && window.ATOMIC_LINES[Z]) ? window.ATOMIC_LINES[Z] : [];
+                let mx = 0; raw.forEach(function(r) { if (r[1] > mx) mx = r[1]; });
+                return raw.map(function(r) {
+                    return { isReal: true, lambda: r[0], gA: r[1], A: r[2], El: r[3], Eu: r[4], Jl: r[5], Ju: r[6],
+                             rel: r[1] / mx, color: wavelengthToRGB(r[0]), canvasX: -999 };
+                });
+            }
+            function updateSpectrumUI() {
+                document.getElementById('spectrum-label').innerHTML = (spectrumMode === 'real') ? TXT.labReal : TXT.labModel;
+                document.getElementById('spectrum-note').innerHTML = (spectrumMode === 'real') ? TXT.noteReal : TXT.noteModel;
+                spectrumModeBtn.textContent = (spectrumMode === 'real') ? TXT.toModel : TXT.toReal;
+                toggleSpectrumBtn.style.display = (spectrumMode === 'real') ? 'none' : 'inline-block';
+            }
+            spectrumModeBtn.addEventListener('click', function() {
+                spectrumMode = (spectrumMode === 'real') ? 'model' : 'real';
+                tooltip.style.display = 'none';
+                updateSpectrumUI();
+                renderCanvasSpectra();
+            });
+            function realLineHTML(L) {
+                let h = '<strong style="color:' + L.color + '">&lambda; = ' + num(L.lambda, 2) + ' nm</strong> ' + TXT.air + '<br>';
+                h += TXT.upper + ': ' + num(L.Eu, 3) + ' eV, J = ' + fmtJ(L.Ju) + '<br>';
+                h += TXT.lower + ': ' + num(L.El, 3) + ' eV, J = ' + fmtJ(L.Jl) + '<br>';
+                h += '<hr style="margin:6px 0; border-color:#30363d;">';
+                h += (L.A > 0) ? ('A<sub>ki</sub> = ' + fmtSci(L.A) + ' s<sup>&minus;1</sup><br>') : ('A<sub>ki</sub>: <span style="color:#8b949e;">blend of several transitions</span><br>');
+                h += 'g<sub>k</sub>A<sub>ki</sub> = ' + fmtSci(L.gA) + ' s<sup>&minus;1</sup> <span style="color:#8b949e;font-size:0.75rem;">(' + TXT.comp + ')</span><br>';
+                h += TXT.bright + ': ' + num(100 * L.rel, L.rel < 0.1 ? 1 : 0) + ' ' + TXT.ofmax;
+                return h;
+            }
             const MSG_NO_VISIBLE = 'This simple hydrogen-like model puts all of this element\'s lines in the UV or IR. The real atom does have visible lines.';
             const CAT_NAMES = {'alkali-metal':'Alkali metal','alkaline-earth-metal':'Alkaline earth metal','transition-metal':'Transition metal','post-transition-metal':'Post-transition metal','metalloid':'Metalloid','polyatomic-nonmetal':'Polyatomic non-metal','diatomic-nonmetal':'Diatomic non-metal','noble-gas':'Noble gas','lanthanide':'Lanthanide','actinide':'Actinide','unknown':'Unknown properties'};
             let showOnlyVisible = false; // Tilstand for spektrum-filter
@@ -616,6 +658,40 @@
                 specCtx.fillStyle = '#000';
                 specCtx.fillRect(0, 0, w, h);
 
+                if (spectrumMode === 'real') {
+                    if (currentRealLines.length === 0) {
+                        specCtx.globalAlpha = 1;
+                        specCtx.fillStyle = '#8b949e';
+                        specCtx.font = '13px sans-serif';
+                        specCtx.textAlign = 'center';
+                        specCtx.textBaseline = 'middle';
+                        specCtx.fillText(TXT.noData, w / 2, h / 2);
+                        return;
+                    }
+                    currentRealLines.forEach(function(line) {
+                        let x = ((line.lambda - 380) / (780 - 380)) * w;
+                        line.canvasX = x;
+                        specCtx.beginPath();
+                        specCtx.moveTo(x, 0);
+                        specCtx.lineTo(x, h);
+                        specCtx.strokeStyle = line.color;
+                        specCtx.lineWidth = 2;
+                        specCtx.globalAlpha = line.rel;   // brightness proportional to g_k A_ki
+                        specCtx.stroke();
+                    });
+                    specCtx.globalAlpha = 1;
+                    specCtx.fillStyle = '#8b949e';
+                    specCtx.font = '10px sans-serif';
+                    specCtx.textAlign = 'center';
+                    specCtx.textBaseline = 'bottom';
+                    [400, 450, 500, 550, 600, 650, 700, 750].forEach(function(t) {
+                        let tx = ((t - 380) / (780 - 380)) * w;
+                        specCtx.fillRect(tx, h - 4, 1, 4);
+                        specCtx.fillText(t + ' nm', tx, h - 5);
+                    });
+                    return;
+                }
+
                 // Anvend filteret baseret på showOnlyVisible tilstanden
                 let linesToDraw = currentLines;
                 if (showOnlyVisible === true) {
@@ -896,6 +972,9 @@
                 nSelect.dispatchEvent(new Event('change'));
 
                 currentLines = generateQuantumLines(currentZeff);
+                currentZ = element.number;
+                currentRealLines = buildRealLines(currentZ);
+                updateSpectrumUI();
                 renderCanvasSpectra();
                 
                 cancelAnimationFrame(animationFrameId);
@@ -915,7 +994,9 @@
                 // Hent kun de linjer, vi rent faktisk viser på canvas for at sikre,
                 // at vi ikke viser tooltips for linjer, der er filtreret fra!
                 let activeLines = currentLines;
-                if (showOnlyVisible === true) {
+                if (spectrumMode === 'real') {
+                    activeLines = currentRealLines;
+                } else if (showOnlyVisible === true) {
                     activeLines = currentLines.filter(function(line) {
                         return (line.realLambda >= 380 && line.realLambda <= 750);
                     });
@@ -931,6 +1012,7 @@
                     tooltip.style.left = x + 'px';
                     tooltip.style.top = y + 'px';
                     
+                    if (closestLine.isReal === true) { tooltip.innerHTML = realLineHTML(closestLine); return; }
                     let html = '<strong style="color:' + closestLine.color + '">Displayed &lambda;: ' + closestLine.lambda.toFixed(1) + ' nm</strong><br>';
                     html += 'True &lambda;: ' + closestLine.realLambda.toFixed(1) + ' nm<br>';
                     html += 'Transition: n=' + closestLine.n2 + ' &rarr; n=' + closestLine.n1 + '<br>';
