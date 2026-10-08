@@ -25,7 +25,8 @@
     "gyngen.html": "gyngen-en.html",
     "carnot.html": "carnot-en.html",
     "det-elektromagnetiske-spektrum.html": "det-elektromagnetiske-spektrum-en.html",
-    "kartoffelmel-og-vand.html": "kartoffelmel-og-vand-en.html"
+    "kartoffelmel-og-vand.html": "kartoffelmel-og-vand-en.html",
+    "krydssoe.html": "krydssoe-en.html"
     // "optik.html": "optik-en.html",
   };
 
