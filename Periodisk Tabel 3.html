@@ -202,19 +202,25 @@
                 <section class="spectra-section">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
                         <div id="spectrum-label" style="font-size: 0.85rem; color: #8b949e;">Målt spektrum for det neutrale atom, 380–750 nm – lysstyrke ∝ g<sub>k</sub>A<sub>ki</sub> (hold over linjerne)</div>
-                        <span style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;"><button id="spectrumModeBtn" style="background: #21262d; color: #c9d1d9; border: 1px solid #30363d; padding: 4px 8px; border-radius: 4px; outline: none; cursor: pointer; font-size: 0.75rem;">Vis den brintlignende model</button><button id="toggleSpectrumBtn" style="background: #21262d; color: #c9d1d9; border: 1px solid #30363d; padding: 4px 8px; border-radius: 4px; outline: none; cursor: pointer; font-size: 0.75rem; display:none;">Vis kun synligt spektrum</button></span>
+                        <span style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;"><select id="spectrumModeSel" style="background: #21262d; color: #c9d1d9; border: 1px solid #30363d; padding: 4px 6px; border-radius: 4px; font-size: 0.75rem;"><option value="real">Målt spektrum</option><option value="schr">Beregnet ud fra Schrödingerligningen</option><option value="model">Brintlignende model</option></select><button id="toggleSpectrumBtn" style="background: #21262d; color: #c9d1d9; border: 1px solid #30363d; padding: 4px 8px; border-radius: 4px; outline: none; cursor: pointer; font-size: 0.75rem; display:none;">Vis kun synligt spektrum</button></span>
                     </div>
                     <div class="canvas-wrapper">
                         <canvas id="spectra-canvas"></canvas>
                         <div id="spectra-tooltip"></div>
                     </div>
                     <div id="spectrum-note" style="font-size: 0.72rem; color: #8b949e; margin-top: 6px; line-height: 1.4;"></div>
+                    <div id="schr-panel" style="display:none; margin-top: 12px;">
+                        <div style="font-size: 0.85rem; color: #8b949e; margin-bottom: 5px;">Radiale bølgefunktioner u(r) = r·R(r) og integranden i dipol-matrixelementet</div>
+                        <canvas id="radial-canvas" style="width:100%; height:220px; display:block; background:#000; border:1px solid #30363d; border-radius:4px;"></canvas>
+                        <div id="schr-info" style="font-size: 0.82rem; margin-top: 8px; line-height: 1.5;"></div>
+                    </div>
                 </section>
             </div>
         </div>
     </dialog>
 
     <script src="atomic-lines.js"></script>
+    <script src="schrodinger-atoms.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const gridContainer = document.getElementById('periodic-table-grid');
@@ -239,7 +245,90 @@
             const TXT = { labReal: 'Målt spektrum for det neutrale atom, 380–750 nm – lysstyrke ∝ g<sub>k</sub>A<sub>ki</sub> (hold over linjerne)', labModel: 'Brintlignende model med Z<sub>eff</sub> (Slater) – beregnet spektrum og intensitet (hold over linjerne)', toModel: 'Vis den brintlignende model', toReal: 'Vis det målte spektrum',
                 noteReal: 'Liniedata: R. L. Kurucz, gfall-linjelisten (bølgelængder i luft). Hver linjes lysstyrke er proportional med overgangsraten g<sub>k</sub>A<sub>ki</sub> – Einstein-koefficienten A<sub>ki</sub> gange det øvre niveaus udartning g<sub>k</sub> = 2J<sub>k</sub>+1, dvs. fotonudsendelsesraten, hvis alle øvre tilstande er lige besatte. Linjer under 1 % af den stærkeste er udeladt.', noteModel: 'Undervisningsmodel: hvert atom behandles som brint med E<sub>n</sub> = −13,6 eV·Z<sub>eff</sub>²/n². I den fulde visning flyttes linjer uden for det synlige område ind i det (vist λ ≠ rigtig λ); de rigtige synlige linjer kommer fra overgange mellem underskaller, som modellen ikke medtager.', noData: 'Ingen data for overgangsrater for dette grundstof i linjelisten',
                 upper: 'Øvre niveau', lower: 'Nedre niveau', bright: 'Lysstyrke', ofmax: '% af den stærkeste linje', air: '(i luft)', comp: 'summeret over uopløste komponenter' };
-            const spectrumModeBtn = document.getElementById('spectrumModeBtn');
+            const TXS = { lab_schr: 'Spektrum beregnet ud fra Schrödingerligningen, 380–750 nm – lysstyrke ∝ g<sub>k</sub>A<sub>ki</sub> (hold over; klik på en linje for at se bølgefunktionerne)', note_schr: 'Den radiale Schrödingerligning løses numerisk (Numerovs metode) for den yderste elektron i et modelpotential: den fulde kerneladning tæt på kernen, skærmet af de indre elektroner til +1 uden for kernen, plus polarisationen af atomets indre skaller. To parametre pr. l tilpasses de to laveste målte niveauer med det l; alt andet – alle andre energiniveauer, alle bølgefunktioner, alle bølgelængder og alle overgangsrater – følger af ligningen. Overgangsraten er A = (4α³ω³/3)·(l<sub>max</sub>/(2l<sub>k</sub>+1))·|∫u<sub>k</sub> r u<sub>i</sub> dr|² (atomare enheder). Brint: det rene Coulombpotential uden tilpassede parametre.', noschr: 'Kun for brint og alkalimetallerne (Li, Na, K, Rb, Cs)', calc: 'beregnet', meas: 'målt', radial: 'Radialintegral', dev: 'afvigelse', gAsum: 'g·A summeret over overgangens finstrukturlinjer', nomeas: 'ingen målt værdi i linjelisten', click: 'Klik på en linje i spektret for at se dens bølgefunktioner.', rax: 'r (Bohr-radier a₀)', integrand: 'integranden u<sub>k</sub>·r·u<sub>i</sub>' };
+            const spectrumModeSel = document.getElementById('spectrumModeSel');
+            const schrCache = {};
+            let currentSchr = null, currentSchrLines = [], selectedSchr = null;
+            function ensureSchr() {
+                currentSchr = null; currentSchrLines = []; selectedSchr = null;
+                if (!window.SchrodingerAtoms || !SchrodingerAtoms.supported(currentZ)) return;
+                if (!schrCache[currentZ]) schrCache[currentZ] = SchrodingerAtoms.solveAtom(currentZ);
+                currentSchr = schrCache[currentZ];
+                let vis = currentSchr.transitions.filter(function(t) { return t.lambda >= 380 && t.lambda <= 750; });
+                let mx = 0; vis.forEach(function(t) { if (t.gA > mx) mx = t.gA; });
+                vis = vis.filter(function(t) { return t.gA >= 0.01 * mx; });
+                currentSchrLines = vis.map(function(t) {
+                    return { isSchr: true, t: t, lambda: t.lambda, gA: t.gA, A: t.A, rel: t.gA / mx, color: wavelengthToRGB(t.lambda), canvasX: -999 };
+                });
+                let best = null; currentSchrLines.forEach(function(L) { if (!best || L.gA > best.gA) best = L; });
+                selectedSchr = best;
+            }
+            function measuredGA(t) {                       // measured g·A of the fine-structure lines of this transition
+                if (!t.lambdaMeas || !window.ATOMIC_LINES || !ATOMIC_LINES[currentZ]) return null;
+                const HE = 27.211386, g0 = currentSchr.levels.reduce(function(m, L) { return Math.min(m, L.Emeas === undefined ? 0 : L.Emeas); }, 0);
+                const eu = (t.up.Emeas - g0) * HE, el = (t.lo.Emeas - g0) * HE, tol = currentZ >= 37 ? 0.05 : 0.012;
+                let s = 0; ATOMIC_LINES[currentZ].forEach(function(r) { if (Math.abs(r[3] - el) < tol && Math.abs(r[4] - eu) < tol) s += r[1]; });
+                return s > 0 ? s : null;
+            }
+            function calcGAsum(t) {                        // calculated g·A of all transitions between the same measured levels
+                let s = 0; currentSchr.transitions.forEach(function(u) { if (u.lambdaMeas && Math.abs(u.lambdaMeas - t.lambdaMeas) < 0.05) s += u.gA; });
+                return s;
+            }
+            function schrLineHTML(L) {
+                const t = L.t;
+                let h = '<strong style="color:' + L.color + '">' + t.up.name + ' &rarr; ' + t.lo.name + '</strong><br>';
+                h += '&lambda; ' + TXS.calc + ' = ' + num(t.lambda, 1) + ' nm';
+                if (t.lambdaMeas) h += ', ' + TXS.meas + ' = ' + num(t.lambdaMeas, 1) + ' nm';
+                h += '<br>' + TXS.radial + ' = ' + num(Math.abs(t.R), 3) + ' a<sub>0</sub><br>';
+                h += 'A<sub>ki</sub> ' + TXS.calc + ' = ' + fmtSci(t.A) + ' s<sup>&minus;1</sup><br>';
+                const gm = measuredGA(t);
+                h += '<hr style="margin:6px 0; border-color:#30363d;"><span style="color:#8b949e;font-size:0.75rem;">' + TXS.gAsum + '</span><br>';
+                if (gm) {
+                    const gc = calcGAsum(t);
+                    h += TXS.calc + ': ' + fmtSci(gc) + ' s<sup>&minus;1</sup><br>' + TXS.meas + ': ' + fmtSci(gm) + ' s<sup>&minus;1</sup><br>';
+                    h += TXS.dev + ': ' + (gc >= gm ? '+' : '') + num(100 * (gc - gm) / gm, 1) + ' %';
+                } else { h += '<span style="color:#8b949e;">' + TXS.nomeas + '</span>'; }
+                return h;
+            }
+            function drawRadial() {
+                const cv = document.getElementById('radial-canvas');
+                const info = document.getElementById('schr-info');
+                const rect = cv.getBoundingClientRect();
+                if (rect.width === 0) { setTimeout(drawRadial, 50); return; }
+                const dpr = window.devicePixelRatio || 1, w = rect.width, h = rect.height;
+                cv.width = w * dpr; cv.height = h * dpr;
+                const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
+                c.fillStyle = '#000'; c.fillRect(0, 0, w, h);
+                if (!currentSchr || !selectedSchr) { info.innerHTML = currentSchr ? TXS.click : ''; return; }
+                const t = selectedSchr.t, g = currentSchr.grid, r = g.r;
+                const ua = t.up.wf.u, ub = t.lo.wf.u;
+                let umax = 0, rEnd = 1;
+                for (let i = 0; i < g.N; i++) { umax = Math.max(umax, Math.abs(ua[i]), Math.abs(ub[i])); }
+                for (let i = g.N - 1; i >= 0; i--) { if (Math.abs(ua[i]) > 0.01 * umax || Math.abs(ub[i]) > 0.01 * umax) { rEnd = r[i] * 1.1; break; } }
+                const pad = 26, X = function(rr) { return pad + (w - 2 * pad) * rr / rEnd; };
+                const mid = h / 2, Y = function(v, s) { return mid - (h / 2 - 14) * v / s; };
+                // integrand
+                let imax = 0; const integ = new Float64Array(g.N);
+                for (let i = 0; i < g.N; i++) { integ[i] = ua[i] * r[i] * ub[i]; imax = Math.max(imax, Math.abs(integ[i])); }
+                c.globalAlpha = 0.35; c.fillStyle = '#d29922'; c.beginPath(); c.moveTo(X(0), mid);
+                for (let i = 0; i < g.N && r[i] <= rEnd; i++) c.lineTo(X(r[i]), Y(integ[i], imax));
+                c.lineTo(X(rEnd), mid); c.closePath(); c.fill(); c.globalAlpha = 1;
+                // axes
+                c.strokeStyle = '#30363d'; c.lineWidth = 1; c.beginPath(); c.moveTo(pad, mid); c.lineTo(w - pad, mid); c.stroke();
+                c.fillStyle = '#8b949e'; c.font = '10px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'top';
+                const step = rEnd > 200 ? 50 : rEnd > 80 ? 20 : rEnd > 30 ? 10 : rEnd > 12 ? 5 : 1;
+                for (let rr = 0; rr <= rEnd; rr += step) { c.fillRect(X(rr), mid - 2, 1, 4); c.fillText(String(rr), X(rr), mid + 3); }
+                c.textAlign = 'right'; c.fillText(TXS.rax, w - pad, h - 13);
+                function curve(u, col) { c.strokeStyle = col; c.lineWidth = 2; c.beginPath(); let first = true;
+                    for (let i = 0; i < g.N && r[i] <= rEnd; i++) { const x = X(r[i]), y = Y(u[i], umax); if (first) { c.moveTo(x, y); first = false; } else c.lineTo(x, y); }
+                    c.stroke(); }
+                curve(ub, '#58a6ff'); curve(ua, '#f778ba');
+                c.textAlign = 'left'; c.textBaseline = 'top'; c.font = '12px sans-serif';
+                c.fillStyle = '#f778ba'; c.fillText('u(' + t.up.name + ')', pad + 4, 4);
+                c.fillStyle = '#58a6ff'; c.fillText('u(' + t.lo.name + ')', pad + 74, 4);
+                c.fillStyle = '#d29922'; c.fillText(TXS.integrand.replace(/<[^>]+>/g, ''), pad + 144, 4);
+                info.innerHTML = schrLineHTML(selectedSchr).replace(/<hr[^>]*>/, ' &nbsp;|&nbsp; ').replace(/<br>/g, ' &nbsp;·&nbsp; ');
+            }
             function num(x, d) { return x.toFixed(d).replace('.', ','); }
             function fmtJ(j) { return (Math.abs(j - Math.round(j)) > 0.01) ? (Math.round(2 * j) + '/2') : String(Math.round(j)); }
             function fmtSci(x) { let e = Math.floor(Math.log10(x)); let m = x / Math.pow(10, e); return num(m, 2) + '&middot;10<sup>' + e + '</sup>'; }
@@ -252,14 +341,21 @@
                 });
             }
             function updateSpectrumUI() {
-                document.getElementById('spectrum-label').innerHTML = (spectrumMode === 'real') ? TXT.labReal : TXT.labModel;
-                document.getElementById('spectrum-note').innerHTML = (spectrumMode === 'real') ? TXT.noteReal : TXT.noteModel;
-                spectrumModeBtn.textContent = (spectrumMode === 'real') ? TXT.toModel : TXT.toReal;
-                toggleSpectrumBtn.style.display = (spectrumMode === 'real') ? 'none' : 'inline-block';
+                const ok = !!(window.SchrodingerAtoms && SchrodingerAtoms.supported(currentZ));
+                const opt = spectrumModeSel.querySelector('option[value="schr"]');
+                opt.disabled = !ok; opt.textContent = ok ? 'Beregnet ud fra Schrödingerligningen' : 'Beregnet ud fra Schrödingerligningen –' + ' ' + TXS.noschr;
+                if (spectrumMode === 'schr' && !ok) spectrumMode = 'real';
+                spectrumModeSel.value = spectrumMode;
+                if (spectrumMode === 'schr' && (!currentSchr || currentSchr.atom.Z !== SchrodingerAtoms.ATOMS[currentZ].Z)) ensureSchr();
+                document.getElementById('spectrum-label').innerHTML = spectrumMode === 'real' ? TXT.labReal : spectrumMode === 'schr' ? TXS.lab_schr : TXT.labModel;
+                document.getElementById('spectrum-note').innerHTML = spectrumMode === 'real' ? TXT.noteReal : spectrumMode === 'schr' ? TXS.note_schr : TXT.noteModel;
+                toggleSpectrumBtn.style.display = (spectrumMode === 'model') ? 'inline-block' : 'none';
+                document.getElementById('schr-panel').style.display = (spectrumMode === 'schr') ? 'block' : 'none';
             }
-            spectrumModeBtn.addEventListener('click', function() {
-                spectrumMode = (spectrumMode === 'real') ? 'model' : 'real';
+            spectrumModeSel.addEventListener('change', function() {
+                spectrumMode = spectrumModeSel.value;
                 tooltip.style.display = 'none';
+                if (spectrumMode === 'schr') ensureSchr();
                 updateSpectrumUI();
                 renderCanvasSpectra();
             });
@@ -660,17 +756,19 @@
                 specCtx.fillStyle = '#000';
                 specCtx.fillRect(0, 0, w, h);
 
-                if (spectrumMode === 'real') {
-                    if (currentRealLines.length === 0) {
+                if (spectrumMode === 'real' || spectrumMode === 'schr') {
+                    const lineSet = (spectrumMode === 'real') ? currentRealLines : currentSchrLines;
+                    if (lineSet.length === 0) {
                         specCtx.globalAlpha = 1;
                         specCtx.fillStyle = '#8b949e';
                         specCtx.font = '13px sans-serif';
                         specCtx.textAlign = 'center';
                         specCtx.textBaseline = 'middle';
-                        specCtx.fillText(TXT.noData, w / 2, h / 2);
+                        specCtx.fillText(spectrumMode === 'real' ? TXT.noData : TXS.noschr, w / 2, h / 2);
+                        if (spectrumMode === 'schr') drawRadial();
                         return;
                     }
-                    currentRealLines.forEach(function(line) {
+                    lineSet.forEach(function(line) {
                         let x = ((line.lambda - 380) / (780 - 380)) * w;
                         line.canvasX = x;
                         specCtx.beginPath();
@@ -693,6 +791,13 @@
                         specCtx.fillRect(tx, h - 4, 1, 4);
                         specCtx.fillText(t + ' nm', tx, h - 5);
                     });
+                    if (spectrumMode === 'schr') {
+                        if (selectedSchr) {
+                            specCtx.strokeStyle = '#ffffff'; specCtx.globalAlpha = 0.9; specCtx.lineWidth = 1;
+                            specCtx.strokeRect(selectedSchr.canvasX - 4, 1, 8, h - 16); specCtx.globalAlpha = 1;
+                        }
+                        drawRadial();
+                    }
                     return;
                 }
 
@@ -978,6 +1083,7 @@
                 currentLines = generateQuantumLines(currentZeff);
                 currentZ = element.number;
                 currentRealLines = buildRealLines(currentZ);
+                currentSchr = null; currentSchrLines = []; selectedSchr = null;
                 updateSpectrumUI();
                 renderCanvasSpectra();
                 
@@ -1000,6 +1106,8 @@
                 let activeLines = currentLines;
                 if (spectrumMode === 'real') {
                     activeLines = currentRealLines;
+                } else if (spectrumMode === 'schr') {
+                    activeLines = currentSchrLines;
                 } else if (showOnlyVisible === true) {
                     activeLines = currentLines.filter(function(line) {
                         return (line.realLambda >= 380 && line.realLambda <= 750);
@@ -1017,6 +1125,7 @@
                     tooltip.style.top = y + 'px';
                     
                     if (closestLine.isReal === true) { tooltip.innerHTML = realLineHTML(closestLine); return; }
+                    if (closestLine.isSchr === true) { tooltip.innerHTML = schrLineHTML(closestLine); return; }
                     let html = '<strong style="color:' + closestLine.color + '">Visuel &lambda;: ' + closestLine.lambda.toFixed(1) + ' nm</strong><br>';
                     html += 'Rigtig &lambda;: ' + closestLine.realLambda.toFixed(1) + ' nm<br>';
                     html += 'Overgang: n=' + closestLine.n2 + ' &rarr; n=' + closestLine.n1 + '<br>';
@@ -1036,6 +1145,13 @@
             }
 
             specCanvas.addEventListener('mousemove', handleSpectrumInteraction);
+            specCanvas.addEventListener('click', function(e) {      // choose a line for the wavefunction plot
+                if (spectrumMode !== 'schr') return;
+                const rect = specCanvas.getBoundingClientRect(), x = e.clientX - rect.left;
+                let best = null, bd = 8;
+                currentSchrLines.forEach(function(L) { const d = Math.abs(x - L.canvasX); if (d < bd) { bd = d; best = L; } });
+                if (best) { selectedSchr = best; renderCanvasSpectra(); }
+            });
             specCanvas.addEventListener('touchstart', handleSpectrumInteraction, {passive: true});
             specCanvas.addEventListener('touchmove', handleSpectrumInteraction, {passive: true});
 
