@@ -1,0 +1,1408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Gyroscope and the Tippe Top – Michael Grant</title>
+<meta name="description" content="Interactive 3D simulations of the precession and nutation of a gyroscope and of the tippe top turning upside down. With the theory: the Lagrangian formalism, Jellett's constant and the energy landscape. Bohr and Pauli with a tippe top in Lund in 1951, the boiled and the raw egg, and inertial navigation: gimballed platform, strapdown, ring laser and the 84.4-minute Schuler period.">
+<meta name="author" content="Michael Grant">
+<meta name="theme-color" content="#0b0d17">
+<link rel="canonical" href="https://michaelhgrant.github.io/Natur-fysik-kemi-mat/gyroskop-tippetop.html">
+<meta property="og:type" content="article">
+<meta property="og:locale" content="da_DK">
+<meta property="og:title" content="Gyroskopet og tippetoppen">
+<meta property="og:description" content="To snurretoppe i 3D: en der præcesserer, og en der vender sig på hovedet.">
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$','$'], ['\\(','\\)']], displayMath: [['$$','$$']] },
+  chtml: { scale: 1.02 },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] }
+};
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+:root{
+  --space-black:#0b0d17; --space-deep:#050608;
+  --aurora-green:#39ff14; --aurora-purple:#a020f0; --aurora-blue:#4cc9f0;
+  --text-light:#e0e0e0; --text-dim:#a0a0a8;
+  --card-bg:rgba(255,255,255,0.04); --card-border:rgba(57,255,20,0.18);
+  --gold:#f5c878; --gold-bright:#ffe0a0; --fire:#ff7a2a; --red:#ff4d6d;
+  --panel:rgba(255,255,255,0.035); --line:rgba(255,255,255,0.09);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:70px}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{
+  font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
+  background-color:var(--space-black);
+  background-image:radial-gradient(circle at 20% 10%,rgba(160,32,240,0.08),transparent 40%),
+                   radial-gradient(circle at 80% 60%,rgba(76,201,240,0.05),transparent 40%);
+  color:var(--text-light); line-height:1.65; margin:0;
+}
+a{color:var(--aurora-blue)}
+a:focus-visible,button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--aurora-blue);outline-offset:3px}
+
+nav.topnav{position:sticky;top:0;z-index:100;background:rgba(11,13,23,0.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  border-bottom:1px solid rgba(57,255,20,0.25);padding:0.6rem 1rem;overflow-x:auto;white-space:nowrap}
+nav.topnav ul{list-style:none;margin:0;padding:0;display:inline-flex;gap:0.4rem;justify-content:center;width:100%;min-width:max-content}
+nav.topnav a{color:var(--text-dim);text-decoration:none;padding:0.4rem 0.9rem;border-radius:20px;font-size:0.85rem;font-weight:500;border:1px solid transparent;transition:all .2s ease}
+nav.topnav a:hover{color:var(--aurora-green);border-color:rgba(57,255,20,0.4);background:rgba(57,255,20,0.05)}
+nav.topnav a.home{color:var(--aurora-green);border-color:rgba(57,255,20,0.35)}
+
+header.page{padding:3.2rem 1.5rem 2.2rem;text-align:center;background:linear-gradient(to bottom,#1a1a2e,var(--space-black))}
+header.page h1{font-size:clamp(2rem,5vw,3.1rem);color:var(--aurora-green);text-shadow:0 0 25px rgba(57,255,20,0.35);margin:0 0 0.8rem;letter-spacing:0.3px}
+header.page p{max-width:720px;margin:0 auto;color:var(--text-dim);font-size:1.05rem}
+
+main{max-width:1180px;margin:0 auto;padding:1rem 1.5rem 3rem}
+section.block{margin:2.5rem 0 3.5rem}
+.section-header{border-left:4px solid var(--aurora-blue);padding-left:1rem;margin-bottom:1.4rem}
+.section-header h2{margin:0 0 0.3rem;font-size:1.75rem;color:#fff}
+.section-header p{margin:0;color:var(--text-dim);max-width:760px}
+#tippetop .section-header{border-left-color:var(--gold)}
+#teori .section-header{border-left-color:var(--aurora-purple)}
+
+/* === simulator layout === */
+.sim{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:1rem;align-items:start}
+.stage{position:relative;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#07080f;height:min(70vh,600px);min-height:360px}
+.stage canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+.stage canvas:active{cursor:grabbing}
+.stage .hud{position:absolute;left:0.8rem;top:0.7rem;font-size:0.8rem;color:var(--text-dim);pointer-events:none;line-height:1.5;text-shadow:0 1px 3px #000}
+.stage .status{position:absolute;right:0.8rem;top:0.7rem;font-size:0.85rem;padding:0.25rem 0.75rem;border-radius:20px;border:1px solid var(--line);background:rgba(7,8,15,0.75);color:var(--text-light)}
+.stage .hint{position:absolute;left:0.8rem;bottom:0.6rem;font-size:0.75rem;color:rgba(160,160,168,0.8);pointer-events:none}
+.legend{display:flex;flex-wrap:wrap;gap:0.3rem 1.1rem;font-size:0.82rem;color:var(--text-dim);margin:0.55rem 0.2rem 0}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:0.35rem}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1rem 1rem 1.1rem}
+.panel h3{margin:0 0 0.7rem;font-size:1rem;color:#fff;font-weight:600}
+.ctrl{margin-bottom:0.85rem}
+.ctrl label{display:flex;justify-content:space-between;gap:0.5rem;font-size:0.86rem;color:var(--text-light);margin-bottom:0.2rem}
+.ctrl label output{color:var(--aurora-blue);font-variant-numeric:tabular-nums}
+#tippetop .ctrl label output{color:var(--gold)}
+input[type=range]{width:100%;accent-color:var(--aurora-blue)}
+#tippetop input[type=range]{accent-color:var(--gold)}
+.btns{display:flex;flex-wrap:wrap;gap:0.45rem;margin:0.3rem 0 0.9rem}
+button{font:inherit;font-size:0.85rem;font-weight:600;padding:0.45rem 0.9rem;border-radius:22px;border:1.5px solid var(--aurora-blue);background:transparent;color:var(--aurora-blue);cursor:pointer;transition:background .2s,color .2s}
+button:hover{background:var(--aurora-blue);color:var(--space-black)}
+button.primary{background:var(--aurora-blue);color:var(--space-black)}
+#tippetop button{border-color:var(--gold);color:var(--gold)}
+#tippetop button:hover,#tippetop button.primary{background:var(--gold);color:var(--space-black)}
+.checks{display:flex;flex-wrap:wrap;gap:0.3rem 1rem;font-size:0.85rem;margin-bottom:0.8rem}
+.checks label{display:flex;align-items:center;gap:0.35rem;cursor:pointer}
+table.read{width:100%;border-collapse:collapse;font-size:0.84rem;font-variant-numeric:tabular-nums}
+table.read td{padding:0.22rem 0;border-bottom:1px solid rgba(255,255,255,0.05)}
+table.read td:last-child{text-align:right;color:#fff}
+.note{font-size:0.8rem;color:var(--text-dim);margin:0.7rem 0 0}
+.flag{font-size:0.82rem;padding:0.5rem 0.7rem;border-radius:10px;margin-top:0.7rem;border:1px solid var(--line);background:rgba(255,255,255,0.03)}
+.flag.ok{border-color:rgba(57,255,20,0.35);color:#bff5ae}
+.flag.no{border-color:rgba(255,77,109,0.45);color:#ffc2cd}
+
+.plots{display:grid;grid-template-columns:1fr 1fr;gap:1rem;grid-column:1;grid-row:2}
+.sim > .panel{grid-column:2;grid-row:1 / span 2}
+.plot{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:0.8rem 0.9rem 0.9rem}
+.plot h3{margin:0 0 0.2rem;font-size:0.95rem;color:#fff;font-weight:600}
+.plot p{margin:0 0 0.5rem;font-size:0.8rem;color:var(--text-dim)}
+.plot canvas{display:block;width:100%;height:230px}
+
+/* === tekst === */
+.prose{max-width:780px}
+.prose p{margin:0 0 1rem}
+.prose h3{color:#fff;margin:2rem 0 0.6rem;font-size:1.25rem}
+.prose h4{color:var(--aurora-blue);margin:1.4rem 0 0.4rem;font-size:1.02rem}
+.intro-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;margin:0 0 1rem}
+.intro-grid div{background:var(--card-bg);border:1px solid var(--line);border-radius:14px;padding:1.1rem 1.2rem}
+.intro-grid h3{margin:0 0 0.4rem;font-size:1.05rem;color:#fff}
+.intro-grid p{margin:0;font-size:0.95rem;color:var(--text-light)}
+details{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:0.2rem 1rem;margin:0.9rem 0}
+details[open]{padding-bottom:0.6rem}
+summary{cursor:pointer;padding:0.6rem 0;color:var(--aurora-blue);font-weight:600}
+.mjx-scroll,mjx-container[display="true"]{overflow-x:auto;overflow-y:hidden;max-width:100%}
+.tablewrap{overflow-x:auto}
+table.sum{border-collapse:collapse;width:100%;min-width:560px;font-size:0.92rem;margin:0.5rem 0 1rem}
+table.sum th,table.sum td{text-align:left;padding:0.55rem 0.7rem;border-bottom:1px solid var(--line);vertical-align:top}
+table.sum th{color:#fff;font-weight:600}
+table.sum td:first-child{color:var(--text-dim)}
+.refs{font-size:0.9rem;color:var(--text-dim);padding-left:1.1rem}
+.refs li{margin-bottom:0.35rem}
+.downloads{display:flex;flex-wrap:wrap;gap:0.6rem;margin:1rem 0}
+.downloads a{display:inline-block;padding:0.5rem 1.1rem;border-radius:25px;border:1.5px solid var(--aurora-green);color:var(--aurora-green);text-decoration:none;font-weight:600;font-size:0.88rem}
+.downloads a:hover{background:var(--aurora-green);color:var(--space-black)}
+footer{margin-top:3rem;padding:2rem 1.5rem;font-size:0.88rem;color:var(--text-dim);text-align:center;border-top:1px solid rgba(255,255,255,0.05)}
+footer a{text-decoration:none}
+
+@media (max-width:900px){
+  .sim{grid-template-columns:1fr}
+  .plots{grid-template-columns:1fr;grid-column:auto;grid-row:auto}
+  .sim > .panel{grid-column:auto;grid-row:auto}
+  .intro-grid{grid-template-columns:1fr}
+  .stage{height:62vh;min-height:320px}
+}
+@media (max-width:600px){
+  main{padding:0.5rem 1rem 2rem}
+  .section-header h2{font-size:1.4rem}
+  .stage .hud{font-size:0.72rem}
+}
+
+figure.photo{max-width:640px;margin:0.5rem auto 1.4rem}
+figure.photo img{width:100%;height:auto;display:block;border-radius:10px;filter:grayscale(1)}
+figure.photo figcaption{font-size:0.85rem;color:var(--text-dim);margin-top:0.5rem;line-height:1.45}
+.eggstage{height:min(52vh,420px);min-height:280px}
+.seg{display:flex;margin:0 0 0.9rem;border:1.5px solid var(--aurora-blue);border-radius:22px;overflow:hidden}
+.seg button{flex:1;border:0;border-radius:0;padding:0.45rem 0.5rem}
+.seg button + button{border-left:1.5px solid var(--aurora-blue)}
+.seg button.on{background:var(--aurora-blue);color:var(--space-black)}
+#eggSim .plot{margin-top:1rem}
+#eHold{touch-action:none;user-select:none;-webkit-user-select:none}
+</style>
+</head>
+<body>
+<nav class="topnav" aria-label="Navigation">
+  <ul>
+    <li><a class="home" href="index-en.html#mekanik">← Home</a></li>
+    <li><a href="#gyroskop">The gyroscope</a></li>
+    <li><a href="#tippetop">The tippe top</a></li>
+    <li><a href="#lund">Bohr and Pauli</a></li>
+    <li><a href="#teori-gyro">Theory: gyroscope</a></li>
+    <li><a href="#teori-tippe">Theory: tippe top</a></li>
+    <li><a href="#aeg">The eggs</a></li>
+    <li><a href="#inertinavigation">Inertial navigation</a></li>
+    <li><a href="#sammenfatning">Summary</a></li>
+  </ul>
+</nav>
+
+<header class="page">
+  <h1>The Gyroscope and the Tippe Top</h1>
+  <p>Two spinning tops, two kinds of physics. The gyroscope precesses instead of falling over, because a torque turns its angular momentum. The tippe top turns upside down and lifts its own centre of mass, because friction drains energy but leaves one particular quantity alone.</p>
+</header>
+
+<main>
+
+<!-- ============ GYROSKOP ============ -->
+<section class="block" id="gyroskop">
+  <div class="section-header">
+    <h2>The gyroscope in 3D</h2>
+    <p>A toy gyroscope rests with one end of its axle on a tower. Release it from rest and you see the small arcs of nutation. Start it in steady precession and the axle glides smoothly round. Drag the picture to rotate it; scroll or pinch to zoom.</p>
+  </div>
+  <div class="sim">
+    <div>
+      <div class="stage" id="gStage">
+        <canvas id="gCanvas" aria-label="3D simulation of a gyroscope"></canvas>
+        <div class="hud" id="gHud"></div>
+        <div class="status" id="gStatus">Precessing</div>
+        <div class="hint">The rotor is drawn with its spin rate geared down</div>
+      </div>
+      <div class="legend">
+        <span><i style="background:#4cc9f0"></i>Angular momentum $\mathbf L$</span>
+        <span><i style="background:#ff7a2a"></i>Torque $\boldsymbol\tau$</span>
+        <span><i style="background:#ff4d6d"></i>Gravity $M\mathbf g$</span>
+        <span><i style="background:#c77dff"></i>Precession $\boldsymbol\Omega$</span>
+        <span><i style="background:#39ff14"></i>Path of the axle</span>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Controls</h3>
+      <div class="btns">
+        <button id="gRest" class="primary">Release from rest</button>
+        <button id="gSteady">Steady precession</button>
+        <button id="gPause">Pause</button>
+      </div>
+      <div class="ctrl"><label for="gW"><span>Rotor spin rate</span><output id="gWo"></output></label>
+        <input type="range" id="gW" min="120" max="900" step="10" value="320"></div>
+      <div class="ctrl"><label for="gTh"><span>Starting angle from vertical</span><output id="gTho"></output></label>
+        <input type="range" id="gTh" min="15" max="110" step="1" value="80"></div>
+      <div class="ctrl"><label for="gK"><span>Bearing friction</span><output id="gKo"></output></label>
+        <input type="range" id="gK" min="0" max="0.5" step="0.01" value="0"></div>
+      <div class="ctrl"><label for="gC"><span>Nutation damping</span><output id="gCo"></output></label>
+        <input type="range" id="gC" min="0" max="15" step="0.5" value="0"></div>
+      <div class="ctrl"><label for="gT"><span>Speed</span><output id="gTo"></output></label>
+        <input type="range" id="gT" min="0.02" max="1" step="0.01" value="0.25"></div>
+      <div class="checks">
+        <label><input type="checkbox" id="gVec" checked> Vectors</label>
+        <label><input type="checkbox" id="gTrail" checked> Trail</label>
+      </div>
+      <table class="read">
+        <tr><td>Tilt $\theta$</td><td id="gRth">–</td></tr>
+        <tr><td>Precession $\dot\phi$, measured</td><td id="gRphi">–</td></tr>
+        <tr><td>$Mgl/(I_3\omega_3)$, theory</td><td id="gRtheo">–</td></tr>
+        <tr><td>Nutation period $2\pi I_1/(I_3\omega_3)$</td><td id="gRnut">–</td></tr>
+        <tr><td>Time</td><td id="gRt">–</td></tr>
+      </table>
+      <p class="note">Rotor: 100 g, radius 3 cm, 4 cm from the pivot. The equations are solved exactly with Runge–Kutta, not with the fast-top approximation.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TIPPETOP ============ -->
+<section class="block" id="tippetop">
+  <div class="section-header">
+    <h2>The tippe top in 3D</h2>
+    <p>The ball has radius 2 cm, and the centre of mass lies $\alpha R$ below the centre. The top is started with a small tilt and slides with Coulomb friction against the table. The yellow curve beneath the top is the path of the contact point. Try setting $I_1/I_3$ outside the window $1-\alpha < I_1/I_3 < 1+\alpha$.</p>
+  </div>
+  <div class="sim">
+    <div>
+      <div class="stage" id="tStage">
+        <canvas id="tCanvas" aria-label="3D simulation of a tippe top"></canvas>
+        <div class="hud" id="tHud"></div>
+        <div class="status" id="tStatus">Ready</div>
+        <div class="hint">Drag to rotate; scroll or pinch to zoom</div>
+      </div>
+      <div class="legend">
+        <span><i style="background:#4cc9f0"></i>Angular momentum $\mathbf L$</span>
+        <span><i style="background:#ff4d6d"></i>$\mathbf a$: centre of mass to contact point</span>
+        <span><i style="background:#f5c878"></i>Path of the contact point</span>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Controls</h3>
+      <div class="btns">
+        <button id="tGo" class="primary">Spin the top</button>
+        <button id="tPause">Pause</button>
+      </div>
+      <div class="ctrl"><label for="tW"><span>Initial spin $\omega_0$</span><output id="tWo"></output></label>
+        <input type="range" id="tW" min="30" max="300" step="5" value="150"></div>
+      <div class="ctrl"><label for="tA"><span>Offset $\alpha$</span><output id="tAo"></output></label>
+        <input type="range" id="tA" min="0.1" max="0.5" step="0.01" value="0.3"></div>
+      <div class="ctrl"><label for="tR"><span>Ratio $I_1/I_3$</span><output id="tRo"></output></label>
+        <input type="range" id="tR" min="0.5" max="1.6" step="0.01" value="0.9"></div>
+      <div class="ctrl"><label for="tM"><span>Friction coefficient $\mu$</span><output id="tMo"></output></label>
+        <input type="range" id="tM" min="0.05" max="0.6" step="0.01" value="0.3"></div>
+      <div class="ctrl"><label for="tTh"><span>Initial tilt</span><output id="tTho"></output></label>
+        <input type="range" id="tTh" min="1" max="20" step="1" value="3"></div>
+      <div class="ctrl"><label for="tT"><span>Speed</span><output id="tTo"></output></label>
+        <input type="range" id="tT" min="0.02" max="0.5" step="0.01" value="0.1"></div>
+      <div class="checks">
+        <label><input type="checkbox" id="tVec" checked> Vectors</label>
+        <label><input type="checkbox" id="tTrail" checked> Trail</label>
+        <label><input type="checkbox" id="tFollow" checked> Follow the top</label>
+      </div>
+      <table class="read">
+        <tr><td>Tilt $\theta$</td><td id="tRth">–</td></tr>
+        <tr><td>Rotation about the vertical $\omega_z$</td><td id="tRwz">–</td></tr>
+        <tr><td>Sliding speed $|\mathbf v_P|$</td><td id="tRslip">–</td></tr>
+        <tr><td>Energy $E/E_0$</td><td id="tRE">–</td></tr>
+        <tr><td>Jellett $J/J_0$</td><td id="tRJ">–</td></tr>
+        <tr><td>Predicted $\omega_1$</td><td id="tRw1">–</td></tr>
+      </table>
+      <div class="flag" id="tWin"></div>
+      <div class="flag" id="tThr"></div>
+    </div>
+  <div class="plots">
+          <div class="plot">
+            <h3>Tilt, energy and Jellett's constant</h3>
+            <p>The energy falls while $J$ stays perfectly flat. Left axis: $\theta$. Right axis: $E/E_0$ and $J/J_0$.</p>
+            <canvas id="tPlot" aria-label="Graph of tilt, energy and J against time"></canvas>
+            <div class="legend">
+              <span><i style="background:#f5c878"></i>$\theta$ (0°–180°)</span>
+              <span><i style="background:#4cc9f0"></i>$E/E_0$</span>
+              <span><i style="background:#39ff14"></i>$J/J_0$</span>
+            </div>
+          </div>
+          <div class="plot">
+            <h3>The energy landscape at fixed $J$</h3>
+            <p>$E_{\rm rot,min}(\theta)=J^2/(2R^2 f(\theta))$ for the chosen $\alpha$ and $I_1/I_3$. The dot is the top right now.</p>
+            <canvas id="tLand" aria-label="Energy landscape as a function of tilt"></canvas>
+            <div class="legend">
+              <span><i style="background:#c77dff"></i>$E_{\rm rot,min}(\theta)$, normalised</span>
+              <span><i style="background:#f5c878"></i>Tilt of the top</span>
+            </div>
+          </div>
+        </div>
+  </div>
+
+</section>
+
+<!-- ============ BILLEDET FRA LUND ============ -->
+<section class="block" id="lund">
+  <div class="section-header">
+    <h2>The photograph from Lund</h2>
+    <p>On 31 May 1951 Niels Bohr and Wolfgang Pauli bent over a tippe top on the floor in Lund. The top is Danish.</p>
+  </div>
+  <div class="prose">
+    <figure class="photo">
+      <img src="pauli-bohr-tippetop.jpg" alt="Wolfgang Pauli and Niels Bohr bending over a tippe top on the floor" loading="lazy" width="1200" height="992">
+      <figcaption>Wolfgang Pauli (left) and Niels Bohr studying a tippe top at the inauguration of the new physics institute in Lund, 31 May 1951. Niels Bohr Archive, Copenhagen.</figcaption>
+    </figure>
+    <p>The photograph is one of the most reproduced in the history of physics. Two of the greatest physicists of the twentieth century stand bent forward, hands on knees, watching a toy with the same concentration they otherwise gave to quantum mechanics.</p>
+    <p>The toy had been patented as early as 1891 by Helene Sperl in Munich, but the patent lapsed the following year. The engineer Werner Østberg reinvented it in 1950 after a journey in South America, where he had seen people spin a small round fruit by its stalk. The fruit turned over and carried on spinning on its stalk. Østberg called his top the ‘tippetop’, mass-produced it and took out patents in several countries. Within a few years it was sold all over the world – in Canada for 25 cents at the chemist's, and in the USA in cereal boxes.</p>
+    <p>Bohr was delighted. According to the Danish newspaper Politiken of 1 June 1951, he showed the top to the King of Sweden at the inauguration in Lund. The puzzle was discussed in the daily press, and in 1952 the first theoretical papers appeared, among them by C. M. Braams and N. M. Hugenholtz in <em>Physica</em>. J. L. Synge at first thought that friction was irrelevant, but was persuaded by the others. For friction is the whole key, as the simulation above and the theory below show.</p>
+  </div>
+</section>
+
+<!-- ============ TEORI ============ -->
+<section class="block" id="teori">
+  <div class="section-header">
+    <h2>The theory behind it</h2>
+    <p>Both tops are governed by the same two equations for a rigid body: $M\dot{\mathbf v}_C=\sum\mathbf F$ and $\dot{\mathbf L}=\boldsymbol\tau$.</p>
+  </div>
+
+  <div class="prose">
+    <h3 id="teori-gyro">The gyroscope</h3>
+
+    <h4>The vector picture</h4>
+    <p>If the rotor spins fast, $\mathbf L\approx I_3\omega_3\,\hat{\mathbf e}_3$. The torque of gravity about the pivot is $\boldsymbol\tau = l\,\hat{\mathbf e}_3\times(-Mg\,\hat{\mathbf z})$. It is horizontal and perpendicular to $\mathbf L$, so only the direction changes:</p>
+    $$\dot{\hat{\mathbf e}}_3=\boldsymbol\Omega\times\hat{\mathbf e}_3,\qquad \Omega=\frac{Mgl}{I_3\,\omega_3}.$$
+    <p>The faster the rotor spins, the more slowly the axle precesses. These are the orange and the blue vectors in the simulation: $\boldsymbol\tau$ always points where $\mathbf L$ is heading.</p>
+
+    <h4>The Lagrangian and the conserved quantities</h4>
+    <p>With the Euler angles $\theta$ (tilt), $\phi$ (precession) and $\psi$ (spin),</p>
+    $$\mathcal L=\tfrac12 I_1\left(\dot\theta^2+\dot\phi^2\sin^2\theta\right)+\tfrac12 I_3\left(\dot\psi+\dot\phi\cos\theta\right)^2-Mgl\cos\theta .$$
+    <p>$\phi$ and $\psi$ are cyclic, so two angular momenta are conserved together with the energy:</p>
+    $$L_3=I_3\left(\dot\psi+\dot\phi\cos\theta\right)=I_3\omega_3,\qquad L_z=I_1\dot\phi\sin^2\theta+L_3\cos\theta .$$
+
+    <h4>Steady precession</h4>
+    <p>The Lagrange equation for $\theta$ is $I_1\ddot\theta=I_1\dot\phi^2\sin\theta\cos\theta-L_3\dot\phi\sin\theta+Mgl\sin\theta$. Setting $\ddot\theta=\dot\theta=0$ gives a quadratic in $\dot\phi$:</p>
+    $$I_1\cos\theta\,\dot\phi^2-L_3\dot\phi+Mgl=0\quad\Longrightarrow\quad \dot\phi=\frac{2Mgl}{L_3\pm\sqrt{L_3^2-4I_1Mgl\cos\theta}}.$$
+    <p>For a fast top the plus sign gives the slow branch $\dot\phi\approx Mgl/(I_3\omega_3)$, and the minus sign the fast one $\dot\phi\approx I_3\omega_3/(I_1\cos\theta)$. The button <em>Steady precession</em> starts the gyroscope exactly on the slow branch.</p>
+
+    <details>
+      <summary>Nutation: why the axle traces arcs when released from rest</summary>
+      <p>Eliminate $\dot\phi$ and $\dot\psi$ using the conserved quantities. The $\theta$ motion then becomes one-dimensional in an effective potential:</p>
+      $$E'=\tfrac12 I_1\dot\theta^2+\frac{\left(L_z-L_3\cos\theta\right)^2}{2I_1\sin^2\theta}+Mgl\cos\theta .$$
+      <p>$\theta$ oscillates between two turning points. If the axle is released from rest, $\dot\phi=0$ at the upper turning point and the trail has sharp corners (cycloid-like arcs). For a fast top the nutation frequency is roughly $I_3\omega_3/I_1$, and the amplitude falls off as $1/\omega_3^2$. Turn up the spin rate in the simulation and watch the arcs shrink.</p>
+    </details>
+
+    <details>
+      <summary>Friction in the bearing: why the gyroscope eventually sinks</summary>
+      <p>A torque along the axle, $\dot L_3=-kL_3$, reduces $L_3$. Since the precession goes as $1/L_3$, it gets faster and faster, and the axle sinks. In the simulation the gyroscope stops when the rotor hits the tower.</p>
+    </details>
+
+    <h3 id="teori-tippe">The tippe top</h3>
+
+    <h4>Geometry</h4>
+    <p>The ball has radius $R$ and centre $O$. The centre of mass $C$ lies $\alpha R$ from $O$ along the axis of symmetry, and $\hat{\mathbf e}_3$ points from $C$ towards the stem. $\theta=0$ is the top on its ball, $\theta=\pi$ on its stem. The contact point $P$ always lies directly below $O$, so</p>
+    $$\mathbf a=\overrightarrow{CP}=R\left(\alpha\hat{\mathbf e}_3-\hat{\mathbf z}\right),\qquad z_C=R\left(1-\alpha\cos\theta\right).$$
+    <p>A full inversion raises the centre of mass by $2\alpha R$.</p>
+
+    <h4>Equations of motion and energy loss</h4>
+    <p>The force from the table, $\mathbf F=N\hat{\mathbf z}+\mathbf F_f$, acts at $P$:</p>
+    $$M\dot{\mathbf v}_C=\mathbf F-Mg\hat{\mathbf z},\qquad \dot{\mathbf L}=\mathbf a\times\mathbf F,\qquad \mathbf F_f=-\mu N\frac{\mathbf v_P}{|\mathbf v_P|}.$$
+    <p>The slip velocity $\mathbf v_P=\mathbf v_C+\boldsymbol\omega\times\mathbf a$ is horizontal, so the normal force does no work, and $\dot E=\mathbf F_f\cdot\mathbf v_P\le 0$. The simulation solves exactly these equations, with the normal force fixed by the requirement that the ball stays on the table.</p>
+
+    <h4>Jellett's constant</h4>
+    <p>Put $J=\mathbf L\cdot\mathbf a$. Then $\dot J=(\mathbf a\times\mathbf F)\cdot\mathbf a+\mathbf L\cdot\dot{\mathbf a}$. The first term is zero. With $\dot{\mathbf a}=\alpha R\,\boldsymbol\omega\times\hat{\mathbf e}_3$ and $\mathbf L=I_1\boldsymbol\omega+(I_3-I_1)\omega_3\hat{\mathbf e}_3$, both triple products contain two identical vectors:</p>
+    $$\dot J=\alpha R\left[I_1\,\boldsymbol\omega\cdot(\boldsymbol\omega\times\hat{\mathbf e}_3)+(I_3-I_1)\,\omega_3\,\hat{\mathbf e}_3\cdot(\boldsymbol\omega\times\hat{\mathbf e}_3)\right]=0 .$$
+    <p>So $J=R(\alpha L_3-L_z)$ is conserved exactly, whatever the friction law. It is the flat green line in the graph above.</p>
+
+    <h4>Final spin and the energy threshold</h4>
+    <p>Start with $\omega_0$ at $\theta=0$ and finish with $\omega_1$ at $\theta=\pi$. Conservation of $J$ gives</p>
+    $$I_3\omega_0(\alpha-1)=-I_3\omega_1(1+\alpha)\quad\Longrightarrow\quad \omega_1=\frac{1-\alpha}{1+\alpha}\,\omega_0 .$$
+    <p>Seen from the table the top spins the same way, but relative to the body the rotation has reversed. Since friction can only remove energy, the inversion requires $E_1\le E_0$, and with $1-\left(\frac{1-\alpha}{1+\alpha}\right)^2=\frac{4\alpha}{(1+\alpha)^2}$ this reduces to</p>
+    $$\omega_0^2\ge\frac{MgR\,(1+\alpha)^2}{I_3}.$$
+
+    <h4>Stability: the energy landscape</h4>
+    <p>For fast spin the rotational energy dominates. Minimise $\tfrac12\mathbf L\cdot I^{-1}\mathbf L$ subject to the constraint $\mathbf L\cdot\mathbf a=J$. The Lagrange multiplier gives $\boldsymbol\omega=\lambda\mathbf a$: the top rotates about the line $CP$, and the contact point does not slip. The energy is then</p>
+    $$E_{\rm rot,min}(\theta)=\frac{J^2}{2R^2f(\theta)},\qquad f(\theta)=I_1\sin^2\theta+I_3(\alpha-\cos\theta)^2,$$
+    $$f'(\theta)=2\sin\theta\left[(I_1-I_3)\cos\theta+\alpha I_3\right].$$
+    <p>The upright state is an energy minimum precisely when $I_1/I_3 \lt 1-\alpha$. The inverted state is a minimum precisely when $I_1/I_3 \lt 1+\alpha$. The top therefore inverts when</p>
+    $$1-\alpha \lt \frac{I_1}{I_3} \lt 1+\alpha .$$
+    <p>For $I_1/I_3 \gt 1+\alpha$ it ends in a tilted, precessing state with $\cos\theta^*=\alpha I_3/(I_3-I_1)$. Friction draws energy out at fixed $J$, and the top rolls down the landscape, exactly as the dot in the graph shows.</p>
+
+  </div>
+</section>
+
+<!-- ============ ÆG ============ -->
+<section class="block" id="aeg">
+  <div class="section-header">
+    <h2>The boiled egg and the raw egg</h2>
+    <p>You don't need a tippe top. A hard-boiled egg spun fast on a smooth table stands up and carries on spinning on one end. A raw egg is hard to get spinning at all, and it never stands up. Stop a spinning raw egg with a finger and let go at once, and it starts turning again by itself.</p>
+  </div>
+  <div class="sim" id="eggSim">
+    <div>
+      <div class="stage eggstage">
+        <canvas id="eCanvas" aria-label="3D simulation of a boiled and a raw egg spinning on a table"></canvas>
+        <div class="hud" id="eHud"></div>
+        <div class="status" id="eStatus">At rest</div>
+        <div class="hint">Left: boiled egg. Right: raw egg. Drag to rotate; scroll or pinch to zoom.</div>
+      </div>
+      <div class="legend">
+        <span><i style="background:#4cc9f0"></i>Angular momentum $\mathbf L$</span>
+        <span><i style="background:#ff4d6d"></i>$\mathbf a$: centre of mass to contact point</span>
+        <span><i style="background:#f5a623"></i>Yolk</span>
+      </div>
+      <div class="plot">
+        <h3>Angular velocity</h3>
+        <p>Grey: the boiled egg. Orange: the raw egg's shell. Blue, dashed: the liquid in the raw egg. The yellow dashed line is the threshold for standing up.</p>
+        <canvas id="ePlot" aria-label="Graph of the eggs' angular velocity" style="height:220px"></canvas>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>The eggs</h3>
+      <div class="ctrl"><label for="eW"><span>Twist with the fingers $\omega_0$</span><output id="eWo"></output></label>
+        <input type="range" id="eW" min="10" max="120" step="1" value="80"></div>
+      <div class="ctrl"><label for="eT"><span>Initial tilt $\theta_0$</span><output id="eTo"></output></label>
+        <input type="range" id="eT" min="70" max="110" step="1" value="96"></div>
+      <div class="checks">
+        <label><input type="checkbox" id="eGlass" checked> Transparent shell</label>
+        <label><input type="checkbox" id="eVec" checked> Vectors</label>
+      </div>
+      <div class="btns">
+        <button id="eSpin" type="button" class="primary">Spin the eggs</button>
+        <button id="eHold" type="button">Hold down: stop with the fingers</button>
+      </div>
+      <table class="read">
+        <tr><td>Boiled egg $\omega$</td><td id="eRk">–</td></tr>
+        <tr><td>Raw egg, shell</td><td id="eRs">–</td></tr>
+        <tr><td>Raw egg, liquid</td><td id="eRl">–</td></tr>
+        <tr><td>Boiled egg stands up</td><td id="eRe">–</td></tr>
+      </table>
+      <p class="note">$\theta$ is the angle between the egg's axis, taken from the broad end towards the pointed end, and the vertical. For $\theta_0&gt;90°$ the pointed end points slightly downwards at the start, and the boiled egg stands up on its pointed end. For $\theta_0&lt;90°$ it stands up on the broad end. Shell and contents are coupled by viscous friction with a coupling time of 0.3 s. The rise is drawn from the energy argument below, not from the full dynamics.</p>
+    </div>
+  </div>
+  <div class="prose">
+    <h3>The boiled egg: the same physics as the tippe top</h3>
+    <p>The boiled egg is a rigid body sliding on the table, just like the tippe top. The contact point slips, friction removes energy, and the quantity $J=\mathbf L\cdot\mathbf a$ is approximately conserved – exactly for a sphere, only approximately for an egg. In 2002 Keith Moffatt and Yutaka Shimomura gave the full explanation of how the egg rises in a slow ‘gyroscopic balance’.</p>
+    <p>Think of the egg as an elongated ellipsoid of revolution with semi-axes $a>b$ and the moments of inertia $I_1=\tfrac15M(a^2+b^2)$ about a transverse axis and $I_3=\tfrac25Mb^2$ about the long axis. Lying down, $|\mathbf a|=b$; standing, $|\mathbf a|=a$. At fixed $J$, $L=J/|\mathbf a|$, so</p>
+    $$E_{\text{lying}}=\frac{J^2}{2I_1b^2},\qquad E_{\text{standing}}=\frac{J^2}{2I_3a^2},\qquad \frac{E_{\text{standing}}}{E_{\text{lying}}}=\frac{a^2+b^2}{2a^2}<1 .$$
+    <p>The standing egg has the lower rotational energy, and friction takes it there. In return, the centre of mass is raised by $a-b$. With $a=3$ cm and $b=2.2$ cm the energy ratio is 0.77, and the requirement $(1-0.77)\tfrac12I_1\omega^2\ge Mg(a-b)$ gives $\omega\gtrsim50$ rad/s, about 8 revolutions per second.</p>
+    <h3>Which end does it stand on?</h3>
+    <p>A real egg has a broad and a pointed end, and the centre of mass lies nearer the broad one. The egg can stand up on either end. Kenzo Sasaki showed in 2004 that it depends on the egg's shape and on how it is tilted at the start: there is a critical angle, and if the starting angle lies on one side of it the egg stands up on its pointed end, otherwise on its broad end. According to Sasaki the egg most often ends on its broad end, but it can also stand on its pointed end with the broad end up – and then it resembles the tippe top, ending with its centre of mass as high as possible. Try it yourself with several eggs. In the simulation you choose with the initial tilt $\theta_0$.</p>
+    <h3>The raw egg: the liquid lags behind</h3>
+    <p>In a raw egg only the shell is rigid. White and yolk are a liquid, coupled to the shell only through viscosity. Treating the shell as a thin spherical shell with a tenth of the mass, and the contents as a solid sphere, $I_{\text{shell}}/I_{\text{liquid}}=\tfrac23m_{\text{shell}}r^2\big/\tfrac25m_{\text{liquid}}r^2\approx0.19$.</p>
+    <p>When you twist the egg into motion, the shell gets the angular velocity $\omega_0$ while the liquid stays still. Soon they share the angular momentum and end with</p>
+    $$\omega=\frac{I_{\text{shell}}}{I_{\text{shell}}+I_{\text{liquid}}}\,\omega_0\approx0.16\,\omega_0 .$$
+    <p>The raw egg spins at only a sixth of the speed, and 84% of the energy has gone into viscous friction in the liquid. It never reaches the 8 revolutions per second – and in any case the liquid would not follow like a rigid body if the egg began to tip.</p>
+    <p>If you stop the shell with a finger, you brake only the shell. The liquid carries on, as Newton's first law demands, and when you let go it hands back its angular momentum: the egg turns again at about $0.84\,\omega_{\text{liquid}}$. A boiled egg has no hidden rotation and stays put. This is the classic way to tell a boiled egg from a raw one without breaking it.</p>
+  </div>
+</section>
+
+<!-- ============ INERTINAVIGATION ============ -->
+<section class="block" id="inertinavigation">
+  <div class="section-header">
+    <h2>Inertial navigation</h2>
+    <p>A submarine under the polar ice, a rocket on its way up and an airliner over the Atlantic can find their way without looking out. They measure their own acceleration and rotation and work out where they are. The rigid angular momentum of the gyroscope is at the heart of it.</p>
+  </div>
+  <div class="prose">
+    <h3 id="ins-princip">The principle: integrate twice</h3>
+    <p>If you know the starting point and the starting velocity, the acceleration gives the rest: $\mathbf v(t)=\mathbf v_0+\int_0^t\mathbf a\,dt$ and $\mathbf r(t)=\mathbf r_0+\int_0^t\mathbf v\,dt$. It sounds simple, but two things make it hard.</p>
+    <p>First, an accelerometer does not measure the acceleration $\mathbf a$. It measures the <em>specific force</em> $\mathbf f=\mathbf a-\mathbf g$, the force per unit mass from everything except gravity. An accelerometer lying still on the table reads $9.81\ \mathrm{m/s^2}$ upwards, and one in free fall reads zero. The navigation computer has to add gravity back itself:</p>
+    $$\ddot{\mathbf r}=\mathbf f+\mathbf g(\mathbf r).$$
+    <p>Second, $\mathbf f$ is measured along the instrument's own axes, and you must know precisely how these are oriented relative to the vertical and to north. If the instrument is tilted by a small angle $\delta$, part of gravity, $g\,\delta$, is read as a horizontal acceleration. An error of one milliradian (0.06°) gives $0.01\ \mathrm{m/s^2}$, and after an hour the position has overshot by $\tfrac12\cdot 0.0098\cdot 3600^2\approx 64$ km.</p>
+    <p>Keeping the direction is the gyroscope's job. With no torque, $\dot{\mathbf L}=\mathbf 0$, so a fast rotor holds its axis fixed relative to the fixed stars, however the vehicle turns around it. It is the same $\dot{\mathbf L}=\boldsymbol\tau$ as in the simulation at the top, only with $\boldsymbol\tau$ made as small as it can possibly be. The bearing friction that makes the gyroscope above sink is exactly the kind of error designers have fought against for a hundred years.</p>
+    <p>On the rotating Earth two fictitious terms come in. In an Earth-fixed frame with the Earth's angular velocity $\boldsymbol\Omega_\oplus$,</p>
+    $$\ddot{\mathbf r}=\mathbf f-2\boldsymbol\Omega_\oplus\times\dot{\mathbf r}+\mathbf g_{\rm eff}(\mathbf r),$$
+    <p>where $\mathbf g_{\rm eff}$ includes the centrifugal term. The Coriolis term is the same one that turns Foucault's pendulum.</p>
+
+    <h3 id="ins-platform">Two designs: stable platform and strapdown</h3>
+    <h4>The gimballed platform</h4>
+    <p>In the classical systems three gyroscopes and three accelerometers sit on a small platform hung in gimbals. When the vehicle turns, the gyroscopes sense it and servo motors turn the gimbals back, so that the platform stays level and pointing north. The accelerometers then measure directly north, east and vertical, and the computer only has to integrate.</p>
+    <p>Three gimbals have one weakness: gimbal lock. When the middle gimbal has turned through 90°, the inner and outer axes line up, and one degree of freedom disappears. It is the same singularity seen in the gyroscope's equations above, where $\sin^2\theta$ stands in the denominator of the equation for $\ddot\phi$: Euler angles cannot describe every orientation smoothly. The platform in the Apollo spacecraft had only three gimbals, and the astronauts had to steer clear of the dangerous orientations. During Apollo 11 Michael Collins jokingly asked for a fourth gimbal for Christmas.</p>
+    <h4>Strapdown</h4>
+    <p>In modern systems the sensors are bolted to the vehicle. The gyroscopes measure the angular velocity $\boldsymbol\omega$ in the vehicle's own axes, and the computer keeps track of the orientation, typically as a quaternion $q$:</p>
+    $$\dot q=\tfrac12\,q\otimes(0,\boldsymbol\omega).$$
+    <p>The accelerometer readings are then rotated into a north–east–down frame with $q$ before integration. Quaternions have no singularity, so gimbal lock disappears. In return the computer must calculate hundreds of times a second, and the sensors must be able to follow the vehicle's fastest turns. That is why strapdown only broke through in the 1980s, when the computing power and a new kind of gyroscope were in place.</p>
+
+    <h3 id="ins-sensorer">Gyroscopes without a spinning top</h3>
+    <h4>The ring laser and the Sagnac effect</h4>
+    <p>Two laser beams run in opposite directions round a closed light path. When the instrument is at rest, the two paths are equally long. If it turns with angular velocity $\Omega$ about an axis perpendicular to the light path, the path going with the rotation becomes longer and the one going against it shorter. In a ring laser this gives a frequency difference</p>
+    $$\Delta f=\frac{4A}{\lambda P}\,\Omega ,$$
+    <p>where $A$ is the enclosed area and $P$ the perimeter. A triangular cavity with 10 cm sides and a helium–neon laser ($\lambda=633$ nm) gives, at the Earth's rotation of $7.29\cdot10^{-5}$ rad/s, a difference of about 7 Hz between two frequencies of $4.7\cdot10^{14}$ Hz. At very slow rotation the two waves lock onto each other. This is overcome by shaking the whole block slightly back and forth. The great advantage of the ring laser is that nothing rotates and nothing wears.</p>
+    <h4>Fibre-optic and vibrating gyroscopes</h4>
+    <p>The fibre-optic gyroscope sends the light many times round a coil of optical fibre. The phase difference is $\Delta\varphi=8\pi NA\,\Omega/(\lambda c)$ for $N$ turns, so a long fibre gives high sensitivity.</p>
+    <p>The gyroscope in a mobile phone is a MEMS structure: a tiny silicon mass vibrating back and forth with velocity $\mathbf v$. When the chip turns, the Coriolis force $-2m\,\boldsymbol\Omega\times\mathbf v$ acts perpendicular to the vibration and sets off a second oscillation, which is measured capacitively. These are two coupled oscillations, with the rotation as the coupling. A related principle is used in the very precise hemispherical resonators: G. H. Bryan noticed in 1890 that the vibration pattern of a ringing wine glass that is turned does not quite turn with the glass.</p>
+
+    <h3 id="schuler">Schuler: a pendulum as long as the Earth's radius</h3>
+    <p>A platform that is to be kept level on a sphere cannot simply be held fixed in inertial space. When the vehicle moves a distance $x$ northwards, the plumb line has turned through the angle $x/R$. The platform must therefore be turned at the angular velocity $v/R$, calculated from the speed the system has itself worked out.</p>
+    <p>Max Schuler, cousin of the gyrocompass inventor Hermann Anschütz-Kaempfe, showed in 1923 that this makes the system self-correcting. If the calculated speed is too high, the platform is turned too far and tilts. Part of gravity is then read as a deceleration, which pulls the speed error back. With the tilt error $\psi$, the speed error $\delta v$, a constant accelerometer bias $b$ and a constant gyro drift $\varepsilon$,</p>
+    $$\delta\dot v=-g\,\psi+b,\qquad \dot\psi=\frac{\delta v}{R}+\varepsilon\qquad\Longrightarrow\qquad \delta\ddot x=-\frac gR\,\delta x+b-g\,\varepsilon\,t .$$
+    <p>The left-hand side and the first term on the right are the equation of a pendulum of length $R$. The period is</p>
+    $$T_S=2\pi\sqrt{\frac Rg}=84.4\ \text{min},$$
+    <p>the same orbital period as a satellite circling just above the Earth's surface. Starting from rest, the solutions are</p>
+    $$\delta x_b=\frac{bR}{g}\left(1-\cos\omega_S t\right),\qquad \delta x_\varepsilon=-R\,\varepsilon\left(t-\frac{\sin\omega_S t}{\omega_S}\right),\qquad \omega_S=\sqrt{g/R}.$$
+    <p>An accelerometer error gives only a bounded oscillation. An error of 100 µg ($10^{-4}g$) makes the position swing between 0 and 1.3 km. Without Schuler tuning the same error would give $\tfrac12bt^2$: 6.4 km after one hour and 230 km after six. Gyro drift is worse, because it gives an error that grows steadily with time. A drift of 0.01°/h gives $R\varepsilon\approx 1.1$ km/h, or roughly 0.6 nautical miles an hour. That is why the accuracy of navigation systems is quoted in nautical miles per hour.</p>
+    <p>The vertical has no such rescue. Gravity decreases with height, so too large a calculated height gives too small a calculated gravity, and the error grows: $\delta\ddot h=+(2g/R)\,\delta h$, with the time constant $\sqrt{R/2g}\approx 9.5$ min. Height is therefore always supported by a barometric altimeter.</p>
+  </div>
+
+  <div class="sim" id="schulerSim" style="margin-top:1.5rem">
+    <div class="plot">
+      <h3>Position error over time</h3>
+      <p>Blue: Schuler-tuned platform. Red, dashed: the same sensor errors without Schuler tuning, integrated as on a flat Earth. Grey: the error from gyro drift alone.</p>
+      <canvas id="sPlot" style="height:320px" aria-label="Graph of inertial-navigation position error against time"></canvas>
+      <div class="legend">
+        <span><i style="background:#4cc9f0"></i>Schuler-tuned</span>
+        <span><i style="background:#ff4d6d"></i>Without Schuler</span>
+        <span><i style="background:#8a90a0"></i>Linear growth of the drift $R\varepsilon t$</span>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Sensor errors</h3>
+      <div class="ctrl"><label for="sB"><span>Accelerometer bias $b$</span><output id="sBo"></output></label>
+        <input type="range" id="sB" min="0" max="500" step="5" value="100"></div>
+      <div class="ctrl"><label for="sE"><span>Gyro drift $\varepsilon$</span><output id="sEo"></output></label>
+        <input type="range" id="sE" min="0" max="0.1" step="0.001" value="0.01"></div>
+      <div class="ctrl"><label for="sH"><span>Flight time</span><output id="sHo"></output></label>
+        <input type="range" id="sH" min="1" max="24" step="0.5" value="6"></div>
+      <div class="checks">
+        <label><input type="checkbox" id="sFlat" checked> Show without Schuler</label>
+      </div>
+      <table class="read">
+        <tr><td>Schuler period $T_S$</td><td id="sRT">–</td></tr>
+        <tr><td>Error at landing, Schuler</td><td id="sRs">–</td></tr>
+        <tr><td>Error at landing, without</td><td id="sRf">–</td></tr>
+        <tr><td>Oscillation from $b$: $2bR/g$</td><td id="sRb">–</td></tr>
+        <tr><td>Drift $R\varepsilon$</td><td id="sRe">–</td></tr>
+      </table>
+      <p class="note">The errors are added with the same sign, so the curve shows the worst case. A typical aircraft navigation system has about 0.01°/h and 50–100 µg.</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <h3 id="ins-historie">From Foucault to the mobile phone</h3>
+    <p>In 1852 Léon Foucault gave the gyroscope its name: he wanted to <em>see the rotation</em> of the Earth with a rotor that held its direction while the laboratory turned beneath it. In 1908 Hermann Anschütz-Kaempfe built the first usable gyrocompass, because he wanted to take a submarine to the North Pole, and Schuler's analysis of 1923 turned it into a navigation instrument that could cope with a ship's motion.</p>
+    <p>The V-2 rocket of 1944 held its heading with gyroscopes and cut its engine when an integrating accelerometer had counted up to the right speed. In 1953 Charles Stark Draper of MIT flew an aircraft from Massachusetts to Los Angeles with an inertial system and no navigator. In 1958 the submarine USS Nautilus sailed under the North Pole with an inertial system on board. There both the old compasses were useless: the magnetic compass because the field lines stand almost vertical that far north, and the gyrocompass because the Earth's axis of rotation is vertical at the pole, so there is no horizontal component to settle towards.</p>
+    <p>Today ring-laser gyroscopes sit in strapdown systems in every large airliner, and MEMS gyroscopes in phones, cars and drones. Satellite navigation and inertial navigation complement each other, typically coupled in a Kalman filter: the satellites keep the drift down over long periods, and the inertial system covers the seconds and minutes when the signal is missing. An inertial system can be neither shadowed nor jammed from outside, and it has become topical again since GPS interference has in recent years affected air traffic over the Baltic.</p>
+    <p>The oscillation of the position error with its period of 84.4 minutes is a pendulum without coupling. Oscillations that exchange energy with one another are the subject of the page on <a href="koblede-penduler.html">coupled pendulums</a>.</p>
+  </div>
+</section>
+<section class="block" id="sammenfatning">
+  <div class="section-header">
+    <h2>Summary</h2>
+    <p>The gyroscope is conservative. The tippe top is dissipative, and one conserved quantity decides where the energy loss leads. In inertial navigation the gyroscope's conserved angular momentum is the reference itself.</p>
+  </div>
+  <div class="prose">
+    <div class="tablewrap">
+      <table class="sum">
+        <tr><th></th><th>Gyroscope</th><th>Tippe top</th></tr>
+        <tr><td>Driving factor</td><td>Torque of gravity</td><td>Sliding friction</td></tr>
+        <tr><td>Conserved</td><td>$E$, $L_3$, $L_z$</td><td>$J=R(\alpha L_3-L_z)$</td></tr>
+        <tr><td>Key result</td><td>$\Omega=Mgl/(I_3\omega_3)$</td><td>$\omega_1=\omega_0(1-\alpha)/(1+\alpha)$</td></tr>
+        <tr><td>Everyday version</td><td>Bicycle wheel on a string</td><td>Hard-boiled egg standing up</td></tr>
+        <tr><td>Condition</td><td>$L_3^2\ge 4I_1Mgl\cos\theta$</td><td>$\omega_0^2\ge MgR(1+\alpha)^2/I_3$ and $1-\alpha \lt I_1/I_3 \lt 1+\alpha$</td></tr>
+      </table>
+    </div>
+    <p>The full derivation with figures is available as a report (in Danish):</p>
+    <div class="downloads">
+      <a href="gyroskop-og-tippetop.pdf">Report (PDF)</a>
+      <a href="gyroskop-og-tippetop.docx">Report (Word)</a>
+    </div>
+    <h3>References</h3>
+    <ul class="refs">
+      <li>H. Goldstein, C. Poole &amp; J. Safko, <em>Classical Mechanics</em>, 3rd ed., Addison-Wesley (2002), ch. 5.</li>
+      <li>J. H. Jellett, <em>A Treatise on the Theory of Friction</em>, Dublin (1872).</li>
+      <li>C. M. Braams, ‘On the influence of friction on the motion of a top’, <em>Physica</em> 18, 503 (1952).</li>
+      <li>N. M. Hugenholtz, ‘On tops rising by friction’, <em>Physica</em> 18, 515 (1952).</li>
+      <li>R. J. Cohen, ‘The tippe top revisited’, <em>Am. J. Phys.</em> 45, 12 (1977).</li>
+      <li>S. Ebenfeld &amp; F. Scheck, ‘A new analysis of the tippe top’, <em>Ann. Phys.</em> 243, 195 (1995).</li>
+      <li>N. M. Bou-Rabee, J. E. Marsden &amp; L. A. Romero, ‘Tippe top inversion as a dissipation-induced instability’, <em>SIAM J. Appl. Dyn. Syst.</em> 3, 352 (2004).</li>
+      <li>H. K. Moffatt &amp; Y. Shimomura, ‘Spinning eggs – a paradox resolved’, <em>Nature</em> 416, 385 (2002).</li>
+      <li>K. Sasaki, ‘Spinning eggs – which end will rise?’, <em>Am. J. Phys.</em> 72, 775 (2004).</li>
+      <li>M. Schuler, ‘Die Störung von Pendel- und Kreiselapparaten durch die Beschleunigung des Fahrzeuges’, <em>Physikalische Zeitschrift</em> 24, 344 (1923).</li>
+      <li>G. Sagnac, ‘L'éther lumineux démontré par l'effet du vent relatif d'éther dans un interféromètre en rotation uniforme’, <em>C. R. Acad. Sci.</em> 157, 708 (1913).</li>
+      <li>D. H. Titterton &amp; J. L. Weston, <em>Strapdown Inertial Navigation Technology</em>, 2nd ed., IET (2004).</li>
+      <li>D. MacKenzie, <em>Inventing Accuracy: A Historical Sociology of Nuclear Missile Guidance</em>, MIT Press (1990).</li>
+    </ul>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <a href="index-en.html">Physics, Mathematics and Chemistry</a> · Michael Grant · <a href="mailto:michael.h.grant@gmail.com">michael.h.grant@gmail.com</a>
+</footer>
+<script>
+(function(){
+'use strict';
+const REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $ = id => document.getElementById(id);
+const fmt = (x,d=2) => x.toFixed(d).replace('-','−');
+const DEG = 180/Math.PI;
+
+/* ---------- Orbit-kamera (træk, hjul, knib) ---------- */
+function orbit(camera, dom, target, st){
+  const s = Object.assign({r:30, az:0.6, el:0.35, minR:8, maxR:90}, st);
+  const ptrs = new Map(); let pinch0 = 0, r0 = s.r;
+  function apply(){
+    s.el = Math.max(-0.1, Math.min(1.45, s.el));
+    s.r = Math.max(s.minR, Math.min(s.maxR, s.r));
+    camera.position.set(
+      target.x + s.r*Math.cos(s.el)*Math.sin(s.az),
+      target.y + s.r*Math.sin(s.el),
+      target.z + s.r*Math.cos(s.el)*Math.cos(s.az));
+    camera.lookAt(target);
+  }
+  dom.addEventListener('pointerdown', e => { dom.setPointerCapture(e.pointerId); ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(ptrs.size===2){ const [a,b]=[...ptrs.values()]; pinch0=Math.hypot(a.x-b.x,a.y-b.y); r0=s.r; } });
+  dom.addEventListener('pointermove', e => {
+    if(!ptrs.has(e.pointerId)) return;
+    const p = ptrs.get(e.pointerId);
+    if(ptrs.size===1){ s.az -= (e.clientX-p.x)*0.008; s.el += (e.clientY-p.y)*0.006; }
+    p.x=e.clientX; p.y=e.clientY;
+    if(ptrs.size===2){ const [a,b]=[...ptrs.values()]; const d=Math.hypot(a.x-b.x,a.y-b.y); if(pinch0>0) s.r = r0*pinch0/d; }
+    apply();
+  });
+  const up = e => { ptrs.delete(e.pointerId); pinch0=0; };
+  dom.addEventListener('pointerup', up); dom.addEventListener('pointercancel', up);
+  dom.addEventListener('wheel', e => { e.preventDefault(); s.r *= Math.exp(e.deltaY*0.001); apply(); }, {passive:false});
+  apply();
+  return {apply, s};
+}
+
+function makeRenderer(canvas){
+  const r = new THREE.WebGLRenderer({canvas, antialias:true});
+  r.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+  r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap;
+  r.setClearColor(0x07080f, 1);
+  return r;
+}
+function fit(renderer, camera, canvas){
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if(!w||!h) return;
+  const c = renderer.domElement;
+  if(c.width !== Math.floor(w*renderer.getPixelRatio()) || c.height !== Math.floor(h*renderer.getPixelRatio())){
+    renderer.setSize(w, h, false); camera.aspect = w/h; camera.updateProjectionMatrix();
+  }
+}
+function lights(scene){
+  scene.add(new THREE.HemisphereLight(0xb8c6ff, 0x1a1208, 0.55));
+  const d = new THREE.DirectionalLight(0xffffff, 0.95);
+  d.position.set(14, 30, 12); d.castShadow = true;
+  d.shadow.mapSize.set(1024,1024);
+  const sc = d.shadow.camera; sc.left=-25; sc.right=25; sc.top=25; sc.bottom=-25; sc.near=1; sc.far=80;
+  scene.add(d); scene.add(d.target);
+  const rim = new THREE.PointLight(0x4cc9f0, 0.35, 80); rim.position.set(-15, 12, -12); scene.add(rim);
+  return d;
+}
+function tableTop(scene, size, color){
+  const m = new THREE.Mesh(new THREE.CircleGeometry(size, 64), new THREE.MeshStandardMaterial({color, roughness:0.85, metalness:0.05}));
+  m.rotation.x = -Math.PI/2; m.receiveShadow = true; scene.add(m);
+  const grid = new THREE.GridHelper(size*2, size, 0x2a3350, 0x161c30);
+  grid.position.y = 0.01; grid.material.transparent = true; grid.material.opacity = 0.55; scene.add(grid);
+  return m;
+}
+function arrow(color){
+  const a = new THREE.ArrowHelper(new THREE.Vector3(0,1,0), new THREE.Vector3(), 1, color, 0.9, 0.55);
+  a.line.material.linewidth = 2;
+  return a;
+}
+function setArrow(a, origin, vec, headScale){
+  const L = vec.length();
+  if(L < 1e-6){ a.visible = false; return; }
+  a.position.copy(origin); a.setDirection(vec.clone().normalize());
+  const hl = Math.min(0.9*(headScale||1), L*0.45);
+  a.setLength(L, hl, hl*0.6);
+}
+function trailLine(color, n){
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n*3), 3));
+  g.setDrawRange(0,0);
+  const l = new THREE.Line(g, new THREE.LineBasicMaterial({color, transparent:true, opacity:0.85}));
+  l.frustumCulled = false;
+  return {line:l, n, count:0, push(v){
+    const a = g.attributes.position.array;
+    if(this.count < n){ a.set([v.x,v.y,v.z], this.count*3); this.count++; }
+    else { a.copyWithin(0,3); a.set([v.x,v.y,v.z], (n-1)*3); }
+    g.setDrawRange(0,this.count); g.attributes.position.needsUpdate = true;
+  }, clear(){ this.count=0; g.setDrawRange(0,0); }};
+}
+function bindSlider(id, fmtFn, onChange){
+  const el = $(id), out = $(id+'o');
+  const upd = () => { out.textContent = fmtFn(+el.value); };
+  el.addEventListener('input', () => { upd(); onChange && onChange(+el.value); });
+  upd(); return el;
+}
+function whenVisible(el, cb){
+  let vis = true;
+  if('IntersectionObserver' in window){
+    new IntersectionObserver(es => { vis = es[0].isIntersecting; cb(vis); }, {threshold:0.02}).observe(el);
+  }
+  return () => vis;
+}
+
+/* =====================================================================
+   GYROSKOP: tung symmetrisk top med fast støttepunkt (Euler-vinkler)
+   ===================================================================== */
+const G = (function(){
+  const g = 9.82, M = 0.1, l = 0.04, Rr = 0.03;
+  const I3 = 0.5*M*Rr*Rr, I1 = 0.25*M*Rr*Rr + M*l*l;
+  const P = {kSpin:0, cNut:0};
+  let s = [1.4, 0, 0, 0, 0, 0], t = 0, fallen = false;
+  function d(s){
+    const th=s[0], thd=s[1], phd=s[3], L3=s[5];
+    const st=Math.sin(th), ct=Math.cos(th);
+    return [thd,
+      (I1*phd*phd*st*ct - L3*phd*st + M*g*l*st)/I1 - P.cNut*thd,
+      phd,
+      (L3*thd*st - 2*I1*phd*thd*st*ct)/(I1*st*st),
+      L3/I3 - phd*ct,
+      -P.kSpin*L3];
+  }
+  function reset(w3, th0, mode){
+    const L3 = I3*w3; let phd = 0;
+    if(mode==='steady'){ const c=Math.cos(th0), D=L3*L3-4*I1*M*g*l*c; phd = D>0 ? 2*M*g*l/(L3+Math.sqrt(D)) : M*g*l/L3; }
+    s = [th0, 0, 0, phd, 0, L3]; t = 0; fallen = false;
+  }
+  function step(h){
+    if(fallen) return;
+    const k1=d(s), a=s.map((x,i)=>x+h/2*k1[i]), k2=d(a), b=s.map((x,i)=>x+h/2*k2[i]), k3=d(b), c=s.map((x,i)=>x+h*k3[i]), k4=d(c);
+    for(let i=0;i<6;i++) s[i] += h/6*(k1[i]+2*k2[i]+2*k3[i]+k4[i]);
+    if(s[0] < 0.03){ s[0]=0.03; s[1]=Math.abs(s[1]); }
+    if(s[0] > 2.25){ s[0]=2.25; fallen = true; }
+    t += h;
+  }
+  return {P, reset, step, get s(){return s;}, get t(){return t;}, get fallen(){return fallen;}, M, g, l, I1, I3};
+})();
+
+(function gyroScene(){
+  const canvas = $('gCanvas'), stage = $('gStage');
+  const renderer = makeRenderer(canvas);
+  const scene = new THREE.Scene(); scene.fog = new THREE.Fog(0x07080f, 60, 140);
+  const camera = new THREE.PerspectiveCamera(40, 1.6, 0.1, 400);
+  const target = new THREE.Vector3(0, 2, 0);
+  const cam = orbit(camera, canvas, target, {r:36, az:0.9, el:0.32, minR:14, maxR:90});
+  const sun = lights(scene);
+  // gulv under tårnet (tårnet er 12 cm højt; støttepunkt i y=0)
+  const floorY = -12;
+  const floor = tableTop(scene, 34, 0x14182a); floor.position.y = floorY;
+  scene.children.filter(o=>o.type==='GridHelper').forEach(o=>o.position.y = floorY+0.01);
+  sun.target.position.set(0, floorY, 0);
+
+  const metal = new THREE.MeshStandardMaterial({color:0xb4bccb, metalness:0.45, roughness:0.35});
+  const dark = new THREE.MeshStandardMaterial({color:0x39425c, metalness:0.3, roughness:0.5});
+  // tårn
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(4.2, 4.8, 1, 48), dark); base.position.y = floorY+0.5; base.castShadow = base.receiveShadow = true; scene.add(base);
+  const tower = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.7, 11, 24), metal); tower.position.y = floorY+1+5.5; tower.castShadow = true; scene.add(tower);
+  const cup = new THREE.Mesh(new THREE.SphereGeometry(0.75, 24, 16, 0, Math.PI*2, Math.PI/2, Math.PI/2), metal); cup.position.y = -0.25; scene.add(cup);
+
+  // gyroskopet: yaw (φ) -> tilt (θ) -> body (lokal y = akse) -> spin (ψ)
+  const yaw = new THREE.Group(), tilt = new THREE.Group(), spin = new THREE.Group();
+  scene.add(yaw); yaw.add(tilt);
+  const axle = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 8.6, 16), metal); axle.position.y = 4.1; axle.castShadow = true; tilt.add(axle);
+  const tipBall = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 12), metal); tipBall.position.y = 8.4; tilt.add(tipBall);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(3.75, 0.2, 12, 72), new THREE.MeshStandardMaterial({color:0x4cc9f0, metalness:0.6, roughness:0.35, emissive:0x0b3a4a, emissiveIntensity:0.5}));
+  ring.position.y = 4; ring.castShadow = true; tilt.add(ring);
+  spin.position.y = 4; tilt.add(spin);
+  const rotorMat = new THREE.MeshStandardMaterial({color:0xd4d9e2, metalness:0.4, roughness:0.3});
+  const rotor = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 0.7, 64), rotorMat); rotor.castShadow = true; spin.add(rotor);
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 1.1, 32), dark); spin.add(hub);
+  // markeringer på rotoren så rotationen kan ses
+  for(let k=0;k<3;k++){
+    const mk = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.74, 1.9), new THREE.MeshStandardMaterial({color: k===0?0xff7a2a:0x3a4260, metalness:0.3, roughness:0.5}));
+    const a = k*2*Math.PI/3; mk.position.set(1.95*Math.cos(a), 0, 1.95*Math.sin(a)); mk.rotation.y = -a; spin.add(mk);
+  }
+
+  // vektorer
+  const aL = arrow(0x4cc9f0), aTau = arrow(0xff7a2a), aMg = arrow(0xff4d6d), aOm = arrow(0xc77dff);
+  [aL,aTau,aMg,aOm].forEach(a=>scene.add(a));
+  const trail = trailLine(0x39ff14, 2400); scene.add(trail.line);
+
+  const up = new THREE.Vector3(0,1,0);
+  let psiDisp = 0, paused = false, mode = 'rest', simStart = 0, lastTrail = null;
+
+  const w = bindSlider('gW', v => Math.round(v*60/(2*Math.PI)) + ' rpm', () => restart());
+  const th = bindSlider('gTh', v => v + '°', () => restart());
+  bindSlider('gK', v => fmt(v,2) + ' s⁻¹', v => G.P.kSpin = v);
+  bindSlider('gC', v => fmt(v,1) + ' s⁻¹', v => G.P.cNut = v);
+  const tempo = bindSlider('gT', v => '×' + fmt(v,2));
+  const vecBox = $('gVec'), trailBox = $('gTrail');
+  trailBox.addEventListener('change', () => { trail.line.visible = trailBox.checked; });
+
+  function restart(){ G.reset(+w.value, +th.value/DEG, mode); trail.clear(); lastTrail=null; }
+  function setMode(m){ mode = m; $('gRest').classList.toggle('primary', m==='rest'); $('gSteady').classList.toggle('primary', m==='steady'); restart(); }
+  $('gRest').onclick = () => setMode('rest');
+  $('gSteady').onclick = () => setMode('steady');
+  $('gPause').onclick = () => { paused = !paused; $('gPause').textContent = paused ? 'Resume' : 'Pause'; };
+  if(REDUCED){ paused = true; $('gPause').textContent = 'Resume'; }
+  restart();
+
+  const visible = whenVisible(stage, ()=>{});
+  const e3 = new THREE.Vector3();
+  let prev = performance.now(), hudTimer = 0;
+
+  function frame(now){
+    requestAnimationFrame(frame);
+    const dtReal = Math.min(0.05, (now - prev)/1000); prev = now;
+    if(!visible()) return;
+    fit(renderer, camera, canvas);
+    const s0 = G.s;
+    if(!paused && !G.fallen){
+      const simDt = dtReal * (+tempo.value);
+      const n = Math.max(1, Math.ceil(simDt/1e-4)), h = simDt/n;
+      for(let i=0;i<n;i++) G.step(h);
+      const psid = s0[5]/G.I3 - s0[3]*Math.cos(s0[0]);
+      psiDisp += dtReal*Math.sign(psid)*Math.min(Math.abs(psid)*(+tempo.value), 9);
+    }
+    const s = G.s, thv = s[0], phv = s[2];
+    yaw.rotation.y = phv; tilt.rotation.z = -thv; spin.rotation.y = psiDisp;
+    e3.set(Math.sin(thv)*Math.cos(phv), Math.cos(thv), -Math.sin(thv)*Math.sin(phv));
+
+    // spor af akslens ende
+    const tip = e3.clone().multiplyScalar(8.7);
+    if(!lastTrail || tip.distanceTo(lastTrail) > 0.04){ trail.push(tip); lastTrail = tip; }
+
+    const show = vecBox.checked;
+    [aL,aTau,aMg,aOm].forEach(a=>a.visible = show);
+    if(show){
+      const L3 = s[5], L30 = G.I3*(+w.value);
+      setArrow(aL, new THREE.Vector3(), e3.clone().multiplyScalar(14 + 6*(L3/L30-1)), 1.2);
+      const tau = new THREE.Vector3().crossVectors(e3, new THREE.Vector3(0,-1,0));
+      setArrow(aTau, new THREE.Vector3(), tau.multiplyScalar(7), 1);
+      const cm = e3.clone().multiplyScalar(4);
+      setArrow(aMg, cm, new THREE.Vector3(0,-5,0), 0.9);
+      const om = Math.max(-12, Math.min(12, s[3]*1.6));
+      setArrow(aOm, new THREE.Vector3(0,-0.2,0), new THREE.Vector3(0, om, 0), 0.9);
+      if(Math.abs(om) < 0.2) aOm.visible = false;
+    }
+    renderer.render(scene, camera);
+
+    hudTimer += dtReal;
+    if(hudTimer > 0.12){
+      hudTimer = 0;
+      const w3 = s[5]/G.I3;
+      $('gRth').textContent = fmt(thv*DEG,1) + '°';
+      $('gRphi').textContent = fmt(s[3],2) + ' rad/s';
+      $('gRtheo').textContent = fmt(G.M*G.g*G.l/s[5],2) + ' rad/s';
+      $('gRnut').textContent = fmt(2*Math.PI*G.I1/(G.I3*w3)*1000,0) + ' ms';
+      $('gRt').textContent = fmt(G.t,2) + ' s';
+      $('gHud').innerHTML = 'ω₃ = ' + Math.round(w3*60/(2*Math.PI)) + ' rpm<br>θ = ' + fmt(thv*DEG,1) + '°';
+      $('gStatus').textContent = G.fallen ? 'Fallen: the rotor hit the tower' : (paused ? 'Pause' : (Math.abs(s[1]) > 0.05 ? 'Precession with nutation' : 'Precessing'));
+    }
+  }
+  requestAnimationFrame(frame);
+})();
+
+/* =====================================================================
+   TIPPETOP: kugle med forskudt massemidtpunkt og glidende friktion
+   Tilstand: e3, e1 (legemets akser), ω (verden), x, y, vx, vy
+   ===================================================================== */
+const T = (function(){
+  const g = 9.82, M = 0.02, R = 0.02;
+  const P = {alpha:0.3, ratio:0.9, mu:0.3, eps:0.005};
+  let I3 = 0.4*M*R*R, I1 = P.ratio*I3;
+  const add=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]], mul=(a,k)=>[a[0]*k,a[1]*k,a[2]*k],
+        dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],
+        cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+  const Iw=(e3,w)=>add(mul(w,I1),mul(e3,(I3-I1)*dot(e3,w)));
+  const Iinv=(e3,x)=>add(mul(x,1/I1),mul(e3,(1/I3-1/I1)*dot(e3,x)));
+  let s = new Array(13).fill(0), t = 0, E0 = 1, J0 = 1;
+  function deriv(s){
+    const al=P.alpha;
+    const e3=[s[0],s[1],s[2]], e1=[s[3],s[4],s[5]], w=[s[6],s[7],s[8]];
+    const a=[al*R*e3[0], al*R*e3[1], al*R*e3[2]-R];
+    const e3d=cross(w,e3);
+    const vC=[s[11],s[12],-al*R*e3d[2]];
+    const vP=add(vC,cross(w,a));
+    const vh=Math.hypot(vP[0],vP[1]), f=vh/Math.sqrt(vh*vh+P.eps*P.eps);
+    const u= vh>0 ? [vP[0]/vh*f, vP[1]/vh*f, 0] : [0,0,0];
+    const L=Iw(e3,w);
+    const Fu=[-P.mu*u[0], -P.mu*u[1], 1];
+    const A=Iinv(e3, mul(cross(w,L),-1)), B=Iinv(e3, cross(a,Fu));
+    const c1=-al*R*(cross(A,e3)[2]+cross(w,e3d)[2]), c2=-al*R*cross(B,e3)[2];
+    let N=M*(g+c1)/(1-M*c2); if(N<0) N=0;
+    const wd=add(A,mul(B,N));
+    return [...e3d, ...cross(w,e1), ...wd, s[11], s[12], N*Fu[0]/M, N*Fu[1]/M];
+  }
+  function obs(){
+    const al=P.alpha, e3=[s[0],s[1],s[2]], w=[s[6],s[7],s[8]];
+    const L=Iw(e3,w), a=[al*R*e3[0],al*R*e3[1],al*R*e3[2]-R];
+    const e3d=cross(w,e3), vC=[s[11],s[12],-al*R*e3d[2]];
+    const vP=add(vC,cross(w,a));
+    const E=0.5*M*dot(vC,vC)+0.5*dot(w,L)+M*g*R*(1-al*e3[2]);
+    return {theta:Math.acos(Math.max(-1,Math.min(1,e3[2]))), E, J:dot(L,a), L, a, wz:w[2], slip:Math.hypot(vP[0],vP[1])};
+  }
+  function reset(w0, th0){
+    I3 = 0.4*M*R*R; I1 = P.ratio*I3;
+    s = [Math.sin(th0),0,Math.cos(th0), Math.cos(th0),0,-Math.sin(th0), 0,0,w0, 0,0, 0,0];
+    t = 0; const o = obs(); E0 = o.E; J0 = o.J;
+  }
+  function step(h){
+    const k1=deriv(s), k2=deriv(s.map((x,i)=>x+h/2*k1[i])), k3=deriv(s.map((x,i)=>x+h/2*k2[i])), k4=deriv(s.map((x,i)=>x+h*k3[i]));
+    for(let i=0;i<13;i++) s[i] += h/6*(k1[i]+2*k2[i]+2*k3[i]+k4[i]);
+    let n=Math.hypot(s[0],s[1],s[2]); s[0]/=n; s[1]/=n; s[2]/=n;
+    const d=s[3]*s[0]+s[4]*s[1]+s[5]*s[2]; s[3]-=d*s[0]; s[4]-=d*s[1]; s[5]-=d*s[2];
+    n=Math.hypot(s[3],s[4],s[5]); s[3]/=n; s[4]/=n; s[5]/=n;
+    t += h;
+  }
+  const threshold = () => Math.sqrt(M*g*R*(1+P.alpha)**2/(0.4*M*R*R));
+  return {P, reset, step, obs, threshold, get s(){return s;}, get t(){return t;}, get E0(){return E0;}, get J0(){return J0;}, R};
+})();
+
+/* ---------- små 2D-grafer ---------- */
+function prepCanvas(c){
+  const dpr = Math.min(window.devicePixelRatio||1, 2), w = c.clientWidth, h = c.clientHeight;
+  if(c.width !== Math.round(w*dpr) || c.height !== Math.round(h*dpr)){ c.width = Math.round(w*dpr); c.height = Math.round(h*dpr); }
+  const ctx = c.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,w,h);
+  return {ctx, w, h};
+}
+function axes(ctx, x0, y0, x1, y1){
+  ctx.strokeStyle='rgba(255,255,255,0.18)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x0,y1); ctx.moveTo(x0,y0); ctx.lineTo(x1,y0); ctx.stroke();
+  ctx.font='11px Segoe UI, Tahoma, sans-serif'; ctx.fillStyle='#a0a0a8';
+}
+
+(function tippeScene(){
+  const canvas = $('tCanvas'), stage = $('tStage');
+  const renderer = makeRenderer(canvas);
+  const scene = new THREE.Scene(); scene.fog = new THREE.Fog(0x07080f, 40, 110);
+  const camera = new THREE.PerspectiveCamera(38, 1.6, 0.05, 300);
+  const target = new THREE.Vector3(0, 2, 0);
+  const cam = orbit(camera, canvas, target, {r:16, az:0.7, el:0.42, minR:6, maxR:60});
+  const sun = lights(scene);
+  tableTop(scene, 40, 0x1a1712);
+
+  const R = T.R*100;   // i cm
+  // tekstur med farvede segmenter, så rotationen kan ses
+  const tc = document.createElement('canvas'); tc.width = 512; tc.height = 256;
+  const tx = tc.getContext('2d');
+  const cols = ['#f5c878','#e0b060','#f5c878','#e0b060','#f5c878','#e0b060','#f5c878','#e0b060'];
+  cols.forEach((c,i)=>{ tx.fillStyle = c; tx.fillRect(i*64,0,64,256); });
+  tx.fillStyle = '#a020f0'; tx.fillRect(0,0,64,256);
+  tx.fillStyle = '#4cc9f0'; tx.fillRect(256,0,24,256);
+  tx.fillStyle = 'rgba(40,20,5,0.65)'; tx.fillRect(0,150,512,10);
+  const tex = new THREE.CanvasTexture(tc);
+  const bodyMat = new THREE.MeshStandardMaterial({map:tex, roughness:0.35, metalness:0.1});
+  const woodMat = new THREE.MeshStandardMaterial({color:0xe7c27a, roughness:0.4, metalness:0.1});
+
+  const body = new THREE.Group(); scene.add(body);
+  const cut = Math.PI/3;
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(R, 64, 40, 0, Math.PI*2, cut, Math.PI-cut), bodyMat);
+  ball.castShadow = true; body.add(ball);
+  const lid = new THREE.Mesh(new THREE.CircleGeometry(R*Math.sin(cut), 48), woodMat);
+  lid.rotation.x = -Math.PI/2; lid.position.y = R*Math.cos(cut); body.add(lid);
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.18*R, 0.2*R, 0.32*R, 24), woodMat);
+  stem.position.y = 0.66*R; stem.castShadow = true; body.add(stem);
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.18*R, 24, 16), woodMat); cap.position.y = 0.82*R; body.add(cap);
+  const cmDot = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 8), new THREE.MeshBasicMaterial({color:0xff4d6d, depthTest:false}));
+  cmDot.renderOrder = 5; scene.add(cmDot);
+
+  const aL = arrow(0x4cc9f0), aA = arrow(0xff4d6d);
+  [aL, aA].forEach(a => { a.cone.material.depthTest = false; a.line.material.depthTest = false; a.renderOrder = 6; scene.add(a); });
+  const trail = trailLine(0xf5c878, 5000); scene.add(trail.line);
+
+  const toThree = (v,k=100) => new THREE.Vector3(v[0]*k, v[2]*k, -v[1]*k);
+  const w0 = bindSlider('tW', v => v + ' rad/s', () => { restart(); flags(); });
+  const al = bindSlider('tA', v => fmt(v,2), v => { T.P.alpha = v; restart(); flags(); });
+  const rt = bindSlider('tR', v => fmt(v,2), v => { T.P.ratio = v; restart(); flags(); });
+  bindSlider('tM', v => fmt(v,2), v => T.P.mu = v);
+  const th0 = bindSlider('tTh', v => v + '°', () => restart());
+  const tempo = bindSlider('tT', v => '×' + fmt(v,2));
+  T.P.alpha = +al.value; T.P.ratio = +rt.value; T.P.mu = +$('tM').value;
+  const vecBox = $('tVec'), trailBox = $('tTrail'), followBox = $('tFollow');
+  trailBox.addEventListener('change', () => { trail.line.visible = trailBox.checked; });
+
+  let paused = REDUCED, hist = [], lastP = null, lastTh = 0, thDot = 0;
+  $('tPause').textContent = paused ? 'Resume' : 'Pause';
+  function restart(){ T.reset(+w0.value, +th0.value/DEG); hist = []; trail.clear(); lastP = null; }
+  $('tGo').onclick = () => { restart(); if(paused){ paused=false; $('tPause').textContent='Pause'; } };
+  $('tPause').onclick = () => { paused = !paused; $('tPause').textContent = paused ? 'Resume' : 'Pause'; };
+
+  function flags(){
+    const a = T.P.alpha, r = T.P.ratio, thr = T.threshold(), w = +w0.value;
+    const win = $('tWin'), thf = $('tThr');
+    if(r > 1-a && r < 1+a){ win.className='flag ok'; win.innerHTML = `The window ${fmt(1-a,2)} < I₁/I₃ < ${fmt(1+a,2)} is satisfied: the upright state is unstable, the inverted state stable.`; }
+    else if(r <= 1-a){ win.className='flag no'; win.innerHTML = `I₁/I₃ ≤ 1−α = ${fmt(1-a,2)}: the upright state is stable, and the top stays standing on its ball.`; }
+    else { const ts = Math.acos(a/(1-r))*DEG; win.className='flag no'; win.innerHTML = `I₁/I₃ ≥ 1+α = ${fmt(1+a,2)}: neither end state is stable. Fast-top theory gives a tilted state at θ* ≈ ${fmt(ts,0)}°. Gravity pulls it a little lower in the simulation.`; }
+    if(w >= thr){ thf.className='flag ok'; thf.innerHTML = `Enough energy: ω₀ = ${w} rad/s is above the threshold of ${fmt(thr,0)} rad/s.`; }
+    else { thf.className='flag no'; thf.innerHTML = `Below the energy threshold of ${fmt(thr,0)} rad/s: the top cannot get all the way over.`; }
+    drawLand();
+  }
+
+  const plotC = $('tPlot'), landC = $('tLand');
+  function drawPlot(){
+    const {ctx, w, h} = prepCanvas(plotC);
+    const x0=34, y0=h-24, x1=w-30, y1=8;
+    axes(ctx, x0, y0, x1, y1);
+    ctx.textAlign='left';
+    [0,0.5,1].forEach(v => ctx.fillText(fmt(v,1), x1+4, y0-(y0-y1)*v/1.05+4));
+    const tMax = Math.max(0.5, hist.length ? hist[hist.length-1][0] : 0.5);
+    ctx.textAlign='right';
+    [0,90,180].forEach(d => { const y = y0-(y0-y1)*d/180; ctx.fillText(d+'°', x0-4, y+4);
+      ctx.strokeStyle='rgba(255,255,255,0.05)'; ctx.beginPath(); ctx.moveTo(x0,y); ctx.lineTo(x1,y); ctx.stroke(); });
+    ctx.textAlign='center';
+    const step = tMax > 4 ? 1 : tMax > 1.5 ? 0.5 : 0.2;
+    for(let tt=0; tt<=tMax+1e-9; tt+=step){ const x = x0+(x1-x0)*tt/tMax; ctx.fillText(fmt(tt, step<1?1:0), x, y0+15); }
+    ctx.textAlign='right'; ctx.fillText('t (s)', x1, y0-5);
+    const line = (idx, col, sc, dash) => {
+      ctx.strokeStyle=col; ctx.lineWidth=2; ctx.setLineDash(dash||[]); ctx.beginPath();
+      hist.forEach((p,i) => { const x=x0+(x1-x0)*p[0]/tMax, y=y0-(y0-y1)*sc(p[idx]); i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+      ctx.stroke(); ctx.setLineDash([]);
+    };
+    if(hist.length>1){
+      line(2, '#4cc9f0', v=>Math.max(0,Math.min(1.05,v))/1.05*1);
+      line(3, '#39ff14', v=>Math.max(0,Math.min(1.05,v))/1.05*1, [6,4]);
+      line(1, '#f5c878', v=>v/180);
+    }
+  }
+  function fTheta(th){ const a=T.P.alpha, r=T.P.ratio; return r*Math.sin(th)**2 + (a-Math.cos(th))**2; }
+  function drawLand(thNow){
+    const {ctx, w, h} = prepCanvas(landC);
+    const x0=34, y0=h-24, x1=w-16, y1=8;
+    axes(ctx, x0, y0, x1, y1);
+    const N=240, E=[]; let mx=0, mn=Infinity;
+    for(let i=0;i<=N;i++){ const e=1/fTheta(Math.PI*i/N); E.push(e); mx=Math.max(mx,e); mn=Math.min(mn,e); }
+    const Y = e => y0-(y0-y1)*(e/mx);
+    ctx.textAlign='center';
+    [0,45,90,135,180].forEach(d => ctx.fillText(d+'°', x0+(x1-x0)*d/180, y0+15));
+    ctx.textAlign='right'; ctx.fillText('θ', x1, y0-5);
+    ctx.save(); ctx.translate(12, (y0+y1)/2); ctx.rotate(-Math.PI/2); ctx.textAlign='center'; ctx.fillText('energy', 0, 0); ctx.restore();
+    ctx.strokeStyle='#c77dff'; ctx.lineWidth=2.2; ctx.beginPath();
+    E.forEach((e,i)=>{ const x=x0+(x1-x0)*i/N; i?ctx.lineTo(x,Y(e)):ctx.moveTo(x,Y(e)); }); ctx.stroke();
+    // lokale minima
+    ctx.fillStyle='rgba(199,125,255,0.9)';
+    for(let i=0;i<=N;i++){ const l=i?E[i-1]:Infinity, r=i<N?E[i+1]:Infinity;
+      if(E[i]<=l && E[i]<=r){ ctx.beginPath(); ctx.arc(x0+(x1-x0)*i/N, Y(E[i]), 4, 0, 2*Math.PI); ctx.fill(); } }
+    if(thNow !== undefined){
+      const x = x0+(x1-x0)*thNow/Math.PI, y = Y(1/fTheta(thNow));
+      ctx.fillStyle='#f5c878'; ctx.shadowColor='#f5c878'; ctx.shadowBlur=10;
+      ctx.beginPath(); ctx.arc(x, y, 6, 0, 2*Math.PI); ctx.fill(); ctx.shadowBlur=0;
+    }
+  }
+
+  restart(); flags();
+  const visible = whenVisible(stage, ()=>{});
+  let prev = performance.now(), hud = 0, histT = -1;
+  const O3 = new THREE.Vector3(), camGoal = new THREE.Vector3(0, 2, 0);
+  const basis = new THREE.Matrix4();
+
+  function frame(now){
+    requestAnimationFrame(frame);
+    const dtReal = Math.min(0.05, (now-prev)/1000); prev = now;
+    if(!visible()) return;
+    fit(renderer, camera, canvas);
+    if(!paused){
+      const simDt = dtReal*(+tempo.value), n = Math.max(1, Math.ceil(simDt/1e-4)), h = simDt/n;
+      for(let i=0;i<n;i++) T.step(h);
+    }
+    const s = T.s, o = T.obs();
+    if(dtReal>0 && !paused){ thDot = 0.95*thDot + 0.05*(o.theta-lastTh)/(dtReal*(+tempo.value)); }
+    lastTh = o.theta;
+    // stilling
+    O3.set(s[9]*100, R, -s[10]*100);
+    const e3 = toThree([s[0],s[1],s[2]],1), e1 = toThree([s[3],s[4],s[5]],1);
+    const ez = new THREE.Vector3().crossVectors(e1, e3);
+    basis.makeBasis(e1, e3, ez); body.quaternion.setFromRotationMatrix(basis); body.position.copy(O3);
+    const C = O3.clone().addScaledVector(e3, -T.P.alpha*R);
+    cmDot.position.copy(C);
+    // spor af kontaktpunktet
+    const Pc = new THREE.Vector3(O3.x, 0.03, O3.z);
+    if(!lastP || Pc.distanceTo(lastP) > 0.015){ trail.push(Pc); lastP = Pc; }
+    // vektorer
+    const show = vecBox.checked; aL.visible = aA.visible = cmDot.visible = show;
+    if(show){
+      const L = toThree(o.L,1), L0 = Math.abs(T.J0/(T.R*(T.P.alpha-1)));
+      setArrow(aL, C, L.normalize().multiplyScalar(4.2*Math.hypot(...o.L)/L0 + 0.8), 0.7);
+      setArrow(aA, C, toThree(o.a), 0.5);
+    }
+    // kamera følger toppen
+    if(followBox.checked){ camGoal.set(O3.x, 1.6, O3.z); target.lerp(camGoal, 0.08); cam.apply(); }
+    renderer.render(scene, camera);
+
+    if(!paused && T.t - histT >= 0.004){
+      histT = T.t; hist.push([T.t, o.theta*DEG, o.E/T.E0, o.J/T.J0]);
+      if(hist.length > 3000) hist = hist.filter((_,i)=>i%2===0);
+    }
+    hud += dtReal;
+    if(hud > 0.1){
+      hud = 0;
+      const a = T.P.alpha;
+      $('tRth').textContent = fmt(o.theta*DEG,1) + '°';
+      $('tRwz').textContent = fmt(o.wz,1) + ' rad/s';
+      $('tRslip').textContent = fmt(o.slip*100,2) + ' cm/s';
+      $('tRE').textContent = fmt(o.E/T.E0,3);
+      $('tRJ').textContent = fmt(o.J/T.J0,4);
+      $('tRw1').textContent = fmt(+w0.value*(1-a)/(1+a),1) + ' rad/s';
+      $('tHud').innerHTML = 't = ' + fmt(T.t,2) + ' s<br>θ = ' + fmt(o.theta*DEG,1) + '°';
+      let st;
+      if(paused) st = 'Pause';
+      else if(o.theta*DEG > 165) st = 'Standing on its stem';
+      else if(o.theta*DEG < 15 && T.t > 0.3 && Math.abs(thDot) < 0.05) st = 'Upright and stable';
+      else if(Math.abs(thDot) < 0.03 && T.t > 0.5) st = 'Tilted, precessing state';
+      else st = thDot > 0 ? 'Sliding and rising' : 'Sliding';
+      $('tStatus').textContent = st;
+      drawPlot(); drawLand(o.theta);
+    }
+  }
+  requestAnimationFrame(frame);
+  window.addEventListener('resize', () => { drawPlot(); drawLand(lastTh); });
+})();
+
+})();
+</script>
+<script>
+/* ===== Inertinavigation: Schuler-fejl ===== */
+(function(){
+'use strict';
+const $ = id => document.getElementById(id);
+const fmt = (x,d=2) => x.toFixed(d).replace('-','−');
+const R = 6.371e6, g = 9.81, wS = Math.sqrt(g/R);
+const cv = $('sPlot'); if(!cv) return;
+const ctx = cv.getContext('2d');
+const B = $('sB'), E = $('sE'), H = $('sH'), F = $('sFlat');
+function km(x){ x = Math.abs(x); return x >= 1e5 ? fmt(x/1000,0)+' km' : x >= 1000 ? fmt(x/1000,1)+' km' : fmt(x,0)+' m'; }
+function draw(){
+  const b = +B.value*1e-6*g, eps = +E.value*Math.PI/180/3600, Th = +H.value, T = Th*3600;
+  $('sBo').textContent = B.value + ' µg';
+  $('sEo').textContent = fmt(+E.value,3) + '°/h';
+  $('sHo').textContent = fmt(Th,1) + ' h';
+  const sch = t => b/(wS*wS)*(1-Math.cos(wS*t)) + R*eps*(t - Math.sin(wS*t)/wS);
+  const flat = t => 0.5*b*t*t + g*eps*t*t*t/6;
+  const lin = t => R*eps*t;
+  $('sRT').textContent = fmt(2*Math.PI/wS/60,1) + ' min';
+  $('sRs').textContent = km(sch(T));
+  $('sRf').textContent = km(flat(T));
+  $('sRb').textContent = km(2*b/(wS*wS));
+  $('sRe').textContent = fmt(R*eps*3.6,2) + ' km/h';
+  const dpr = Math.min(window.devicePixelRatio||1, 2), w = cv.clientWidth, h = cv.clientHeight;
+  if(!w || !h) return;
+  cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,w,h);
+  const L = 52, Rm = 12, Tm = 12, Bm = 28, pw = w-L-Rm, ph = h-Tm-Bm;
+  const N = 600; let ymax = 0;
+  for(let i=0;i<=N;i++) ymax = Math.max(ymax, sch(T*i/N));
+  ymax = Math.max(ymax*1.25, 100);
+  const pow = Math.pow(10, Math.floor(Math.log10(ymax/4))); let step = pow;
+  for(const m of [1,2,5,10]){ if(ymax/(m*pow) <= 6){ step = m*pow; break; } }
+  ymax = Math.ceil(ymax/step)*step;
+  const X = t => L + t/T*pw, Y = v => Tm + (1 - v/ymax)*ph;
+  ctx.font = '11px Segoe UI, sans-serif'; ctx.fillStyle = '#a0a0a8'; ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1;
+  ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  for(let v=0; v<=ymax+1e-9; v+=step){ ctx.beginPath(); ctx.moveTo(L,Y(v)); ctx.lineTo(L+pw,Y(v)); ctx.stroke(); ctx.fillText(ymax >= 5000 ? fmt(v/1000, step >= 1000 ? 0 : 1)+' km' : fmt(v,0)+' m', L-5, Y(v)); }
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  const hs = Th <= 6 ? 1 : Th <= 12 ? 2 : 4;
+  for(let hh=0; hh<=Th+1e-9; hh+=hs){ ctx.beginPath(); ctx.moveTo(X(hh*3600),Tm); ctx.lineTo(X(hh*3600),Tm+ph); ctx.stroke(); ctx.fillText(hh+' h', X(hh*3600), Tm+ph+6); }
+  // Schuler-perioder som svage markeringer
+  ctx.strokeStyle = 'rgba(199,125,255,0.25)'; ctx.setLineDash([2,4]);
+  for(let k=1; k*84.4*60 < T; k++){ const x = X(k*2*Math.PI/wS); ctx.beginPath(); ctx.moveTo(x,Tm); ctx.lineTo(x,Tm+ph); ctx.stroke(); }
+  ctx.setLineDash([]);
+  ctx.save(); ctx.beginPath(); ctx.rect(L,Tm,pw,ph); ctx.clip();
+  function curve(f, col, dash, lw){
+    ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.setLineDash(dash); ctx.beginPath();
+    for(let i=0;i<=N;i++){ const t = T*i/N, y = Y(Math.min(f(t), ymax*3)); i ? ctx.lineTo(X(t),y) : ctx.moveTo(X(t),y); }
+    ctx.stroke(); ctx.setLineDash([]);
+  }
+  if(eps > 0) curve(lin, '#8a90a0', [4,4], 1.2);
+  if(F.checked) curve(flat, '#ff4d6d', [7,5], 2);
+  curve(sch, '#4cc9f0', [], 2.4);
+  ctx.restore();
+  if(F.checked && flat(T) > ymax){
+    // hvor forlader den røde kurve grafen?
+    let lo = 0, hi = T; for(let i=0;i<50;i++){ const m = (lo+hi)/2; flat(m) > ymax ? hi = m : lo = m; }
+    ctx.fillStyle = '#ff9aac'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    const tx = Math.min(X(hi)+6, L+pw-150);
+    ctx.fillText('Without Schuler: ' + km(flat(T)) + ' at landing', tx, Tm+4);
+  }
+}
+[B,E,H].forEach(el => el.addEventListener('input', draw));
+F.addEventListener('change', draw);
+window.addEventListener('resize', draw);
+draw();
+})();
+</script>
+<script>
+/* ===== Det kogte og det rå æg i 3D ===== */
+(function(){
+'use strict';
+const $ = id => document.getElementById(id);
+const cv = $('eCanvas'); if(!cv || !window.THREE) return;
+const fmt = (x,d=1) => x.toFixed(d).replace('-','−');
+const DEG = 180/Math.PI;
+
+/* --- æggets form: Hügelschäffers æggekurve, 1 enhed = 1 cm ---
+   s går langs aksen fra den brede ende (s = −3) til den spidse (s = +3). */
+const HL = 3.0, HB = 2.2, SH = 0.45, NPROF = 80;
+const radius = s => { const x = s, L = 2*HL, v = (L*L - 4*x*x)/(L*L + 8*SH*x + 4*SH*SH); return v > 0 ? HB*Math.sqrt(v) : 0; };
+const prof = [];
+for(let i=0;i<=NPROF;i++){ const s = -HL + 2*HL*i/NPROF; prof.push({s, r: i===0||i===NPROF ? 0 : radius(s)}); }
+let num = 0, den = 0; for(const p of prof){ num += p.s*p.r*p.r; den += p.r*p.r; }
+const SCM = num/den;                                  // massemidtpunkt på aksen (negativt: mod den brede ende)
+function lowest(th){                                  // laveste punkt af æggets overflade ved hældningen th
+  let best = 1e9, bs = 0, bx = 0;
+  const c = Math.cos(th), sn = Math.sin(th);
+  for(const p of prof){ for(const sx of [-1,1]){ const x = sx*p.r, h = x*sn + p.s*c; if(h < best){ best = h; bs = p.s; bx = x; } } }
+  return {h:best, s:bs, x:bx};
+}
+
+/* --- fysik: kogt æg (stift) og råt æg (skal + væske) --- */
+const Is = 0.185, Il = 1.0, TREL = 0.3, K = (1/TREL)/(1/Is+1/Il), C = (Is+Il)/10, WC = 50;
+const E = {
+  kogt: {ws:0, wl:0, ps:0, pl:0, th:96/DEG, target:Math.PI},
+  raa:  {ws:0, wl:0, ps:0, pl:0, th:96/DEG}
+};
+let th0 = 96/DEG, held = false, t = 0, hist = [];
+function thRest(){ let best = 1e9, bt = Math.PI/2; for(let a=60; a<=120; a+=0.25){ const th = a/DEG, h = SCM*Math.cos(th) - lowest(th).h; if(h < best){ best = h; bt = th; } } return bt; }
+const TH_REST = thRest();
+function step(h){
+  const k = E.kogt, r = E.raa;
+  // kogt
+  k.ws = held ? 0 : k.ws - C*k.ws/(Is+Il)*h; k.wl = k.ws;
+  const standing = Math.abs(k.th - k.target) < 0.02;
+  if(held || (standing && k.ws < 15)){
+    k.th += (TH_REST - k.th)*Math.min(1, 3*h);                 // vælter tilbage og lægger sig
+  } else if(k.ws > WC && !standing){
+    const rate = 1.1*Math.max(0.15, 1 - (WC/k.ws)**2);        // rejser sig mod den ende, starthældningen peger på
+    const d = k.target - k.th; k.th += Math.sign(d)*Math.min(Math.abs(d), rate*h);
+  }
+  k.ps += k.ws*h; k.pl = k.ps;
+  // råt
+  const tq = K*(r.wl - r.ws);
+  r.wl += -tq/Il*h;
+  r.ws = held ? 0 : r.ws + (tq - C*r.ws)/Is*h;
+  r.ps += r.ws*h; r.pl += r.wl*h;
+  r.th = th0 + 0.03*Math.sin(3*r.ps)*Math.min(1, r.ws/10);   // en lille vaklen
+  t += h;
+}
+
+/* --- scene --- */
+const renderer = new THREE.WebGLRenderer({canvas:cv, antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.setClearColor(0x07080f, 1);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(38, 1.6, 0.1, 400);
+const target = new THREE.Vector3(0, 3, 0), cam = {r:30, az:0.0, el:0.32};
+function applyCam(){ cam.el = Math.max(0.02, Math.min(1.45, cam.el)); cam.r = Math.max(10, Math.min(80, cam.r));
+  camera.position.set(target.x + cam.r*Math.cos(cam.el)*Math.sin(cam.az), target.y + cam.r*Math.sin(cam.el), target.z + cam.r*Math.cos(cam.el)*Math.cos(cam.az)); camera.lookAt(target); }
+applyCam();
+scene.add(new THREE.HemisphereLight(0xc8d4ff, 0x20160c, 0.6));
+const sun = new THREE.DirectionalLight(0xffffff, 0.95); sun.position.set(10, 30, 16); sun.castShadow = true; sun.shadow.mapSize.set(1024,1024);
+Object.assign(sun.shadow.camera, {left:-20, right:20, top:20, bottom:-20, near:1, far:80}); scene.add(sun);
+const rim = new THREE.PointLight(0x4cc9f0, 0.35, 90); rim.position.set(-20, 14, -14); scene.add(rim);
+const table = new THREE.Mesh(new THREE.PlaneGeometry(90, 60), new THREE.MeshStandardMaterial({color:0x222428, roughness:0.35, metalness:0.1}));
+table.rotation.x = -Math.PI/2; table.receiveShadow = true; scene.add(table);
+const grid = new THREE.GridHelper(60, 30, 0x2f3440, 0x1c2028); grid.position.y = 0.01; scene.add(grid);
+
+const pts = prof.map(p => new THREE.Vector2(Math.max(p.r, 0.001), p.s));
+const shellGeo = new THREE.LatheGeometry(pts, 72);
+const whiteGeo = new THREE.LatheGeometry(pts.map(v => new THREE.Vector2(v.x*0.93, v.y*0.95)), 48);
+// meridian-bånd på skallen, så rotationen kan ses
+const merCurve = new THREE.CatmullRomCurve3(prof.map(p => new THREE.Vector3(p.r*1.004, p.s, 0)));
+const merGeo = new THREE.TubeGeometry(merCurve, 80, 0.07, 6, false);
+function makeEgg(x, raw){
+  const outer = new THREE.Group(); outer.position.x = x; scene.add(outer);    // drejer om lodret med skallen
+  const tilt = new THREE.Group(); outer.add(tilt);                             // hælder æggets akse
+  const shellMat = new THREE.MeshStandardMaterial({color:0xf2e4cc, roughness:0.55, metalness:0, transparent:true, opacity:0.38, depthWrite:false, side:THREE.DoubleSide});
+  const shell = new THREE.Mesh(shellGeo, shellMat); shell.castShadow = true; tilt.add(shell);
+  const mer = new THREE.Mesh(merGeo, new THREE.MeshStandardMaterial({color:raw ? 0x8a5a2a : 0x6a4a2a, roughness:0.6})); tilt.add(mer);
+  // indholdet: egen gruppe, som drejer med væskens vinkel (for det kogte æg lig skallens)
+  const inOuter = new THREE.Group(); inOuter.position.x = x; scene.add(inOuter);
+  const inTilt = new THREE.Group(); inOuter.add(inTilt);
+  const white = new THREE.Mesh(whiteGeo, new THREE.MeshStandardMaterial({color:raw ? 0xe8eef5 : 0xfbfbf8, roughness:raw ? 0.15 : 0.8, transparent:raw, opacity:raw ? 0.35 : 1}));
+  inTilt.add(white);
+  const yolk = new THREE.Mesh(new THREE.SphereGeometry(1.25, 32, 22), new THREE.MeshStandardMaterial({color:0xf5a623, roughness:raw ? 0.2 : 0.7}));
+  yolk.position.set(0.45, -0.35, 0); inTilt.add(yolk);
+  const spot = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 10), new THREE.MeshStandardMaterial({color:0xb35c00})); spot.position.set(1.55, -0.35, 0); inTilt.add(spot);
+  const Larr = new THREE.ArrowHelper(new THREE.Vector3(0,1,0), new THREE.Vector3(), 4, 0x4cc9f0, 0.9, 0.5);
+  const Aarr = new THREE.ArrowHelper(new THREE.Vector3(0,-1,0), new THREE.Vector3(), 2, 0xff4d6d, 0.6, 0.35);
+  scene.add(Larr); scene.add(Aarr);
+  // finger
+  const skin = new THREE.MeshStandardMaterial({color:0xe0b894, roughness:0.6});
+  const finger = new THREE.Group(); const fs = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 9, 18), skin); fs.position.y = 4.5 + 0.75; finger.add(fs);
+  const ft = new THREE.Mesh(new THREE.SphereGeometry(0.75, 18, 12), skin); ft.position.y = 0.75; finger.add(ft); finger.visible = false; scene.add(finger);
+  // etiket
+  const lc = document.createElement('canvas'); lc.width = 256; lc.height = 64; const lx = lc.getContext('2d');
+  lx.font = 'bold 40px Segoe UI, sans-serif'; lx.fillStyle = '#e8e8f0'; lx.textAlign = 'center'; lx.fillText(raw ? 'Raw egg' : 'Boiled egg', 128, 46);
+  const label = new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(lc), transparent:true})); label.scale.set(6, 1.5, 1); label.position.set(x, 9.5, 0); scene.add(label);
+  return {outer, tilt, inOuter, inTilt, shellMat, white, Larr, Aarr, finger, x, raw};
+}
+const G = {kogt: makeEgg(-7, false), raa: makeEgg(7, true)};
+
+function place(g, e){
+  const low = lowest(e.th);
+  const lift = -low.h;                                   // æggets centrum over bordet
+  const cmOff = SCM*Math.sin(e.th);                      // massemidtpunktets vandrette forskydning i hældningsplanet
+  // hældning om z: +y (mod den spidse ende) drejes mod −x
+  for(const [o, tl, ang] of [[g.outer, g.tilt, e.ps], [g.inOuter, g.inTilt, e.pl]]){
+    o.position.set(g.x, 0, 0); o.rotation.y = ang;
+    tl.rotation.z = e.th;
+    tl.position.set(cmOff, lift, 0);                    // massemidtpunktet ligger på omdrejningsaksen
+  }
+  // vektorer i verdenskoordinater
+  g.outer.updateMatrixWorld(true);
+  const cm = new THREE.Vector3(0, SCM, 0).applyMatrix4(g.tilt.matrixWorld);
+  const cp = new THREE.Vector3(low.x, low.s, 0).applyMatrix4(g.tilt.matrixWorld); cp.y = 0.02;
+  const show = $('eVec').checked;
+  g.Larr.visible = g.Aarr.visible = show;
+  if(show){
+    const w = e.raw ? e.ws : e.ws, len = Math.min(8, 0.8 + Math.abs(w)/12);
+    g.Larr.position.copy(cm); g.Larr.setDirection(new THREE.Vector3(0, w >= 0 ? 1 : -1, 0)); g.Larr.setLength(len, 0.8, 0.45);
+    const a = cp.clone().sub(cm); const al = a.length();
+    g.Aarr.position.copy(cm); if(al > 0.05){ g.Aarr.setDirection(a.normalize()); g.Aarr.setLength(al, Math.min(0.6, al*0.4), 0.35); }
+  }
+  const top = new THREE.Box3().setFromObject(g.tilt).max.y;
+  g.finger.visible = held; g.finger.position.set(g.x + 0.8, top - 0.2, 0.3);
+}
+E.raa.raw = true;
+function setGlass(){
+  const gl = $('eGlass').checked;
+  for(const g of Object.values(G)){ g.shellMat.opacity = gl ? 0.38 : 1; g.shellMat.depthWrite = !gl; g.shellMat.transparent = gl; g.shellMat.needsUpdate = true; g.white.visible = gl; g.inTilt.visible = gl; }
+}
+$('eGlass').addEventListener('change', setGlass); setGlass();
+
+/* --- mus og berøring --- */
+const ptrs = new Map(); let pinch0 = 0, r0 = cam.r;
+cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, {x:e.clientX, y:e.clientY}); if(ptrs.size === 2){ const [a,b] = [...ptrs.values()]; pinch0 = Math.hypot(a.x-b.x, a.y-b.y); r0 = cam.r; } });
+cv.addEventListener('pointermove', e => { if(!ptrs.has(e.pointerId)) return; const p = ptrs.get(e.pointerId);
+  if(ptrs.size === 1){ cam.az -= (e.clientX-p.x)*0.008; cam.el += (e.clientY-p.y)*0.006; }
+  p.x = e.clientX; p.y = e.clientY;
+  if(ptrs.size === 2){ const [a,b] = [...ptrs.values()]; const d = Math.hypot(a.x-b.x, a.y-b.y); if(pinch0 > 0) cam.r = r0*pinch0/d; }
+  applyCam(); });
+const pup = e => { ptrs.delete(e.pointerId); pinch0 = 0; };
+cv.addEventListener('pointerup', pup); cv.addEventListener('pointercancel', pup);
+cv.addEventListener('wheel', e => { e.preventDefault(); cam.r *= Math.exp(e.deltaY*0.001); applyCam(); }, {passive:false});
+
+/* --- styring --- */
+const W = $('eW'), Wo = $('eWo'), T = $('eT'), To = $('eTo');
+const upW = () => Wo.textContent = W.value + ' rad/s'; W.addEventListener('input', upW); upW();
+function upT(){
+  th0 = +T.value/DEG; To.textContent = T.value + '°';
+  const k = E.kogt; k.target = th0 > Math.PI/2 ? Math.PI : 0;
+  if(k.ws < 1){ k.th = th0; } E.raa.th = th0;
+  $('eRe').textContent = th0 > Math.PI/2 ? 'the pointed end' : 'the broad end';
+}
+T.addEventListener('input', upT); upT();
+$('eSpin').addEventListener('click', () => {
+  const w = +W.value; t = 0; hist = [];
+  Object.assign(E.kogt, {ws:w, wl:w, th:th0, target: th0 > Math.PI/2 ? Math.PI : 0});
+  Object.assign(E.raa, {ws:w, wl:0, th:th0});
+});
+const hb = $('eHold');
+const setH = v => { held = v; hb.classList.toggle('primary', v); };
+hb.addEventListener('pointerdown', e => { e.preventDefault(); try{ hb.setPointerCapture(e.pointerId); }catch(_){} setH(true); });
+hb.addEventListener('pointerup', () => setH(false)); hb.addEventListener('pointercancel', () => setH(false));
+
+/* --- graf --- */
+const pv = $('ePlot'), pc = pv.getContext('2d');
+function plot(){
+  const dpr = Math.min(window.devicePixelRatio||1, 2), w = pv.clientWidth, h = pv.clientHeight;
+  if(!w || !h) return;
+  if(pv.width !== Math.round(w*dpr)){ pv.width = Math.round(w*dpr); pv.height = Math.round(h*dpr); }
+  const c = pc; c.setTransform(dpr,0,0,dpr,0,0); c.clearRect(0,0,w,h);
+  const L = 44, R = 10, Tm = 10, B = 24, pw = w-L-R, ph = h-Tm-B, WIN = 12;
+  const yMax = Math.max(60, Math.ceil(Math.max(0, ...hist.map(p => Math.max(p.k, p.s, p.l)))/20)*20);
+  const t0 = Math.max(0, t - WIN), X = tt => L + (tt - t0)/WIN*pw, Y = v => Tm + (1 - v/yMax)*ph;
+  c.font = '11px Segoe UI, sans-serif'; c.fillStyle = '#a0a0a8'; c.strokeStyle = 'rgba(255,255,255,0.08)'; c.lineWidth = 1;
+  c.textAlign = 'right'; c.textBaseline = 'middle';
+  for(let v=0; v<=yMax+1e-9; v+=yMax/4){ c.beginPath(); c.moveTo(L, Y(v)); c.lineTo(L+pw, Y(v)); c.stroke(); c.fillText(fmt(v,0), L-5, Y(v)); }
+  c.textAlign = 'center'; c.textBaseline = 'top';
+  for(let tt=Math.ceil(t0/2)*2; tt<=t0+WIN+1e-9; tt+=2) c.fillText(fmt(tt,0)+' s', X(tt), Tm+ph+5);
+  c.strokeStyle = 'rgba(245,200,120,0.5)'; c.setLineDash([4,4]); c.beginPath(); c.moveTo(L, Y(WC)); c.lineTo(L+pw, Y(WC)); c.stroke(); c.setLineDash([]);
+  const line = (key, col, dash, lw) => { c.strokeStyle = col; c.lineWidth = lw; c.setLineDash(dash); c.beginPath(); let f = true; for(const p of hist){ if(p.t < t0) continue; const x = X(p.t), y = Y(p[key]); f ? c.moveTo(x,y) : c.lineTo(x,y); f = false; } c.stroke(); c.setLineDash([]); };
+  line('k', '#9aa0aa', [], 2); line('l', '#4cc9f0', [6,4], 2); line('s', '#e07b1f', [], 2.2);
+}
+
+/* --- løkke --- */
+function fit(){ const w = cv.clientWidth, h = cv.clientHeight; if(!w || !h) return; const pr = renderer.getPixelRatio();
+  if(cv.width !== Math.floor(w*pr) || cv.height !== Math.floor(h*pr)){ renderer.setSize(w, h, false); camera.aspect = w/h; camera.updateProjectionMatrix(); } }
+let last = performance.now(), lastS = -1, lastUI = 0, visible = true;
+if('IntersectionObserver' in window) new IntersectionObserver(es => { visible = es[0].isIntersecting; }, {threshold:0.02}).observe(cv);
+function loop(now){
+  const dt = Math.min(0.05, (now - last)/1000); last = now;
+  if(visible){
+    const n = Math.ceil(dt/0.001); for(let i=0;i<n;i++) step(dt/n);
+    if(t - lastS > 0.03 || t < lastS){ lastS = t; hist.push({t, k:E.kogt.ws, s:E.raa.ws, l:E.raa.wl}); while(hist.length && hist[0].t < t - 13) hist.shift(); }
+    place(G.kogt, E.kogt); place(G.raa, E.raa);
+    if(now - lastUI > 120){
+      lastUI = now; const k = E.kogt;
+      $('eRk').textContent = fmt(k.ws) + ' rad/s'; $('eRs').textContent = fmt(E.raa.ws) + ' rad/s'; $('eRl').textContent = fmt(E.raa.wl) + ' rad/s';
+      $('eHud').innerHTML = `Boiled egg: θ = ${fmt(k.th*DEG,0)}°<br>Raw egg: θ = ${fmt(E.raa.th*DEG,0)}°`;
+      const stand = Math.abs(k.th - k.target) < 0.03, rising = Math.abs(k.th - Math.PI/2) > 0.12 && !stand;
+      $('eStatus').textContent = held ? 'Held by the fingers' : stand ? `The boiled egg stands on its ${k.target > 1 ? 'pointed' : 'broad'} end` : (rising && k.ws > WC) ? 'The boiled egg is rising' : (k.ws > 0.5 || E.raa.ws > 0.5) ? 'Spinning' : 'At rest';
+    }
+    plot(); fit(); renderer.render(scene, camera);
+  }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+})();
+</script>
+<script src="lang-switch.js" defer></script>
+</body>
+</html>

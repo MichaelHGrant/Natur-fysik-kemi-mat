@@ -19,7 +19,8 @@
   // Dansk fil -> engelsk fil. Tilføj en linje, hver gang en side er oversat.
   var TRANSLATED = {
     "index.html": "index-en.html",
-    "boeger.html": "boeger-en.html"
+    "boeger.html": "boeger-en.html",
+    "gyroskop-tippetop.html": "gyroskop-tippetop-en.html"
     // "optik.html": "optik-en.html",
   };
 
