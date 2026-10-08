@@ -132,6 +132,9 @@ td.n{white-space:nowrap; text-align:right; width:4.5rem}
 .tal-row{display:flex; flex-wrap:wrap; gap:.5rem .6rem; align-items:center}
 input.numin, select.unit{font:inherit; color:var(--ink); background:var(--paper); border:1.5px solid var(--line); border-radius:4px; padding:.45rem .6rem}
 input.numin{width:9.5rem}
+.sci{display:inline-flex; gap:.3rem}
+.sci button{font:inherit; font-size:.9rem; min-width:2.4rem; padding:.35rem .5rem; color:var(--ink); background:var(--paper); border:1.5px solid var(--line); border-radius:4px; cursor:pointer}
+.sci button:disabled{opacity:.4; cursor:default}
 input.numin:focus, select.unit:focus{outline:2px solid var(--pen); outline-offset:1px}
 input.numin:disabled, select.unit:disabled{opacity:.8}
 .unit-fixed{font-weight:600}
@@ -443,6 +446,16 @@ function fmt(x, sig = 3){
   return (neg ? "−" : "") + s;
 }
 const plain = s => s.replace(/<sup>/g,"^").replace(/<\/?[^>]+>/g,"");
+document.addEventListener("pointerdown", e => { if (e.target.closest(".sci button")) e.preventDefault(); });
+document.addEventListener("click", e => {
+  const b = e.target.closest(".sci button"); if (!b) return;
+  const inp = b.closest(".tal-row").querySelector("input.numin");
+  if (!inp || inp.disabled) return;
+  const a = inp.selectionStart ?? inp.value.length, z = inp.selectionEnd ?? a, t = b.dataset.ins;
+  inp.value = inp.value.slice(0, a) + t + inp.value.slice(z);
+  inp.focus(); inp.setSelectionRange(a + t.length, a + t.length);
+  inp.dispatchEvent(new Event("input", {bubbles: true}));
+});
 function parseNum(s){
   if (s == null) return NaN;
   s = String(s).trim().replace(/\s+/g, "").replace(/[−–]/g, "-").replace(/,/g, ".");
@@ -1776,13 +1789,18 @@ F.mc = {
   }
 };
 
+// Sikkerhedsnet: et "tal"-spørgsmål hvis facit er et ord, får tekstfelt og rettes som tekst
+const ordSvar = r => !/\d/.test(r.facit.tekst);
+const normOrd = s => String(s || "").trim().toLowerCase().replace(/[.!]+$/, "").replace(/\s+/g, " ");
 F.tal = {
   render(it, n){
+    if (ordSvar(it.r)) return `<div class="tal-row"><input class="numin" id="x${n}" type="text" inputmode="text" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="off" aria-label="Dit svar"><span class="mk"></span></div>
+      <p class="hint">Skriv svaret med ord.</p>`;
     const u = it.r.enheder || [it.r.facit.enhed];
     const unit = u.length > 1
       ? `<select class="unit" id="u${n}" aria-label="Enhed"><option value="">enhed</option>${u.map(x => `<option>${x}</option>`).join("")}</select>`
       : `<span class="unit-fixed">${u[0]}</span>`;
-    return `<div class="tal-row"><input class="numin" id="x${n}" inputmode="decimal" autocomplete="off" aria-label="Dit svar"> ${unit}<span class="mk"></span></div>
+    return `<div class="tal-row"><input class="numin" id="x${n}" type="text" inputmode="text" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="done" autocomplete="off" aria-label="Dit svar"><span class="sci" aria-label="Hjælpetaster"><button type="button" data-ins="−">−</button><button type="button" data-ins=",">,</button><button type="button" data-ins="·10^">·10^</button><button type="button" data-ins="e">e</button></span> ${unit}<span class="mk"></span></div>
       <p class="hint">Brug komma som decimaltegn. Skriv 10-potenser som 3,6e5 eller 3,6·10^5.</p>`;
   },
   bind(card, it, n){
@@ -1792,8 +1810,13 @@ F.tal = {
     x.addEventListener("keydown", e => { if (e.key === "Enter") tryCheck(n); });
     if (u) u.addEventListener("change", () => { it.st.u = u.value; onAnswer(n); });
   },
-  answered: it => isFinite(parseNum(it.st.x)) && ((it.st.u != null && it.st.u !== "") || (it.r.enheder || [it.r.facit.enhed]).length === 1),
+  answered: it => ordSvar(it.r) ? normOrd(it.st.x) !== "" : isFinite(parseNum(it.st.x)) && ((it.st.u != null && it.st.u !== "") || (it.r.enheder || [it.r.facit.enhed]).length === 1),
   grade(card, it){
+    if (ordSvar(it.r)){
+      const ok = [it.r.facit.tekst, ...(it.r.facit.alt || [])].map(normOrd).includes(normOrd(it.st.x));
+      card.querySelector(".mk").innerHTML = normOrd(it.st.x) ? imark(ok) : "";
+      return {ok, msg: "", facit: ok ? "" : `Facit: ${it.r.facit.tekst}`};
+    }
     const r = it.r, st = it.st, x = parseNum(st.x), U = UNITS[st.u], FU = UNITS[r.facit.enhed];
     let ok = false, msg = "";
     if (!isFinite(x)) msg = "";
@@ -1822,7 +1845,7 @@ function niceStep(x){ const e = 10**Math.floor(Math.log10(x)), f = x/e; return (
 F.graf = {
   render(it, n){
     return `<div class="graf" id="g${n}"></div>
-      <div class="tal-row"><label for="h${n}"><b>H₀ =</b></label> <input class="numin" id="h${n}" inputmode="decimal" autocomplete="off"> <span>km/s/Mpc</span><span class="mk"></span></div>`;
+      <div class="tal-row"><label for="h${n}"><b>H₀ =</b></label> <input class="numin" id="h${n}" type="text" inputmode="text" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="done" autocomplete="off"><span class="sci" aria-label="Hjælpetaster"><button type="button" data-ins="−">−</button><button type="button" data-ins=",">,</button><button type="button" data-ins="·10^">·10^</button><button type="button" data-ins="e">e</button></span> <span>km/s/Mpc</span><span class="mk"></span></div>`;
   },
   bind(card, it, n){
     const P = it.r.punkter, st = it.st;
@@ -2175,7 +2198,7 @@ function gradeItem(n){
   const res = F[it.f].grade(card, it);
   it.ok = res.ok;
   card.classList.add("done");
-  card.querySelectorAll("input, select").forEach(e => e.disabled = true);
+  card.querySelectorAll("input, select, .sci button").forEach(e => e.disabled = true);
   card.querySelectorAll(".tray .tile, .slot .tile, .ordered .tile").forEach(e => e.disabled = true);
   const b = card.querySelector(".check"); if (b) b.remove();
   const verdict = !answered ? "Ikke besvaret" : res.ok ? "Rigtigt!" : "Forkert";
