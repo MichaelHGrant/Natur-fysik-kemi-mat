@@ -22,7 +22,8 @@
     "boeger.html": "boeger-en.html",
     "gyroskop-tippetop.html": "gyroskop-tippetop-en.html",
     "koblede-penduler.html": "koblede-penduler-en.html",
-    "gyngen.html": "gyngen-en.html"
+    "gyngen.html": "gyngen-en.html",
+    "carnot.html": "carnot-en.html"
     // "optik.html": "optik-en.html",
   };
 
