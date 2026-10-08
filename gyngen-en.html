@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Swing – Two Coupled Pendulums – Michael Grant</title>
+<meta name="description" content="Interactive 3D simulation of a person pumping a swing by tilting the upper body and legs. Swing and person are two coupled pendulums: normal modes, resonance, the work done by the muscles, and the difference between seated and standing pumping.">
+<meta name="author" content="Michael Grant">
+<meta name="theme-color" content="#0b0d17">
+<link rel="canonical" href="https://michaelhgrant.github.io/Natur-fysik-kemi-mat/gyngen.html">
+<meta property="og:type" content="article">
+<meta property="og:locale" content="da_DK">
+<meta property="og:title" content="Gyngen – to koblede penduler">
+<meta property="og:description" content="Se hvordan man pumper en gynge i gang uden at røre jorden.">
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$','$'], ['\\(','\\)']], displayMath: [['$$','$$']] },
+  chtml: { scale: 1.02 },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] }
+};
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+:root{
+  --space-black:#0b0d17; --space-deep:#050608;
+  --aurora-green:#39ff14; --aurora-purple:#a020f0; --aurora-blue:#4cc9f0;
+  --text-light:#e0e0e0; --text-dim:#a0a0a8;
+  --card-bg:rgba(255,255,255,0.04); --card-border:rgba(57,255,20,0.18);
+  --gold:#f5c878; --gold-bright:#ffe0a0; --fire:#ff7a2a; --red:#ff4d6d;
+  --panel:rgba(255,255,255,0.035); --line:rgba(255,255,255,0.09);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:70px}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{
+  font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
+  background-color:var(--space-black);
+  background-image:radial-gradient(circle at 20% 10%,rgba(160,32,240,0.08),transparent 40%),
+                   radial-gradient(circle at 80% 60%,rgba(76,201,240,0.05),transparent 40%);
+  color:var(--text-light); line-height:1.65; margin:0;
+}
+a{color:var(--aurora-blue)}
+a:focus-visible,button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--aurora-blue);outline-offset:3px}
+
+nav.topnav{position:sticky;top:0;z-index:100;background:rgba(11,13,23,0.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  border-bottom:1px solid rgba(57,255,20,0.25);padding:0.6rem 1rem;overflow-x:auto;white-space:nowrap}
+nav.topnav ul{list-style:none;margin:0;padding:0;display:inline-flex;gap:0.4rem;justify-content:center;width:100%;min-width:max-content}
+nav.topnav a{color:var(--text-dim);text-decoration:none;padding:0.4rem 0.9rem;border-radius:20px;font-size:0.85rem;font-weight:500;border:1px solid transparent;transition:all .2s ease}
+nav.topnav a:hover{color:var(--aurora-green);border-color:rgba(57,255,20,0.4);background:rgba(57,255,20,0.05)}
+nav.topnav a.home{color:var(--aurora-green);border-color:rgba(57,255,20,0.35)}
+
+header.page{padding:3.2rem 1.5rem 2.2rem;text-align:center;background:linear-gradient(to bottom,#1a1a2e,var(--space-black))}
+header.page h1{font-size:clamp(2rem,5vw,3.1rem);color:var(--aurora-green);text-shadow:0 0 25px rgba(57,255,20,0.35);margin:0 0 0.8rem;letter-spacing:0.3px}
+header.page p{max-width:720px;margin:0 auto;color:var(--text-dim);font-size:1.05rem}
+
+main{max-width:1180px;margin:0 auto;padding:1rem 1.5rem 3rem}
+section.block{margin:2.5rem 0 3.5rem}
+.section-header{border-left:4px solid var(--aurora-blue);padding-left:1rem;margin-bottom:1.4rem}
+.section-header h2{margin:0 0 0.3rem;font-size:1.75rem;color:#fff}
+.section-header p{margin:0;color:var(--text-dim);max-width:760px}
+#tippetop .section-header{border-left-color:var(--gold)}
+#teori .section-header{border-left-color:var(--aurora-purple)}
+
+/* === simulator layout === */
+.sim{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:1rem;align-items:start}
+.stage{position:relative;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#07080f;height:min(70vh,600px);min-height:360px}
+.stage canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+.stage canvas:active{cursor:grabbing}
+.stage .hud{position:absolute;left:0.8rem;top:0.7rem;font-size:0.8rem;color:var(--text-dim);pointer-events:none;line-height:1.5;text-shadow:0 1px 3px #000}
+.stage .status{position:absolute;right:0.8rem;top:0.7rem;font-size:0.85rem;padding:0.25rem 0.75rem;border-radius:20px;border:1px solid var(--line);background:rgba(7,8,15,0.75);color:var(--text-light)}
+.stage .hint{position:absolute;left:0.8rem;bottom:0.6rem;font-size:0.75rem;color:rgba(160,160,168,0.8);pointer-events:none}
+.legend{display:flex;flex-wrap:wrap;gap:0.3rem 1.1rem;font-size:0.82rem;color:var(--text-dim);margin:0.55rem 0.2rem 0}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:0.35rem}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1rem 1rem 1.1rem}
+.panel h3{margin:0 0 0.7rem;font-size:1rem;color:#fff;font-weight:600}
+.ctrl{margin-bottom:0.85rem}
+.ctrl label{display:flex;justify-content:space-between;gap:0.5rem;font-size:0.86rem;color:var(--text-light);margin-bottom:0.2rem}
+.ctrl label output{color:var(--aurora-blue);font-variant-numeric:tabular-nums}
+#tippetop .ctrl label output{color:var(--gold)}
+input[type=range]{width:100%;accent-color:var(--aurora-blue)}
+#tippetop input[type=range]{accent-color:var(--gold)}
+.btns{display:flex;flex-wrap:wrap;gap:0.45rem;margin:0.3rem 0 0.9rem}
+button{font:inherit;font-size:0.85rem;font-weight:600;padding:0.45rem 0.9rem;border-radius:22px;border:1.5px solid var(--aurora-blue);background:transparent;color:var(--aurora-blue);cursor:pointer;transition:background .2s,color .2s}
+button:hover{background:var(--aurora-blue);color:var(--space-black)}
+button.primary{background:var(--aurora-blue);color:var(--space-black)}
+#tippetop button{border-color:var(--gold);color:var(--gold)}
+#tippetop button:hover,#tippetop button.primary{background:var(--gold);color:var(--space-black)}
+.checks{display:flex;flex-wrap:wrap;gap:0.3rem 1rem;font-size:0.85rem;margin-bottom:0.8rem}
+.checks label{display:flex;align-items:center;gap:0.35rem;cursor:pointer}
+table.read{width:100%;border-collapse:collapse;font-size:0.84rem;font-variant-numeric:tabular-nums}
+table.read td{padding:0.22rem 0;border-bottom:1px solid rgba(255,255,255,0.05)}
+table.read td:last-child{text-align:right;color:#fff}
+.note{font-size:0.8rem;color:var(--text-dim);margin:0.7rem 0 0}
+.flag{font-size:0.82rem;padding:0.5rem 0.7rem;border-radius:10px;margin-top:0.7rem;border:1px solid var(--line);background:rgba(255,255,255,0.03)}
+.flag.ok{border-color:rgba(57,255,20,0.35);color:#bff5ae}
+.flag.no{border-color:rgba(255,77,109,0.45);color:#ffc2cd}
+
+.plots{display:grid;grid-template-columns:1fr 1fr;gap:1rem;grid-column:1;grid-row:2}
+.sim > .panel{grid-column:2;grid-row:1 / span 2}
+.plot{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:0.8rem 0.9rem 0.9rem}
+.plot h3{margin:0 0 0.2rem;font-size:0.95rem;color:#fff;font-weight:600}
+.plot p{margin:0 0 0.5rem;font-size:0.8rem;color:var(--text-dim)}
+.plot canvas{display:block;width:100%;height:230px}
+
+/* === tekst === */
+.prose{max-width:780px}
+.prose p{margin:0 0 1rem}
+.prose h3{color:#fff;margin:2rem 0 0.6rem;font-size:1.25rem}
+.prose h4{color:var(--aurora-blue);margin:1.4rem 0 0.4rem;font-size:1.02rem}
+.intro-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;margin:0 0 1rem}
+.intro-grid div{background:var(--card-bg);border:1px solid var(--line);border-radius:14px;padding:1.1rem 1.2rem}
+.intro-grid h3{margin:0 0 0.4rem;font-size:1.05rem;color:#fff}
+.intro-grid p{margin:0;font-size:0.95rem;color:var(--text-light)}
+details{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:0.2rem 1rem;margin:0.9rem 0}
+details[open]{padding-bottom:0.6rem}
+summary{cursor:pointer;padding:0.6rem 0;color:var(--aurora-blue);font-weight:600}
+.mjx-scroll,mjx-container[display="true"]{overflow-x:auto;overflow-y:hidden;max-width:100%}
+.tablewrap{overflow-x:auto}
+table.sum{border-collapse:collapse;width:100%;min-width:560px;font-size:0.92rem;margin:0.5rem 0 1rem}
+table.sum th,table.sum td{text-align:left;padding:0.55rem 0.7rem;border-bottom:1px solid var(--line);vertical-align:top}
+table.sum th{color:#fff;font-weight:600}
+table.sum td:first-child{color:var(--text-dim)}
+.refs{font-size:0.9rem;color:var(--text-dim);padding-left:1.1rem}
+.refs li{margin-bottom:0.35rem}
+.downloads{display:flex;flex-wrap:wrap;gap:0.6rem;margin:1rem 0}
+.downloads a{display:inline-block;padding:0.5rem 1.1rem;border-radius:25px;border:1.5px solid var(--aurora-green);color:var(--aurora-green);text-decoration:none;font-weight:600;font-size:0.88rem}
+.downloads a:hover{background:var(--aurora-green);color:var(--space-black)}
+footer{margin-top:3rem;padding:2rem 1.5rem;font-size:0.88rem;color:var(--text-dim);text-align:center;border-top:1px solid rgba(255,255,255,0.05)}
+footer a{text-decoration:none}
+
+@media (max-width:900px){
+  .sim{grid-template-columns:1fr}
+  .plots{grid-template-columns:1fr;grid-column:auto;grid-row:auto}
+  .sim > .panel{grid-column:auto;grid-row:auto}
+  .intro-grid{grid-template-columns:1fr}
+  .stage{height:62vh;min-height:320px}
+}
+@media (max-width:600px){
+  main{padding:0.5rem 1rem 2rem}
+  .section-header h2{font-size:1.4rem}
+  .stage .hud{font-size:0.72rem}
+}
+
+/* === koblede penduler === */
+.psim{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:1rem;align-items:start}
+.pcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:0.7rem;margin:0.9rem 0 1rem}
+.pcard{background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--c);border-radius:12px;padding:0.65rem 0.8rem 0.7rem;cursor:pointer}
+.pcard.sel{background:rgba(255,255,255,0.075);border-color:var(--c)}
+.pcard .phead{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.35rem}
+.pcard h4{margin:0;font-size:0.92rem;color:var(--c)}
+.pcard button.x{padding:0.12rem 0.6rem;font-size:0.75rem;border-color:var(--line);color:var(--text-dim)}
+.pcard button.x:hover{background:var(--red);border-color:var(--red);color:var(--space-black)}
+.pcard .ctrl{margin-bottom:0.4rem}
+.pcard .ctrl label{font-size:0.8rem}
+.pcard input[type=range]{accent-color:var(--c)}
+.pcard table.read{font-size:0.78rem}
+.panel h3 + .btns{margin-top:0}
+button:disabled{opacity:0.35;cursor:not-allowed;background:transparent!important;color:var(--text-dim)!important;border-color:var(--line)!important}
+#pModes{max-height:300px;overflow-y:auto}
+.mode{display:grid;grid-template-columns:1.1rem minmax(0,1fr) auto auto;gap:0.5rem;align-items:center;padding:0.3rem 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:0.82rem;font-variant-numeric:tabular-nums}
+.mode .mn{color:var(--text-dim)}
+.mode .shape{display:flex;gap:2px;height:30px}
+.mode .shape .b{flex:1;position:relative;background:rgba(255,255,255,0.03);border-radius:2px}
+.mode .shape .b::after{content:"";position:absolute;left:0;right:0;top:50%;border-top:1px solid rgba(255,255,255,0.12)}
+.mode .shape i{position:absolute;left:12%;right:12%;border-radius:1px}
+.mode .mt{color:#fff}
+.mode button{padding:0.18rem 0.6rem;font-size:0.75rem}
+.plot canvas#pPlot{height:240px}
+.seg{display:flex;margin:0 0 0.9rem;border:1.5px solid var(--aurora-blue);border-radius:22px;overflow:hidden}
+.seg button{flex:1;border:0;border-radius:0;padding:0.45rem 0.5rem}
+.seg button + button{border-left:1.5px solid var(--aurora-blue)}
+.seg button.on{background:var(--aurora-blue);color:var(--space-black)}
+[hidden]{display:none!important}
+ol.steps{padding-left:1.3rem;margin:0 0 1rem}
+ol.steps li{margin-bottom:0.6rem;padding-left:0.2rem}
+ol.steps li::marker{color:var(--gold);font-weight:700}
+#byg-selv .section-header{border-left-color:var(--gold)}
+#byg-selv table.sum td{height:2.1rem}
+@media (max-width:900px){ .psim{grid-template-columns:1fr} }
+
+.seg4 button{font-size:0.8rem;padding:0.45rem 0.2rem}
+.holdwrap{margin:0.8rem 0 0}
+button.hold{width:100%;padding:1rem;font-size:1rem;border-radius:14px;border:2px solid var(--gold);color:var(--gold);background:rgba(245,200,120,0.06);touch-action:none;user-select:none;-webkit-user-select:none}
+button.hold.down{background:var(--gold);color:var(--space-black)}
+</style>
+</head>
+<body>
+<nav class="topnav" aria-label="Navigation">
+  <ul>
+    <li><a class="home" href="index-en.html#mekanik">← Home</a></li>
+    <li><a href="#gyngen">The simulation</a></li>
+    <li><a href="#teori-pendul">The swing as a pendulum</a></li>
+    <li><a href="#teori-pumpe">Pumping</a></li>
+    <li><a href="#teori-koblet">Coupled pendulums</a></li>
+    <li><a href="#teori-staa">Standing</a></li>
+    <li><a href="#proev-selv">Try it yourself</a></li>
+    <li><a href="#sammenfatning">Summary</a></li>
+  </ul>
+</nav>
+<header class="page">
+  <h1>The Swing</h1>
+  <p>How can a child get a swing going without touching the ground and without anyone pushing? The answer is that the swing and the child are two coupled pendulums. When the child leans back and straightens the legs, then leans forward and bends them, in the swing's own rhythm, it pushes on the ropes from inside. The energy comes from the muscles, and the coupling does the rest.</p>
+</header>
+<main>
+<section class="block" id="gyngen">
+  <div class="section-header">
+    <h2>The swing in 3D</h2>
+    <p>Choose how the person moves. In <em>Yourself</em> you control the person with the button or the space bar: hold down to lean back and straighten the legs, release to lean forward. Drag the picture to rotate it; scroll or pinch to zoom.</p>
+  </div>
+  <div class="psim">
+    <div class="pmain">
+      <div class="stage" id="sStage">
+        <canvas id="sCanvas" aria-label="3D simulation of a person on a swing"></canvas>
+        <div class="hud" id="sHud"></div>
+        <div class="status" id="sStatus">Swinging</div>
+        <div class="hint" id="sHint">Yellow arrow: the person's rotation relative to the ropes</div>
+      </div>
+      <div class="holdwrap" id="holdWrap" hidden>
+        <button type="button" id="sHold" class="hold">Hold down: lean back and straighten the legs</button>
+      </div>
+      <div class="plot">
+        <h3>The swing's amplitude and the person's tilt</h3>
+        <p>Blue: the swing's angle $\varphi$. Gold: the person's tilt $\psi$ relative to the ropes, positive when the person leans back. Notice the phase shift as the swing grows.</p>
+        <canvas id="sPlot" aria-label="Graph of the swing's angle and the person's tilt against time"></canvas>
+        <div class="legend">
+          <span><i style="background:#4cc9f0"></i>The swing $\varphi$</span>
+          <span><i style="background:#f5c878"></i>The person $\psi$</span>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>The person</h3>
+      <div class="seg seg4" role="group" aria-label="How the person moves">
+        <button type="button" data-m="auto" class="on" aria-pressed="true">Automatic</button>
+        <button type="button" data-m="rytme" aria-pressed="false">Rhythmic</button>
+        <button type="button" data-m="selv" aria-pressed="false">Yourself</button>
+        <button type="button" data-m="slap" aria-pressed="false">Limp</button>
+      </div>
+      <p class="note" id="modeNote" style="margin:-0.4rem 0 0.8rem"></p>
+      <div class="ctrl"><label for="sA"><span>Tilt amplitude</span><output id="sAo"></output></label>
+        <input type="range" id="sA" min="0" max="35" step="1" value="22"></div>
+      <div class="ctrl" id="ctrlF"><label for="sF"><span>Pumping frequency</span><output id="sFo"></output></label>
+        <input type="range" id="sF" min="0.1" max="1" step="0.005" value="0.35"></div>
+      <div class="ctrl"><label for="sK"><span>Muscle stiffness $\kappa$</span><output id="sKo"></output></label>
+        <input type="range" id="sK" min="200" max="2000" step="10" value="900"></div>
+      <h3>The swing</h3>
+      <div class="ctrl"><label for="sL"><span>Rope length $L$</span><output id="sLo"></output></label>
+        <input type="range" id="sL" min="1.2" max="3" step="0.05" value="2.2"></div>
+      <div class="ctrl"><label for="sD"><span>Air resistance and friction</span><output id="sDo"></output></label>
+        <input type="range" id="sD" min="0" max="0.03" step="0.001" value="0.004"></div>
+      <div class="ctrl"><label for="sT"><span>Speed</span><output id="sTo"></output></label>
+        <input type="range" id="sT" min="0.1" max="2" step="0.05" value="1"></div>
+      <div class="btns">
+        <button id="sPush" type="button">Give a push</button>
+        <button id="sNudge" type="button">Push the person</button>
+        <button id="sStop" type="button">Stop the swing</button>
+        <button id="sPause" type="button">Pause</button>
+      </div>
+      <table class="read">
+        <tr><td>Period of the swing mode</td><td id="rT1">–</td></tr>
+        <tr><td>Period of the body mode</td><td id="rT2">–</td></tr>
+        <tr><td>Pumping period</td><td id="rTp">–</td></tr>
+        <tr><td>Amplitude $\varphi_{\max}$</td><td id="rA">–</td></tr>
+        <tr><td>Energy above rest, average</td><td id="rE">–</td></tr>
+        <tr><td>Work by the muscles, average</td><td id="rW">–</td></tr>
+      </table>
+      <p class="note">The periods are the two small-amplitude normal modes of swing and person coupled together. The person is a rigid body of 68 kg turning about the seat, held up by the muscles as if by a spring. Energy and work are moving averages over about 3 s, because the person's tilt shifts energy back and forth within each swing. The difference between them has been lost to air resistance and friction.</p>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="teori">
+  <div class="section-header">
+    <h2>The theory behind it</h2>
+    <p>The swing is a pendulum. The person is another pendulum sitting on the first. The muscles drive the second, and the coupling between them sets the first going.</p>
+  </div>
+  <div class="prose">
+    <h3 id="teori-pendul">The swing as a pendulum</h3>
+    <p>A swing with rope length $L$ and a person sitting still is a pendulum with the period</p>
+    $$T\approx 2\pi\sqrt{\frac{L_{\rm eff}}{g}},$$
+    <p>where $L_{\rm eff}$ is the distance from the suspension to the common centre of mass – a little shorter than the rope, because the person sits above the seat. For a swing 2.2 m long, $T\approx 3$ s. The period hardly depends on how heavy the person is, nor on the amplitude, as long as it is below about 20–30°.</p>
+
+    <h3 id="teori-pumpe">How to pump without touching the ground</h3>
+    <p>The person cannot change the total angular momentum about the suspension with internal forces. Only gravity can. But the person can move their own centre of mass and push on the ropes. When the person leans back with a jerk, the upper body turns one way, and the reaction turns the ropes and the seat the other way, a little forward. Repeated in time with the swing, the small pushes add up.</p>
+    <h4>The equations of motion</h4>
+    <p>Let $\varphi$ be the angle of the ropes with the vertical and $\alpha$ the person's angle, so that the person's tilt relative to the ropes is $\psi=\alpha-\varphi$. The seat is at $\mathbf S=L(\sin\varphi,-\cos\varphi)$, and the parts of the person's body at $\mathbf S+\mathsf R(\alpha)\mathbf b_i$. The Lagrange equations become</p>
+    $$\begin{aligned}
+    M_{11}\ddot\varphi+M_{12}\ddot\alpha&=-M g\,S_x+\dot\alpha^2C-\tau-\gamma M_{11}\dot\varphi,\\
+    M_{12}\ddot\varphi+M_{22}\ddot\alpha&=-g\textstyle\sum_i m_iB_{i,x}-\dot\varphi^2C+\tau,
+    \end{aligned}$$
+    <p>with $M_{11}=ML^2$, $M_{22}=\sum m_i|\mathbf b_i|^2$, $M_{12}=\sum m_i\,\mathbf S\cdot\mathbf B_i$ and $C=\sum m_i\,\mathbf S\times\mathbf B_i$, where $\mathbf B_i=\mathsf R(\alpha)\mathbf b_i$. The muscles' torque $\tau$ acts with opposite signs on the ropes and on the person, and this is where the energy comes in:</p>
+    $$\tau=-\kappa\left(\psi-\psi_{\rm target}(t)\right)-c\left(\dot\psi-\dot\psi_{\rm target}\right).$$
+    <p>The muscles behave like a stiff spring with damping that pulls the tilt towards the desired $\psi_{\rm target}$. The term $M_{12}$ is the coupling: if the person accelerates their body, it pushes the swing, and vice versa.</p>
+    <h4>When should you lean back?</h4>
+    <p>The simulation's automatic person uses the rule</p>
+    $$\psi_{\rm target}=A\tanh\left(\dot\varphi/\omega_c\right):$$
+    <p>lean back and straighten the legs while the swing moves forwards, and lean forward and bend the legs while it moves backwards. The switch happens at the turning points. The muscles' work per swing is $W=-\oint\tau\,d\psi$. It is positive when the tilt is a quarter of a swing out of phase with the swing's displacement – exactly as when you push a swing by hand as it passes the bottom. Reverse the sign, and the person brakes the swing instead.</p>
+
+    <h3 id="teori-koblet">Two coupled pendulums</h3>
+    <p>If the person holds their muscles still, $\psi_{\rm target}=0$, swing and person are two coupled pendulums. The person is an inverted pendulum, with the centre of mass above the seat, held up by the muscle stiffness $\kappa$. Linearise the equations about equilibrium, and you get two normal modes, $\mathsf K\mathbf u=\omega^2\mathsf M\mathbf u$, as shown in the panel:</p>
+    <p><strong>The swing mode</strong> is slow. The ropes and the person swing almost as one rigid pendulum, and the person tilts only slightly relative to the ropes.</p>
+    <p><strong>The body mode</strong> is fast. The person rocks back and forth about the seat, and the ropes swing slightly in antiphase.</p>
+    <p>The person drives the second degree of freedom, and the coupling transfers the motion to the first. It is a driven oscillating system with a resonance at the frequency of the swing mode. Choose <em>Rhythmic</em> and try different pumping frequencies: the swing only really grows when the pumping frequency matches the frequency of the swing mode, about 0.34 Hz for a swing 2.2 m long. Choose <em>Limp</em>, lower the muscle stiffness, and press <em>Push the person</em>: now the two pendulums exchange energy without help from the muscles, just as on the page on <a href="koblede-penduler-en.html">coupled pendulums</a>.</p>
+
+    <h3 id="teori-staa">Standing up: parametric resonance</h3>
+    <p>If you stand on the swing, you pump in a different way: you bend your knees at the turning points and straighten up as the swing passes the bottom. This raises the centre of mass just when the rope tension is greatest, and changes the pendulum's effective length twice per swing. That is parametric resonance. It only works if the swing is already moving a little, and it gives a more exponential growth. Seated pumping, on the other hand, is a driven oscillation: it can start from rest, and the amplitude grows roughly linearly at first. Press <em>Stop the swing</em> in the simulation and see that the seated person can start the swing from complete rest.</p>
+  </div>
+</section>
+
+<section class="block" id="proev-selv">
+  <div class="section-header">
+    <h2>Try it yourself</h2>
+    <p>A playground, a stopwatch and a little courage are enough.</p>
+  </div>
+  <div class="prose">
+    <p><strong>The period.</strong> Sit on the swing, get a push and sit completely still. Time 10 full swings and compare with $2\pi\sqrt{L/g}$, where $L$ is measured from the suspension to your navel, roughly your centre of mass.</p>
+    <p><strong>Start from rest.</strong> Sit still, with your feet off the ground. Lean back and straighten your legs, then lean forward and bend your legs, again and again. Find the rhythm in which the swing grows fastest. Time it, and compare with the swing's period.</p>
+    <p><strong>Wrong phase.</strong> Once the swing is well under way, swap round: lean back while you are moving backwards. The swing slows down.</p>
+    <p><strong>Stand up.</strong> Stand on the seat and try pumping by bending your knees at the turning points and straightening up at the bottom. Pump twice per swing. Try starting from complete rest: it is almost impossible.</p>
+  </div>
+</section>
+
+<section class="block" id="sammenfatning">
+  <div class="section-header">
+    <h2>Summary</h2>
+    <p>Seated pumping is a driven oscillation through the coupling between two pendulums. Standing pumping is parametric resonance.</p>
+  </div>
+  <div class="prose">
+    <div class="tablewrap">
+      <table class="sum">
+        <tr><th></th><th>Seated</th><th>Standing</th></tr>
+        <tr><td>Movement</td><td>Lean back and straighten the legs, lean forward and bend them</td><td>Bend the knees at the turning points, straighten up at the bottom</td></tr>
+        <tr><td>Pumps per swing</td><td>1</td><td>2</td></tr>
+        <tr><td>Mechanism</td><td>Driven oscillation through the coupling $M_{12}$</td><td>Parametric resonance, changing effective length</td></tr>
+        <tr><td>Start from rest</td><td>Yes</td><td>No</td></tr>
+        <tr><td>Growth at first</td><td>Roughly linear</td><td>Exponential</td></tr>
+      </table>
+    </div>
+    <h3>References</h3>
+    <ul class="refs">
+      <li>W. B. Case &amp; M. A. Swanson, ‘The pumping of a swing from the seated position’, <em>Am. J. Phys.</em> 58, 463 (1990).</li>
+      <li>W. B. Case, ‘The pumping of a swing from the standing position’, <em>Am. J. Phys.</em> 64, 215 (1996).</li>
+      <li>S. M. Curry, ‘How children swing’, <em>Am. J. Phys.</em> 44, 924 (1976).</li>
+      <li>S. Wirkus, R. Rand &amp; A. Ruina, ‘How to pump a swing’, <em>College Math. J.</em> 29, 266 (1998).</li>
+      <li>A. A. Post, G. de Groot, A. Daffertshofer &amp; P. J. Beek, ‘Pumping a playground swing’, <em>Motor Control</em> 11, 136 (2007).</li>
+    </ul>
+  </div>
+</section>
+</main>
+<footer>
+  <a href="index-en.html">Physics, Mathematics and Chemistry</a> · Michael Grant · <a href="mailto:michael.h.grant@gmail.com">michael.h.grant@gmail.com</a>
+</footer>
+<script>
+(function(){
+'use strict';
+const REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $ = id => document.getElementById(id);
+const fmt = (x,d=2) => { const s = x.toFixed(d); return (/^-0[,.]?0*$/.test(s) ? s.slice(1) : s).replace('-','−'); };
+const DEG = 180/Math.PI, g = 9.82;
+
+/* ---------------- Fysik ----------------
+   q = (φ, α): snorenes vinkel og personens vinkel. ψ = α − φ er hældningen (tilbage > 0).
+   Personen er et stift legeme af punktmasser b_i (x fremad, y op) relativt til sædet. */
+const MS = 2;                       // sædets masse, kg
+const BODY = [                       // kg, m
+  {m:15, x:-0.05, y:0.10},  // bækken
+  {m:20, x:-0.08, y:0.36},  // overkrop
+  {m:5,  x:-0.10, y:0.72},  // hoved
+  {m:6,  x: 0.02, y:0.42},  // arme
+  {m:14, x: 0.22, y:0.06},  // lår
+  {m:8,  x: 0.42, y:-0.18}  // underben og fødder
+];
+const MR = BODY.reduce((s,b) => s+b.m, 0), MT = MR + MS;
+const I_BODY = BODY.reduce((s,b) => s + b.m*(b.x*b.x+b.y*b.y), 0);
+let L = 2.2, kap = 900, cj = 90, gam = 0.004, A = 22/DEG, fP = 0.34, tempo = 1;
+let mode = 'auto', paused = REDUCED, holding = false;
+let s = [0,0,0,0], t = 0, eq = [0,0], W = 0;
+let psiC = 0, dpsiC = 0, psiT = 0;   // mål-hældning (glattet) og rå mål
+
+function parts(ph, al){
+  const Sx = L*Math.sin(ph), Sy = -L*Math.cos(ph), ca = Math.cos(al), sa = Math.sin(al);
+  let M12 = 0, C = 0, Bx = 0;
+  for(const b of BODY){
+    const bx = ca*b.x - sa*b.y, by = sa*b.x + ca*b.y;
+    M12 += b.m*(Sx*bx + Sy*by); C += b.m*(Sx*by - Sy*bx); Bx += b.m*bx;
+  }
+  return {Sx, Sy, M12, C, Bx};
+}
+function torque(ph, al, dph, dal, pc, dpc){ return -kap*((al-ph) - pc) - cj*((dal-dph) - dpc); }
+function deriv(q, pc, dpc){
+  const [ph, al, dph, dal] = q, P = parts(ph, al), M11 = MT*L*L;
+  const tau = torque(ph, al, dph, dal, pc, dpc);
+  const r1 = -tau - gam*M11*dph - g*MT*P.Sx + dal*dal*P.C;
+  const r2 =  tau - g*P.Bx - dph*dph*P.C;
+  const det = M11*I_BODY - P.M12*P.M12;
+  return [dph, dal, (r1*I_BODY - r2*P.M12)/det, (M11*r2 - P.M12*r1)/det];
+}
+function staticF(q){ // generaliserede kræfter i hvile med ψ_mål = 0
+  const P = parts(q[0], q[1]), tau = torque(q[0], q[1], 0, 0, 0, 0);
+  return [-tau - g*MT*P.Sx, tau - g*P.Bx];
+}
+function findEq(){
+  let q = [0,0];
+  for(let it=0; it<50; it++){
+    const F = staticF(q), h = 1e-6;
+    const J = [0,1].map(j => { const qq = q.slice(); qq[j] += h; const F2 = staticF(qq); return [(F2[0]-F[0])/h, (F2[1]-F[1])/h]; });
+    // J[j][i] = dF_i/dq_j
+    const a = J[0][0], b = J[1][0], c = J[0][1], d = J[1][1], det = a*d - b*c;
+    const dq0 = -( d*F[0] - b*F[1])/det, dq1 = -(-c*F[0] + a*F[1])/det;
+    q = [q[0]+dq0, q[1]+dq1];
+    if(Math.abs(dq0)+Math.abs(dq1) < 1e-12) break;
+  }
+  return q;
+}
+function normalModes(){
+  const q = eq, h = 1e-6, F = staticF(q);
+  const K = [[0,0],[0,0]];
+  for(let j=0;j<2;j++){ const qq = q.slice(); qq[j] += h; const F2 = staticF(qq); K[0][j] = -(F2[0]-F[0])/h; K[1][j] = -(F2[1]-F[1])/h; }
+  const P = parts(q[0], q[1]), M = [[MT*L*L, P.M12],[P.M12, I_BODY]];
+  // det(K − λM) = 0
+  const a = M[0][0]*M[1][1] - M[0][1]*M[1][0];
+  const b = -(K[0][0]*M[1][1] + K[1][1]*M[0][0] - K[0][1]*M[1][0] - K[1][0]*M[0][1]);
+  const c = K[0][0]*K[1][1] - K[0][1]*K[1][0];
+  const disc = Math.sqrt(Math.max(0, b*b - 4*a*c));
+  const l1 = (-b - disc)/(2*a), l2 = (-b + disc)/(2*a);
+  return [l1, l2].map(l => l > 0 ? Math.sqrt(l) : NaN);
+}
+function energyRel(q){
+  const [ph, al, dph, dal] = q, Sx = L*Math.sin(ph), Sy = -L*Math.cos(ph), ca = Math.cos(al), sa = Math.sin(al);
+  let T = 0.5*MS*L*L*dph*dph, V = MS*g*Sy;
+  for(const b of BODY){
+    const bx = ca*b.x - sa*b.y, by = sa*b.x + ca*b.y, vx = -Sy*dph - by*dal, vy = Sx*dph + bx*dal;
+    T += 0.5*b.m*(vx*vx + vy*vy); V += b.m*g*(Sy + by);
+  }
+  return T + V;
+}
+let Eeq = 0;
+function setupEq(){ eq = findEq(); Eeq = energyRel([eq[0], eq[1], 0, 0]); modesW = normalModes(); }
+let modesW = [NaN, NaN];
+
+/* mål-hældningen for hver tilstand */
+function targetPsi(q, tt){
+  const dph = q[2];
+  if(mode === 'auto'){
+    const amp = Math.abs(q[0]-eq[0]);
+    if(amp > 75/DEG) return 0;
+    // fra hvile: vip i gyngens egen rytme, til den er i gang; derefter følg gyngen
+    if(Math.abs(dph) < 0.06 && amp < 3/DEG) return A*Math.sin((modesW[0] || 2)*tt);
+    return A*Math.tanh(dph/0.15);
+  }
+  if(mode === 'rytme') return A*Math.sin(2*Math.PI*fP*tt);
+  if(mode === 'selv') return holding ? A : -A;
+  return 0;
+}
+function step(h){
+  // glat mål: musklerne kan ikke skifte hældning øjeblikkeligt
+  const raw = targetPsi(s, t);
+  const tauM = 0.18;
+  let newPc;
+  if(mode === 'rytme'){ newPc = raw; dpsiC = A*2*Math.PI*fP*Math.cos(2*Math.PI*fP*t); }
+  else { newPc = psiC + (raw - psiC)*(1 - Math.exp(-h/tauM)); dpsiC = (newPc - psiC)/h; }
+  psiC = newPc;
+  const pc = psiC, dpc = dpsiC;
+  const k1 = deriv(s, pc, dpc), s2 = s.map((x,i) => x + h/2*k1[i]);
+  const k2 = deriv(s2, pc, dpc), s3 = s.map((x,i) => x + h/2*k2[i]);
+  const k3 = deriv(s3, pc, dpc), s4 = s.map((x,i) => x + h*k3[i]);
+  const k4 = deriv(s4, pc, dpc);
+  s = s.map((x,i) => x + h/6*(k1[i] + 2*k2[i] + 2*k3[i] + k4[i]));
+  t += h;
+}
+
+/* ---------------- Three.js-scene ---------------- */
+const canvas = $('sCanvas'), stage = $('sStage');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.setClearColor(0x07080f, 1);
+const scene = new THREE.Scene(); scene.fog = new THREE.Fog(0x07080f, 12, 30);
+const camera = new THREE.PerspectiveCamera(40, 1.6, 0.05, 100);
+const target = new THREE.Vector3(0, 1.3, 0);
+const cam = {r:6.8, az:0.95, el:0.12};
+function applyCam(){
+  cam.el = Math.max(-0.05, Math.min(1.35, cam.el)); cam.r = Math.max(2.5, Math.min(16, cam.r));
+  camera.position.set(target.x + cam.r*Math.cos(cam.el)*Math.sin(cam.az), target.y + cam.r*Math.sin(cam.el), target.z + cam.r*Math.cos(cam.el)*Math.cos(cam.az));
+  camera.lookAt(target);
+}
+applyCam();
+scene.add(new THREE.HemisphereLight(0xb8c6ff, 0x1a1208, 0.6));
+const sun = new THREE.DirectionalLight(0xffffff, 0.95);
+sun.position.set(3, 7, 4); sun.castShadow = true; sun.shadow.mapSize.set(1024,1024);
+Object.assign(sun.shadow.camera, {left:-5, right:5, top:5, bottom:-5, near:0.5, far:20});
+scene.add(sun);
+const ground = new THREE.Mesh(new THREE.CircleGeometry(9, 64), new THREE.MeshStandardMaterial({color:0x1b2233, roughness:0.95}));
+ground.rotation.x = -Math.PI/2; ground.receiveShadow = true; scene.add(ground);
+const grid = new THREE.GridHelper(18, 36, 0x2a3350, 0x161c30); grid.position.y = 0.002; grid.material.transparent = true; grid.material.opacity = 0.5; scene.add(grid);
+// barkflis under gyngen
+const bark = new THREE.Mesh(new THREE.CircleGeometry(2.2, 48), new THREE.MeshStandardMaterial({color:0x4a3522, roughness:1}));
+bark.rotation.x = -Math.PI/2; bark.position.y = 0.004; bark.scale.set(1.6, 0.8, 1); bark.receiveShadow = true; scene.add(bark);
+
+const cyl = new THREE.CylinderGeometry(1, 1, 1, 14);
+const sph = new THREE.SphereGeometry(1, 24, 18);
+const woodMat = new THREE.MeshStandardMaterial({color:0x8a5a34, roughness:0.75});
+const steelMat = new THREE.MeshStandardMaterial({color:0x7d8aa6, metalness:0.55, roughness:0.35});
+const ropeMat = new THREE.MeshStandardMaterial({color:0xd8c9a3, roughness:0.9});
+const Y_AXIS = new THREE.Vector3(0,1,0);
+function seg(mesh, a, b, r){
+  const d = b.clone().sub(a), len = d.length();
+  mesh.position.copy(a).addScaledVector(d, 0.5); mesh.scale.set(r, len, r);
+  mesh.quaternion.setFromUnitVectors(Y_AXIS, d.normalize());
+}
+function mk(geo, mat, parent){ const m = new THREE.Mesh(geo, mat); m.castShadow = true; m.receiveShadow = true; (parent||scene).add(m); return m; }
+
+// stativ
+const frameG = new THREE.Group(); scene.add(frameG);
+let PIV_Y = 2.65;
+function buildFrame(){
+  while(frameG.children.length) frameG.remove(frameG.children[0]);
+  PIV_Y = L + 0.45;
+  const top = PIV_Y + 0.06, zE = 1.15, spread = 0.55*PIV_Y;
+  const bar = mk(cyl, steelMat, frameG); seg(bar, new THREE.Vector3(0, top, -zE-0.1), new THREE.Vector3(0, top, zE+0.1), 0.05);
+  for(const z of [-zE, zE]) for(const sx of [-1, 1]){
+    const leg = mk(cyl, steelMat, frameG); seg(leg, new THREE.Vector3(0, top, z), new THREE.Vector3(sx*spread, 0, z*1.08), 0.045);
+  }
+  for(const z of [-0.25, 0.25]){ const hook = mk(new THREE.TorusGeometry(0.035, 0.012, 8, 16), steelMat, frameG); hook.position.set(0, PIV_Y+0.03, z); }
+}
+buildFrame();
+
+// gynge: reb og sæde
+const ropes = [mk(cyl, ropeMat), mk(cyl, ropeMat)];
+const seat = mk(new THREE.BoxGeometry(0.46, 0.04, 0.62), woodMat);
+
+// person: gruppe med origo i sædet, drejet α om z
+const person = new THREE.Group(); scene.add(person);
+const skin = new THREE.MeshStandardMaterial({color:0xe0b894, roughness:0.7});
+const shirt = new THREE.MeshStandardMaterial({color:0x4cc9f0, roughness:0.6});
+const pants = new THREE.MeshStandardMaterial({color:0x2a3a6a, roughness:0.7});
+const shoe = new THREE.MeshStandardMaterial({color:0xf5c878, roughness:0.5});
+const hair = new THREE.MeshStandardMaterial({color:0x3a2616, roughness:0.9});
+const pelvis = mk(sph, pants, person); pelvis.scale.set(0.13, 0.1, 0.17); pelvis.position.set(-0.05, 0.09, 0);
+const torso = mk(cyl, shirt, person);
+const torsoTop = mk(sph, shirt, person);
+const neck = mk(cyl, skin, person);
+const head = mk(sph, skin, person); head.scale.setScalar(0.105);
+const hairM = mk(sph, hair, person); hairM.scale.set(0.108, 0.09, 0.108);
+const legs = [-0.1, 0.1].map(z => ({
+  z, thigh: mk(cyl, pants, person), knee: mk(sph, pants, person), shin: mk(cyl, pants, person), foot: mk(new THREE.BoxGeometry(0.2, 0.07, 0.09), shoe, person)
+}));
+const arms = [-0.21, 0.21].map(z => ({ z, up: mk(cyl, shirt, person), elbow: mk(sph, shirt, person), low: mk(cyl, skin, person), hand: mk(sph, skin, person) }));
+// pil der viser hældningen
+const arrowMat = new THREE.MeshBasicMaterial({color:0xf5c878});
+const arcGeo = new THREE.TorusGeometry(0.55, 0.012, 6, 40, 1);
+const arc = new THREE.Mesh(arcGeo, arrowMat); scene.add(arc);
+const arrowHead = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.09, 12), arrowMat); scene.add(arrowHead);
+
+const V = (x,y,z=0) => new THREE.Vector3(x,y,z);
+function posePerson(){
+  // kosmetisk: knæet bøjer, når personen læner sig frem, og strækkes, når den læner sig tilbage
+  const psi = s[1]-s[0];
+  const u = Math.max(0, Math.min(1, 0.5 + psi/(2*(A || 0.3))));   // 0: frem, 1: tilbage
+  const hip = V(0.0, 0.08), knee = V(0.40, 0.09);
+  const shinAng = (-100 + 70*u)/DEG;   // vinkel fra vandret
+  const ankle = knee.clone().add(V(0.42*Math.cos(shinAng), 0.42*Math.sin(shinAng)));
+  seg(torso, V(-0.05, 0.12), V(-0.09, 0.46), 0.13); torso.scale.x = 0.14; torso.scale.z = 0.17;
+  torsoTop.position.set(-0.09, 0.46, 0); torsoTop.scale.set(0.14, 0.09, 0.19);
+  seg(neck, V(-0.09, 0.52), V(-0.1, 0.62), 0.045);
+  head.position.set(-0.1, 0.72, 0); hairM.position.set(-0.115, 0.745, 0);
+  for(const l of legs){
+    const h3 = hip.clone().setZ(l.z), k3 = knee.clone().setZ(l.z), a3 = ankle.clone().setZ(l.z);
+    seg(l.thigh, h3, k3, 0.075); l.knee.position.copy(k3); l.knee.scale.setScalar(0.07);
+    seg(l.shin, k3, a3, 0.058);
+    l.foot.position.copy(a3).add(V(0.06*Math.cos(shinAng+Math.PI/2), 0.06*Math.sin(shinAng+Math.PI/2)-0.02, 0));
+    l.foot.rotation.set(0, 0, shinAng + Math.PI/2);
+  }
+  // hænderne holder om rebet 0,55 m over sædet
+  const e = V(-Math.sin(s[0]), Math.cos(s[0]));   // op ad rebet i verden
+  for(const a of arms){
+    const shoulder = V(-0.08, 0.47, a.z*0.85);
+    const handW = V(L*Math.sin(s[0]), PIV_Y - L*Math.cos(s[0]), a.z*1.1).addScaledVector(e, 0.55);
+    const hand = person.worldToLocal(handW.clone());
+    const mid = shoulder.clone().lerp(hand, 0.5).add(V(0.02, -0.12, 0));
+    seg(a.up, shoulder, mid, 0.045); a.elbow.position.copy(mid); a.elbow.scale.setScalar(0.045);
+    seg(a.low, mid, hand, 0.038); a.hand.position.copy(hand); a.hand.scale.setScalar(0.045);
+  }
+}
+function updateScene(){
+  const [ph, al] = s, Sx = L*Math.sin(ph), Sy = PIV_Y - L*Math.cos(ph);
+  for(const [i, z] of [[0,-0.25],[1,0.25]]) seg(ropes[i], V(0, PIV_Y, z), V(Sx, Sy, z), 0.012);
+  seat.position.set(Sx, Sy - 0.02, 0); seat.rotation.set(0, 0, ph);
+  person.position.set(Sx, Sy, 0); person.rotation.set(0, 0, al);
+  person.updateMatrixWorld(true);
+  posePerson();
+  // hældningspil: bue fra snorens retning til kroppens retning, centreret i sædet
+  const psi = al - ph;
+  arc.visible = arrowHead.visible = Math.abs(psi) > 0.02;
+  if(arc.visible){
+    const r = 0.55, start = Math.PI/2 + ph, len = psi;
+    arc.geometry.dispose(); arc.geometry = new THREE.TorusGeometry(r, 0.012, 6, 32, Math.abs(len));
+    arc.position.set(Sx, Sy, 0.36); arc.rotation.set(0, 0, len > 0 ? start : start + len);
+    const ang = start + len;
+    arrowHead.position.set(Sx + r*Math.cos(ang), Sy + r*Math.sin(ang), 0.36);
+    arrowHead.rotation.set(0, 0, ang + (len > 0 ? 0 : Math.PI));
+  }
+}
+
+/* ---------------- Mus og berøring ---------------- */
+const ptrs = new Map(); let pinch0 = 0, r0 = cam.r;
+canvas.addEventListener('pointerdown', e => { canvas.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, {x:e.clientX, y:e.clientY}); if(ptrs.size === 2){ const [a,b] = [...ptrs.values()]; pinch0 = Math.hypot(a.x-b.x, a.y-b.y); r0 = cam.r; } });
+canvas.addEventListener('pointermove', e => {
+  if(!ptrs.has(e.pointerId)) return;
+  const p = ptrs.get(e.pointerId);
+  if(ptrs.size === 1){ cam.az -= (e.clientX-p.x)*0.008; cam.el += (e.clientY-p.y)*0.006; }
+  p.x = e.clientX; p.y = e.clientY;
+  if(ptrs.size === 2){ const [a,b] = [...ptrs.values()]; const d = Math.hypot(a.x-b.x, a.y-b.y); if(pinch0 > 0) cam.r = r0*pinch0/d; }
+  applyCam();
+});
+const up = e => { ptrs.delete(e.pointerId); pinch0 = 0; };
+canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
+canvas.addEventListener('wheel', e => { e.preventDefault(); cam.r *= Math.exp(e.deltaY*0.001); applyCam(); }, {passive:false});
+
+/* ---------------- Brugerflade ---------------- */
+const NOTES = {
+  auto:  'The person leans back while the swing moves forwards, and forward while it moves backwards.',
+  rytme: 'The person rocks in a fixed rhythm. The swing only grows when the pumping frequency matches the swing’s own frequency.',
+  selv:  'Hold the button or the space bar down to lean back, release to lean forward. Find the rhythm!',
+  slap:  'The person holds the tilt fixed with the muscles. Lower the muscle stiffness and push the person: two coupled pendulums.'
+};
+function setMode(m){
+  mode = m;
+  document.querySelectorAll('.seg button').forEach(b => { const on = b.dataset.m === m; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
+  $('modeNote').textContent = NOTES[m];
+  $('ctrlF').hidden = m !== 'rytme';
+  $('holdWrap').hidden = m !== 'selv';
+  if(m === 'rytme') t = 0;
+}
+document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => setMode(b.dataset.m)));
+function bindSlider(id, f, cb){
+  const el = $(id), out = $(id+'o');
+  const u = () => { out.textContent = f(+el.value); };
+  el.addEventListener('input', () => { u(); cb(+el.value); }); u(); cb(+el.value);
+}
+let ready = false;
+bindSlider('sA', v => v + '°', v => { A = v/DEG; });
+bindSlider('sF', v => fmt(v,3) + ' Hz', v => { fP = v; });
+bindSlider('sK', v => v + ' N·m/rad', v => { kap = v; cj = 0.1*v; if(ready){ setupEq(); } });
+bindSlider('sL', v => fmt(v) + ' m', v => { L = v; if(ready){ buildFrame(); setupEq(); } });
+bindSlider('sD', v => fmt(v,3), v => { gam = v; });
+bindSlider('sT', v => fmt(v) + '×', v => { tempo = v; });
+function resetRest(){ setupEq(); s = [eq[0], eq[1], 0, 0]; psiC = 0; dpsiC = 0; W = 0; Eavg = 0; Wavg = 0; hist = []; peak = 0; lastPeak = 0; }
+$('sPush').addEventListener('click', () => { s[2] += 0.35; s[3] += 0.35; });
+$('sNudge').addEventListener('click', () => { s[3] -= 1.2; });
+$('sStop').addEventListener('click', resetRest);
+$('sPause').addEventListener('click', () => { paused = !paused; $('sPause').textContent = paused ? 'Resume' : 'Pause'; });
+if(paused) $('sPause').textContent = 'Resume';
+const hold = $('sHold');
+const setHold = v => { holding = v; hold.classList.toggle('down', v); };
+hold.addEventListener('pointerdown', e => { e.preventDefault(); hold.setPointerCapture(e.pointerId); setHold(true); });
+hold.addEventListener('pointerup', () => setHold(false));
+hold.addEventListener('pointercancel', () => setHold(false));
+window.addEventListener('keydown', e => { if(e.code === 'Space' && mode === 'selv' && !/INPUT|TEXTAREA|BUTTON/.test(document.activeElement.tagName)){ e.preventDefault(); setHold(true); } });
+window.addEventListener('keyup', e => { if(e.code === 'Space') setHold(false); });
+
+/* ---------------- Graf ---------------- */
+const plot = $('sPlot'), pctx = plot.getContext('2d');
+let hist = [], lastSample = -1;
+const WIN = 30;
+function drawPlot(){
+  const dpr = Math.min(window.devicePixelRatio||1, 2), w = plot.clientWidth, h = plot.clientHeight;
+  if(!w || !h) return;
+  if(plot.width !== Math.round(w*dpr) || plot.height !== Math.round(h*dpr)){ plot.width = Math.round(w*dpr); plot.height = Math.round(h*dpr); }
+  const c = pctx; c.setTransform(dpr,0,0,dpr,0,0); c.clearRect(0,0,w,h);
+  const Lm = 40, Rm = 10, Tm = 10, Bm = 24, pw = w-Lm-Rm, ph = h-Tm-Bm;
+  let mx = 10; for(const p of hist) mx = Math.max(mx, Math.abs(p.ph), Math.abs(p.psi));
+  mx = Math.ceil(mx/10)*10;
+  const tEnd = Math.max(t, WIN), tStart = tEnd - WIN;
+  const X = tt => Lm + (tt-tStart)/WIN*pw, Y = v => Tm + (mx - v)/(2*mx)*ph;
+  c.font = '11px Segoe UI, sans-serif'; c.fillStyle = '#a0a0a8'; c.strokeStyle = 'rgba(255,255,255,0.08)'; c.lineWidth = 1;
+  c.textAlign = 'right'; c.textBaseline = 'middle';
+  for(const v of [-mx, -mx/2, 0, mx/2, mx]){ c.beginPath(); c.moveTo(Lm, Y(v)); c.lineTo(Lm+pw, Y(v)); c.stroke(); c.fillText(fmt(v,0)+'°', Lm-5, Y(v)); }
+  c.textAlign = 'center'; c.textBaseline = 'top';
+  for(let tt = Math.ceil(tStart/5)*5; tt <= tEnd+1e-9; tt += 5) c.fillText(fmt(tt,0)+' s', X(tt), Tm+ph+6);
+  for(const [key, col] of [['psi','#f5c878'],['ph','#4cc9f0']]){
+    c.strokeStyle = col; c.lineWidth = 1.8; c.beginPath(); let first = true;
+    for(const p of hist){ if(p.t < tStart) continue; const x = X(p.t), y = Y(p[key]); first ? c.moveTo(x,y) : c.lineTo(x,y); first = false; }
+    c.stroke();
+  }
+}
+
+/* ---------------- Løkke ---------------- */
+function fit(){
+  const w = canvas.clientWidth, h = canvas.clientHeight; if(!w || !h) return;
+  const pr = renderer.getPixelRatio();
+  if(canvas.width !== Math.floor(w*pr) || canvas.height !== Math.floor(h*pr)){ renderer.setSize(w, h, false); camera.aspect = w/h; camera.updateProjectionMatrix(); }
+}
+let visible = true;
+if('IntersectionObserver' in window) new IntersectionObserver(es => { visible = es[0].isIntersecting; }, {threshold:0.02}).observe(stage);
+let Eavg = 0, Wavg = 0;
+let last = performance.now(), lastUI = 0, peak = 0, lastPeak = 0, prevDph = 0;
+function loop(now){
+  const dt = Math.min(0.05, (now-last)/1000); last = now;
+  if(visible){
+    if(!paused){
+      const H = dt*tempo, n = Math.max(1, Math.ceil(H/0.002));
+      for(let j=0;j<n;j++){
+        const psiBefore = s[1]-s[0], tau = torque(s[0], s[1], s[2], s[3], psiC, dpsiC);
+        step(H/n);
+        // musklernes mekaniske arbejde: effekten er τ·ψ̇
+        W += tau*((s[1]-s[0]) - psiBefore);
+        const k = 1 - Math.exp(-(H/n)/3);   // glidende middel over ca. 3 s
+        Eavg += k*((energyRel(s) - Eeq) - Eavg); Wavg += k*(W - Wavg);
+        // amplitude: toppunkter af |φ − φ_eq|
+        const a = Math.abs(s[0]-eq[0]); peak = Math.max(peak, a);
+        if(prevDph*s[2] < 0){ lastPeak = peak; peak = 0; }
+        prevDph = s[2];
+      }
+    }
+    if(t - lastSample >= 0.04 || t < lastSample){
+      lastSample = t; hist.push({t, ph:(s[0]-eq[0])*DEG, psi:(s[1]-s[0])*DEG});
+      while(hist.length && hist[0].t < t - WIN - 1) hist.shift();
+    }
+    updateScene();
+    if(now - lastUI > 120){
+      lastUI = now;
+      const amp = Math.max(lastPeak, peak);
+      $('sHud').innerHTML = `φ = ${fmt((s[0]-eq[0])*DEG,1)}°<br>ψ = ${fmt((s[1]-s[0])*DEG,1)}°`;
+      $('rT1').textContent = isFinite(modesW[0]) ? fmt(2*Math.PI/modesW[0]) + ' s' : '–';
+      $('rT2').textContent = isFinite(modesW[1]) ? fmt(2*Math.PI/modesW[1]) + ' s' : 'ustabil';
+      $('rTp').textContent = mode === 'rytme' ? fmt(1/fP) + ' s' : mode === 'slap' ? '–' : 'follows the swing';
+      $('rA').textContent = fmt(amp*DEG,1) + '°';
+      $('rE').textContent = fmt(Eavg,0) + ' J';
+      $('rW').textContent = fmt(Wavg,0) + ' J';
+      const st = $('sStatus');
+      if(paused) st.textContent = 'Pause';
+      else if(amp > 80/DEG) st.textContent = 'The ropes are going slack!';
+      else if(mode === 'auto' && amp > 75/DEG) st.textContent = 'High enough – the person is resting';
+      else if(!isFinite(modesW[1])) st.textContent = 'The muscles are too weak';
+      else st.textContent = amp < 0.5/DEG ? 'At rest' : 'Swinging';
+    }
+    drawPlot();
+    fit(); renderer.render(scene, camera);
+  }
+  requestAnimationFrame(loop);
+}
+ready = true;
+setMode('auto');
+resetRest();
+requestAnimationFrame(loop);
+})();
+</script>
+<script src="lang-switch.js" defer></script>
+</body>
+</html>

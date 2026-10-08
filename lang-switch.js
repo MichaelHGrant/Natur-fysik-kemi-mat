@@ -21,7 +21,8 @@
     "index.html": "index-en.html",
     "boeger.html": "boeger-en.html",
     "gyroskop-tippetop.html": "gyroskop-tippetop-en.html",
-    "koblede-penduler.html": "koblede-penduler-en.html"
+    "koblede-penduler.html": "koblede-penduler-en.html",
+    "gyngen.html": "gyngen-en.html"
     // "optik.html": "optik-en.html",
   };
 
