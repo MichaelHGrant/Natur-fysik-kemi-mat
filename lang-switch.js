@@ -5,11 +5,11 @@
  * Indsæt denne linje lige før </body> på hver side:
  *     <script src="lang-switch.js" defer></script>
  *
- * Knappen vælger selv sit mål:
- *   - Dansk side MED håndoversat engelsk udgave  -> den engelske fil
- *   - Dansk side UDEN engelsk udgave             -> Google Translate-udgaven
- *   - Engelsk side (-en.html)                    -> den danske original
- *   - Google Translate-udgaven                   -> den danske original
+ * Scriptet HUSKER læserens sprogvalg:
+ *   - Når man besøger index-en.html eller klikker "English", huskes engelsk.
+ *     Alle danske sider, man derefter åbner, vises automatisk på engelsk:
+ *     den håndoversatte udgave, hvis den findes, ellers Google Translate.
+ *   - Når man besøger index.html eller klikker "Dansk", huskes dansk igen.
  *
  * Når du har oversat en ny side, tilføjer du den blot i listen nedenfor.
  */
@@ -21,53 +21,89 @@
     "index.html": "index-en.html",
     "boeger.html": "boeger-en.html"
     // "optik.html": "optik-en.html",
-    // "krydssoe.html": "krydssoe-en.html",
   };
 
   var ORIGIN = "https://michaelhgrant.github.io";
+  var KEY = "nfkm-lang";
   var loc = window.location;
   var onGoogle = /\.translate\.goog$/.test(loc.hostname);
 
-  // Filnavnet på den aktuelle side ("" eller ".../" betyder index.html)
   var parts = loc.pathname.split("/");
   var file = decodeURIComponent(parts.pop()) || "index.html";
   var dir = parts.join("/") + "/";
 
-  // Find den danske fil, hvis vi står på en engelsk side
   var danishFile = null;
   for (var da in TRANSLATED) {
     if (TRANSLATED[da] === file) { danishFile = da; }
   }
 
-  // Siden har allerede et sprogvalg i menuen (forsiderne) -> gør intet
-  if (!onGoogle && document.querySelector("nav a.lang")) { return; }
+  function getPref() { try { return localStorage.getItem(KEY); } catch (e) { return null; } }
+  function setPref(v) { try { localStorage.setItem(KEY, v); } catch (e) {} }
 
-  // Siden er skrevet på engelsk fra starten (fx afhandlingen) -> ingen knap
+  // Fjern vores egen ?lang=… og Googles _x_tr_…-parametre fra en query-streng
+  function cleanQuery(q) {
+    q = q.replace(/([?&])(lang=[^&]*|_x_tr_[^&]*)/g, "$1").replace(/[?&]+$/, "")
+         .replace(/\?&+/, "?").replace(/&&+/g, "&");
+    return q === "?" ? "" : q;
+  }
+  function addParam(q, p) { return q ? q + "&" + p : "?" + p; }
+
+  function googleUrl(path, q, hash) {
+    var host = ORIGIN.replace("https://", "").replace(/-/g, "--").replace(/\./g, "-") + ".translate.goog";
+    return "https://" + host + path + addParam(q, "_x_tr_sl=da&_x_tr_tl=en&_x_tr_hl=en") + hash;
+  }
+
+  var query = cleanQuery(loc.search);
+  var asked = (/[?&]lang=(da|en)/.exec(loc.search) || [])[1];
   var pageLang = (document.documentElement.getAttribute("lang") || "").toLowerCase();
-  if (!onGoogle && !danishFile && pageLang.indexOf("en") === 0) { return; }
+  var isEnglishPage = pageLang.indexOf("en") === 0;
+
+  // ---------- 1. Læg sprogvalget fast ----------
+  if (!onGoogle) {
+    if (asked) {
+      setPref(asked);
+    } else if (danishFile) {
+      setPref("en");                      // en håndoversat engelsk side
+    } else if (file === "index.html") {
+      setPref("da");                      // den danske forside
+    }
+  }
+  var pref = onGoogle ? "en" : getPref();
+
+  // ---------- 2. Send automatisk videre til engelsk ----------
+  if (pref === "en" && !isEnglishPage && asked !== "da") {
+    if (TRANSLATED[file]) {
+      // Der findes en håndoversættelse – brug den, også fra Google-udgaven
+      loc.replace((onGoogle ? ORIGIN : "") + dir + encodeURI(TRANSLATED[file]) + query + loc.hash);
+      return;
+    }
+    if (!onGoogle) {
+      loc.replace(googleUrl(loc.pathname, query, loc.hash));
+      return;
+    }
+  }
+
+  // ---------- 3. Vis knappen ----------
+  // Forsiderne har sprogvalget i menuen og får ingen ekstra knap
+  if (!onGoogle && document.querySelector("nav a.lang")) { return; }
+  // Sider skrevet på engelsk fra starten (fx afhandlingen) får ingen knap
+  if (!onGoogle && !danishFile && isEnglishPage) { return; }
 
   var href, label, lang;
-
   if (onGoogle) {
-    // Tilbage til originalen, uden Googles _x_tr-parametre
-    var q = loc.search.replace(/[?&]_x_tr_[^&]*/g, "").replace(/^&/, "?");
-    href = ORIGIN + loc.pathname + (q === "?" ? "" : q) + loc.hash;
+    href = ORIGIN + loc.pathname + addParam(query, "lang=da") + loc.hash;
     label = "🇩🇰 Dansk (original)";
     lang = "da";
   } else if (danishFile) {
-    href = dir + encodeURI(danishFile) + loc.search + loc.hash;
+    href = dir + encodeURI(danishFile) + addParam(query, "lang=da") + loc.hash;
     label = "🇩🇰 Dansk";
     lang = "da";
   } else if (TRANSLATED[file]) {
-    href = dir + encodeURI(TRANSLATED[file]) + loc.search + loc.hash;
+    href = dir + encodeURI(TRANSLATED[file]) + query + loc.hash;
     label = "🇬🇧 English";
     lang = "en";
   } else {
-    // Ingen håndoversættelse endnu -> Google Translate
-    var host = loc.hostname.replace(/-/g, "--").replace(/\./g, "-") + ".translate.goog";
-    var sep = loc.search ? "&" : "?";
-    href = "https://" + host + loc.pathname + loc.search + sep +
-           "_x_tr_sl=da&_x_tr_tl=en&_x_tr_hl=en" + loc.hash;
+    href = loc.pathname + addParam(query, "lang=en") + loc.hash;
     label = "🇬🇧 English (machine translation)";
     lang = "en";
   }
@@ -76,7 +112,7 @@
   a.href = href;
   a.textContent = label;
   a.lang = lang;
-  a.className = "lang-switch notranslate";   // Google må ikke oversætte knappen
+  a.className = "lang-switch notranslate";
   a.setAttribute("translate", "no");
   a.setAttribute("aria-label", lang === "en" ? "Read this page in English" : "Læs siden på dansk");
 
