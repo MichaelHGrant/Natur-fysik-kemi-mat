@@ -248,7 +248,7 @@
                 let mx = 0; raw.forEach(function(r) { if (r[1] > mx) mx = r[1]; });
                 return raw.map(function(r) {
                     return { isReal: true, lambda: r[0], gA: r[1], A: r[2], El: r[3], Eu: r[4], Jl: r[5], Ju: r[6],
-                             rel: r[1] / mx, color: wavelengthToRGB(r[0]), canvasX: -999 };
+                             rel: r[1] / mx, flag: r[7] || 0, color: wavelengthToRGB(r[0]), canvasX: -999 };
                 });
             }
             function updateSpectrumUI() {
@@ -271,6 +271,8 @@
                 h += (L.A > 0) ? ('A<sub>ki</sub> = ' + fmtSci(L.A) + ' s<sup>&minus;1</sup><br>') : ('A<sub>ki</sub>: <span style="color:#8b949e;">blanding af flere overgange</span><br>');
                 h += 'g<sub>k</sub>A<sub>ki</sub> = ' + fmtSci(L.gA) + ' s<sup>&minus;1</sup> <span style="color:#8b949e;font-size:0.75rem;">(' + TXT.comp + ')</span><br>';
                 h += TXT.bright + ': ' + num(100 * L.rel, L.rel < 0.1 ? 1 : 0) + ' ' + TXT.ofmax;
+                if (L.flag === 1) h += '<br><span style="color:#f0b72f;">&#9888; Usikker værdi (gammel måling, Corliss &amp; Bozman 1962) – tegnet stiplet</span>';
+                if (L.flag === 2) h += '<br><span style="color:#3fb950;">Værdi fra NIST (kritisk vurderet)</span>';
                 return h;
             }
             const MSG_NO_VISIBLE = 'Denne simple brintlignende model lægger alle grundstoffets linjer i UV eller IR. Det rigtige atom har synlige linjer.';
@@ -677,7 +679,9 @@
                         specCtx.strokeStyle = line.color;
                         specCtx.lineWidth = 2;
                         specCtx.globalAlpha = line.rel;   // brightness proportional to g_k A_ki
+                        specCtx.setLineDash(line.flag === 1 ? [6, 4] : []);
                         specCtx.stroke();
+                        specCtx.setLineDash([]);
                     });
                     specCtx.globalAlpha = 1;
                     specCtx.fillStyle = '#8b949e';
