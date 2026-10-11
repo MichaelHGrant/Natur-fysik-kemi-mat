@@ -28,7 +28,8 @@
     "kartoffelmel-og-vand.html": "kartoffelmel-og-vand-en.html",
     "krydssoe.html": "krydssoe-en.html",
     "Periodisk Tabel 3.html": "periodisk-tabel-en.html",
-    "Frossen soe lyde.html": "frossen-soe-lyde-en.html"
+    "Frossen soe lyde.html": "frossen-soe-lyde-en.html",
+    "flokkens-visdom.html": "flokkens-visdom-en.html"
     // "optik.html": "optik-en.html",
   };
 

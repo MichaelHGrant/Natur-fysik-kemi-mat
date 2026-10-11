@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flokkens visdom – Eratosthenes med GPS og skibets kronometre</title>
+<meta name="description" content="En klasse gentager Eratosthenes' måling af Jorden med GPS, og et skibs kronometerrum holder Greenwich-tid ved at tage gennemsnittet af mange ure. Interaktive simuleringer.">
+<link rel="canonical" href="https://mhgfysik.dk/flokkens-visdom.html">
+<link rel="alternate" hreflang="da" href="https://mhgfysik.dk/flokkens-visdom.html">
+<link rel="alternate" hreflang="en" href="https://mhgfysik.dk/flokkens-visdom-en.html">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+<script>
+window.MathJax = { tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] } };
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<style>
+:root{
+  --bg:#0b1520; --panel:#112231; --line:#20384b; --ink:#e7eff4; --muted:#91a7b8;
+  --accent:#9fd8f0; --accent-ink:#04202d; --warm:#f2c14e; --red:#ef8a7a; --green:#8fd19e;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Atkinson Hyperlegible",system-ui,sans-serif;font-size:17px;line-height:1.5}
+a{color:var(--accent)}
+.wrap{max-width:1180px;margin:0 auto;padding:14px 14px 48px}
+.back{font-size:15px;text-decoration:none;color:var(--muted)}
+.back:hover{color:var(--accent)}
+h1{font-family:"Source Serif 4",Georgia,serif;font-weight:600;font-size:clamp(30px,6vw,48px);line-height:1.1;margin:10px 0 6px;letter-spacing:-.01em}
+.lede{color:var(--muted);max-width:68ch;margin:0 0 18px}
+.part{margin:34px 0 0}
+.part > h2{font-family:"Source Serif 4",Georgia,serif;font-weight:600;font-size:clamp(24px,4.2vw,32px);margin:0 0 6px}
+.part > p.intro{max-width:72ch;margin:0 0 14px;font-family:"Source Serif 4",Georgia,serif;font-size:18px;line-height:1.6}
+.layout{display:grid;gap:14px;grid-template-areas:"fig" "ctrl"}
+.a-fig{grid-area:fig;min-width:0}.controls{grid-area:ctrl}
+@media(min-width:960px){.layout{grid-template-columns:330px minmax(0,1fr);grid-template-areas:"ctrl fig";align-items:start}.controls{position:sticky;top:12px}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+.ctrl{margin-bottom:12px}
+.ctrl .row{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.ctrl .val{white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--accent);font-weight:700}
+.ctrl small{display:block;color:var(--muted);font-size:14px;line-height:1.35}
+input[type=range]{width:100%;height:34px;accent-color:var(--accent);margin:2px 0}
+label.check{display:flex;gap:10px;align-items:flex-start;font-size:15px;margin:6px 0 10px;cursor:pointer}
+label.check input{width:20px;height:20px;margin-top:2px;accent-color:var(--accent)}
+button{font:inherit;color:var(--ink);background:#173047;border:1px solid var(--line);border-radius:10px;min-height:44px;padding:8px 14px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.play{width:100%;background:var(--accent);color:var(--accent-ink);border:0;font-weight:700;font-size:19px;min-height:54px}
+.play:hover{filter:brightness(1.08)}
+.facts{margin:12px 0 0;padding:0;list-style:none;font-size:15px;border-top:1px solid var(--line)}
+.facts li{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--line)}
+.facts b{color:var(--ink);font-variant-numeric:tabular-nums;text-align:right}
+.facts span{color:var(--muted)}
+figure{margin:0}
+figure h3{font-family:"Source Serif 4",Georgia,serif;font-weight:600;font-size:21px;margin:0 0 6px}
+figcaption{color:var(--muted);font-size:15px;margin-top:8px;max-width:72ch}
+.canvasbox{position:relative;width:100%;border-radius:10px;overflow:hidden;background:#07101a;border:1px solid var(--line);aspect-ratio:16/10}
+@media(max-width:600px){.canvasbox{aspect-ratio:4/3.6}}
+.canvasbox canvas{display:block;width:100%;height:100%}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:14px;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:18px;height:3px;vertical-align:middle;margin-right:6px;border-radius:2px}
+.legend i.dot{width:8px;height:8px;border-radius:50%}
+.theory{margin-top:18px;max-width:760px}
+details{border-top:1px solid var(--line);padding:4px 0}
+details:last-of-type{border-bottom:1px solid var(--line)}
+summary{cursor:pointer;font-family:"Source Serif 4",Georgia,serif;font-size:20px;font-weight:600;padding:10px 0}
+details p,details li{font-family:"Source Serif 4",Georgia,serif;font-size:18px;line-height:1.62}
+.eq{overflow-x:auto;padding:4px 0}
+.note{border-left:3px solid var(--warm);padding:4px 0 4px 14px;margin:14px 0;max-width:72ch;font-family:"Source Serif 4",Georgia,serif;font-size:18px;line-height:1.6}
+.sources{margin-top:30px;max-width:760px;font-size:15px;color:var(--muted)}
+.sources h2{font-family:"Source Serif 4",Georgia,serif;font-size:21px;color:var(--ink);margin:0 0 6px}
+.sources li{margin:3px 0}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="index.html">← Natur, fysik, kemi og matematik</a>
+  <h1>Flokkens visdom</h1>
+  <p class="lede">Mange upræcise målinger kan tilsammen slå enhver af dem hver for sig, når man tager gennemsnittet. Her er to eksempler, jeg brugte i min undervisning: en klasse, der måler Jorden som Eratosthenes, men med GPS'en i deres telefoner, og kronometerrummet på et skib, der finder sin længdegrad ved at tage gennemsnittet af mange ure.</p>
+
+  <!-- ===================== ERATOSTHENES ===================== -->
+  <section class="part" aria-labelledby="eraH">
+    <h2 id="eraH">Eratosthenes med GPS</h2>
+    <p class="intro">Jeg lod mine elever gå et par hundrede meter fra nord mod syd og notere GPS-koordinaterne ved start og mål. Én elevs aflæsninger er ikke præcise nok, men da vi tog gennemsnittet for hele klassen, kunne vi gentage Eratosthenes' måling og finde Jordens omkreds. Prøv det nedenfor med en klasse i den størrelse, du ønsker.</p>
+    <div class="layout">
+      <aside class="panel controls" aria-label="Indstillinger">
+        <button id="eraNew" class="play">Ny klasse</button>
+        <div class="ctrl" style="margin-top:14px">
+          <div class="row"><label for="eN">Elever i klassen</label><span class="val" id="vN"></span></div>
+          <input type="range" id="eN" min="1" max="40" step="1" value="25">
+        </div>
+        <div class="ctrl">
+          <div class="row"><label for="eD">Gået fra nord mod syd</label><span class="val" id="vD"></span></div>
+          <input type="range" id="eD" min="100" max="1000" step="25" value="300">
+          <small>Afstanden regnes som kendt, fx fra et kort.</small>
+        </div>
+        <div class="ctrl">
+          <div class="row"><label for="eS">GPS-usikkerhed pr. aflæsning</label><span class="val" id="vS"></span></div>
+          <input type="range" id="eS" min="1" max="15" step="0.5" value="5">
+          <small>En almindelig telefon rammer inden for få meter udendørs.</small>
+        </div>
+        <ul class="facts">
+          <li><span>Usikkerhed for én elev</span><b id="fOne">–</b></li>
+          <li><span>Spredning på elevernes resultater</span><b id="fSpread">–</b></li>
+          <li><span>Klassens resultat</span><b id="fClass">–</b></li>
+          <li><span>Fejl på klassens resultat</span><b id="fClassErr">–</b></li>
+          <li><span>Omkreds over polerne</span><b>40.008 km</b></li>
+        </ul>
+      </aside>
+      <figure class="panel a-fig">
+        <h3>Hver elevs bud på Jordens omkreds</h3>
+        <div class="canvasbox"><canvas id="eraCv" role="img" aria-label="Hver elevs bud på Jordens omkreds"></canvas></div>
+        <div class="legend">
+          <span><i class="dot" style="background:var(--accent)"></i>én elevs resultat</span>
+          <span><i style="background:var(--warm)"></i>klassens gennemsnit indtil nu</span>
+          <span><i style="background:var(--green)"></i>sand værdi (40.008 km)</span>
+        </div>
+        <figcaption>Prikkerne er de enkelte elevers resultater. Den gule linje viser klassens resultat med de første 1, 2, 3 … elever: den falder til ro omkring den sande værdi, efterhånden som flere elever kommer med. Det blege bånd er den forventede usikkerhed på gennemsnittet, som aftager som \(1/\sqrt{N}\).</figcaption>
+      </figure>
+    </div>
+
+    <div class="theory">
+      <details open>
+        <summary>Hvad Eratosthenes gjorde</summary>
+        <p>Omkring år 240 f.Kr. hørte Eratosthenes, bibliotekar i Alexandria, at Solen ved middagstid på midsommerdag stod lodret over Syene (det nuværende Aswan) i det sydlige Ægypten. På samme tidspunkt kastede en lodret pind i Alexandria, længere mod nord, en skygge: Solen stod ca. 7,2° fra lodret, en halvtredsindstyvendedel af en hel cirkel. Afstanden mellem byerne var ca. 5000 stadier, så Jordens omkreds måtte være halvtreds gange så stor, ca. 250 000 stadier.</p><p>Idéen er enkel: Hvis to steder på samme meridian ligger afstanden \(d\) fra hinanden, og deres breddegrader afviger med \(\Delta\varphi\), så er</p><div class="eq">\[C = d \cdot \frac{360^\circ}{\Delta\varphi}.\]</div><p>Eratosthenes fandt \(\Delta\varphi\) ud fra en pinds skygge. Eleverne aflæser den direkte på GPS'en.</p>
+      </details>
+      <details>
+        <summary>Hvorfor én elev ikke er nok</summary>
+        <p>En telefons GPS-position er typisk usikker med nogle få meter. På en tur på 300 m giver en fejl på 5 m i hver af de to aflæsninger en usikkerhed på den målte nord–syd-afstand på ca. \(\sqrt{2}\cdot 5\ \text{m} \approx 7\ \text{m}\), altså over 2 %. Det svarer til ca. ±1000 km på Jordens omkreds.</p><p>Elevernes fejl er uafhængige: nogle er for store og andre for små. Når vi tager gennemsnittet af \(N\) resultater, ophæver de tilfældige fejl i høj grad hinanden, og usikkerheden på gennemsnittet aftager som</p><div class="eq">\[\sigma_{\text{gennemsnit}} = \frac{\sigma_{\text{én}}}{\sqrt{N}}.\]</div><p>Med 25 elever er usikkerheden fem gange mindre end for én elev. Prøv at flytte skyderen for antal elever og se den gule linje falde til ro.</p>
+      </details>
+      <details>
+        <summary>Flokkens visdom</summary>
+        <p>I 1907 beskrev Francis Galton en konkurrence på et dyrskue i Plymouth, hvor ca. 800 besøgende gættede på en okses vægt. Få gæt var tæt på, men den midterste værdi af dem alle lå inden for ca. 1 % af den sande vægt. Det er flokkens visdom: Når fejlene er uafhængige og ikke alle trækker samme vej, ved flokken som helhed mere end de enkelte.</p><p>GPS-øvelsen lader eleverne se det ske med deres egne målinger. Den viser også grænsen: Gennemsnittet fjerner tilfældige fejl, men ikke systematiske. Hvis alle elever gik lidt mod sydvest i stedet for stik syd, eller afstanden på kortet var forkert, ville gennemsnittet også blive forkert.</p>
+      </details>
+    </div>
+  </section>
+
+  <!-- ===================== CHRONOMETERS ===================== -->
+  <section class="part" aria-labelledby="clkH">
+    <h2 id="clkH">Skibets kronometerrum</h2>
+    <p class="intro">Samme idé holdt styr på tiden til søs. For at finde skibets længdegrad skulle navigatøren kende klokken i Greenwich. Et skib på opmålingstogt havde mange kronometre med. Hver dag på samme tid blev de trukket op i samme rækkefølge. De blev aldrig stillet, kun trukket op, og deres visning blev noteret. Nogle ure gik for hurtigt og andre for langsomt, men gennemsnittet af dem alle holdt sig meget tæt på Greenwich-tid.</p>
+    <div class="layout">
+      <aside class="panel controls" aria-label="Indstillinger">
+        <button id="clkNew" class="play">Ny sejlads</button>
+        <div class="ctrl" style="margin-top:14px">
+          <div class="row"><label for="cN">Antal kronometre</label><span class="val" id="vcN"></span></div>
+          <input type="range" id="cN" min="1" max="30" step="1" value="22">
+          <small>HMS Beagle havde 22 med på rejsen med Charles Darwin.</small>
+        </div>
+        <div class="ctrl">
+          <div class="row"><label for="cR">Spredning på gang</label><span class="val" id="vcR"></span></div>
+          <input type="range" id="cR" min="0.5" max="6" step="0.5" value="2">
+          <small>Hvor mange sekunder i døgnet et typisk ur vinder eller taber.</small>
+        </div>
+        <div class="ctrl">
+          <div class="row"><label for="cJ">Uregelmæssighed fra dag til dag</label><span class="val" id="vcJ"></span></div>
+          <input type="range" id="cJ" min="0" max="2" step="0.1" value="0.5">
+          <small>Tilfældige ændringer i gangen, fx med temperaturen og skibets bevægelser.</small>
+        </div>
+        <div class="ctrl">
+          <div class="row"><label for="cT">Sejladsens længde</label><span class="val" id="vcT"></span></div>
+          <input type="range" id="cT" min="5" max="180" step="5" value="60">
+        </div>
+        <label class="check"><input type="checkbox" id="cRate" checked><span>Ret for hvert urs gang, målt i havn før afrejsen</span></label>
+        <ul class="facts">
+          <li><span>Dårligste enkelte ur</span><b id="fWorst">–</b></li>
+          <li><span>Fejl på gennemsnittet</span><b id="fMean">–</b></li>
+          <li><span>Fejl på længdegraden</span><b id="fLon">–</b></li>
+          <li><span>…ved ækvator</span><b id="fKm">–</b></li>
+        </ul>
+      </aside>
+      <figure class="panel a-fig">
+        <h3>Hvert kronometers fejl i forhold til Greenwich-tid</h3>
+        <div class="canvasbox"><canvas id="clkCv" role="img" aria-label="Hvert kronometers fejl i forhold til Greenwich-tid"></canvas></div>
+        <div class="legend">
+          <span><i style="background:rgba(159,216,240,.55)"></i>ét kronometer</span>
+          <span><i style="background:var(--warm)"></i>gennemsnit af alle kronometrene</span>
+        </div>
+        <figcaption>Hver tynd linje er ét ur, der driver væk fra Greenwich-tid. Den tykke gule linje er gennemsnittet. Slå rettelsen for urenes gang fra og se, hvor meget af fejlen der var systematisk: Et ur, der altid vinder 2 s i døgnet, er stadig nyttigt, når man ved det.</figcaption>
+      </figure>
+    </div>
+
+    <div class="theory">
+      <details open>
+        <summary>Tid og længdegrad</summary>
+        <p>Jorden drejer 360° på 24 timer, altså 15° i timen. Hvis Solen står højest på himlen (lokal middag), når et kronometer med Greenwich-tid viser 14:00, ligger skibet to timer, altså 30°, vest for Greenwich. Ét sekund svarer til 15 buesekunder på længdegraden, hvilket ved ækvator er ca. 460 m:</p><div class="eq">\[\Delta\lambda = 15^\circ\ \text{pr. time} \times \Delta t, \qquad 1\ \text{s} \;\rightarrow\; 15'' \;\approx\; 0{,}46\ \text{km ved ækvator}.\]</div><p>Et ur, der går ét minut forkert, placerer skibet 28 km forkert ved ækvator.</p>
+      </details>
+      <details>
+        <summary>Kronometrene på HMS Beagle</summary>
+        <p>På rejsen 1831–36, den med Charles Darwin om bord, havde Beagle 22 kronometre i deres egen kahyt. De blev alle trukket op på samme tid hver dag og sammenlignet med hinanden, men aldrig stillet. Hvert urs daglige gevinst eller tab, dets gang, blev noteret og taget med i regningen, og længdegraden blev fundet ud fra gennemsnittet af dem alle. I hver havn undervejs blev urenes gang målt igen over flere dage.</p><p>Da Beagle havde sejlet hele vejen rundt om Jorden, skulle summen af alle tidsforskellene have været præcis 24 timer. Den blev 24 timer og 33 sekunder, en fejl på kun ca. 15 km efter fem år til søs.</p>
+      </details>
+      <details>
+        <summary>Hvad gennemsnittet kan, og hvad det ikke kan</summary>
+        <p>Gennemsnittet af \(N\) ure mindsker den tilfældige del af fejlen med en faktor \(\sqrt{N}\), præcis som med elevernes GPS-aflæsninger. Men en systematisk fejl forsvinder ikke: Hvis alle ure gik langsommere i kulde, ville deres gennemsnit også gøre det. Derfor blev hvert urs gang målt før afrejsen og kontrolleret igen i hver havn. I simuleringen kan du slå denne rettelse fra og til og se forskellen.</p>
+      </details>
+    </div>
+  </section>
+
+  <p class="note">Begge eksempler bygger på samme idé: Mange uafhængige, upræcise målinger giver tilsammen et bedre svar end nogen enkelt af dem. Med en simulering kan eleverne selv udforske idéen, tilføje flere elever eller flere ure og se usikkerheden skrumpe, og det kan en trykt side ikke alene.</p>
+
+  <section class="sources">
+    <h2>Kilder</h2>
+    <ul>
+      <li><a href="https://en.wikipedia.org/wiki/Eratosthenes">Eratosthenes – Wikipedia</a></li>
+      <li><a href="https://en.wikipedia.org/wiki/Wisdom_of_the_crowd">Wisdom of the crowd – Wikipedia</a></li>
+      <li><a href="https://en.wikipedia.org/wiki/List_of_chronometers_on_HMS_Beagle">List of chronometers on HMS Beagle – Wikipedia</a></li>
+      <li><a href="https://www.britannica.com/topic/Beagle-ship">Beagle – Britannica</a></li>
+      <li><a href="https://www.darwinproject.ac.uk/sites/default/files/beagle_index.html">Darwin and the Beagle voyage – Darwin Correspondence Project</a></li>
+    </ul>
+  </section>
+</div>
+
+<script>
+"use strict";
+const L = {"locale": "da-DK", "axisC": "omkreds (km)", "axisPupil": "elev nr.", "axisErr": "fejl (s)", "axisDay": "dag", "sday": "s/døgn", "days": "dage"};
+const $ = id => document.getElementById(id);
+const fmt = (x, d=0) => x.toLocaleString(L.locale, {minimumFractionDigits:d, maximumFractionDigits:d});
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+function gauss(r){let u=0,v=0;while(!u)u=r();while(!v)v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+function fitCanvas(c){
+  const dpr = Math.min(window.devicePixelRatio||1, 2);
+  const w = c.clientWidth, h = c.clientHeight;
+  c.width = Math.round(w*dpr); c.height = Math.round(h*dpr);
+  const ctx = c.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
+  return {ctx, w, h};
+}
+function niceStep(range, n){ const raw = range/n, p = Math.pow(10, Math.floor(Math.log10(raw))), m = raw/p; return (m<1.5?1:m<3?2:m<7?5:10)*p; }
+const FONT = '12px "Atkinson Hyperlegible", sans-serif';
+
+// ================= Eratosthenes with GPS =================
+const C_TRUE = 40008;          // km, meridional circumference
+let eraSeed = 7;
+function eraSim(){
+  const N = +$('eN').value, d = +$('eD').value, s = +$('eS').value;
+  const r = mulberry32(eraSeed);
+  const pupils = [];
+  let sumDelta = 0;
+  for (let i=0;i<40;i++){                 // fixed pool so the slider adds pupils rather than reshuffling
+    const delta = d + s*gauss(r) - s*gauss(r);   // measured north-south separation (m) = end reading - start reading
+    pupils.push(delta);
+  }
+  const used = pupils.slice(0, N);
+  const est = used.map(dl => C_TRUE*d/dl);
+  const running = []; let acc = 0;
+  used.forEach((dl,i) => { acc += dl; running.push(C_TRUE*d/(acc/(i+1))); });
+  return {N, d, s, est, running, classC: running[running.length-1]};
+}
+function drawEra(){
+  const S = eraSim();
+  $('vN').textContent = S.N; $('vD').textContent = S.d+' m'; $('vS').textContent = fmt(S.s, S.s%1?1:0)+' m';
+  const cv = $('eraCv'); const {ctx, w, h} = fitCanvas(cv);
+  const Lm = 62, R = 14, T = 12, B = 34, pw = w-Lm-R, ph = h-T-B;
+  ctx.fillStyle = '#07101a'; ctx.fillRect(0,0,w,h);
+  // y-range: cover pupils but keep within reason
+  let lo = Math.min(...S.est, C_TRUE), hi = Math.max(...S.est, C_TRUE);
+  const pad = Math.max(400, (hi-lo)*0.08); lo -= pad; hi += pad;
+  const xOf = i => Lm + pw*(i+0.5)/Math.max(S.N,1);
+  const yOf = v => T + ph*(hi - v)/(hi - lo);
+  ctx.font = FONT; ctx.lineWidth = 1;
+  const st = niceStep(hi-lo, 6);
+  ctx.textAlign='right'; ctx.textBaseline='middle';
+  for (let v=Math.ceil(lo/st)*st; v<=hi; v+=st){
+    const y = yOf(v); ctx.strokeStyle='rgba(145,167,184,.14)'; ctx.beginPath(); ctx.moveTo(Lm,y); ctx.lineTo(Lm+pw,y); ctx.stroke();
+    ctx.fillStyle='#91a7b8'; ctx.fillText(fmt(v), Lm-6, y);
+  }
+  ctx.save(); ctx.translate(13, T+ph/2); ctx.rotate(-Math.PI/2); ctx.textAlign='center'; ctx.fillStyle='#91a7b8'; ctx.fillText(L.axisC,0,0); ctx.restore();
+  ctx.textAlign='center'; ctx.textBaseline='top';
+  const xs = niceStep(S.N, Math.min(S.N, 8)) || 1;
+  for (let i=1;i<=S.N;i++){ if (i===1 || i%Math.max(1,Math.round(xs))===0) ctx.fillText(i, xOf(i-1), T+ph+6); }
+  ctx.fillText(L.axisPupil, Lm+pw/2, T+ph+19);
+  ctx.save(); ctx.beginPath(); ctx.rect(Lm,T,pw,ph); ctx.clip();
+  // true value
+  ctx.strokeStyle='#8fd19e'; ctx.setLineDash([6,5]); ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(Lm,yOf(C_TRUE)); ctx.lineTo(Lm+pw,yOf(C_TRUE)); ctx.stroke(); ctx.setLineDash([]);
+  // expected ±1σ band of the class average
+  const rel = Math.SQRT2*S.s/S.d;
+  ctx.fillStyle='rgba(242,193,78,.10)'; ctx.beginPath();
+  for (let i=0;i<S.N;i++){ const e = C_TRUE*rel/Math.sqrt(i+1); const x=xOf(i); i?ctx.lineTo(x,yOf(C_TRUE+e)):ctx.moveTo(x,yOf(C_TRUE+e)); }
+  for (let i=S.N-1;i>=0;i--){ const e = C_TRUE*rel/Math.sqrt(i+1); ctx.lineTo(xOf(i),yOf(C_TRUE-e)); }
+  ctx.closePath(); ctx.fill();
+  // pupils
+  ctx.fillStyle='#9fd8f0';
+  S.est.forEach((v,i)=>{ ctx.beginPath(); ctx.arc(xOf(i), yOf(v), 4, 0, 2*Math.PI); ctx.fill(); });
+  // running class average
+  ctx.strokeStyle='#f2c14e'; ctx.lineWidth=2.5; ctx.beginPath();
+  S.running.forEach((v,i)=>{ i?ctx.lineTo(xOf(i),yOf(v)):ctx.moveTo(xOf(i),yOf(v)); }); ctx.stroke();
+  ctx.fillStyle='#f2c14e'; ctx.beginPath(); ctx.arc(xOf(S.N-1), yOf(S.classC), 5, 0, 2*Math.PI); ctx.fill();
+  ctx.restore();
+  ctx.strokeStyle='rgba(145,167,184,.5)'; ctx.strokeRect(Lm+.5,T+.5,pw-1,ph-1);
+  // facts
+  const mean = S.est.reduce((a,b)=>a+b,0)/S.N;
+  const sd = S.N>1 ? Math.sqrt(S.est.reduce((a,b)=>a+(b-mean)**2,0)/(S.N-1)) : NaN;
+  $('fOne').textContent = '± '+fmt(100*rel,1)+' %';
+  $('fSpread').textContent = isFinite(sd) ? '± '+fmt(sd)+' km' : '–';
+  $('fClass').textContent = fmt(S.classC)+' km';
+  $('fClassErr').textContent = (S.classC>=C_TRUE?'+':'−')+fmt(Math.abs(100*(S.classC-C_TRUE)/C_TRUE),1)+' %';
+}
+['eN','eD','eS'].forEach(id => $(id).addEventListener('input', drawEra));
+$('eraNew').addEventListener('click', () => { eraSeed = (eraSeed*7919 + 13) % 1000003; drawEra(); });
+
+// ================= Ship's chronometers =================
+let clkSeed = 11;
+function clkSim(){
+  const N = +$('cN').value, sr = +$('cR').value, sj = +$('cJ').value, T = +$('cT').value, corr = $('cRate').checked;
+  const r = mulberry32(clkSeed);
+  const clocks = [];
+  for (let j=0;j<30;j++){
+    const rate = sr*gauss(r);                 // true average gain (+) or loss (−), s/day
+    const rated = rate + 0.05*sr*gauss(r);    // rate measured before departure
+    const e = new Float64Array(181); let x = 0;
+    for (let t=1;t<=180;t++){ x += rate + sj*gauss(r); e[t] = x; }
+    clocks.push({rate, rated, e});
+  }
+  const used = clocks.slice(0,N).map(c => { const y = new Float64Array(T+1); for (let t=0;t<=T;t++) y[t] = c.e[t] - (corr ? c.rated*t : 0); return y; });
+  const mean = new Float64Array(T+1);
+  for (let t=0;t<=T;t++){ let s=0; for (const y of used) s += y[t]; mean[t] = s/N; }
+  return {N, sr, sj, T, corr, used, mean};
+}
+function drawClk(){
+  const S = clkSim();
+  $('vcN').textContent = S.N; $('vcR').textContent = '± '+fmt(S.sr,1)+' '+L.sday; $('vcJ').textContent = '± '+fmt(S.sj,1)+' '+L.sday; $('vcT').textContent = S.T+' '+L.days;
+  const cv = $('clkCv'); const {ctx, w, h} = fitCanvas(cv);
+  const Lm = 56, R = 14, T = 12, B = 34, pw = w-Lm-R, ph = h-T-B;
+  ctx.fillStyle = '#07101a'; ctx.fillRect(0,0,w,h);
+  let m = 1; for (const y of S.used) for (let t=0;t<=S.T;t++) m = Math.max(m, Math.abs(y[t]));
+  m *= 1.08;
+  const xOf = t => Lm + pw*t/S.T, yOf = v => T + ph*(m - v)/(2*m);
+  ctx.font = FONT; ctx.lineWidth = 1;
+  const st = niceStep(2*m, 6);
+  ctx.textAlign='right'; ctx.textBaseline='middle';
+  for (let v=Math.ceil(-m/st)*st; v<=m; v+=st){
+    const y=yOf(v); ctx.strokeStyle= Math.abs(v)<1e-9?'rgba(145,167,184,.45)':'rgba(145,167,184,.14)'; ctx.beginPath(); ctx.moveTo(Lm,y); ctx.lineTo(Lm+pw,y); ctx.stroke();
+    ctx.fillStyle='#91a7b8'; ctx.fillText((v>0?'+':v<0?'−':'')+fmt(Math.abs(v)), Lm-6, y);
+  }
+  ctx.save(); ctx.translate(13, T+ph/2); ctx.rotate(-Math.PI/2); ctx.textAlign='center'; ctx.fillStyle='#91a7b8'; ctx.fillText(L.axisErr,0,0); ctx.restore();
+  ctx.textAlign='center'; ctx.textBaseline='top';
+  const xt = niceStep(S.T, 6);
+  for (let t=0;t<=S.T+1e-9;t+=xt) ctx.fillText(fmt(t), xOf(t), T+ph+6);
+  ctx.fillText(L.axisDay, Lm+pw/2, T+ph+19);
+  ctx.save(); ctx.beginPath(); ctx.rect(Lm,T,pw,ph); ctx.clip();
+  ctx.strokeStyle='rgba(159,216,240,.45)'; ctx.lineWidth=1.2;
+  for (const y of S.used){ ctx.beginPath(); for (let t=0;t<=S.T;t++){ t?ctx.lineTo(xOf(t),yOf(y[t])):ctx.moveTo(xOf(t),yOf(y[t])); } ctx.stroke(); }
+  ctx.strokeStyle='#f2c14e'; ctx.lineWidth=3; ctx.beginPath();
+  for (let t=0;t<=S.T;t++){ t?ctx.lineTo(xOf(t),yOf(S.mean[t])):ctx.moveTo(xOf(t),yOf(S.mean[t])); } ctx.stroke();
+  ctx.restore();
+  ctx.strokeStyle='rgba(145,167,184,.5)'; ctx.strokeRect(Lm+.5,T+.5,pw-1,ph-1);
+  let worst = 0; for (const y of S.used) worst = Math.max(worst, Math.abs(y[S.T]));
+  const em = S.mean[S.T];
+  $('fWorst').textContent = fmt(worst,1)+' s';
+  $('fMean').textContent = (em<0?'−':'+')+fmt(Math.abs(em),1)+' s';
+  const arcmin = Math.abs(em)*15/60;           // 1 s of time = 15″ of longitude
+  $('fLon').textContent = fmt(arcmin,1)+'′';
+  $('fKm').textContent = fmt(Math.abs(em)*0.4638,1)+' km';
+}
+['cN','cR','cJ','cT','cRate'].forEach(id => $(id).addEventListener('input', drawClk));
+$('clkNew').addEventListener('click', () => { clkSeed = (clkSeed*104729 + 17) % 1000003; drawClk(); });
+
+let rT; window.addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { drawEra(); drawClk(); }, 120); });
+drawEra(); drawClk();
+if (document.fonts) document.fonts.ready.then(() => { drawEra(); drawClk(); });
+</script>
+<script src="lang-switch.js" defer></script>
+</body>
+</html>
