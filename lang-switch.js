@@ -30,6 +30,7 @@
     "Periodisk Tabel 3.html": "periodisk-tabel-en.html",
     "Frossen soe lyde.html": "frossen-soe-lyde-en.html",
     "flokkens-visdom.html": "flokkens-visdom-en.html",
+    "naturvidenskabelig-metode.html": "naturvidenskabelig-metode-en.html",
     "kategori-og-kongruensfejl.html": "kategori-og-kongruensfejl-en.html",
     "solure.html": "solure-en.html",
     "den-nye-ateismes-kategorifejl.html": "den-nye-ateismes-kategorifejl-en.html",
