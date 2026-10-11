@@ -30,6 +30,8 @@
     "Periodisk Tabel 3.html": "periodisk-tabel-en.html",
     "Frossen soe lyde.html": "frossen-soe-lyde-en.html",
     "flokkens-visdom.html": "flokkens-visdom-en.html",
+    "solformoerkelse-2027-globus.html": "solformoerkelse-2027-globus-en.html",
+    "undervisningspakke_gauss_web_offline_skolebog.html": "undervisningspakke_gauss_web_offline_skolebog-en.html",
     "maanens-bane-to-metoder.html": "maanens-bane-to-metoder-en.html",
     "linse-og-diffraktion.html": "linse-og-diffraktion-en.html",
     "jordskaelv.html": "jordskaelv-en.html",
