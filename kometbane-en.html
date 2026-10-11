@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C/2025 R3 (PanSTARRS) Interactive 3D Orbit</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #050510; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: white; }
+        #info-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            pointer-events: none;
+            max-width: 300px;
+        }
+        h1 { margin: 0 0 10px 0; font-size: 20px; color: #4da6ff; }
+        p { margin: 5px 0; font-size: 14px; line-height: 1.4; }
+     .legend { display: flex; align-items: center; margin-top: 5px; font-size: 13px; }
+     .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            font-size: 14px;
+            color: #aaa;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="info-panel">
+        <h1>C/2025 R3 (PanSTARRS) in 3D</h1>
+        <p>Orbital inclination: 124.7°<br>Eccentricity (hyperbola): 1.000366</p>
+        <p style="margin-top: 10px; color: #ccc;">My observations with the eVscope 2:</p>
+        <div class="legend"><div class="dot" style="background: #ff3366;"></div> 8 April 2026 (8 min exposure)</div>
+        <div class="legend"><div class="dot" style="background: #33ccff;"></div> 11 April 2026 (5 min exposure)</div>
+        <div class="legend"><div class="dot" style="background: #33ff33;"></div> 13 April 2026 (fog, 36 sec)</div>
+        <div class="legend"><div class="dot" style="background: #ff9933;"></div> 16 April 2026 (96 sec exposure)</div>
+        <div class="legend" style="margin-top: 15px;"><div class="dot" style="background: #0078D7;"></div> Earth (mid-April)</div>
+    </div>
+
+    <div id="instructions">Drag (touch) to rotate the view in 3D • Scroll (pinch) to zoom</div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        // Opsætning af 3D Scene
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 2000);
+        camera.position.set(150, 100, 200); 
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Interaktive kontroller (Rotering, zoom, panorering)
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+
+        // Skala: 1 AU = 100 3D-enheder
+        const AU = 100;
+
+        // 1. Solen
+        const sunGeo = new THREE.SphereGeometry(4, 32, 32);
+        const sunMat = new THREE.MeshBasicMaterial({ color: 0xffcc00 });
+        const sun = new THREE.Mesh(sunGeo, sunMat);
+        scene.add(sun);
+
+        // 2a. Jordens bane (Referenceplanet / Ekliptika)
+        const earthCurve = new THREE.EllipseCurve(0, 0, AU, AU, 0, 2 * Math.PI, false, 0);
+        const earthPoints = earthCurve.getPoints(100);
+        const earthGeo = new THREE.BufferGeometry().setFromPoints(earthPoints);
+        const earthMat = new THREE.LineBasicMaterial({ color: 0x0078D7, transparent: true, opacity: 0.5 });
+        const earthOrbit = new THREE.Line(earthGeo, earthMat);
+        earthOrbit.rotation.x = Math.PI / 2;
+        scene.add(earthOrbit);
+
+        // 2b. Jorden (Selve planeten tilføjet)
+        const earthPlanetGeo = new THREE.SphereGeometry(2.5, 16, 16);
+        const earthPlanetMat = new THREE.MeshBasicMaterial({ color: 0x0078D7 });
+        const earthPlanet = new THREE.Mesh(earthPlanetGeo, earthPlanetMat);
+        // Placerer Jorden på sin bane i april
+        earthPlanet.position.set(Math.cos(1.0) * AU, 0, -Math.sin(1.0) * AU);
+        scene.add(earthPlanet);
+
+        // Ekliptika-Gitter for at hjælpe med at se hældningen visuelt
+        const gridHelper = new THREE.GridHelper(300, 30, 0x333333, 0x111111);
+        scene.add(gridHelper);
+
+        // 3. Kometens hyperbolske bane
+        const e = 1.000366; 
+        const q = 0.499 * AU; 
+        const p = q * (1 + e);
+        
+        // Vinkler konverteret til radianer
+        const inclination = 124.73 * Math.PI / 180;
+        const argPeriapsis = 162.22 * Math.PI / 180;
+        const ascNode = 38.69 * Math.PI / 180;
+
+        const cometPoints = new Array(); 
+
+        for (let v = -2.2; v <= 2.2; v += 0.01) {
+            let r = p / (1 + e * Math.cos(v));
+            let x = r * Math.cos(v);
+            let y = r * Math.sin(v);
+            
+            let vec = new THREE.Vector3(x, y, 0);
+            
+            // Transformering i 3D rum ifølge klassiske baneelementer
+            vec.applyAxisAngle(new THREE.Vector3(0, 0, 1), argPeriapsis); 
+            vec.applyAxisAngle(new THREE.Vector3(1, 0, 0), inclination);  
+            vec.applyAxisAngle(new THREE.Vector3(0, 0, 1), ascNode);      
+            
+            // Konverterer til Three.js standard
+            cometPoints.push(new THREE.Vector3(vec.x, vec.z, -vec.y));
+        }
+
+        const cometGeo = new THREE.BufferGeometry().setFromPoints(cometPoints);
+        const cometMat = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 });
+        const cometOrbitObj = new THREE.Line(cometGeo, cometMat);
+        scene.add(cometOrbitObj);
+
+        // 4. Markører for dine 4 observationer
+        const obsAngles = [-0.60, -0.40, -0.30, -0.15];
+        const obsColors = [0xff3366, 0x33ccff, 0x33ff33, 0xff9933];
+        
+        obsAngles.forEach((v, index) => {
+            let r = p / (1 + e * Math.cos(v));
+            let x = r * Math.cos(v);
+            let y = r * Math.sin(v);
+            
+            let vec = new THREE.Vector3(x, y, 0);
+            vec.applyAxisAngle(new THREE.Vector3(0, 0, 1), argPeriapsis);
+            vec.applyAxisAngle(new THREE.Vector3(1, 0, 0), inclination);
+            vec.applyAxisAngle(new THREE.Vector3(0, 0, 1), ascNode);
+            
+            const pointGeo = new THREE.SphereGeometry(2.5, 16, 16);
+            const pointMat = new THREE.MeshBasicMaterial({ color: obsColors[index] });
+            const pointMesh = new THREE.Mesh(pointGeo, pointMat);
+            pointMesh.position.set(vec.x, vec.z, -vec.y);
+            scene.add(pointMesh);
+        });
+
+        // Animations-loop
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update(); 
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Sikrer at 3D rummet tilpasser sig skærmen
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+<script src="lang-switch.js" defer></script>
+</body>
+</html>

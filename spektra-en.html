@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Quantum Mechanical Universe</title>
+ <a href="index-en.html" class="back-link">← Back to the front page</a>    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        .chart-container { position: relative; width: 100%; height: 100%; min-height: 200px; }
+        
+        .spectral-line {
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0,0,0,0);
+        }
+        .spectral-line:hover, .spectral-line.active {
+            transform: scaleY(1.3);
+            z-index: 10;
+        }
+        
+        .modebar { display: none !important; }
+        
+        .mw-line { background-color: #f59e0b; box-shadow: 0 0 12px #f59e0b; }
+        .ir-line { background-color: #ef4444; box-shadow: 0 0 15px #ef4444; width: 6px !important; margin-left:-3px; }
+        
+        .ir-peak {
+            position: absolute; bottom: 0; background-color: #ef4444; opacity: 0.8;
+            border-top-left-radius: 9999px; border-top-right-radius: 9999px;
+            cursor: pointer; transition: all 0.3s;
+        }
+        .ir-peak:hover { background-color: #dc2626; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased selection:bg-sky-200">
+
+    <div class="max-w-7xl mx-auto p-4 md:p-6 lg:p-8">
+        
+        <header class="mb-8 border-b border-slate-200 pb-6">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight mb-2">The Quantum Mechanical Universe</h1>
+            <p class="text-lg text-slate-600 max-w-3xl">
+                Explore the geometry of atoms and molecules in 3D. See how they interact with light: electron transitions create <strong>visible light</strong>, rotations create <strong>microwaves</strong>, and asymmetric vibrations absorb <strong>infrared heat radiation</strong>. Now includes molecules known from comet C/2025 T1!
+            </p>
+            
+
+
+        </header>
+
+        <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 lg:gap-8">
+            
+            <!-- VENSTRE KOLONNE: 3D Visualisering -->
+            <section class="xl:col-span-7 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col">
+                
+                <div class="mb-4 flex justify-between items-start">
+                    <div>
+                        <h2 class="text-xl font-bold flex items-center text-slate-900">
+                            <span class="bg-sky-100 text-sky-700 w-8 h-8 rounded-full flex items-center justify-center mr-3 text-sm">1</span> 3D Electron Density & Geometry
+                        </h2>
+                        <p class="text-sm text-slate-500 mt-1">The probability distribution for the location of the electrons.</p>
+                    </div>
+                </div>
+
+                <!-- Kontrolpanel -->
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 mb-6">
+                    <div class="mb-4 pb-4 border-b border-slate-200">
+                        <label for="system-select" class="block text-sm font-semibold text-slate-700 mb-1">Physical System</label>
+                        <select id="system-select" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium cursor-pointer">
+                            <optgroup label="Atoms (Visible Light)">
+                                <option value="atom">Hydrogen (H) - Analytical Orbitals</option>
+                                <option value="atom_c">Carbon (C) - Valence Electron Cloud</option>
+                                <option value="atom_n">Nitrogen (N) - Valence Electron Cloud</option>
+                                <option value="atom_o">Oxygen (O) - Valence Electron Cloud</option>
+                            </optgroup>
+                            <optgroup label="Diatomic Molecules (MO Theory & Band Spectra)">
+                                <option value="mol_bond">Hydrogen (H2) - Bonding LCAO (σ)</option>
+                                <option value="mol_anti">Hydrogen (H2) - Antibonding LCAO (σ*)</option>
+                                <option value="mol_o2">Oxygen (O2) - Double Bond (σ + π)</option>
+                                <option value="mol_n2">Nitrogen (N2) - Triple Bond (σ + 2π)</option>
+                                <option value="mol_c2">Carbon (C2) - Diatomic Double Bond</option>
+                                <option value="mol_co">Carbon Monoxide (CO) - Polar Triple Bond</option>
+                                <option value="mol_cn" selected>Cyano Radical (CN) - Comet Bands (σ + 2π)</option>
+                            </optgroup>
+                            <optgroup label="Polyatomic Molecules (Rotation/Vibration)">
+                                <option value="water">Water (H2O) - Bent (Microwaves)</option>
+                                <option value="ammonia">Ammonia (NH3) - Trigonal Pyramid (Microwaves)</option>
+                                <option value="co2">Carbon Dioxide (CO2) - Linear (Infrared)</option>
+                                <option value="methane">Methane (CH4) - Tetrahedron (Infrared)</option>
+                                <option value="acetylene">Acetylene (C2H2) - Linear Triple Bond (Infrared)</option>
+                            </optgroup>
+                        </select>
+                    </div>
+
+                    <div id="quantum-controls" class="grid grid-cols-3 gap-4 transition-opacity hidden">
+                        <div>
+                            <label for="n-select" class="block text-sm font-semibold text-slate-700 mb-1">Principal (n)</label>
+                            <select id="n-select" class="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer">
+                                <option value="1">1</option><option value="2">2</option><option value="3" selected>3</option>
+                                <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="l-select" class="block text-sm font-semibold text-slate-700 mb-1">Azimuthal (l)</label>
+                            <select id="l-select" class="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer"></select>
+                        </div>
+                        <div>
+                            <label for="m-select" class="block text-sm font-semibold text-slate-700 mb-1">Magnetic (m)</label>
+                            <select id="m-select" class="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer"></select>
+                        </div>
+                    </div>
+                    
+                    <div id="system-info" class="text-sm text-slate-600 bg-blue-50 p-3 rounded border border-blue-100 mt-4">
+                        <!-- Udfyldes dynamisk -->
+                    </div>
+                </div>
+
+                <div class="flex-grow relative bg-slate-900 rounded-xl overflow-hidden border border-slate-800" style="min-height: 400px;">
+                    <div id="loading-overlay" class="absolute inset-0 z-10 flex items-center justify-center bg-slate-900 bg-opacity-80 transition-opacity">
+                        <div class="text-white text-sm flex flex-col items-center">
+                            <svg class="animate-spin -ml-1 mr-3 h-8 w-8 text-sky-500 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle></svg>
+                            Calculating geometry...
+                        </div>
+                    </div>
+                    <div id="orbital-plot" class="w-full h-full"></div>
+                </div>
+            </section>
+
+            <!-- HØJRE KOLONNE: Energetik & Spektroskopi -->
+            <section class="xl:col-span-5 flex flex-col gap-6 relative" id="right-column-container">
+                
+                <!-- ATOM VIEW (Synligt Lys) -->
+                <div id="atom-view" class="hidden flex flex-col gap-6 absolute inset-0 bg-slate-50 z-10">
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col h-full">
+                        <h2 class="text-xl font-bold flex items-center text-slate-900 mb-4">
+                            <span class="bg-sky-100 text-sky-700 w-8 h-8 rounded-full flex items-center justify-center mr-3 text-sm">2</span> Atomic Energy Levels & Spectrum
+                        </h2>
+                        
+                        <div class="relative w-full flex-grow rounded-xl bg-slate-900 overflow-hidden mb-4" style="min-height: 200px;">
+                            <canvas id="energy-canvas" class="w-full h-full block cursor-crosshair"></canvas>
+                        </div>
+
+                        <p class="text-xs text-slate-500 mb-2">Electron decays create light with specific wavelengths.</p>
+                        <div class="w-full h-20 bg-black rounded-lg relative overflow-hidden flex items-center shadow-inner border border-slate-800" id="spectrum-container">
+                            <div class="absolute inset-0 opacity-20" style="background: linear-gradient(to right, #200000 0%, #400040 20%, #000040 40%, #002040 60%, #004000 80%, #400000 100%); mix-blend-mode: screen;"></div>
+                        </div>
+                        <div id="atom-lines-info" class="mt-4 p-3 bg-slate-100 border border-slate-200 rounded text-sm text-slate-600">Hover over the lines to see the transitions...</div>
+                    </div>
+                </div>
+
+                <!-- MOLEKYLE VIEW (Diatomiske) -->
+                <div id="molecule-view" class="hidden flex flex-col gap-6 absolute inset-0 bg-slate-50 z-20">
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col h-full">
+                        <h2 class="text-xl font-bold flex items-center text-slate-900 mb-4">
+                            <span class="bg-indigo-100 text-indigo-700 w-8 h-8 rounded-full flex items-center justify-center mr-3 text-sm">2</span> MO Diagram & Band Spectrum
+                        </h2>
+                        <p class="text-sm text-slate-600 mb-4" id="mo-desc"></p>
+                        
+                        <div class="relative w-full flex-grow rounded-xl bg-slate-900 overflow-hidden mb-4" style="min-height: 220px;">
+                            <canvas id="mo-canvas" class="w-full h-full block"></canvas>
+                        </div>
+                        
+                        <p class="text-xs text-slate-500 mb-2">Diatomic molecules form dense "bands" of light due to rotation and vibration.</p>
+                        <div class="w-full h-16 bg-black rounded-lg relative overflow-hidden flex items-center shadow-inner border border-slate-800" id="dia-spectrum-container">
+                            <div class="absolute inset-0 opacity-20" style="background: linear-gradient(to right, #200000 0%, #400040 20%, #000040 40%, #002040 60%, #004000 80%, #400000 100%); mix-blend-mode: screen;"></div>
+                        </div>
+                        <div id="dia-lines-info" class="mt-4 p-3 bg-indigo-50 border border-indigo-100 text-indigo-900 rounded text-sm">Hover over the bands to see transitions in the MO diagram...</div>
+                    </div>
+                </div>
+
+                <!-- MIKROBØLGE VIEW (Vand, Ammoniak) -->
+                <div id="mw-view" class="hidden flex flex-col gap-6 absolute inset-0 bg-slate-50 z-30">
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col h-full">
+                        <h2 class="text-xl font-bold flex items-center text-slate-900 mb-4">
+                            <span class="bg-amber-100 text-amber-700 w-8 h-8 rounded-full flex items-center justify-center mr-3 text-sm">2</span> Rotational Spectrum (Microwaves)
+                        </h2>
+                        <p class="text-sm text-slate-600 mb-4" id="mw-desc"></p>
+                        <div class="w-full flex-grow bg-slate-900 rounded-lg relative overflow-hidden flex items-center shadow-inner border border-slate-800" id="mw-spectrum-container">
+                        </div>
+                        <div id="mw-info" class="mt-4 p-4 bg-amber-50 border border-amber-200 rounded text-sm text-amber-900 h-[100px] flex flex-col justify-center">
+                            <span class="text-slate-400 italic">Hover over an orange spectral line...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- IR VIEW (CO2, Metan, Acetylen) -->
+                <div id="ir-view" class="hidden flex flex-col gap-6 absolute inset-0 bg-slate-50 z-40">
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col h-full">
+                        <h2 class="text-xl font-bold flex items-center text-slate-900 mb-4">
+                            <span class="bg-red-100 text-red-700 w-8 h-8 rounded-full flex items-center justify-center mr-3 text-sm">2</span> Vibrational Spectrum (Infrared)
+                        </h2>
+                        <p class="text-sm text-slate-600 mb-4" id="ir-desc"></p>
+
+                        <div class="relative w-full flex-grow rounded-xl bg-slate-50 border border-slate-200 p-4 mb-4 flex flex-col justify-end" style="min-height: 250px;">
+                            <div class="absolute top-2 right-4 text-xs font-bold text-red-500">Absorption (%)</div>
+                            
+                            <div class="w-full h-[150px] relative border-b-2 border-slate-800 flex items-end" id="ir-peaks-container"></div>
+                            
+                            <div class="w-full flex justify-between mt-2 text-xs font-mono text-slate-500">
+                                <span>500 cm⁻¹</span><span>1500 cm⁻¹</span><span>3000 cm⁻¹</span><span>4000 cm⁻¹</span>
+                            </div>
+                            <div class="text-center text-[10px] text-slate-400 mt-1">Wavenumber (cm⁻¹)</div>
+                        </div>
+
+                        <div id="ir-info" class="p-4 bg-red-50 text-red-900 rounded border border-red-200 text-sm h-[90px]">
+                            <strong>Vibration:</strong> Hover over the absorption peaks to see details.
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+        </div>
+    </div>
+
+    <script>
+        // --- Tilstand ---
+        const state = { 
+            system: 'mol_cn', n: 3, l: 2, m: 0, // Starter på Cyanogen radikalet
+            activeAtomTransition: null,
+            activeDiaTransition: null,
+            moLevels: [], 
+            hoveredMOLevel: null 
+        };
+
+        const els = {
+            system: document.getElementById('system-select'),
+            quantumControls: document.getElementById('quantum-controls'),
+            systemInfo: document.getElementById('system-info'),
+            loading: document.getElementById('loading-overlay'),
+            
+            atomView: document.getElementById('atom-view'),
+            moleculeView: document.getElementById('molecule-view'),
+            mwView: document.getElementById('mw-view'),
+            irView: document.getElementById('ir-view'),
+            
+            energyCanvas: document.getElementById('energy-canvas'),
+            spectrumContainer: document.getElementById('spectrum-container'),
+            atomLinesInfo: document.getElementById('atom-lines-info'),
+            
+            moCanvas: document.getElementById('mo-canvas'), 
+            moDesc: document.getElementById('mo-desc'),
+            diaSpectrumContainer: document.getElementById('dia-spectrum-container'),
+            diaLinesInfo: document.getElementById('dia-lines-info'),
+            
+            mwSpectrumContainer: document.getElementById('mw-spectrum-container'), 
+            mwInfo: document.getElementById('mw-info'), mwDesc: document.getElementById('mw-desc'),
+            
+            irPeaksContainer: document.getElementById('ir-peaks-container'), 
+            irInfo: document.getElementById('ir-info'), irDesc: document.getElementById('ir-desc')
+        };
+
+        // Kemi Data for Spektre
+        const spectralData = {
+            'atom': [
+                { wave: 656, color: '#ff0033', prob: 1.0, posPercent: 85, label: 'Balmer H-α (3→2)', fromN: 3, toN: 2 }, 
+                { wave: 486, color: '#00ffff', prob: 0.5, posPercent: 45, label: 'Balmer H-β (4→2)', fromN: 4, toN: 2 }, 
+                { wave: 434, color: '#4169e1', prob: 0.3, posPercent: 22, label: 'Balmer H-γ (5→2)', fromN: 5, toN: 2 }
+            ],
+            'atom_c': [{ wave: 426, color: '#4f46e5', prob: 0.8, posPercent: 18, label: 'C II 426.7 nm' }, { wave: 514, color: '#22c55e', prob: 0.5, posPercent: 50, label: 'C II 514.5 nm' }, { wave: 657, color: '#ef4444', prob: 1.0, posPercent: 85, label: 'C II 657.8 nm' }],
+            'atom_n': [{ wave: 410, color: '#8b5cf6', prob: 0.6, posPercent: 12, label: 'N I 410.9 nm' }, { wave: 575, color: '#eab308', prob: 0.8, posPercent: 65, label: 'N I 575.2 nm' }, { wave: 648, color: '#f87171', prob: 1.0, posPercent: 82, label: 'N I 648.2 nm' }],
+            'atom_o': [{ wave: 436, color: '#3b82f6', prob: 0.6, posPercent: 22, label: 'O I 436.8 nm' }, { wave: 615, color: '#f97316', prob: 0.7, posPercent: 75, label: 'O I 615.8 nm' }, { wave: 777, color: '#991b1b', prob: 1.0, posPercent: 95, label: 'O I 777.4 nm' }]
+        };
+
+        const diatomicSpectralData = {
+            'mol_bond': [{ wave: 110, color: '#8b5cf6', prob: 0.8, posPercent: 2, label: 'Lyman band (far UV, invisible)', from: 'Antibonding', to: 'Bonding' }],
+            'mol_anti': [{ wave: 110, color: '#8b5cf6', prob: 0.8, posPercent: 2, label: 'Lyman band (far UV, invisible)', from: 'Antibonding', to: 'Bonding' }],
+            'mol_o2': [
+                { wave: 760, color: '#991b1b', prob: 1.0, posPercent: 85, label: 'Fraunhofer A band (abs.)', from: 'π* (³Σ, ground state)', to: 'π* (¹Σ, spin flipped)' },
+                { wave: 687, color: '#dc2626', prob: 0.7, posPercent: 70, label: 'Fraunhofer B band (abs.)', from: 'π* (³Σ, ground state)', to: 'π* (¹Σ, spin flipped)' }
+            ],
+            'mol_n2': [
+                { wave: 337, color: '#c084fc', prob: 1.0, posPercent: 10, label: 'Aurora UV (emission)', from: 'π*, π* (Anti)', to: 'π, π (bond)' },
+                { wave: 391, color: '#818cf8', prob: 0.8, posPercent: 20, label: 'Aurora blue (N₂⁺, emission)', from: 'π*, π* (Anti)', to: 'σ (bond)' },
+                { wave: 427, color: '#3b82f6', prob: 0.6, posPercent: 28, label: 'Aurora violet (N₂⁺, emission)', from: 'π*, π* (Anti)', to: 'σ (bond)' }
+            ],
+            'mol_c2': [
+                { wave: 516, color: '#22c55e', prob: 1.0, posPercent: 45, label: 'Swan band (green comet coma)', from: 'σ (Anti)', to: 'π, π (bond)' },
+                { wave: 473, color: '#06b6d4', prob: 0.8, posPercent: 35, label: 'Swan band (blue-green)', from: 'σ (Anti)', to: 'π, π (bond)' }
+            ],
+            'mol_co': [
+                { wave: 451, color: '#3b82f6', prob: 0.9, posPercent: 30, label: 'Ångström band (blue)', from: 'π*, π* (Anti)', to: 'σ (bond)' },
+                { wave: 519, color: '#10b981', prob: 0.7, posPercent: 48, label: 'Ångström band (green)', from: 'π*, π* (Anti)', to: 'π, π (bond)' }
+            ],
+            'mol_cn': [
+                { wave: 388, color: '#8b5cf6', prob: 1.0, posPercent: 20, label: 'CN violet band (comet coma)', from: 'σ (bond)', to: 'σ (radical)' },
+                { wave: 790, color: '#991b1b', prob: 0.6, posPercent: 90, label: 'CN red band', from: 'π, π (bond)', to: 'σ (radical)' }
+            ]
+        };
+
+        const microwaveData = {
+            'water': [
+                { freq: 22.2, name: "Water maser", desc: "Famous transition used in radio astronomy.", pos: 10, intensity: 0.8 },
+                { freq: 183.3, name: "Atmospheric", desc: "Makes the Earth opaque at this frequency.", pos: 60, intensity: 1.0 },
+                { freq: 325.1, name: "Interstellar", desc: "Observed in warm interstellar clouds.", pos: 95, intensity: 0.5 }
+            ],
+            'ammonia': [
+                { freq: 23.8, name: "Quantum Mechanical Inversion", desc: "The ammonia 'umbrella' turns inside out! The N atom tunnels through the H plane.", pos: 12, intensity: 1.0 },
+                { freq: 572.5, name: "Pure Rotation", desc: "The whole molecule tumbles about its own axis.", pos: 80, intensity: 0.6 }
+            ]
+        };
+
+        const irData = {
+            'co2': [
+                { waveNum: 2349, pos: 60, width: 30, height: 95, name: "Asymmetric Stretch", desc: "The oxygen atoms move in the same direction, carbon the opposite way. Absorbs heat energy very efficiently." },
+                { waveNum: 667, pos: 10, width: 45, height: 80, name: "Bending Vibration", desc: "The linear molecule bends in the middle. This low-energy vibration traps the heat that the Earth radiates." }
+            ],
+            'methane': [
+                { waveNum: 3010, pos: 80, width: 40, height: 90, name: "C-H Stretch", desc: "High-energy vibration in which the hydrogen atoms vibrate in and out of the tetrahedral shape." },
+                { waveNum: 1306, pos: 25, width: 50, height: 85, name: "Umbrella Bend", desc: "Angular bending of the C-H bonds. Per kilogram, methane is a greenhouse gas about 28 times stronger than CO₂ over 100 years." }
+            ],
+            'acetylene': [
+                { waveNum: 3287, pos: 85, width: 35, height: 90, name: "Asymmetric C-H Stretch", desc: "The two hydrogen atoms stretch asymmetrically relative to the carbon core. Strong IR absorption." },
+                { waveNum: 730, pos: 15, width: 40, height: 75, name: "C-H Bend", desc: "The molecule bends away from its linear shape, allowing it to interact with infrared light." }
+            ]
+        };
+
+        const infoTexts = {
+            'atom': "<strong>Hydrogen (H):</strong> The simplest atom. Choose quantum numbers to see the exact analytical solutions.",
+            'atom_c': "<strong>Carbon (C):</strong> 4 valence electrons. Forms the basis of organic chemistry via hybridisation.",
+            'atom_n': "<strong>Nitrogen (N):</strong> 5 valence electrons. Has a strong tendency to form strong triple bonds.",
+            'atom_o': "<strong>Oxygen (O):</strong> 6 valence electrons. Highly electronegative, pulls hard on electrons.",
+            'mol_bond': "<strong>Hydrogen molecule (H₂) bonding:</strong> Two orbitals in constructive interference. The electrons gather between the nuclei and bind them together.",
+            'mol_anti': "<strong>Hydrogen molecule (H₂) antibonding:</strong> Destructive interference creates a nodal plane between the nuclei.",
+            'mol_o2': "<strong>O₂ molecule:</strong> Double bond (σ and π). A paramagnetic diradical in its ground state.",
+            'mol_n2': "<strong>N₂ molecule:</strong> Triple bond! One σ and two orthogonal π bonds make N2 extremely stable.",
+            'mol_c2': "<strong>C₂ molecule:</strong> Occurs in flames. Its MO diagram shows that it is bound predominantly by π electrons.",
+            'mol_co': "<strong>Carbon monoxide (CO):</strong> Polar triple bond. Carbon (grey) has a 'lone pair' that often binds to metals.",
+            'mol_cn': "<strong>Cyano radical (CN):</strong> Highly reactive diatomic molecule with an unpaired electron. Its violet and red emission bands are very dominant in the comae of comets (such as C/2025 T1).",
+            'water': "<strong>Water (H₂O):</strong> Bent geometry (~104.5°). Two lone pairs on the oxygen make the molecule polar and vital for life.",
+            'ammonia': "<strong>Ammonia (NH₃):</strong> Trigonal pyramid (~107°). Nitrogen at the top pushes the hydrogens down.",
+            'co2': "<strong>Carbon dioxide (CO₂):</strong> Linear. Carbon in the middle, double π clouds around it. Non-polar until it vibrates.",
+            'methane': "<strong>Methane (CH₄):</strong> Tetrahedral geometry (~109.5°). Symmetric distribution of four C-H bonds.",
+            'acetylene': "<strong>Acetylene (C₂H₂):</strong> A linear chain (H-C≡C-H) with an ultra-strong carbon triple bond in the middle. Found in gaseous interstellar clouds and in comet ice."
+        };
+
+        function setDefaultMODesc() {
+            if(state.system === 'mol_n2' || state.system === 'mol_co') {
+                els.moDesc.innerHTML = "<strong>Triple bond!</strong> Extreme stabilisation. σ bond at the bottom and two strong π bonds.";
+            } else if(state.system === 'mol_c2') {
+                els.moDesc.innerHTML = "<strong>C₂ molecule:</strong> Double bond of primarily π character.";
+            } else if(state.system === 'mol_o2') {
+                els.moDesc.innerHTML = "<strong>O₂ molecule:</strong> Double bond. A paramagnetic diradical.";
+            } else if(state.system === 'mol_cn') {
+                els.moDesc.innerHTML = "<strong>CN radical:</strong> Triple-bond character, but missing 1 electron. The unpaired electron sits in a σ orbital.";
+            } else if(state.system === 'mol_bond' || state.system === 'mol_anti') {
+                els.moDesc.innerHTML = "<strong>H₂ LCAO:</strong> Two atomic orbitals combine into new levels.";
+            } else {
+                els.moDesc.innerHTML = "Simple MO model: overlap of valence orbitals.";
+            }
+        }
+
+        function init() {
+            setupEventListeners(); updateSelectOptions(); updateUIVisibility(); triggerPlotUpdate();
+        }
+
+        function setupEventListeners() {
+            els.system.addEventListener('change', (e) => { state.system = e.target.value; updateUIVisibility(); triggerPlotUpdate(); });
+            document.getElementById('n-select').addEventListener('change', (e) => { state.n = parseInt(e.target.value); state.l = Math.min(state.l, state.n-1); state.m = Math.max(-state.l, Math.min(state.l, state.m)); updateSelectOptions(); triggerPlotUpdate(); if(!els.atomView.classList.contains('hidden')) drawAtomEnergyDiagram(); });
+            document.getElementById('l-select').addEventListener('change', (e) => { state.l = parseInt(e.target.value); state.m = Math.max(-state.l, Math.min(state.l, state.m)); updateSelectOptions(); triggerPlotUpdate(); });
+            document.getElementById('m-select').addEventListener('change', (e) => { state.m = parseInt(e.target.value); triggerPlotUpdate(); });
+            
+            window.addEventListener('resize', () => { 
+                if (!els.moleculeView.classList.contains('hidden')) drawMODiagram(); 
+                if (!els.atomView.classList.contains('hidden')) drawAtomEnergyDiagram();
+            });
+
+            els.moCanvas.addEventListener('mousemove', (e) => {
+                if (!state.moLevels || state.moLevels.length === 0) return;
+                const rect = els.moCanvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+
+                let hovered = null;
+                for (const lvl of state.moLevels) {
+                    if (Math.abs(mouseX - lvl.x) < (lvl.width/2 + 30) && Math.abs(mouseY - lvl.y) < 20) {
+                        hovered = lvl; break;
+                    }
+                }
+
+                if (hovered && state.hoveredMOLevel !== hovered.txt) {
+                    state.hoveredMOLevel = hovered.txt;
+                    els.moCanvas.style.cursor = 'pointer';
+                    els.moDesc.innerHTML = `<strong style="color:${hovered.col}">${hovered.txt}:</strong> ${hovered.desc}`;
+                    drawMODiagram(); 
+                } else if (!hovered && state.hoveredMOLevel !== null) {
+                    state.hoveredMOLevel = null;
+                    els.moCanvas.style.cursor = 'default';
+                    setDefaultMODesc();
+                    drawMODiagram(); 
+                }
+            });
+            
+            els.moCanvas.addEventListener('mouseleave', () => {
+                if (state.hoveredMOLevel !== null) {
+                    state.hoveredMOLevel = null;
+                    els.moCanvas.style.cursor = 'default';
+                    setDefaultMODesc();
+                    drawMODiagram();
+                }
+            });
+        }
+
+        function updateUIVisibility() {
+            [els.atomView, els.moleculeView, els.mwView, els.irView].forEach(v => v.classList.add('hidden'));
+            
+            if (['atom', 'mol_bond', 'mol_anti'].includes(state.system)) {
+                els.quantumControls.classList.remove('hidden');
+            } else {
+                els.quantumControls.classList.add('hidden');
+            }
+            
+            els.systemInfo.innerHTML = infoTexts[state.system] || "";
+
+            if (state.system.startsWith('atom')) {
+                els.atomView.classList.remove('hidden');
+                drawAtomEnergyDiagram();
+                buildAtomSpectrum();
+            } else if (state.system.startsWith('mol_')) {
+                els.moleculeView.classList.remove('hidden');
+                state.hoveredMOLevel = null; 
+                drawMODiagram();
+                buildDiatomicSpectrum(); 
+            } else if (state.system === 'water' || state.system === 'ammonia') {
+                els.mwView.classList.remove('hidden');
+                els.mwDesc.innerText = state.system === 'water'? 
+                    "Water is a strong dipole. Its asymmetric rotation creates microwaves." : 
+                    "The ammonia molecule 'turns itself inside out' over time. Quantum mechanical tunnelling!";
+                buildMicrowaveSpectrum();
+            } else if (state.system === 'co2' || state.system === 'methane' || state.system === 'acetylene') {
+                els.irView.classList.remove('hidden');
+                if(state.system === 'co2') els.irDesc.innerText = "Linear molecules that bend absorb heat.";
+                else if(state.system === 'methane') els.irDesc.innerText = "Methane's C-H bonds absorb IR radiation strongly. A powerful greenhouse gas.";
+                else els.irDesc.innerText = "Acetylene has strong vibrations in the organic triple bond and along its C-H bonds.";
+                buildIRPeaks();
+            }
+        }
+
+        function updateSelectOptions() {
+            const lSelect = document.getElementById('l-select'), mSelect = document.getElementById('m-select');
+            lSelect.innerHTML = ''; mSelect.innerHTML = '';
+            const lNames = ['s', 'p', 'd', 'f', 'g', 'h'];
+            for (let i = 0; i < state.n; i++) {
+                const opt = document.createElement('option'); opt.value = i; opt.text = `${i} (${lNames[i]})`;
+                if (i === state.l) opt.selected = true; lSelect.appendChild(opt);
+            }
+            for (let i = -state.l; i <= state.l; i++) {
+                const opt = document.createElement('option'); opt.value = i; opt.text = (i > 0? '+' : '') + i;
+                if (i === state.m) opt.selected = true; mSelect.appendChild(opt);
+            }
+        }
+
+        function triggerPlotUpdate() {
+            els.loading.style.opacity = '1'; els.loading.style.visibility = 'visible';
+            setTimeout(generateOrbitalPlot, 50);
+        }
+
+        // --- BØLGEFUNKTIONER & GEOMETRI ---
+        function getAngularAmplitude(l, m, x, y, z, r) {
+            if (r === 0 || l === 0) return 1;
+            if (l === 1) return m === 0 ? z / r : x / r;
+            if (l === 2) return m === 0 ? (3 * z * z - r * r) / (r * r) : (Math.abs(m)===1 ? (x * z) / (r * r) : (x * x - y * y) / (r * r));
+            const theta = Math.acos(z / r), phi = Math.atan2(y, x), lobe = Math.abs(m) > 0? m : l;
+            return Math.sin(lobe * theta) * Math.cos(m * phi);
+        }
+
+        function getPsiAmplitude(x, y, z, n, l, m, scale, maxRadius) {
+            const r = Math.sqrt(x*x + y*y + z*z);
+            if (r > maxRadius || r === 0) return 0;
+            let radial = Math.pow(r / scale, l) * Math.exp(-2 * r / scale);
+            if (n - l - 1 > 0) {
+                const nodeSpacing = scale / (n - l);
+                radial *= Math.sin(Math.PI * (r + nodeSpacing * 0.1) / nodeSpacing);
+            }
+            return radial * getAngularAmplitude(l, m, x, y, z, r);
+        }
+
+        function blob(x,y,z, bx,by,bz, sx,sy,sz) { return Math.exp(-((x-bx)*(x-bx)/(2*sx*sx) + (y-by)*(y-by)/(2*sy*sy) + (z-bz)*(z-bz)/(2*sz*sz))); }
+
+        function getMultiAtomDensity(x, y, z, sys) {
+            let d = 0; const r = 1.2;
+            if(sys === 'atom_n') return 0.2 * (2*blob(x,y,z, 0,0,0, 0.3,0.3,0.3) + 2*blob(x,y,z, 0,0,0, 1,1,1) + 1*(blob(x,y,z, 0.8,0,0,.6,.4,.4)+blob(x,y,z, -0.8,0,0,.6,.4,.4)) + 1*(blob(x,y,z, 0,0.8,0,.4,.6,.4)+blob(x,y,z, 0,-0.8,0,.4,.6,.4)) + 1*(blob(x,y,z, 0,0,0.8,.4,.4,.6)+blob(x,y,z, 0,0,-0.8,.4,.4,.6)));
+            if(sys === 'mol_n2') { d = 2*(blob(x,y,z, 0,0,r,.4,.4,.4) + blob(x,y,z, 0,0,-r,.4,.4,.4)); d += 3.0*blob(x,y,z, 0,0,0,.6,.6,r*1.8); const rho = Math.sqrt(x*x + y*y); d += 3.5 * Math.exp(-(Math.pow(rho-0.9, 2) + z*z/(r*r*1.2))); return d * 0.15; }
+            if(sys === 'mol_co') { d = 2*blob(x,y,z, 0,0,-r,.4,.4,.4) + 2*blob(x,y,z, 0,0,r,.3,.3,.3); d += 2.5*blob(x,y,z, 0,0,0,.6,.6,r*1.5); const rho = Math.sqrt(x*x + y*y); d += 2.5 * Math.exp(-(Math.pow(rho-0.8, 2) + Math.pow(z+0.3, 2)/(r*r))); d += 1.5*blob(x,y,z, 0,0,-r-1.0,.8,.8,.8); return d * 0.15; }
+            if(sys === 'mol_cn') { d = 2*blob(x,y,z, 0,0,-r,.4,.4,.4) + 2*blob(x,y,z, 0,0,r,.3,.3,.3); d += 2.5*blob(x,y,z, 0,0,0,.6,.6,r*1.5); const rho = Math.sqrt(x*x + y*y); d += 2.0 * Math.exp(-(Math.pow(rho-0.8, 2) + Math.pow(z-0.2, 2)/(r*r))); return d * 0.15; }
+            if(sys === 'mol_c2') { d = 2*(blob(x,y,z, 0,0,r,.4,.4,.4) + blob(x,y,z, 0,0,-r,.4,.4,.4)); const rho = Math.sqrt(x*x + y*y); d += 2.5 * Math.exp(-(Math.pow(rho-0.8, 2) + z*z/(r*r*1.5))); return d * 0.18; }
+            if(sys === 'ammonia') { const hOff = 1.0; d = 2.0 * blob(x,y,z, 0,0,0,.5,.5,.5); d += 1.5 * (blob(x,y,z, 0, hOff, -0.4,.7,.7,.7) + blob(x,y,z, hOff*0.86, -hOff*0.5, -0.4,.7,.7,.7) + blob(x,y,z, -hOff*0.86, -hOff*0.5, -0.4,.7,.7,.7)); d += 1.8 * blob(x,y,z, 0,0,1.2,.8,.8,.8); return d * 0.2; }
+            if(sys === 'methane') { const s = 1.1; const is = 1/Math.sqrt(3) * s; d = 2.0 * blob(x,y,z, 0,0,0,.5,.5,.5); d += 1.5 * (blob(x,y,z, is,is,is,.7,.7,.7) + blob(x,y,z, -is,-is,is,.7,.7,.7) + blob(x,y,z, -is,is,-is,.7,.7,.7) + blob(x,y,z, is,-is,-is,.7,.7,.7)); return d * 0.2; }
+            if(sys === 'acetylene') { d = 2.5*blob(x,y,z, 0,0,-0.6,.4,.4,.4) + 2.5*blob(x,y,z, 0,0,0.6,.4,.4,.4); d += 2.0*blob(x,y,z, 0,0,0,.6,.6,0.8); const rho = Math.sqrt(x*x + y*y); d += 2.5 * Math.exp(-(Math.pow(rho-0.7, 2) + z*z/(0.6*0.6))); d += 1.5*(blob(x,y,z, 0,0,1.6,.5,.5,.6) + blob(x,y,z, 0,0,-1.6,.5,.5,.6)); return d * 0.18; }
+            if(sys === 'atom_c') return 0.2*(2*blob(x,y,z, 0,0,0,.4,.4,.4) + 1*blob(x,y,z, 0,0,0, 1.2,1.2,1.2) + 1*(blob(x,y,z, 1,0,0,.8,.5,.5)+blob(x,y,z, -1,0,0,.8,.5,.5)) + 1*(blob(x,y,z, 0,1,0,.5,.8,.5)+blob(x,y,z, 0,-1,0,.5,.8,.5)));
+            if(sys === 'atom_o') return 0.2*(2*blob(x,y,z, 0,0,0,.3,.3,.3) + 1.5*blob(x,y,z, 0,0,0, 1.0,1.0,1.0) + 1.5*(blob(x,y,z, 0.8,0,0,.6,.4,.4)+blob(x,y,z, -0.8,0,0,.6,.4,.4)) + 1.0*(blob(x,y,z, 0,0.8,0,.4,.6,.4)+blob(x,y,z, 0,-0.8,0,.4,.6,.4)) + 1.0*(blob(x,y,z, 0,0,0.8,.4,.4,.6)+blob(x,y,z, 0,0,-0.8,.4,.4,.6)));
+            if(sys === 'mol_o2') { d = 2*(blob(x,y,z, 0,0,r,.4,.4,.4)+blob(x,y,z, 0,0,-r,.4,.4,.4)) + 2*blob(x,y,z, 0,0,0,.6,.6,r*1.5); const rho = Math.sqrt(x*x+y*y); d+=1.8*Math.exp(-(Math.pow(rho-0.8,2)+z*z/(r*r))); return d*0.2; }
+            if(sys === 'co2') { d = 2.5*blob(x,y,z, 0,0,0,.5,.5,.5) + 2*(blob(x,y,z, 0,0,r*1.5,.4,.4,.4)+blob(x,y,z, 0,0,-r*1.5,.4,.4,.4)) + 2*blob(x,y,z, 0,0,0,.6,.6,r*2); const rho = Math.sqrt(x*x+y*y); d+=1.5*Math.exp(-(Math.pow(rho-0.7,2)+z*z/(r*2*r*2))); return d*0.2; }
+            if(sys === 'water') return 0.2*(2*blob(x,y,z, 0,0,0,.6,.6,.6) + 1.5*(blob(x,y,z, 0.6,-0.4,0,.7,.7,.7)+blob(x,y,z, -0.6,-0.4,0,.7,.7,.7)) + 1.2*(blob(x,y,z, 0,0.8,1.2,.8,.8,.8)+blob(x,y,z, 0,0.8,-1.2,.8,.8,.8)));
+            
+            return 0;
+        }
+
+        function generatePointCloud() {
+            const { system, n, l, m } = state;
+            let numPoints = 12000; 
+            const points = { x: [], y: [], z: [], color: [], size: [] }; 
+            const nuclei = [];
+            
+            let maxRadius = 8, accepted = 0, attempts = 0;
+            
+            if (!['atom', 'mol_bond', 'mol_anti'].includes(system)) {
+                while (accepted < numPoints && attempts < 400000) {
+                    attempts++;
+                    const x = (Math.random() - 0.5) * 2 * maxRadius, y = (Math.random() - 0.5) * 2 * maxRadius, z = (Math.random() - 0.5) * 2 * maxRadius;
+                    const prob = getMultiAtomDensity(x, y, z, system);
+                    
+                    if (Math.random() < prob) {
+                        points.x.push(x); points.y.push(y); points.z.push(z);
+                        let col = '#0ea5e9'; 
+                        if(system === 'ammonia' && z > 0.5) col = '#6366f1'; 
+                        if(system === 'water' && y > 0.3) col = '#6366f1'; 
+                        if((system === 'mol_n2' || system === 'mol_co' || system === 'mol_cn' || system === 'mol_c2' || system === 'mol_o2' || system === 'co2' || system === 'acetylene') && Math.sqrt(x*x+y*y) > 0.6) col = '#ec4899'; 
+                        points.color.push(col); points.size.push(2 + prob*2); accepted++;
+                    }
+                }
+                
+                const r = 1.2; const cG = '#333', cO = '#ef4444', cN = '#3b82f6', cH = '#f8fafc';
+                if(system==='atom_c') nuclei.push({x:[0],y:[0],z:[0],s:8,c:cG,n:'C'});
+                if(system==='atom_n') nuclei.push({x:[0],y:[0],z:[0],s:8,c:cN,n:'N'});
+                if(system==='atom_o') nuclei.push({x:[0],y:[0],z:[0],s:8,c:cO,n:'O'});
+                if(system==='mol_n2') nuclei.push({x:[0,0],y:[0,0],z:[-r,r],s:8,c:cN,n:'N'});
+                if(system==='mol_o2') nuclei.push({x:[0,0],y:[0,0],z:[-r,r],s:8,c:cO,n:'O'});
+                if(system==='mol_c2') nuclei.push({x:[0,0],y:[0,0],z:[-r,r],s:8,c:cG,n:'C'});
+                if(system==='mol_co') { nuclei.push({x:[0],y:[0],z:[-r],s:8,c:cG,n:'C'}); nuclei.push({x:[0],y:[0],z:[r],s:8,c:cO,n:'O'}); }
+                if(system==='mol_cn') { nuclei.push({x:[0],y:[0],z:[-r],s:8,c:cG,n:'C'}); nuclei.push({x:[0],y:[0],z:[r],s:8,c:cN,n:'N'}); }
+                if(system==='co2') { nuclei.push({x:[0],y:[0],z:[0],s:8,c:cG,n:'C'}); nuclei.push({x:[0,0],y:[0,0],z:[-r*1.5, r*1.5],s:8,c:cO,n:'O'}); }
+                if(system==='acetylene') { nuclei.push({x:[0,0],y:[0,0],z:[-0.6,0.6],s:8,c:cG,n:'C'}); nuclei.push({x:[0,0],y:[0,0],z:[-1.6,1.6],s:5,c:cH,n:'H'}); }
+                if(system==='water') { nuclei.push({x:[0],y:[0],z:[0],s:8,c:cO,n:'O'}); nuclei.push({x:[1.2,-1.2],y:[-0.8,-0.8],z:[0,0],s:5,c:cH,n:'H'}); }
+                if(system==='ammonia') { nuclei.push({x:[0],y:[0],z:[0],s:8,c:cN,n:'N'}); nuclei.push({x:[0, 0.86, -0.86], y:[1.0, -0.5, -0.5], z:[-0.4,-0.4,-0.4],s:5,c:cH,n:'H'}); }
+                if(system==='methane') { const is=1.1/Math.sqrt(3); nuclei.push({x:[0],y:[0],z:[0],s:8,c:cG,n:'C'}); nuclei.push({x:[is,-is,-is,is],y:[is,-is,is,-is],z:[is,is,-is,-is],s:5,c:cH,n:'H'}); }
+            } 
+            else {
+                const scale = n * n * 0.8; 
+                const internuclearR = scale * 1.5; 
+                maxRadius = system === 'atom'? scale * 3 : scale * 3 + internuclearR;
+                const chanceMultiplier = system === 'atom'? 50 : 150;
+
+                while (accepted < numPoints && attempts < 500000) {
+                    attempts++;
+                    const x = (Math.random() - 0.5) * 2 * maxRadius, y = (Math.random() - 0.5) * 2 * maxRadius, z = (Math.random() - 0.5) * 2 * maxRadius;
+
+                    let amp = 0;
+                    if (system === 'atom') {
+                        amp = getPsiAmplitude(x, y, z, n, l, m, scale, maxRadius);
+                    } else { 
+                        const psiA = getPsiAmplitude(x, y, z + internuclearR/2, n, l, m, scale, maxRadius);
+                        const psiB = getPsiAmplitude(x, y, z - internuclearR/2, n, l, m, scale, maxRadius);
+                        amp = system === 'mol_bond'? psiA + psiB : psiA - psiB;
+                    }
+
+                    const prob = Math.min(1.0, amp * amp);
+                    if (Math.random() < prob * chanceMultiplier) {
+                        points.x.push(x); points.y.push(y); points.z.push(z);
+                        points.color.push(amp > 0? '#0ea5e9' : '#ef4444');
+                        points.size.push(2 + prob*3);
+                        accepted++;
+                    }
+                }
+                
+                if (system === 'atom') {
+                    nuclei.push({x:[0], y:[0], z:[0], s:6, c:'#0f172a', n:'Nucleus'});
+                } else {
+                    nuclei.push({x:[0,0], y:[0,0], z:[-internuclearR/2, internuclearR/2], s:6, c:'#0f172a', n:'Nucleus'});
+                }
+            }
+            
+            return { points, nuclei };
+        }
+
+        function generateOrbitalPlot() {
+            const { points, nuclei } = generatePointCloud();
+            const data = [{ x: points.x, y: points.y, z: points.z, mode: 'markers', marker: { size: 2, color: points.color, opacity: 0.35, line: {width: 0} }, type: 'scatter3d', hoverinfo: 'none' }];
+            nuclei.forEach(nuc => { data.push({ x: nuc.x, y: nuc.y, z: nuc.z, mode: 'markers', marker: { size: nuc.s, color: nuc.c, line: {color: '#94a3b8', width: 1} }, type: 'scatter3d', name: nuc.n, hoverinfo: 'name' }); });
+            Plotly.react('orbital-plot', data, { margin: {l:0,r:0,b:0,t:0}, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', showlegend: false, scene: { xaxis:{visible:false}, yaxis:{visible:false}, zaxis:{visible:false}, camera:{eye:{x:1.2,y:1.5,z:1.2}} } }, { displayModeBar: false }).then(() => { els.loading.style.opacity = '0'; setTimeout(() => els.loading.style.visibility = 'hidden', 300); });
+        }
+
+        // --- HØJRE KOLONNE: INTERAKTIVE SPEKTRE & DIAGRAMMER ---
+        
+        function drawAtomEnergyDiagram() {
+            if(!els.energyCanvas) return;
+            const c = els.energyCanvas, ctx = c.getContext('2d');
+            c.width = c.clientWidth * window.devicePixelRatio; c.height = c.clientHeight * window.devicePixelRatio; 
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            
+            const w = c.clientWidth, h = c.clientHeight, groundE = -13.6, marginY = 20, drawHeight = h - marginY * 2;
+            ctx.clearRect(0,0,w,h);
+            
+            const getE = n => groundE / (n * n);
+            const getY = e => marginY + drawHeight - ((e - groundE) / (0 - groundE)) * drawHeight;
+
+            ctx.lineWidth = 1; ctx.font = '12px monospace'; ctx.textBaseline = 'middle';
+            for (let n = 1; n <= 6; n++) {
+                const y = getY(getE(n));
+                ctx.beginPath(); ctx.moveTo(40, y); ctx.lineTo(w - 20, y);
+                ctx.strokeStyle = n === state.n ? '#38bdf8' : '#334155'; ctx.stroke();
+                ctx.fillStyle = n === state.n ? '#38bdf8' : '#94a3b8';
+                ctx.textAlign = 'right'; ctx.fillText(`n=${n}`, 35, y);
+            }
+
+            if (state.activeAtomTransition && state.activeAtomTransition.fromN) {
+                const d = state.activeAtomTransition;
+                const yFrom = getY(getE(d.fromN));
+                const yTo = getY(getE(d.toN));
+                const x = w/2;
+                
+                ctx.beginPath(); ctx.moveTo(x, yFrom); ctx.lineTo(x, yTo);
+                ctx.strokeStyle = d.color; ctx.lineWidth = 3; ctx.setLineDash([4, 4]); ctx.stroke();
+                
+                ctx.setLineDash([]); ctx.beginPath(); ctx.moveTo(x, yTo);
+                ctx.lineTo(x-6, yTo-8); ctx.lineTo(x+6, yTo-8); ctx.fillStyle = d.color; ctx.fill();
+                
+                ctx.shadowBlur = 10; ctx.shadowColor = d.color; ctx.stroke(); ctx.shadowBlur = 0;
+            }
+        }
+
+        function buildAtomSpectrum() {
+            els.spectrumContainer.innerHTML = '<div class="absolute inset-0 opacity-20" style="background: linear-gradient(to right, #200000 0%, #400040 20%, #000040 40%, #002040 60%, #004000 80%, #400000 100%); mix-blend-mode: screen;"></div><div class="absolute bottom-1 w-full flex justify-between px-2 text-[10px] text-slate-500 font-mono z-0 pointer-events-none"><span>400nm</span><span>500nm</span><span>600nm</span><span>700nm</span></div>';
+            const data = spectralData[state.system] || spectralData['atom'];
+            data.forEach(d => {
+                const l = document.createElement('div'); l.className = 'spectral-line absolute h-full top-0';
+                l.style.left = `${d.posPercent}%`; l.style.backgroundColor = d.color; l.style.width = `${Math.max(2, d.prob*8)}px`; l.style.boxShadow = `0 0 10px ${d.color}`;
+                
+                l.onmouseenter = () => { 
+                    els.atomLinesInfo.innerHTML = `<strong style="color:${d.color}">${d.wave} nm</strong> - ${d.label}`; 
+                    l.classList.add('active'); 
+                    state.activeAtomTransition = d;
+                    drawAtomEnergyDiagram();
+                };
+                l.onmouseleave = () => { 
+                    els.atomLinesInfo.innerHTML = "Hover over the lines to see the transitions..."; 
+                    l.classList.remove('active'); 
+                    state.activeAtomTransition = null;
+                    drawAtomEnergyDiagram();
+                };
+                els.spectrumContainer.appendChild(l);
+            });
+        }
+
+        function drawMODiagram() {
+            if(!els.moCanvas) return;
+            const c = els.moCanvas, ctx = c.getContext('2d');
+            c.width = c.clientWidth * window.devicePixelRatio; c.height = c.clientHeight * window.devicePixelRatio; 
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            const w = c.clientWidth, h = c.clientHeight, cy = h/2, mx = w/2, lw = 40, lx = w*0.2, rx = w*0.8, bondY = cy+40, antiY = cy-40;
+            ctx.clearRect(0,0,w,h);
+
+            const levelsMap = {};
+            const newMoLevels = [];
+
+            const drawLevel = (x, y, txt, col, desc) => { 
+                const isHovered = (state.hoveredMOLevel === txt);
+                ctx.beginPath(); ctx.moveTo(x-lw/2,y); ctx.lineTo(x+lw/2,y); 
+                ctx.lineWidth = isHovered ? 6 : 3; 
+                ctx.strokeStyle = col; 
+                if (isHovered) { ctx.shadowBlur = 12; ctx.shadowColor = col; }
+                ctx.stroke(); 
+                ctx.shadowBlur = 0;
+                
+                ctx.fillStyle = isHovered ? '#ffffff' : '#f8fafc'; 
+                ctx.font = isHovered ? 'bold 13px sans-serif' : '12px sans-serif'; 
+                ctx.textAlign='center'; ctx.fillText(txt, x, y-10); 
+                
+                levelsMap[txt] = {x, y};
+                newMoLevels.push({ x, y, width: lw, txt, col, desc }); 
+            };
+            
+            ctx.setLineDash([5, 5]); ctx.strokeStyle = '#334155'; ctx.beginPath();
+            ctx.moveTo(lx+lw/2, cy); ctx.lineTo(mx-lw/2, bondY); ctx.moveTo(rx-lw/2, cy); ctx.lineTo(mx+lw/2, bondY);
+            ctx.moveTo(lx+lw/2, cy); ctx.lineTo(mx-lw/2, antiY); ctx.moveTo(rx-lw/2, cy); ctx.lineTo(mx+lw/2, antiY);
+            ctx.stroke(); ctx.setLineDash([]);
+
+            if (!state.hoveredMOLevel) {
+                setDefaultMODesc();
+            }
+
+            if(state.system === 'mol_n2' || state.system === 'mol_co') {
+                drawLevel(mx, cy+60, 'σ (bond)', '#0ea5e9', 'Strong bonding sigma orbital along the molecular axis.'); 
+                drawLevel(mx, cy+30, 'π, π (bond)', '#ec4899', 'Two orthogonal bonding pi orbitals form a dense electron tube.');
+                drawLevel(mx, cy-30, 'π*, π* (Anti)', '#ef4444', 'Antibonding pi orbitals. Destabilise the bond.'); 
+                drawLevel(mx, cy-60, 'σ* (Anti)', '#ef4444', 'Strongly antibonding sigma orbital.');
+            } else if(state.system === 'mol_c2') {
+                drawLevel(mx, cy+40, 'π, π (bond)', '#ec4899', 'In C₂ the bonding is dominated by these strong pi orbitals.'); 
+                drawLevel(mx, cy-40, 'σ (Anti)', '#ef4444', 'Antibonding sigma orbital, which weakens the σ overlap.');
+            } else if(state.system === 'mol_cn') {
+                drawLevel(mx, cy+60, 'σ (bond)', '#0ea5e9', 'Bonding sigma orbital, deeply bound.'); 
+                drawLevel(mx, cy+30, 'π, π (bond)', '#ec4899', 'Strong bonding pi orbitals.');
+                drawLevel(mx, cy, 'σ (radical)', '#f59e0b', 'Half-filled sigma orbital that houses the unpaired electron. Makes CN extremely reactive.'); 
+                drawLevel(mx, cy-40, 'π*, π* (Anti)', '#ef4444', 'Empty antibonding pi orbitals.');
+            } else if(state.system === 'mol_o2') {
+                drawLevel(mx, cy+60, 'σ (bond)', '#0ea5e9', 'Fundamental bonding sigma orbital.'); 
+                drawLevel(mx, cy+30, 'π (bond)', '#ec4899', 'Bonding pi orbitals.');
+                drawLevel(mx, cy-30, 'π* (Anti)', '#ef4444', 'Antibonding pi orbitals. This is where O₂\'s two unpaired electrons sit (diradical).'); 
+                drawLevel(mx, cy-60, 'σ* (Anti)', '#ef4444', 'Strongly antibonding sigma orbital.');
+            } else if(state.system === 'mol_bond' || state.system === 'mol_anti') {
+                drawLevel(lx, cy, 'AO 1', '#38bdf8', '1s atomic orbital of the first hydrogen atom.'); 
+                drawLevel(rx, cy, 'AO 2', '#38bdf8', '1s atomic orbital of the second hydrogen atom.');
+                drawLevel(mx, bondY, 'Bonding', state.system === 'mol_bond'? '#0ea5e9' : '#64748b', 'The electron density gathers between the nuclei. Stabilising.');
+                drawLevel(mx, antiY, 'Antibonding', state.system === 'mol_anti'? '#ef4444' : '#64748b', 'Nodal plane between the nuclei. Destabilising.');
+            }
+
+            state.moLevels = newMoLevels;
+
+            if (state.activeDiaTransition) {
+                const fromPos = levelsMap[state.activeDiaTransition.from];
+                const toPos = levelsMap[state.activeDiaTransition.to];
+                
+                if (fromPos && toPos) {
+                    const xOff = 25; 
+                    const startX = fromPos.x + lw/2 + xOff;
+                    const endX = toPos.x + lw/2 + xOff;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(startX, fromPos.y);
+                    ctx.lineTo(endX, toPos.y);
+                    ctx.strokeStyle = state.activeDiaTransition.color;
+                    ctx.lineWidth = 3;
+                    ctx.setLineDash([4, 4]);
+                    ctx.stroke();
+
+                    ctx.setLineDash([]);
+                    ctx.beginPath();
+                    const headlen = 10;
+                    const angle = Math.atan2(toPos.y - fromPos.y, endX - startX);
+                    ctx.moveTo(endX, toPos.y);
+                    ctx.lineTo(endX - headlen * Math.cos(angle - Math.PI / 6), toPos.y - headlen * Math.sin(angle - Math.PI / 6));
+                    ctx.lineTo(endX - headlen * Math.cos(angle + Math.PI / 6), toPos.y - headlen * Math.sin(angle + Math.PI / 6));
+                    ctx.fillStyle = state.activeDiaTransition.color;
+                    ctx.fill();
+                    
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = state.activeDiaTransition.color;
+                    ctx.stroke();
+                    ctx.shadowBlur = 0;
+                }
+            }
+        }
+
+        function buildDiatomicSpectrum() {
+            els.diaSpectrumContainer.innerHTML = '<div class="absolute inset-0 opacity-20" style="background: linear-gradient(to right, #200000 0%, #400040 20%, #000040 40%, #002040 60%, #004000 80%, #400000 100%); mix-blend-mode: screen;"></div><div class="absolute bottom-1 w-full flex justify-between px-2 text-[10px] text-slate-500 font-mono z-0 pointer-events-none"><span>300nm</span><span>500nm</span><span>700nm</span><span>900nm</span></div>';
+            const data = diatomicSpectralData[state.system];
+            if(!data) return;
+
+            data.forEach(d => {
+                const l = document.createElement('div'); l.className = 'spectral-line absolute h-full top-0';
+                l.style.left = `${d.posPercent}%`; l.style.backgroundColor = d.color; l.style.width = `${Math.max(3, d.prob*10)}px`; l.style.boxShadow = `0 0 12px ${d.color}`;
+                
+                l.onmouseenter = () => { 
+                    els.diaLinesInfo.innerHTML = `<strong style="color:${d.color}">${d.wave} nm</strong> - ${d.label}`; 
+                    l.classList.add('active'); 
+                    state.activeDiaTransition = d; 
+                    drawMODiagram(); 
+                };
+                
+                l.onmouseleave = () => { 
+                    els.diaLinesInfo.innerHTML = "Hover over the bands to see transitions in the MO diagram..."; 
+                    l.classList.remove('active'); 
+                    state.activeDiaTransition = null; 
+                    drawMODiagram(); 
+                };
+                els.diaSpectrumContainer.appendChild(l);
+            });
+        }
+
+        function buildMicrowaveSpectrum() {
+            els.mwSpectrumContainer.innerHTML = '<div class="absolute inset-0 opacity-10 bg-"></div><div class="absolute bottom-1 w-full flex justify-between px-2 text-[10px] text-slate-400 font-mono z-0 pointer-events-none"><span>0 GHz</span><span>100 GHz</span><span>200 GHz</span><span>300 GHz</span></div>';
+            const data = microwaveData[state.system];
+            data.forEach(d => {
+                const l = document.createElement('div'); l.className = 'spectral-line mw-line absolute h-full top-0 cursor-pointer';
+                l.style.left = `${d.pos}%`; l.style.width = `4px`; l.style.opacity = 0.5 + (d.intensity * 0.5);
+                l.onmouseenter = () => els.mwInfo.innerHTML = `<strong class="text-amber-600">${d.freq} GHz (${d.name})</strong><br/><span class="text-slate-600">${d.desc}</span>`;
+                l.onmouseleave = () => els.mwInfo.innerHTML = `<span class="text-slate-400 italic">Hover over an orange spectral line...</span>`;
+                els.mwSpectrumContainer.appendChild(l);
+            });
+        }
+
+        function buildIRPeaks() {
+            els.irPeaksContainer.innerHTML = '';
+            const data = irData[state.system];
+            data.forEach(d => {
+                const p = document.createElement('div'); p.className = 'ir-peak';
+                p.style.left = `${d.pos}%`; p.style.width = `${d.width}px`; p.style.height = `${d.height}%`;
+                p.onmouseenter = () => els.irInfo.innerHTML = `<strong>${d.name} (~${d.waveNum} cm⁻¹):</strong> ${d.desc}`;
+                p.onmouseleave = () => els.irInfo.innerHTML = `<strong>Vibration:</strong> Hover over the absorption peaks to see details.`;
+                els.irPeaksContainer.appendChild(p);
+            });
+        }
+
+        window.onload = init;
+    </script>
+
+
+<script src="lang-switch.js" defer></script>
+</body>
+</html>

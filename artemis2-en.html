@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Artemis II - Correct Direction of Orbit</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #040408;
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(10, 15, 30, 0.85);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #2a3b5c;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+        }
+
+        h1 {
+            margin: 0 0 5px 0;
+            font-size: 22px;
+            color: #4facfe;
+        }
+
+        .info {
+            font-size: 13px;
+            margin-bottom: 15px;
+            color: #a0aec0;
+            max-width: 280px;
+            line-height: 1.4;
+        }
+
+        label {
+            font-size: 14px;
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+            margin-top: 10px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+        }
+
+        button {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: #040408;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 15px;
+            width: 100%;
+            transition: opacity 0.2s;
+        }
+
+        button:hover { opacity: 0.8; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+
+    <div id="ui">
+        <h1>Artemis II</h1>
+        <div class="info">
+            <strong>Correct direction:</strong> Seen from above the North Pole. The Moon orbits anticlockwise, and Orion flies a free-return trajectory that exploits the Moon's motion.
+        </div>
+        
+        <label for="speed">Time lapse (speed):</label>
+        <input type="range" id="speed" min="0.0002" max="0.003" step="0.0001" value="0.001">
+        
+        <button id="toggleBtn">Pause</button>
+    </div>
+
+    <canvas id="simCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        let width = window.innerWidth;
+        let height = window.innerHeight;
+        canvas.width = width;
+        canvas.height = height;
+
+        window.addEventListener('resize', () => {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+            createStars();
+        });
+
+        // Stjerner
+        let stars = [];
+        function createStars() {
+            stars = [];
+            for(let i = 0; i < 400; i++) {
+                stars.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    radius: Math.random() * 1.5,
+                    alpha: Math.random() * 0.8 + 0.2
+                });
+            }
+        }
+        createStars();
+
+        let progress = 0; 
+        let speed = 0.001;
+        let isPlaying = true;
+        let trail = [];
+
+        document.getElementById('toggleBtn').addEventListener('click', (e) => {
+            isPlaying = !isPlaying;
+            e.target.innerText = isPlaying ? "Pause" : "Resume animation";
+        });
+
+        document.getElementById('speed').addEventListener('input', (e) => {
+            speed = parseFloat(e.target.value);
+        });
+
+        // --- RETTELSE HER ---
+        // For at få Månen til at bevæge sig mod uret på en computerskærm, 
+        // skal vi trække vinklen fra (negativ deltaTheta).
+        const deltaTheta = -1.8; 
+        const thetaStart = 0.8; // Vi starter Månen lidt nede til højre
+
+        function getPositions(p) {
+            const cx = width / 2;
+            const cy = height / 2;
+            const R = Math.min(width, height) * 0.35; 
+            const R_max = R + 40; 
+            const H = R * 0.35;   
+            
+            // 1. Månens position (nu mod uret)
+            let moonTheta = thetaStart + p * deltaTheta;
+            let moonX = cx + R * Math.cos(moonTheta);
+            let moonY = cy + R * Math.sin(moonTheta);
+
+            // 2. Orions position udregnes i det roterende system
+            let t = p * Math.PI * 2;
+            let localX = (R_max / 2) * (1 - Math.cos(t));
+            
+            // Vi spejlvender Y-aksen for Orion (-H i stedet for H), 
+            // så 8-tallet passer til Månens nye retning mod uret.
+            let localY = -H * Math.sin(2 * t);
+
+            // 3. Konverter til det globale system
+            let orionX = cx + localX * Math.cos(moonTheta) - localY * Math.sin(moonTheta);
+            let orionY = cy + localX * Math.sin(moonTheta) + localY * Math.cos(moonTheta);
+
+            return { cx, cy, R, moonX, moonY, orionX, orionY };
+        }
+
+        function draw() {
+            ctx.fillStyle = '#040408';
+            ctx.fillRect(0, 0, width, height);
+
+            stars.forEach(star => {
+                ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha})`;
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            if (isPlaying) {
+                progress += speed;
+                if (progress > 1) {
+                    progress = 0;
+                    trail = [];
+                }
+            }
+
+            let pos = getPositions(progress);
+
+            // Månens omløbsbane
+            ctx.beginPath();
+            ctx.arc(pos.cx, pos.cy, pos.R, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // Orions planlagte rute
+            ctx.beginPath();
+            for(let i = 0; i <= 1; i += 0.005) {
+                let futurePos = getPositions(i);
+                if(i === 0) ctx.moveTo(futurePos.orionX, futurePos.orionY);
+                else ctx.lineTo(futurePos.orionX, futurePos.orionY);
+            }
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 4]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Jorden
+            let earthGrad = ctx.createRadialGradient(pos.cx - 10, pos.cy - 10, 5, pos.cx, pos.cy, 40);
+            earthGrad.addColorStop(0, '#4facfe');
+            earthGrad.addColorStop(0.8, '#004a8f');
+            earthGrad.addColorStop(1, '#001b48');
+            
+            ctx.beginPath();
+            ctx.arc(pos.cx, pos.cy, 48, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(79, 172, 254, 0.15)';
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(pos.cx, pos.cy, 40, 0, Math.PI * 2);
+            ctx.fillStyle = earthGrad;
+            ctx.fill();
+
+            // Månen
+            let moonGrad = ctx.createRadialGradient(pos.moonX - 5, pos.moonY - 5, 2, pos.moonX, pos.moonY, 15);
+            moonGrad.addColorStop(0, '#f0f0f0');
+            moonGrad.addColorStop(0.7, '#888888');
+            moonGrad.addColorStop(1, '#333333');
+            
+            ctx.beginPath();
+            ctx.arc(pos.moonX, pos.moonY, 15, 0, Math.PI * 2);
+            ctx.fillStyle = moonGrad;
+            ctx.fill();
+
+            // Opdater spor
+            if (isPlaying) {
+                trail.push({x: pos.orionX, y: pos.orionY});
+                if (trail.length > 250) trail.shift();
+            }
+
+            // Tegn spor
+            if (trail.length > 1) {
+                ctx.lineCap = 'round';
+                for (let i = 0; i < trail.length - 1; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(trail[i].x, trail[i].y);
+                    ctx.lineTo(trail[i+1].x, trail[i+1].y);
+                    ctx.strokeStyle = `rgba(255, 140, 0, ${i / trail.length})`;
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                }
+            }
+
+            // Orion
+            ctx.beginPath();
+            ctx.arc(pos.orionX, pos.orionY, 4, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(pos.orionX, pos.orionY, 10, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255, 140, 0, 0.4)';
+            ctx.fill();
+
+            // Tekst Labels
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '14px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Earth', pos.cx, pos.cy + 70);
+            ctx.fillText('Moon', pos.moonX, pos.moonY + 35);
+            
+            ctx.font = '12px sans-serif';
+            ctx.fillStyle = '#ff8c00';
+            ctx.fillText('Orion', pos.orionX, pos.orionY - 15);
+
+            requestAnimationFrame(draw);
+        }
+
+        draw();
+    </script>
+<script src="lang-switch.js" defer></script>
+</body>
+</html>
