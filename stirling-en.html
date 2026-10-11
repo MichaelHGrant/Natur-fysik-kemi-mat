@@ -1,0 +1,2144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Stirling engine — an explanation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;0,9..144,800;1,9..144,400&family=Spectral:ital,wght@0,300;0,400;0,500;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f4ede0;
+    --paper-deep: #ebe1cf;
+    --ink: #1a1814;
+    --ink-soft: #4a4438;
+    --rule: #c9bea7;
+    --hot: #c4452d;
+    --hot-soft: #e88a5a;
+    --cold: #2d5a8a;
+    --cold-soft: #7ba8d1;
+    --brass: #a8864a;
+    --metal: #b8b3aa;
+    --metal-dark: #6e6a62;
+    --glass: rgba(180, 200, 215, 0.25);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Spectral', Georgia, serif;
+    font-weight: 400;
+    line-height: 1.65;
+    font-size: 17px;
+    overflow-x: hidden;
+    background-image:
+      radial-gradient(circle at 15% 20%, rgba(196, 69, 45, 0.04) 0%, transparent 35%),
+      radial-gradient(circle at 85% 75%, rgba(45, 90, 138, 0.05) 0%, transparent 35%);
+    background-attachment: fixed;
+  }
+
+  /* Subtle paper grain */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.35;
+    z-index: 1;
+    background-image:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.09 0 0 0 0 0.07 0 0 0 0.18 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  }
+
+  main { position: relative; z-index: 2; }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 32px;
+  }
+
+  /* HEADER */
+  header.hero {
+    padding: 80px 0 40px;
+    border-bottom: 1px solid var(--rule);
+    position: relative;
+  }
+
+  .kicker {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 28px;
+  }
+  .kicker::before, .kicker::after {
+    content: "";
+    flex: 0 0 28px;
+    height: 1px;
+    background: var(--ink-soft);
+  }
+  .kicker::after { flex: 1 1 auto; }
+
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-size: clamp(48px, 9vw, 110px);
+    line-height: 0.95;
+    letter-spacing: -0.025em;
+    margin-bottom: 24px;
+    font-variation-settings: 'opsz' 144;
+  }
+  h1 em {
+    font-style: italic;
+    font-weight: 400;
+    color: var(--hot);
+    font-variation-settings: 'opsz' 144;
+  }
+
+  .lede {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-size: clamp(20px, 2.4vw, 26px);
+    line-height: 1.4;
+    max-width: 640px;
+    color: var(--ink-soft);
+    font-style: italic;
+  }
+
+  .meta-row {
+    margin-top: 48px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 32px 56px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--ink-soft);
+    letter-spacing: 0.06em;
+  }
+  .meta-row > div { display: flex; flex-direction: column; gap: 4px; }
+  .meta-row .label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    opacity: 0.6;
+  }
+  .meta-row .value { color: var(--ink); font-weight: 500; }
+
+  /* MAIN ENGINE STAGE */
+  section.stage {
+    padding: 80px 0 60px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 64px;
+    align-items: center;
+  }
+
+  .engine-wrap {
+    position: relative;
+    aspect-ratio: 3 / 4;
+    background:
+      radial-gradient(ellipse at 50% 65%, rgba(196, 69, 45, 0.08), transparent 55%),
+      linear-gradient(180deg, transparent 0%, rgba(45, 90, 138, 0.04) 100%);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+  }
+  .engine-wrap svg { width: 100%; height: 100%; display: block; }
+
+  .engine-wrap .corner {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border: 1px solid var(--ink);
+  }
+  .corner.tl { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+  .corner.tr { top: -1px; right: -1px; border-left: none; border-bottom: none; }
+  .corner.bl { bottom: -1px; left: -1px; border-right: none; border-top: none; }
+  .corner.br { bottom: -1px; right: -1px; border-left: none; border-top: none; }
+
+  .stage-text h2 {
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    font-size: clamp(28px, 4vw, 42px);
+    line-height: 1.1;
+    margin-bottom: 24px;
+    letter-spacing: -0.01em;
+  }
+  .stage-text p { margin-bottom: 18px; color: var(--ink-soft); }
+  .stage-text strong { color: var(--ink); font-weight: 500; }
+
+  .controls {
+    margin-top: 36px;
+    padding: 24px;
+    background: var(--paper-deep);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+  }
+  .controls .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .controls .label .rpm { color: var(--ink); font-weight: 500; }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 2px;
+    background: var(--rule);
+    outline: none;
+    margin: 14px 0;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    background: var(--hot);
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid var(--paper);
+    box-shadow: 0 0 0 1px var(--hot);
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    background: var(--hot);
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid var(--paper);
+  }
+
+  .btn-row { display: flex; gap: 8px; margin-top: 14px; }
+  .btn {
+    flex: 1;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    color: var(--ink);
+    padding: 10px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn:hover { background: var(--ink); color: var(--paper); }
+  .btn.active { background: var(--ink); color: var(--paper); }
+
+  /* TEMPERATURE INDICATOR */
+  .temp-bar {
+    margin-top: 24px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .temp-cell {
+    padding: 14px 16px;
+    border: 1px solid var(--rule);
+    background: var(--paper);
+  }
+  .temp-cell.hot { border-color: var(--hot); }
+  .temp-cell.cold { border-color: var(--cold); }
+  .temp-cell .lbl {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    opacity: 0.7;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .temp-cell .lbl::before {
+    content: "";
+    width: 8px; height: 8px; border-radius: 50%;
+  }
+  .temp-cell.hot .lbl::before { background: var(--hot); }
+  .temp-cell.cold .lbl::before { background: var(--cold); }
+  .temp-cell .val {
+    font-family: 'Fraunces', serif;
+    font-size: 32px;
+    font-weight: 300;
+    margin-top: 4px;
+    line-height: 1;
+  }
+  .temp-cell.hot .val { color: var(--hot); }
+  .temp-cell.cold .val { color: var(--cold); }
+  .temp-cell .unit { font-size: 14px; opacity: 0.6; }
+
+  /* CYCLE SECTION */
+  section.cycle {
+    padding: 80px 0;
+    border-top: 1px solid var(--rule);
+  }
+
+  .section-head {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 48px;
+    margin-bottom: 56px;
+    align-items: start;
+  }
+  .section-head .num {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 300;
+    font-size: 80px;
+    line-height: 1;
+    color: var(--hot);
+    font-variation-settings: 'opsz' 144;
+  }
+  .section-head h2 {
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    font-size: clamp(32px, 5vw, 56px);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    margin-bottom: 16px;
+  }
+  .section-head p {
+    color: var(--ink-soft);
+    max-width: 580px;
+    font-size: 18px;
+  }
+
+  .phase-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    border: 1px solid var(--ink);
+    background: var(--paper-deep);
+  }
+  .phase {
+    padding: 28px 24px 32px;
+    border-right: 1px solid var(--rule);
+    cursor: pointer;
+    transition: background 0.25s, color 0.25s;
+    position: relative;
+    background: var(--paper);
+  }
+  .phase:last-child { border-right: none; }
+  .phase:hover { background: var(--paper-deep); }
+  .phase.active {
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .phase.active .phase-num { color: var(--hot-soft); }
+  .phase.active .phase-desc { color: var(--paper); opacity: 0.85; }
+
+  .phase-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--hot);
+    margin-bottom: 16px;
+  }
+  .phase-title {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    font-weight: 500;
+    line-height: 1.2;
+    margin-bottom: 10px;
+  }
+  .phase-title em { font-style: italic; font-weight: 400; }
+  .phase-desc {
+    font-size: 14px;
+    color: var(--ink-soft);
+    line-height: 1.5;
+  }
+  .phase-mini {
+    width: 100%;
+    height: 80px;
+    margin: 18px 0 14px;
+  }
+
+  /* PV DIAGRAM SECTION */
+  section.pv-section {
+    padding: 80px 0;
+    border-top: 1px solid var(--rule);
+  }
+  .pv-layout {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 56px;
+    align-items: start;
+  }
+  .pv-wrap {
+    position: relative;
+    aspect-ratio: 5 / 4;
+    background: var(--paper-deep);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+  }
+  .pv-wrap svg { width: 100%; height: 100%; display: block; }
+  .pv-wrap .corner {
+    position: absolute;
+    width: 12px; height: 12px;
+    border: 1px solid var(--ink);
+  }
+  .pv-wrap .corner.tl { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+  .pv-wrap .corner.tr { top: -1px; right: -1px; border-left: none; border-bottom: none; }
+  .pv-wrap .corner.bl { bottom: -1px; left: -1px; border-right: none; border-top: none; }
+  .pv-wrap .corner.br { bottom: -1px; right: -1px; border-left: none; border-top: none; }
+
+  .cycle-toggle {
+    display: flex;
+    border: 1px solid var(--ink);
+    margin-bottom: 28px;
+  }
+  .ct-btn {
+    flex: 1;
+    background: var(--paper);
+    border: none;
+    border-right: 1px solid var(--ink);
+    color: var(--ink);
+    padding: 12px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .ct-btn:last-child { border-right: none; }
+  .ct-btn:hover { background: var(--paper-deep); }
+  .ct-btn.active { background: var(--ink); color: var(--paper); }
+
+  .mode-text h3 {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 24px;
+    margin-bottom: 14px;
+    letter-spacing: -0.01em;
+  }
+  .mode-text > p {
+    color: var(--ink-soft);
+    margin-bottom: 16px;
+    font-size: 16px;
+  }
+  .mode-text strong { color: var(--ink); font-weight: 500; }
+
+  .leg-list {
+    list-style: none;
+    margin-top: 18px;
+  }
+  .leg-list li {
+    display: grid;
+    grid-template-columns: 56px 1fr;
+    gap: 16px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--rule);
+    font-size: 14px;
+    color: var(--ink-soft);
+    line-height: 1.5;
+  }
+  .leg-list li:last-child { border-bottom: none; }
+  .leg-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--hot);
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    padding-top: 2px;
+  }
+  .leg-list strong { color: var(--ink); font-weight: 500; }
+
+  .eta-box {
+    margin-top: 20px;
+    padding: 18px 20px;
+    border: 1px solid var(--rule);
+    background: var(--paper-deep);
+  }
+  .eta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 6px 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+  }
+  .eta-row + .eta-row { border-top: 1px dashed var(--rule); margin-top: 6px; padding-top: 12px; }
+  .eta-lbl { color: var(--ink-soft); letter-spacing: 0.08em; text-transform: uppercase; font-size: 10px; }
+  .eta-val { color: var(--ink); font-size: 14px; }
+
+  .phase-readout {
+    margin-top: 28px;
+    padding: 20px;
+    background: var(--ink);
+    color: var(--paper);
+    border-radius: 2px;
+  }
+  .pr-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    opacity: 0.5;
+    margin-bottom: 8px;
+  }
+  .pr-name {
+    font-family: 'Fraunces', serif;
+    font-size: 24px;
+    font-weight: 400;
+    margin-bottom: 4px;
+    letter-spacing: -0.01em;
+  }
+  .pr-leg {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--hot-soft);
+    letter-spacing: 0.08em;
+  }
+
+  @keyframes pulseRing {
+    0% { r: 8; opacity: 0.6; }
+    100% { r: 18; opacity: 0; }
+  }
+  #statePulse { animation: pulseRing 1.4s ease-out infinite; }
+
+  /* THEORY SECTION */
+  section.theory-section {
+    padding: 80px 0;
+    border-top: 1px solid var(--rule);
+  }
+  .theory-body {
+    margin-top: 32px;
+  }
+  .theory-step {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    gap: 40px;
+    padding: 48px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .theory-step:last-child { border-bottom: none; padding-bottom: 24px; }
+  .theory-step:first-child { padding-top: 16px; }
+
+  .step-num {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 300;
+    font-size: 64px;
+    line-height: 1;
+    color: var(--hot);
+    text-align: right;
+    font-variation-settings: 'opsz' 144;
+  }
+
+  .step-content h3 {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 28px;
+    margin-bottom: 18px;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+  }
+  .step-content h3 em {
+    font-style: italic;
+    font-weight: 400;
+    color: var(--hot);
+  }
+  .step-content p {
+    color: var(--ink-soft);
+    margin-bottom: 18px;
+    font-size: 16px;
+    line-height: 1.7;
+  }
+  .step-content em {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 500;
+    color: var(--ink);
+    letter-spacing: 0.01em;
+  }
+  .step-content strong {
+    color: var(--ink);
+    font-weight: 500;
+  }
+
+  .eq {
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    text-align: center;
+    margin: 22px 0;
+    padding: 18px 24px;
+    background: var(--paper-deep);
+    border-left: 2px solid var(--rule);
+    letter-spacing: 0.01em;
+    line-height: 1.4;
+  }
+  .eq.eq-large {
+    font-size: 26px;
+    padding: 24px 24px;
+  }
+  .eq.eq-small {
+    font-size: 16px;
+    padding: 14px 20px;
+  }
+  .eq.key {
+    border-left-color: var(--hot);
+    border-left-width: 3px;
+    background: linear-gradient(90deg, rgba(196, 69, 45, 0.06), var(--paper-deep) 35%);
+  }
+  .eq em {
+    font-style: italic;
+    font-weight: 400;
+    color: var(--ink);
+  }
+  .eq sub, .eq sup {
+    font-style: normal;
+    font-size: 0.6em;
+    letter-spacing: 0;
+  }
+
+  .energy-flow-svg {
+    width: 100%;
+    max-width: 600px;
+    height: auto;
+    margin: 32px auto 8px;
+    display: block;
+  }
+
+  /* Interactive calculator */
+  .calc-section {
+    margin-top: 56px;
+    padding: 40px;
+    background: var(--paper-deep);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+  }
+  .calc-head { margin-bottom: 32px; }
+  .calc-section h3 {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 24px;
+    margin-bottom: 10px;
+    letter-spacing: -0.01em;
+  }
+  .calc-section .calc-head p {
+    color: var(--ink-soft);
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  .calc-controls {
+    display: grid;
+    gap: 22px;
+    margin-bottom: 32px;
+  }
+  .calc-row {
+    display: grid;
+    grid-template-columns: 160px 1fr 90px;
+    gap: 18px;
+    align-items: center;
+  }
+  .calc-row label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .calc-row label em {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 15px;
+    color: var(--ink);
+    text-transform: none;
+    letter-spacing: 0;
+    margin-left: 8px;
+  }
+  .calc-row label em sub {
+    font-style: normal;
+    font-size: 0.65em;
+  }
+  .calc-row input[type=range] {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 2px;
+    background: var(--rule);
+    outline: none;
+  }
+  .calc-row input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    background: var(--hot);
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid var(--paper-deep);
+    box-shadow: 0 0 0 1px var(--hot);
+  }
+  .calc-row input[type=range]::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    background: var(--hot);
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid var(--paper-deep);
+  }
+  .calc-row output {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    text-align: right;
+    color: var(--ink);
+  }
+
+  .calc-result {
+    border-top: 1px solid var(--rule);
+    padding-top: 28px;
+  }
+  .result-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 14px;
+  }
+  .result-lbl {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .result-val {
+    font-family: 'Fraunces', serif;
+    font-size: 36px;
+    font-weight: 300;
+    color: var(--hot);
+    font-variation-settings: 'opsz' 144;
+  }
+  .eta-bar {
+    height: 6px;
+    background: var(--rule);
+    margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+    border-radius: 1px;
+  }
+  .eta-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--hot-soft), var(--hot));
+    transition: width 0.25s ease-out;
+  }
+  .result-formula {
+    font-family: 'Fraunces', serif;
+    font-size: 16px;
+    color: var(--ink-soft);
+    margin-bottom: 18px;
+    text-align: center;
+    padding: 12px;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+  }
+  .result-formula em {
+    font-style: italic;
+    color: var(--ink);
+  }
+  .result-formula sub { font-style: normal; font-size: 0.65em; }
+  .result-formula .formulaT {
+    color: var(--hot);
+    font-weight: 500;
+  }
+  .result-note {
+    font-size: 14px;
+    color: var(--ink-soft);
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  /* PARTS DIAGRAM */
+  section.parts {
+    padding: 80px 0;
+    border-top: 1px solid var(--rule);
+  }
+  .parts-layout {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 64px;
+    align-items: start;
+  }
+  .parts-svg {
+    aspect-ratio: 3 / 4;
+    border: 1px solid var(--rule);
+    background: var(--paper-deep);
+    position: relative;
+  }
+  .parts-svg svg { width: 100%; height: 100%; display: block; }
+
+  .parts-list { list-style: none; }
+  .parts-list li {
+    padding: 18px 0;
+    border-bottom: 1px solid var(--rule);
+    display: grid;
+    grid-template-columns: 36px 1fr;
+    gap: 18px;
+    align-items: start;
+    cursor: pointer;
+    transition: padding 0.2s;
+  }
+  .parts-list li:hover { padding-left: 8px; }
+  .parts-list li.active { padding-left: 8px; }
+  .parts-list li.active .part-name { color: var(--hot); }
+  .parts-list .part-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--hot);
+    border: 1px solid var(--hot);
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .parts-list .part-name {
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    font-weight: 500;
+    margin-bottom: 4px;
+    transition: color 0.2s;
+  }
+  .parts-list .part-desc {
+    font-size: 14px;
+    color: var(--ink-soft);
+    line-height: 1.5;
+  }
+
+  /* WHY SECTION */
+  section.why {
+    padding: 80px 0 120px;
+    border-top: 1px solid var(--rule);
+  }
+
+  .why-content {
+    max-width: 720px;
+  }
+  .why-content p {
+    font-size: 19px;
+    line-height: 1.7;
+    margin-bottom: 22px;
+    color: var(--ink-soft);
+  }
+  .why-content p strong { color: var(--ink); font-weight: 500; }
+  .pullquote {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 300;
+    font-size: clamp(28px, 3.6vw, 40px);
+    line-height: 1.25;
+    margin: 48px 0;
+    padding-left: 32px;
+    border-left: 2px solid var(--hot);
+    color: var(--ink);
+    font-variation-settings: 'opsz' 144;
+  }
+
+  .fact-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    margin-top: 56px;
+    border-top: 1px solid var(--ink);
+    border-bottom: 1px solid var(--ink);
+  }
+  .fact {
+    padding: 28px 24px;
+    border-right: 1px solid var(--rule);
+  }
+  .fact:last-child { border-right: none; }
+  .fact-num {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-size: 56px;
+    line-height: 1;
+    margin-bottom: 8px;
+    color: var(--hot);
+    font-variation-settings: 'opsz' 144;
+  }
+  .fact-num .small { font-size: 24px; opacity: 0.7; }
+  .fact-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+
+  footer {
+    padding: 40px 0;
+    border-top: 1px solid var(--rule);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  /* RESPONSIVE */
+  @media (max-width: 860px) {
+    .container { padding: 0 22px; }
+    section.stage { grid-template-columns: 1fr; gap: 40px; padding: 48px 0; }
+    .engine-wrap { max-width: 380px; margin: 0 auto; }
+    .phase-grid { grid-template-columns: 1fr 1fr; }
+    .phase:nth-child(2) { border-right: none; }
+    .phase:nth-child(1), .phase:nth-child(2) { border-bottom: 1px solid var(--rule); }
+    .parts-layout { grid-template-columns: 1fr; gap: 32px; }
+    .pv-layout { grid-template-columns: 1fr; gap: 32px; }
+    .pv-wrap { max-width: 600px; margin: 0 auto; }
+    .theory-step { grid-template-columns: 1fr; gap: 8px; padding: 32px 0; }
+    .step-num { font-size: 48px; text-align: left; }
+    .calc-section { padding: 24px; }
+    .calc-row { grid-template-columns: 1fr; gap: 6px; }
+    .calc-row output { text-align: left; }
+    .eq { font-size: 17px; padding: 14px 18px; }
+    .eq.eq-large { font-size: 21px; }
+    .result-val { font-size: 28px; }
+    .section-head { grid-template-columns: 1fr; gap: 16px; }
+    .section-head .num { font-size: 56px; }
+    .fact-grid { grid-template-columns: 1fr; }
+    .fact { border-right: none; border-bottom: 1px solid var(--rule); }
+    .fact:last-child { border-bottom: none; }
+    header.hero { padding: 56px 0 32px; }
+  }
+
+  /* Subtle entrance */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  header.hero > * { animation: fadeUp 0.8s ease-out backwards; }
+  header.hero .kicker { animation-delay: 0.05s; }
+  header.hero h1 { animation-delay: 0.15s; }
+  header.hero .lede { animation-delay: 0.3s; }
+  header.hero .meta-row { animation-delay: 0.45s; }
+</style>
+</head>
+<body>
+<main>
+
+<div class="container">
+  <header class="hero">
+    <div class="kicker">Termodynamik · Demonstration · LTD-Stirling</div>
+    <h1>The Stirling <em>engine</em></h1>
+    <p class="lede">An engine that burns nothing. It lives on the difference between a glass of hot water and the air around it.</p>
+    <div class="meta-row">
+      <div><span class="label">Type</span><span class="value">Lavtemperatur (LTD)</span></div>
+      <div><span class="label">Fuel</span><span class="value">None</span></div>
+      <div><span class="label">Drift</span><span class="value">ΔT ≈ 15–40 °C</span></div>
+      <div><span class="label">Invented</span><span class="value">Robert Stirling, 1816</span></div>
+    </div>
+  </header>
+
+  <!-- MAIN ANIMATED ENGINE -->
+  <section class="stage">
+    <div class="engine-wrap">
+      <span class="corner tl"></span><span class="corner tr"></span>
+      <span class="corner bl"></span><span class="corner br"></span>
+      <svg viewBox="0 0 300 400" preserveAspectRatio="xMidYMid meet" id="mainEngine">
+        <defs>
+          <linearGradient id="glassGrad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="rgba(180,200,215,0.35)"/>
+            <stop offset="50%" stop-color="rgba(220,230,240,0.15)"/>
+            <stop offset="100%" stop-color="rgba(180,200,215,0.35)"/>
+          </linearGradient>
+          <linearGradient id="waterGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#e89878" stop-opacity="0.5"/>
+            <stop offset="100%" stop-color="#c4452d" stop-opacity="0.35"/>
+          </linearGradient>
+          <linearGradient id="metalGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#d8d3c8"/>
+            <stop offset="50%" stop-color="#b8b3aa"/>
+            <stop offset="100%" stop-color="#9a958c"/>
+          </linearGradient>
+          <linearGradient id="wheelGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#e0dcd2"/>
+            <stop offset="50%" stop-color="#b8b3aa"/>
+            <stop offset="100%" stop-color="#7e7a72"/>
+          </linearGradient>
+          <radialGradient id="heatGlow" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="0%" stop-color="#c4452d" stop-opacity="0.5"/>
+            <stop offset="100%" stop-color="#c4452d" stop-opacity="0"/>
+          </radialGradient>
+          <radialGradient id="coldGlow" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="0%" stop-color="#2d5a8a" stop-opacity="0.3"/>
+            <stop offset="100%" stop-color="#2d5a8a" stop-opacity="0"/>
+          </radialGradient>
+          <pattern id="foamTex" width="6" height="6" patternUnits="userSpaceOnUse">
+            <rect width="6" height="6" fill="#3a3530"/>
+            <circle cx="2" cy="2" r="0.6" fill="#5a554c" opacity="0.6"/>
+            <circle cx="5" cy="4" r="0.5" fill="#2a2520" opacity="0.7"/>
+          </pattern>
+        </defs>
+
+        <!-- Heat glow under warm water cup -->
+        <ellipse cx="150" cy="395" rx="95" ry="9" fill="url(#heatGlow)" id="heatGlowEl" opacity="0.5"/>
+        <!-- Cold glow above -->
+        <ellipse cx="150" cy="38" rx="95" ry="14" fill="url(#coldGlow)"/>
+
+        <!-- ===== WARM WATER CUP ===== -->
+        <path d="M 78 325 L 80 388 Q 80 395 88 395 L 212 395 Q 220 395 220 388 L 222 325 Z"
+              fill="url(#glassGrad)" stroke="#88909a" stroke-width="0.8" opacity="0.5"/>
+        <path d="M 82 335 L 83 387 Q 83 393 88 393 L 212 393 Q 217 393 217 387 L 218 335 Z"
+              fill="url(#waterGrad)"/>
+        <ellipse cx="150" cy="335" rx="67" ry="3" fill="rgba(232,152,120,0.5)" stroke="#a8826a" stroke-width="0.5" opacity="0.7"/>
+        <ellipse cx="150" cy="325" rx="72" ry="4" fill="none" stroke="#a8b0ba" stroke-width="0.7"/>
+
+        <!-- ===== ENGINE CHAMBER (shallow, ~1 cm tall) ===== -->
+        <path d="M 80 290 L 81 312 Q 81 317 86 317 L 214 317 Q 219 317 219 312 L 220 290 Z"
+              fill="url(#glassGrad)" stroke="#88909a" stroke-width="0.9" opacity="0.55"/>
+        <line x1="86" y1="294" x2="87" y2="314" stroke="white" stroke-width="0.7" opacity="0.5"/>
+        <line x1="213" y1="294" x2="214" y2="314" stroke="#7a8390" stroke-width="0.4" opacity="0.4"/>
+        <ellipse cx="150" cy="317" rx="68" ry="2.5" fill="rgba(232,152,120,0.3)"/>
+
+        <!-- Magnetic field indicator (visible when piston is at BOTTOM of stroke and foam is up) -->
+        <g id="magField" opacity="0">
+          <ellipse cx="150" cy="293" rx="45" ry="3" fill="none" stroke="#2d5a8a" stroke-width="0.7" stroke-dasharray="2 3"/>
+          <ellipse cx="150" cy="293" rx="55" ry="5" fill="none" stroke="#2d5a8a" stroke-width="0.5" stroke-dasharray="2 3"/>
+        </g>
+
+        <!-- ===== DISPLACER (thin foam disc, only a few mm) ===== -->
+        <g id="displacer">
+          <rect x="86" y="305" width="128" height="7" fill="url(#foamTex)" stroke="#1a1814" stroke-width="0.4"/>
+          <ellipse cx="150" cy="305" rx="64" ry="1.8" fill="#3a3530" stroke="#1a1814" stroke-width="0.4"/>
+          <ellipse cx="150" cy="312" rx="64" ry="1.8" fill="#1a1814" stroke="#0a0805" stroke-width="0.3"/>
+        </g>
+
+        <!-- ===== TOP METAL LID (closes the chamber) ===== -->
+        <ellipse cx="150" cy="290" rx="70" ry="5" fill="url(#metalGrad)" stroke="#7e7a72" stroke-width="0.5"/>
+        <rect x="78" y="284" width="144" height="7" fill="url(#metalGrad)"/>
+        <ellipse cx="150" cy="284" rx="70" ry="5" fill="#d8d3c8" stroke="#7e7a72" stroke-width="0.5"/>
+
+        <!-- ===== STAND POST (drawn BEFORE piston cylinder so cylinder appears in front) ===== -->
+        <!-- Post is centered at x=150, rises from lid up to flywheel center at y=110 -->
+        <rect x="142" y="110" width="16" height="174" fill="url(#metalGrad)" stroke="#5a564e" stroke-width="0.4"/>
+        <!-- Base flange where post meets lid -->
+        <rect x="138" y="282" width="24" height="4" fill="#7e7a72"/>
+
+        <!-- ===== POWER CYLINDER (clear glass tube — centered on lid, IN FRONT of post) ===== -->
+        <rect x="139" y="215" width="22" height="69" fill="rgba(200,215,225,0.4)" stroke="#88909a" stroke-width="0.7"/>
+        <line x1="141" y1="219" x2="141" y2="282" stroke="white" stroke-width="0.6" opacity="0.55"/>
+        <line x1="159" y1="219" x2="159" y2="282" stroke="#7a8390" stroke-width="0.3" opacity="0.4"/>
+        <!-- Cylinder base flange -->
+        <rect x="135" y="280" width="30" height="4" fill="#9a958c" stroke="#5a564e" stroke-width="0.3"/>
+        <!-- Power piston (with magnet on bottom edge) -->
+        <g id="powerPiston">
+          <rect x="140" y="247" width="20" height="8" fill="#3a3530" stroke="#1a1814" stroke-width="0.3"/>
+          <rect x="140" y="253" width="20" height="2" fill="#2d5a8a" opacity="0.7"/>
+        </g>
+
+        <!-- ===== FLYWHEEL (axle directly above post) ===== -->
+        <g id="flywheel">
+          <circle cx="150" cy="110" r="44" fill="url(#wheelGrad)" stroke="#5a564e" stroke-width="0.8"/>
+          <circle cx="150" cy="110" r="36" fill="var(--paper-deep)" stroke="#7e7a72" stroke-width="0.5"/>
+          <circle cx="150" cy="110" r="32" fill="none" stroke="#9a958c" stroke-width="0.6"/>
+          <!-- Decorative bolt-circle -->
+          <circle cx="150" cy="84" r="2.2" fill="#4a4538"/>
+          <circle cx="176" cy="110" r="2.2" fill="#4a4538"/>
+          <circle cx="150" cy="136" r="2.2" fill="#4a4538"/>
+          <circle cx="124" cy="110" r="2.2" fill="#4a4538"/>
+          <!-- Hub on the axle (post top) -->
+          <circle cx="150" cy="110" r="6" fill="#5a554c" stroke="#2a2520" stroke-width="0.5"/>
+          <circle cx="150" cy="110" r="2" fill="#1a1814"/>
+          <!-- Crank pin (small offset for near-vertical rod) -->
+          <circle id="pistonCrank" cx="162" cy="110" r="2.5" fill="#c4452d"/>
+        </g>
+
+        <!-- ONE connecting rod: piston to crank pin (drawn AFTER flywheel so it's on top) -->
+        <line id="pistonRod" x1="150" y1="247" x2="162" y2="110" stroke="#2a2520" stroke-width="1.6" stroke-linecap="round"/>
+
+        <!-- Heat arrows from beneath cup -->
+        <g id="heatArrows" opacity="0.65">
+          <path d="M 105 410 q 0 -8 4 -10 q 4 -2 4 -10" stroke="#c4452d" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+          <path d="M 150 412 q 0 -8 4 -10 q 4 -2 4 -10" stroke="#c4452d" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+          <path d="M 195 410 q 0 -8 4 -10 q 4 -2 4 -10" stroke="#c4452d" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+        </g>
+
+        <!-- Labels -->
+        <g font-family="JetBrains Mono, monospace" font-size="7" fill="#4a4438" letter-spacing="0.5">
+          <text x="22" y="110" text-anchor="start">SVINGHJUL</text>
+          <line x1="70" y1="108" x2="105" y2="108" stroke="#4a4438" stroke-width="0.3" stroke-dasharray="2 2"/>
+
+          <text x="22" y="190" text-anchor="start">SUPPORT POST</text>
+          <line x1="86" y1="188" x2="142" y2="188" stroke="#4a4438" stroke-width="0.3" stroke-dasharray="2 2"/>
+
+          <text x="22" y="245" text-anchor="start">KRAFTSTEMPEL</text>
+          <line x1="86" y1="243" x2="139" y2="250" stroke="#4a4438" stroke-width="0.3" stroke-dasharray="2 2"/>
+          <text x="22" y="255" text-anchor="start" font-size="6" fill="#2d5a8a" opacity="0.8">(with magnet)</text>
+
+          <text x="285" y="290" text-anchor="end">LID</text>
+          <line x1="270" y1="288" x2="222" y2="288" stroke="#4a4438" stroke-width="0.3" stroke-dasharray="2 2"/>
+
+          <text x="22" y="310" text-anchor="start">FORDRIVER</text>
+          <line x1="68" y1="308" x2="86" y2="308" stroke="#4a4438" stroke-width="0.3" stroke-dasharray="2 2"/>
+          <text x="22" y="320" text-anchor="start" font-size="6" fill="#2d5a8a" opacity="0.8">(magnetic foam)</text>
+
+          <text x="285" y="365" text-anchor="end">HOT WATER</text>
+          <line x1="245" y1="363" x2="220" y2="365" stroke="#4a4438" stroke-width="0.3" stroke-dasharray="2 2"/>
+        </g>
+      </svg>
+    </div>
+
+    <div class="stage-text">
+      <h2>It is driven by temperature — not by fuel</h2>
+      <p>This is a <strong>low-temperature Stirling engine</strong>. The only energy source is the hot water in the cup the engine is placed on top of — no flame, no fuel.</p>
+      <p>The air enclosed in the chamber is alternately <strong style="color:var(--hot)">heated</strong> from below and <strong style="color:var(--cold)">cooled</strong> from above. It expands and contracts — and it is this pulsation that drives the flywheel round.</p>
+
+      <div class="temp-bar">
+        <div class="temp-cell hot">
+          <div class="lbl">Hot side</div>
+          <div class="val" id="hotTemp">~50<span class="unit">°C</span></div>
+        </div>
+        <div class="temp-cell cold">
+          <div class="lbl">Cold side</div>
+          <div class="val" id="coldTemp">~22<span class="unit">°C</span></div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="label">
+          <span>Speed</span> <span class="rpm" id="rpmDisplay">120 RPM</span>
+        </div>
+        <input type="range" id="speedSlider" min="0" max="100" value="50">
+        <div class="btn-row">
+          <button class="btn" data-speed="0">Stop</button>
+          <button class="btn" data-speed="25">Slow</button>
+          <button class="btn active" data-speed="50">Normal</button>
+          <button class="btn" data-speed="100">Fast</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- THE FOUR PHASES -->
+  <section class="cycle">
+    <div class="section-head">
+      <div class="num">II.</div>
+      <div>
+        <h2>The thermodynamic cycle</h2>
+        <p>In each revolution the air inside the engine goes through four phases:</p>
+        <ol style="margin:14px 0 0 1.2em; line-height:1.6;">
+          <li><strong>Heating.</strong> The piston is at the bottom, and the magnet holds the displacer up. The air lies at the hot bottom, and the pressure rises.</li>
+          <li><strong>Expansion.</strong> The hot air expands and pushes the piston up. This is where the work is delivered.</li>
+          <li><strong>Cooling.</strong> The piston is up, and the displacer has dropped down. The air lies at the cool lid, and the pressure falls.</li>
+          <li><strong>Compression.</strong> The cooled air contracts, and the flywheel brings the piston down again.</li>
+        </ol>
+      </div>
+    </div>
+
+    </div>
+  </section>
+
+  <!-- PV DIAGRAM SECTION -->
+  <section class="pv-section">
+    <div class="section-head">
+      <div class="num">III.</div>
+      <div>
+        <h2>Arbejdsdiagram &amp; Carnot</h2>
+        <p>Every time the engine spins round, the state of the air moves once round the diagram below. The area inside the curve is the <em>work</em> the engine delivers per cycle.</p>
+      </div>
+    </div>
+
+    <div class="pv-layout">
+      <div class="pv-wrap">
+        <span class="corner tl"></span><span class="corner tr"></span>
+        <span class="corner bl"></span><span class="corner br"></span>
+        <svg viewBox="0 0 500 400" id="pvDiagram" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <pattern id="grid" width="40" height="32" patternUnits="userSpaceOnUse">
+              <path d="M 40 0 L 0 0 0 32" fill="none" stroke="#c9bea7" stroke-width="0.4" opacity="0.5"/>
+            </pattern>
+            <linearGradient id="stirlingFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#c4452d" stop-opacity="0.18"/>
+              <stop offset="100%" stop-color="#c4452d" stop-opacity="0.04"/>
+            </linearGradient>
+            <linearGradient id="carnotFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#2d5a8a" stop-opacity="0.15"/>
+              <stop offset="100%" stop-color="#2d5a8a" stop-opacity="0.03"/>
+            </linearGradient>
+          </defs>
+
+          <rect x="80" y="40" width="380" height="300" fill="url(#grid)" stroke="#1a1814" stroke-width="0.8"/>
+
+          <g font-family="JetBrains Mono, monospace" font-size="10" fill="#4a4438">
+            <text x="270" y="380" text-anchor="middle" font-size="11" letter-spacing="2">VOLUME →</text>
+            <text x="92" y="358" font-size="9" opacity="0.7">V_min</text>
+            <text x="448" y="358" font-size="9" opacity="0.7" text-anchor="end">V_max</text>
+            <text x="40" y="190" text-anchor="middle" font-size="11" letter-spacing="2" transform="rotate(-90 40 190)">PRESSURE →</text>
+            <text x="74" y="48" font-size="9" opacity="0.7" text-anchor="end">P_max</text>
+            <text x="74" y="338" font-size="9" opacity="0.7" text-anchor="end">P_min</text>
+          </g>
+
+          <g opacity="0.25" fill="none" stroke="#c4452d" stroke-width="0.6" stroke-dasharray="3 3" id="hotIsotherm"></g>
+          <g opacity="0.25" fill="none" stroke="#2d5a8a" stroke-width="0.6" stroke-dasharray="3 3" id="coldIsotherm"></g>
+
+          <path id="stirlingArea" d="" fill="url(#stirlingFill)"/>
+          <path id="stirlingPath" d="" fill="none" stroke="#c4452d" stroke-width="2.2" stroke-linejoin="round"/>
+
+          <path id="carnotArea" d="" fill="url(#carnotFill)" opacity="0"/>
+          <path id="carnotPath" d="" fill="none" stroke="#2d5a8a" stroke-width="2" stroke-dasharray="5 3" opacity="0"/>
+
+          <g id="stirlingLabels" font-family="JetBrains Mono, monospace" font-size="11" font-weight="600" fill="#1a1814">
+            <circle id="ptA" cx="0" cy="0" r="3.5" fill="#c4452d"/>
+            <circle id="ptB" cx="0" cy="0" r="3.5" fill="#c4452d"/>
+            <circle id="ptC" cx="0" cy="0" r="3.5" fill="#c4452d"/>
+            <circle id="ptD" cx="0" cy="0" r="3.5" fill="#c4452d"/>
+            <text id="lblA" x="0" y="0">1</text>
+            <text id="lblB" x="0" y="0">2</text>
+            <text id="lblC" x="0" y="0">3</text>
+            <text id="lblD" x="0" y="0">4</text>
+          </g>
+
+          <circle id="statePulse" cx="100" cy="100" r="12" fill="none" stroke="#1a1814" stroke-width="1" opacity="0.3"/>
+          <circle id="statePoint" cx="100" cy="100" r="7" fill="#1a1814" stroke="#f4ede0" stroke-width="2"/>
+        </svg>
+      </div>
+
+      <div class="pv-text">
+        <div class="cycle-toggle">
+          <button class="ct-btn active" data-mode="stirling">Stirling</button>
+          <button class="ct-btn" data-mode="both">Compare</button>
+          <button class="ct-btn" data-mode="carnot">Carnot only</button>
+        </div>
+
+        <div id="modeStirling" class="mode-text">
+          <h3>Stirling-cyklussen</h3>
+          <p>The cycle consists of <strong>two isotherms</strong> (the air is at constant temperature as it expands or is compressed) and <strong>two isochores</strong> (the volume is constant while the heat is moved between the zones).</p>
+          <ul class="leg-list">
+            <li><span class="leg-num">1→2</span><div><strong>Isothermal expansion</strong> at T<sub>hot</sub>. The air absorbs heat and expands — this is where the work is delivered.</div></li>
+            <li><span class="leg-num">2→3</span><div><strong>Isochoric cooling.</strong> Volume constant, the displacer pushes the air up to the cold zone, the pressure falls.</div></li>
+            <li><span class="leg-num">3→4</span><div><strong>Isothermal compression</strong> at T<sub>cold</sub>. The air gives off heat while it is compressed.</div></li>
+            <li><span class="leg-num">4→1</span><div><strong>Isochoric heating.</strong> Volume constant, the air is moved down to the hot zone, the pressure rises.</div></li>
+          </ul>
+        </div>
+
+        <div id="modeCarnot" class="mode-text" style="display:none">
+          <h3>Carnot-cyklussen</h3>
+          <p>The theoretically most efficient cycle, described by Sadi Carnot in 1824. It also consists of two isotherms — but the other two processes are <strong>adiabatic</strong> (no heat exchange with the surroundings).</p>
+          <ul class="leg-list">
+            <li><span class="leg-num">1→2</span><div><strong>Isothermal expansion</strong> at T<sub>hot</sub>.</div></li>
+            <li><span class="leg-num">2→3</span><div><strong>Adiabatic expansion.</strong> The air expands in isolation and cools from T<sub>hot</sub> to T<sub>cold</sub>.</div></li>
+            <li><span class="leg-num">3→4</span><div><strong>Isothermal compression</strong> at T<sub>cold</sub>.</div></li>
+            <li><span class="leg-num">4→1</span><div><strong>Adiabatic compression.</strong> Back to T<sub>hot</sub> without heat input.</div></li>
+          </ul>
+        </div>
+
+        <div id="modeBoth" class="mode-text" style="display:none">
+          <h3>Stirling vs Carnot</h3>
+          <p>With a perfect <strong>regenerator</strong> — a heat exchanger that stores the heat from 2→3 and returns it in 4→1 — the Stirling engine actually becomes <em>just as efficient</em> as Carnot. That is the remarkable thing.</p>
+          <p>Without a regenerator Stirling is less efficient, because the heat in 2→3 is discarded and new heat must be supplied in 4→1. Carnot's adiabatic legs reuse this energy in the gas itself.</p>
+          <div class="eta-box">
+            <div class="eta-row">
+              <span class="eta-lbl">Carnot-virkningsgrad</span>
+              <span class="eta-val">η = 1 − T<sub>k</sub>/T<sub>v</sub></span>
+            </div>
+            <div class="eta-row">
+              <span class="eta-lbl" style="color:var(--hot)">At 50°C / 22°C</span> <span class="eta-val" id="etaActual">η ≈ 8.7 %</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="phase-readout" id="phaseReadout">
+          <div class="pr-label">Current phase</div>
+          <div class="pr-name" id="prName">Isothermal expansion</div>
+          <div class="pr-leg" id="prLeg">1 → 2</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- PARTS BREAKDOWN -->
+  <!-- THEORY: Why area=work, energy balance, and Carnot derivation -->
+  <section class="theory-section">
+    <div class="section-head">
+      <div class="num">IV.</div>
+      <div>
+        <h2>The theory behind the work</h2>
+        <p>Why the area in the P-V diagram IS the engine's work, and where Carnot's famous formula for maximum efficiency comes from.</p>
+      </div>
+    </div>
+
+    <div class="theory-body">
+
+      <!-- Step 1: Area = Work -->
+      <div class="theory-step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h3>The area <em>is</em> the work</h3>
+          <p>When the power piston moves an infinitesimal distance, the gas does work against it. The force is the pressure times the cross-sectional area, and the displacement times the area is exactly the change in volume. The infinitesimal work is therefore:</p>
+
+          <div class="eq">
+            d<em>W</em> = <em>P</em> d<em>V</em>
+          </div>
+
+          <p>Over a whole cycle this sums to the line integral around the curve in the P-V diagram:</p>
+
+          <div class="eq eq-large">
+            <em>W</em> = ∮ <em>P</em> d<em>V</em>
+          </div>
+
+          <p>Geometrically this integral is exactly equal to <strong>the area inside the curve</strong>. When the cycle runs clockwise — as engines do — the area is positive and the engine delivers work. Anticlockwise would mean that the machine takes in work, like a refrigerator or heat pump.</p>
+
+          <p>The intuition: during expansion (V increases) the gas pushes the piston out and does positive work. During compression (V decreases) the gas is squeezed, and it does negative work. The difference between the two phases is exactly the area between the expansion curve above and the compression curve below.</p>
+        </div>
+      </div>
+
+      <!-- Step 2: Energy balance -->
+      <div class="theory-step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h3>The first law over a cycle</h3>
+          <p>The first law of thermodynamics says that for any process:</p>
+
+          <div class="eq">
+            d<em>U</em> = d<em>Q</em> − d<em>W</em>
+          </div>
+
+          <p>Here <em>U</em> is the internal energy (a state function), <em>Q</em> the heat supplied, and <em>W</em> the work delivered. Since <em>U</em> depends only on the state, it returns to its starting value after a whole cycle:</p>
+
+          <div class="eq">
+            ∮ d<em>U</em> = 0
+          </div>
+
+          <p>This means that the total heat supplied over the cycle exactly covers the work done:</p>
+
+          <div class="eq">
+            ∮ d<em>Q</em> = ∮ d<em>W</em> = <em>W</em>
+          </div>
+
+          <p>If we split the heat into that supplied at the hot reservoir (<em>Q</em><sub>in</sub>) and that given off to the cold reservoir (<em>Q</em><sub>out</sub>), we get the central energy balance:</p>
+
+          <div class="eq eq-large key">
+            <em>Q</em><sub>in</sub> = <em>W</em> + <em>Q</em><sub>out</sub>
+          </div>
+
+          <p>Every joule of heat supplied at the hot side ends up either as mechanical work or as waste heat on the cold side. It is conservation of energy — nothing else, nothing less.</p>
+
+          <!-- Energy flow diagram -->
+          <svg viewBox="0 0 600 240" class="energy-flow-svg">
+            <defs>
+              <marker id="arrowRed" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+                <path d="M 0 0 L 10 5 L 0 10 Z" fill="#c4452d"/>
+              </marker>
+              <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+                <path d="M 0 0 L 10 5 L 0 10 Z" fill="#2d5a8a"/>
+              </marker>
+              <marker id="arrowBlack" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+                <path d="M 0 0 L 10 5 L 0 10 Z" fill="#1a1814"/>
+              </marker>
+            </defs>
+
+            <!-- Hot reservoir (left) -->
+            <rect x="20" y="80" width="150" height="100" fill="rgba(196,69,45,0.06)" stroke="#c4452d" stroke-width="1.4" rx="2"/>
+            <text x="95" y="120" text-anchor="middle" font-family="Fraunces, serif" font-size="22" font-style="italic" fill="#c4452d">T<tspan font-size="14" baseline-shift="-30%">v</tspan></text>
+            <text x="95" y="158" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" letter-spacing="0.15em" fill="#c4452d">HOT WATER</text>
+
+            <!-- Q_in arrow -->
+            <line x1="170" y1="130" x2="232" y2="130" stroke="#c4452d" stroke-width="2.5" marker-end="url(#arrowRed)"/>
+            <text x="201" y="120" text-anchor="middle" font-family="Fraunces, serif" font-size="16" font-style="italic" fill="#c4452d">Q<tspan font-size="11" baseline-shift="-30%">in</tspan></text>
+
+            <!-- Engine (middle) -->
+            <circle cx="300" cy="130" r="58" fill="var(--paper-deep)" stroke="#1a1814" stroke-width="1.5"/>
+            <text x="300" y="138" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" letter-spacing="0.2em" fill="#1a1814">MOTOR</text>
+
+            <!-- Q_out arrow -->
+            <line x1="368" y1="130" x2="430" y2="130" stroke="#2d5a8a" stroke-width="2.5" marker-end="url(#arrowBlue)"/>
+            <text x="399" y="120" text-anchor="middle" font-family="Fraunces, serif" font-size="16" font-style="italic" fill="#2d5a8a">Q<tspan font-size="11" baseline-shift="-30%">out</tspan></text>
+
+            <!-- Cold reservoir (right) -->
+            <rect x="430" y="80" width="150" height="100" fill="rgba(45,90,138,0.06)" stroke="#2d5a8a" stroke-width="1.4" rx="2"/>
+            <text x="505" y="120" text-anchor="middle" font-family="Fraunces, serif" font-size="22" font-style="italic" fill="#2d5a8a">T<tspan font-size="14" baseline-shift="-30%">k</tspan></text>
+            <text x="505" y="158" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" letter-spacing="0.15em" fill="#2d5a8a">RUMLUFT</text>
+
+            <!-- Work output arrow (up) -->
+            <line x1="300" y1="72" x2="300" y2="28" stroke="#1a1814" stroke-width="2.5" marker-end="url(#arrowBlack)"/>
+            <text x="285" y="50" text-anchor="end" font-family="Fraunces, serif" font-size="18" font-style="italic" fill="#1a1814">W</text>
+            <text x="315" y="42" font-family="JetBrains Mono, monospace" font-size="10" letter-spacing="0.15em" fill="#1a1814">WORK</text>
+
+            <!-- Equation at bottom -->
+            <text x="300" y="220" text-anchor="middle" font-family="Fraunces, serif" font-size="16" font-style="italic" fill="#4a4438">
+              Q<tspan font-size="11" baseline-shift="-30%">in</tspan> = W + Q<tspan font-size="11" baseline-shift="-30%">out</tspan>
+            </text>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Step 3: Carnot derivation -->
+      <div class="theory-step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h3>The Carnot limit</h3>
+          <p>The efficiency is defined as the ratio between useful work and heat supplied:</p>
+
+          <div class="eq">
+            <em>η</em> = <em>W</em> / <em>Q</em><sub>in</sub> = (<em>Q</em><sub>in</sub> − <em>Q</em><sub>out</sub>) / <em>Q</em><sub>in</sub> = 1 − <em>Q</em><sub>out</sub>/<em>Q</em><sub>in</sub>
+          </div>
+
+          <p>To maximise <em>η</em> the ratio <em>Q</em><sub>out</sub>/<em>Q</em><sub>in</sub> must be as small as possible. The second law of thermodynamics sets an absolute limit on how small it can be — and for an idealised Carnot cycle we can calculate exactly where the limit lies.</p>
+
+          <p>During the isothermal expansion at the hot temperature <em>T<sub>h</sub></em> (leg 1→2 in the diagram) the heat supplied is:</p>
+
+          <div class="eq">
+            <em>Q</em><sub>in</sub> = <em>nRT<sub>h</sub></em> · ln(<em>V</em><sub>2</sub>/<em>V</em><sub>1</sub>)
+          </div>
+
+          <p>During the isothermal compression at the cold temperature <em>T<sub>c</sub></em> (leg 3→4) the heat given off is:</p>
+
+          <div class="eq">
+            <em>Q</em><sub>out</sub> = <em>nRT<sub>c</sub></em> · ln(<em>V</em><sub>3</sub>/<em>V</em><sub>4</sub>)
+          </div>
+
+          <p>The two adiabatic legs connect the corners of the cycle. From the adiabatic relation <em>TV</em><sup>γ−1</sup> = constant we get both:</p>
+
+          <div class="eq eq-small">
+            <em>T<sub>h</sub>V</em><sub>2</sub><sup>γ−1</sup> = <em>T<sub>c</sub>V</em><sub>3</sub><sup>γ−1</sup> &nbsp;&nbsp; and &nbsp;&nbsp; <em>T<sub>h</sub>V</em><sub>1</sub><sup>γ−1</sup> = <em>T<sub>c</sub>V</em><sub>4</sub><sup>γ−1</sup>
+          </div>
+
+          <p>Dividing the two relations gives the central geometric identity:</p>
+
+          <div class="eq">
+            <em>V</em><sub>2</sub>/<em>V</em><sub>1</sub> = <em>V</em><sub>3</sub>/<em>V</em><sub>4</sub>
+          </div>
+
+          <p>This is the key to the whole derivation. The logarithms in the two heat expressions are identical and cancel out:</p>
+
+          <div class="eq">
+            <em>Q</em><sub>out</sub> / <em>Q</em><sub>in</sub> = <em>T<sub>c</sub></em> / <em>T<sub>h</sub></em>
+          </div>
+
+          <p>Inserted into the efficiency formula we get Carnot's famous result:</p>
+
+          <div class="eq eq-large key">
+            <em>η</em><sub>max</sub> = 1 − <em>T<sub>k</sub></em>/<em>T<sub>v</sub></em>
+          </div>
+
+          <p>This is the absolute limit for any heat engine between two temperatures, regardless of design. A perfect Stirling engine with an ideal regenerator just reaches this limit — all other designs lie below.</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Interactive efficiency calculator -->
+    <div class="calc-section">
+      <div class="calc-head">
+        <h3>Calculate the efficiency of your engine</h3>
+        <p>Move the temperatures and see how small a fraction of the heat can theoretically become work — even at the ideal Carnot limit.</p>
+      </div>
+
+      <div class="calc-controls">
+        <div class="calc-row">
+          <label>Hot side <em>T<sub>h</sub></em></label>
+          <input type="range" id="thotSlider" min="20" max="100" value="50" step="1">
+          <output id="thotValue">50 °C</output>
+        </div>
+        <div class="calc-row">
+          <label>Cold side <em>T<sub>c</sub></em></label>
+          <input type="range" id="tcoldSlider" min="0" max="40" value="22" step="1">
+          <output id="tcoldValue">22 °C</output>
+        </div>
+      </div>
+
+      <div class="calc-result">
+        <div class="result-row">
+          <span class="result-lbl">Carnot-virkningsgrad</span>
+          <span class="result-val" id="etaResult">η = 8,7 %</span>
+        </div>
+        <div class="eta-bar">
+          <div class="eta-fill" id="etaBar" style="width:8.7%"></div>
+        </div>
+        <div class="result-formula" id="resultFormula">
+          <em>η</em><sub>max</sub> = 1 − <span class="formulaT">295</span>/<span class="formulaT">323</span> ≈ 0,087
+        </div>
+        <p class="result-note">For every 100 J of heat supplied at the hot side, at most <span id="workOut">8.7</span> J can become work. The rest must be given off as waste heat. In practice a real LTD Stirling engine lies far below this limit because of friction, heat loss and a non-ideal cycle — typically 1–2 %.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="parts">
+    <div class="section-head">
+      <div class="num">V.</div>
+      <div>
+        <h2>The parts of the engine</h2>
+        <p>Despite the advanced principle there are surprisingly few parts — four, if you count the heat source.</p>
+      </div>
+    </div>
+
+    <div class="parts-layout">
+      <div class="parts-svg">
+        <svg viewBox="0 0 300 400" preserveAspectRatio="xMidYMid meet">
+          <!-- Static diagram, simpler -->
+          <defs>
+            <linearGradient id="metalGrad2" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#d8d3c8"/>
+              <stop offset="100%" stop-color="#9a958c"/>
+            </linearGradient>
+          </defs>
+          <!-- Warm water cup at the bottom -->
+          <path d="M 78 325 L 80 388 Q 80 395 88 395 L 212 395 Q 220 395 220 388 L 222 325 Z"
+                fill="rgba(180,200,215,0.15)" stroke="#88909a" stroke-width="0.8"/>
+          <path d="M 82 335 L 83 387 Q 83 393 88 393 L 212 393 Q 217 393 217 387 L 218 335 Z"
+                fill="rgba(232,152,120,0.3)"/>
+          <ellipse cx="150" cy="325" rx="72" ry="4" fill="none" stroke="#a8b0ba" stroke-width="0.6"/>
+
+          <!-- Engine chamber: shallow (~1 cm tall) -->
+          <path d="M 80 290 L 81 312 Q 81 317 86 317 L 214 317 Q 219 317 219 312 L 220 290 Z"
+                fill="rgba(180,200,215,0.18)" stroke="#88909a" stroke-width="0.7"/>
+
+          <!-- Foam displacer disc — thin, only a few mm -->
+          <rect x="86" y="305" width="128" height="7" fill="#1a1814" stroke="#0a0805" stroke-width="0.4"/>
+          <ellipse cx="150" cy="305" rx="64" ry="1.8" fill="#3a3530"/>
+
+          <!-- Lid -->
+          <rect x="78" y="284" width="144" height="7" fill="url(#metalGrad2)"/>
+          <ellipse cx="150" cy="284" rx="70" ry="5" fill="#d8d3c8"/>
+
+          <!-- Power cylinder + piston (centered on lid) -->
+          <rect x="139" y="215" width="22" height="69" fill="rgba(200,215,225,0.3)" stroke="#88909a" stroke-width="0.6"/>
+          <rect x="140" y="247" width="20" height="6" fill="#3a3530"/>
+
+          <!-- Stand post (centered, visible above the piston cylinder) -->
+          <rect x="142" y="110" width="16" height="174" fill="#9a958c"/>
+
+          <!-- Flywheel (centered above piston, axle on top of post) -->
+          <circle cx="150" cy="110" r="44" fill="url(#metalGrad2)" stroke="#5a564e"/>
+          <circle cx="150" cy="110" r="36" fill="var(--paper-deep)"/>
+          <circle cx="150" cy="110" r="32" fill="none" stroke="#9a958c" stroke-width="0.6"/>
+          <circle cx="150" cy="84" r="2.2" fill="#4a4538"/>
+          <circle cx="176" cy="110" r="2.2" fill="#4a4538"/>
+          <circle cx="150" cy="136" r="2.2" fill="#4a4538"/>
+          <circle cx="124" cy="110" r="2.2" fill="#4a4538"/>
+          <circle cx="150" cy="110" r="6" fill="#5a554c"/>
+          <circle cx="162" cy="110" r="2.5" fill="#c4452d"/>
+
+          <!-- Single connecting rod (piston to crank pin — near vertical) -->
+          <line x1="150" y1="247" x2="162" y2="110" stroke="#2a2520" stroke-width="1.6"/>
+
+          <!-- Number callouts -->
+          <g font-family="JetBrains Mono, monospace" font-size="11" font-weight="600">
+            <text x="220" y="55" text-anchor="middle" fill="#c4452d">①</text>
+            <line x1="212" y1="58" x2="190" y2="80" stroke="#c4452d" stroke-width="0.5"/>
+
+            <text x="100" y="240" text-anchor="middle" fill="#c4452d">②</text>
+            <line x1="110" y1="243" x2="139" y2="250" stroke="#c4452d" stroke-width="0.5"/>
+
+            <text x="60" y="310" text-anchor="middle" fill="#c4452d">③</text>
+            <line x1="68" y1="308" x2="86" y2="308" stroke="#c4452d" stroke-width="0.5"/>
+
+            <text x="265" y="365" text-anchor="middle" fill="#c4452d">④</text>
+            <line x1="252" y1="363" x2="220" y2="365" stroke="#c4452d" stroke-width="0.5"/>
+          </g>
+        </svg>
+      </div>
+
+      <ul class="parts-list">
+        <li data-part="1">
+          <span class="part-num">1</span>
+          <div>
+            <div class="part-name">Svinghjulet</div>
+            <div class="part-desc">Stores the rotational energy between the cycles. Without it the engine would stall between each pulse of hot air.</div>
+          </div>
+        </li>
+        <li data-part="2">
+          <span class="part-num">2</span>
+          <div>
+            <div class="part-name">Kraftstemplet</div>
+            <div class="part-desc">The small glass tube with the piston on top. It is <em>here</em> the engine delivers mechanical work — the expansion of the air pushes the piston up.</div>
+          </div>
+        </li>
+        <li data-part="3">
+          <span class="part-num">3</span>
+          <div>
+            <div class="part-name">Fordriveren</div>
+            <div class="part-desc">A black magnetic foam disc lying freely in the glass chamber. It is lifted <em>magnetically</em> towards the lid when the power piston comes close enough, and falls back by gravity to the hot bottom when the magnet moves away. No mechanical connection — only magnetism and gravity.</div>
+          </div>
+        </li>
+        <li data-part="4">
+          <span class="part-num">4</span>
+          <div>
+            <div class="part-name">Varmekilden</div>
+            <div class="part-desc">A mug or glass of hot water on which the engine is placed. The bottom of the glass is heated by the water, while the lid and the upper part of the glass stay cool from the room air. The difference is everything.</div>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- WHY -->
+  <section class="why">
+    <div class="section-head">
+      <div class="num">VI.</div>
+      <div>
+        <h2>Why does it work?</h2>
+      </div>
+    </div>
+
+    <div class="why-content">
+      <p>The central insight is: <strong>the displacer does no work</strong>. It is loose in the chamber, and the air can flow freely past it. Its only task is to <strong>move the air</strong> between the hot zone (at the bottom) and the cold zone (at the top).</p>
+
+      <p>When the air is down at the hot bottom, it heats up and expands. When it is up at the cold top, it cools down and contracts. That expansion and contraction is what the <strong>power piston</strong> feels — and what drives the flywheel round.</p>
+
+      <p class="pullquote">The magnet in the piston lifts the displacer — gravity pulls it down. That is the whole trick.</p>
+
+      <p>The clever detail in this engine is how the displacer is controlled without a mechanical connection. The power piston has a magnet at the bottom. When the piston is at the bottom, the magnet is <strong>close enough</strong> to the displacer to lift it right up against the lid. Then the air is pushed down to the hot bottom, where it heats up and expands — and the piston is pushed up.</p>
+
+      <p>When the piston has come up, the magnet is too far away to hold the displacer, and it <strong>falls by gravity</strong> to the bottom of the chamber. Now the air is squeezed up against the cool lid, where it cools and contracts — and the piston is pulled down again, until the magnet once more lifts the displacer. The flywheel carries the motion through the turning points, so that the air is heated when the volume is smallest and cooled when it is largest. The cycle is self-sustaining.</p>
+
+      <p>It is a <strong>closed cycle</strong> — the same air is used again and again. Nothing is burned. No smoke, no pollution. Just a temperature difference converted into motion, exactly as Robert Stirling described it in 1816 — here in a modern simplified version with only one connecting rod.</p>
+
+      <div class="fact-grid">
+        <div class="fact">
+          <div class="fact-num">15<span class="small">°C</span></div>
+          <div class="fact-label">Min. temperature difference</div>
+        </div>
+        <div class="fact">
+          <div class="fact-num">3</div>
+          <div class="fact-label">Moving parts</div>
+        </div>
+        <div class="fact">
+          <div class="fact-num">1</div>
+          <div class="fact-label">Forbindelsesstang</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Stirling engine · Interactive explanation</span> <span>Robert Stirling, 1816</span>
+  </footer>
+</div>
+
+</main>
+
+<script>
+(function(){
+  const svg = document.getElementById('mainEngine');
+  const flywheel = document.getElementById('flywheel');
+  const piston = document.getElementById('powerPiston');
+  const pistonRod = document.getElementById('pistonRod');
+  const displacer = document.getElementById('displacer');
+  const pistonCrank = document.getElementById('pistonCrank');
+  const heatArrows = document.getElementById('heatArrows');
+  const magField = document.getElementById('magField');
+  const slider = document.getElementById('speedSlider');
+  const rpmDisplay = document.getElementById('rpmDisplay');
+  const buttons = document.querySelectorAll('.btn[data-speed]');
+
+  // Geometry constants — wheel is directly above the piston (centered alignment)
+  const wheelCx = 150, wheelCy = 110, crankR = 12;
+  const pistonX = 150;       // piston rod's top attachment, centered
+  const pistonRest = 247;    // y of piston top at mid stroke
+  const pistonStroke = 6;    // amplitude
+  // Displacer is bistable in a very shallow chamber.
+  // Foam disc rests at y=305-312 (thin). Lifted, it rises against the lid (y~292).
+  // Travel distance: ~13 pixels.
+  const displacerBottomRest = 0;   // foam at glass bottom (default)
+  const displacerTopRest = -13;    // foam lifted up against lid
+
+  let angle = 0;
+  let speed = 0.04;
+  let lastTime = performance.now();
+
+  // Displacer state (separate from angle — it's bistable with hysteresis)
+  let displacerOffset = displacerBottomRest;    // current visible position
+  let displacerTarget = displacerBottomRest;    // where it's heading
+
+  function update(t) {
+    const dt = Math.min(50, t - lastTime);
+    lastTime = t;
+    angle += speed * dt * 0.06;
+    if (angle > Math.PI * 2) angle -= Math.PI * 2;
+
+    // Flywheel rotation
+    const deg = angle * 180 / Math.PI;
+    flywheel.setAttribute('transform', `rotate(${deg} ${wheelCx} ${wheelCy})`);
+
+    // Piston: SHM. pistonY = rest - sin(angle)*stroke
+    // Top of stroke at angle=π/2 (pistonY = pistonRest - stroke = 246, highest in SVG)
+    // Bottom of stroke at angle=3π/2 (pistonY = pistonRest + stroke = 258)
+    const pistonY = pistonRest - Math.sin(angle) * pistonStroke;
+    piston.setAttribute('transform', `translate(0 ${pistonY - 247})`);
+
+    // Piston rod: from piston bottom (where rod attaches) to crank pin
+    const pCrankX = wheelCx + crankR * Math.cos(angle);
+    const pCrankY = wheelCy + crankR * Math.sin(angle);
+    pistonRod.setAttribute('x1', pistonX);
+    pistonRod.setAttribute('y1', pistonY);
+    pistonRod.setAttribute('x2', pCrankX);
+    pistonRod.setAttribute('y2', pCrankY);
+
+    // ===== MAGNETIC DISPLACER LOGIC =====
+    // The magnet is at the BOTTOM of the piston. The piston cylinder sits on top of the lid.
+    // - When piston is at the BOTTOM of its stroke, the magnet is closest to the lid
+    //   (and therefore closest to the foam disc just below the lid). Magnet PULLS foam UP.
+    //   This corresponds to sin(angle) < 0 (with our sign convention pistonY = rest - sin*stroke,
+    //   sin<0 means pistonY is high in SVG = piston is low in cylinder).
+    // - When piston rises toward the TOP of its stroke (sin > 0), the magnet pulls away.
+    //   Once the magnetic force becomes too weak, gravity wins and the foam drops.
+    //
+    // Hysteresis thresholds:
+    //   sin(angle) < -0.6 → lift up (magnet very close)
+    //   sin(angle) > 0.2  → drop (magnet has moved away)
+    const s = Math.sin(angle);
+    if (s < -0.6) displacerTarget = displacerTopRest;
+    else if (s > 0.2) displacerTarget = displacerBottomRest;
+
+    // Smooth interpolation toward target (fast — like a snapping spring)
+    const lerpRate = Math.min(1, dt * 0.025);
+    // When dropping (target = 0, current negative), let gravity make it fall faster
+    // When lifting (target = -28, current = 0), magnet snaps it up fast
+    const gap = displacerTarget - displacerOffset;
+    displacerOffset += gap * lerpRate * 1.4;
+    if (Math.abs(gap) < 0.3) displacerOffset = displacerTarget;
+
+    displacer.setAttribute('transform', `translate(0 ${displacerOffset.toFixed(2)})`);
+
+    // Magnetic field indicator: visible when piston is near BOTTOM of stroke (magnet close to lid)
+    // AND displacer is near top. Strongest when both conditions are met.
+    const pistonNearBottom = Math.max(0, -s);  // 0..1, high when sin is negative (piston low)
+    const displacerNearTop = (displacerBottomRest - displacerOffset) / (displacerBottomRest - displacerTopRest); // 0..1
+    const fieldOpacity = pistonNearBottom * displacerNearTop * 0.55;
+    if (magField) magField.setAttribute('opacity', fieldOpacity.toFixed(2));
+
+    // Heat arrows pulse
+    if (heatArrows && speed > 0.001) {
+      const pulse = 0.5 + 0.5 * Math.sin(t * 0.005);
+      heatArrows.setAttribute('opacity', 0.4 + pulse * 0.4);
+    }
+
+    requestAnimationFrame(update);
+  }
+  requestAnimationFrame(update);
+
+  // Speed slider
+  function setSpeed(val) {
+    // val 0-100. Map to angular speed. 50 => normal.
+    const normalized = val / 100;
+    speed = normalized * 0.12; // max ~0.12 rad/frame at 60fps
+    const rpm = Math.round((speed * 60 * 60) / (2 * Math.PI));
+    rpmDisplay.textContent = `${rpm} RPM`;
+  }
+  setSpeed(50);
+  slider.addEventListener('input', e => {
+    setSpeed(parseFloat(e.target.value));
+    buttons.forEach(b => b.classList.remove('active'));
+  });
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const v = parseFloat(btn.dataset.speed);
+      slider.value = v;
+      setSpeed(v);
+      buttons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+
+  // ============================================================
+  // PV DIAGRAM - animated in sync with the engine
+  // ============================================================
+
+  // Plot area in SVG coords (matches the rect in HTML)
+  const PV = {
+    x0: 80, y0: 40, w: 380, h: 300
+  };
+  // V (volume) maps left-to-right; P (pressure) maps top (high) to bottom (low)
+  // Cycle corners (Stirling, idealized rectangle on log P vs V):
+  //   1: (Vmin, Pmax_hot)   - end of isokor heating (hot, low V)
+  //   2: (Vmax, Pmid_hot)   - end of isoterm expansion (hot, high V)
+  //   3: (Vmax, Pmin_cold)  - end of isokor cooling (cold, high V)
+  //   4: (Vmin, Pmid_cold)  - end of isoterm compression (cold, low V)
+  // We'll use normalized 0..1 coordinates and map to plot coords.
+
+  function toPx(v, p) {
+    return {
+      x: PV.x0 + v * PV.w,
+      y: PV.y0 + (1 - p) * PV.h
+    };
+  }
+
+  // Stirling corners (normalized)
+  // For an ideal gas at constant T: P*V = nRT, so P = nRT/V
+  // Use Tv = 1.0 (hot), Tk = 0.55 (cold) in normalized units.
+  // V range: 0.18 to 0.85
+  const Vmin = 0.18, Vmax = 0.85;
+  const Tv = 1.0, Tk = 0.55;
+
+  // For pressure normalization, we need raw P then map to 0..1 vertical.
+  // P_raw = T / V. Compute corners:
+  //   1: V=Vmin, T=Tv -> P1 = Tv/Vmin
+  //   2: V=Vmax, T=Tv -> P2 = Tv/Vmax
+  //   3: V=Vmax, T=Tk -> P3 = Tk/Vmax
+  //   4: V=Vmin, T=Tk -> P4 = Tk/Vmin
+  const P1raw = Tv / Vmin;
+  const P2raw = Tv / Vmax;
+  const P3raw = Tk / Vmax;
+  const P4raw = Tk / Vmin;
+  const Pmax = P1raw, Pmin = P3raw;
+  const normP = (p) => (p - Pmin) / (Pmax - Pmin) * 0.85 + 0.08;
+  const normV = (v) => ((v - Vmin) / (Vmax - Vmin)) * 0.85 + 0.08;
+
+  // Helper: given v and t (temperature), return pixel position
+  function statePos(v, t) {
+    const pRaw = t / v;
+    return toPx(normV(v), normP(pRaw));
+  }
+
+  // Build Stirling path
+  function buildStirlingPath() {
+    const pts = [];
+    const N = 40;
+    // Leg 1->2: isoterm expansion at Tv, V from Vmin to Vmax
+    for (let i = 0; i <= N; i++) {
+      const v = Vmin + (Vmax - Vmin) * (i/N);
+      pts.push(statePos(v, Tv));
+    }
+    // Leg 2->3: isokor at Vmax, T from Tv to Tk
+    for (let i = 1; i <= N; i++) {
+      const t = Tv + (Tk - Tv) * (i/N);
+      pts.push(statePos(Vmax, t));
+    }
+    // Leg 3->4: isoterm compression at Tk, V from Vmax to Vmin
+    for (let i = 1; i <= N; i++) {
+      const v = Vmax + (Vmin - Vmax) * (i/N);
+      pts.push(statePos(v, Tk));
+    }
+    // Leg 4->1: isokor at Vmin, T from Tk to Tv
+    for (let i = 1; i <= N; i++) {
+      const t = Tk + (Tv - Tk) * (i/N);
+      pts.push(statePos(Vmin, t));
+    }
+    return pts;
+  }
+
+  function pathFromPts(pts, closed = false) {
+    let d = `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
+    for (let i = 1; i < pts.length; i++) {
+      d += ` L ${pts[i].x.toFixed(1)} ${pts[i].y.toFixed(1)}`;
+    }
+    if (closed) d += ' Z';
+    return d;
+  }
+
+  const stirlingPts = buildStirlingPath();
+  const stirlingD = pathFromPts(stirlingPts, true);
+  document.getElementById('stirlingPath').setAttribute('d', stirlingD);
+  document.getElementById('stirlingArea').setAttribute('d', stirlingD);
+
+  // Carnot path: two isotherms + two adiabats
+  // Adiabat: P*V^gamma = const, gamma = 1.4 for diatomic gas (air)
+  // For an adiabat connecting (V_a, T_a) to (V_b, T_b): T*V^(gamma-1) = const
+  // We'll fit: from corner 2 (Vmax, Tv) adiabatically expand to some V_c at Tk
+  // Tv * Vmax^(gamma-1) = Tk * V_c^(gamma-1)  =>  V_c = Vmax * (Tv/Tk)^(1/(gamma-1))
+  const gamma = 1.4;
+  const expFactor = Math.pow(Tv/Tk, 1/(gamma-1));
+  const VcCarnot = Vmax * expFactor; // adiabatic expansion endpoint
+  const VdCarnot = Vmin * expFactor; // adiabatic compression startpoint
+  // To fit on diagram, rescale V coordinate: use min over both cycles for normV
+  // For simplicity, override normV to use a wider range that fits both
+  const VminAll = Vmin, VmaxAll = Math.max(Vmax, VcCarnot);
+  const normV2 = (v) => ((v - VminAll) / (VmaxAll - VminAll)) * 0.85 + 0.08;
+
+  // Recompute pressure max/min including adiabat corners
+  // Carnot corners:
+  //   c1: (Vmin, Tv) -> P = Tv/Vmin (same as Stirling pt 1)
+  //   c2: (Vmax, Tv) -> P = Tv/Vmax (same as Stirling pt 2)
+  //   c3: (VcCarnot, Tk) -> P = Tk/VcCarnot
+  //   c4: (VdCarnot, Tk) -> P = Tk/VdCarnot
+  const PmaxAll = Tv/Vmin;
+  const PminAll = Tk/VcCarnot;
+  const normP2 = (p) => (p - PminAll) / (PmaxAll - PminAll) * 0.85 + 0.08;
+
+  function statePos2(v, t) {
+    const pRaw = t / v;
+    return toPx(normV2(v), normP2(pRaw));
+  }
+
+  // Rebuild Stirling with new normalization
+  function buildStirlingPath2() {
+    const pts = [];
+    const N = 40;
+    for (let i = 0; i <= N; i++) {
+      const v = Vmin + (Vmax - Vmin) * (i/N);
+      pts.push(statePos2(v, Tv));
+    }
+    for (let i = 1; i <= N; i++) {
+      const t = Tv + (Tk - Tv) * (i/N);
+      pts.push(statePos2(Vmax, t));
+    }
+    for (let i = 1; i <= N; i++) {
+      const v = Vmax + (Vmin - Vmax) * (i/N);
+      pts.push(statePos2(v, Tk));
+    }
+    for (let i = 1; i <= N; i++) {
+      const t = Tk + (Tv - Tk) * (i/N);
+      pts.push(statePos2(Vmin, t));
+    }
+    return pts;
+  }
+
+  const stirlingPts2 = buildStirlingPath2();
+  const stirlingD2 = pathFromPts(stirlingPts2, true);
+  document.getElementById('stirlingPath').setAttribute('d', stirlingD2);
+  document.getElementById('stirlingArea').setAttribute('d', stirlingD2);
+
+  // Build Carnot path
+  function buildCarnotPath() {
+    const pts = [];
+    const N = 40;
+    // c1->c2: isoterm expansion at Tv, Vmin to Vmax
+    for (let i = 0; i <= N; i++) {
+      const v = Vmin + (Vmax - Vmin) * (i/N);
+      pts.push(statePos2(v, Tv));
+    }
+    // c2->c3: adiabat from (Vmax, Tv) to (VcCarnot, Tk)
+    // Along adiabat: T*V^(gamma-1) = const = Tv*Vmax^(gamma-1)
+    const C1 = Tv * Math.pow(Vmax, gamma-1);
+    for (let i = 1; i <= N; i++) {
+      const v = Vmax + (VcCarnot - Vmax) * (i/N);
+      const t = C1 / Math.pow(v, gamma-1);
+      pts.push(statePos2(v, t));
+    }
+    // c3->c4: isoterm compression at Tk, VcCarnot to VdCarnot
+    for (let i = 1; i <= N; i++) {
+      const v = VcCarnot + (VdCarnot - VcCarnot) * (i/N);
+      pts.push(statePos2(v, Tk));
+    }
+    // c4->c1: adiabat from (VdCarnot, Tk) to (Vmin, Tv)
+    const C2 = Tk * Math.pow(VdCarnot, gamma-1);
+    for (let i = 1; i <= N; i++) {
+      const v = VdCarnot + (Vmin - VdCarnot) * (i/N);
+      const t = C2 / Math.pow(v, gamma-1);
+      pts.push(statePos2(v, t));
+    }
+    return pts;
+  }
+
+  const carnotPts = buildCarnotPath();
+  const carnotD = pathFromPts(carnotPts, true);
+  document.getElementById('carnotPath').setAttribute('d', carnotD);
+  document.getElementById('carnotArea').setAttribute('d', carnotD);
+
+  // Isotherms (background guides) — full hyperbolas across the plot
+  function buildIsotherm(t) {
+    const pts = [];
+    const vRange = [VminAll * 0.95, VmaxAll * 1.05];
+    const N = 60;
+    for (let i = 0; i <= N; i++) {
+      const v = vRange[0] + (vRange[1] - vRange[0]) * (i/N);
+      const p = t / v;
+      const np = normP2(p);
+      const nv = normV2(v);
+      if (np >= 0 && np <= 1 && nv >= 0 && nv <= 1) {
+        pts.push(toPx(nv, np));
+      }
+    }
+    return pts;
+  }
+  const hotIsoPts = buildIsotherm(Tv);
+  const coldIsoPts = buildIsotherm(Tk);
+  function ptsToPolyline(pts) {
+    return pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  }
+  const hotIsoG = document.getElementById('hotIsotherm');
+  const coldIsoG = document.getElementById('coldIsotherm');
+  hotIsoG.innerHTML = `<polyline points="${ptsToPolyline(hotIsoPts)}" />`;
+  coldIsoG.innerHTML = `<polyline points="${ptsToPolyline(coldIsoPts)}" />`;
+
+  // Place corner labels
+  const cornerData = [
+    { id: 'A', v: Vmin, t: Tv, dx: -14, dy: -8 },
+    { id: 'B', v: Vmax, t: Tv, dx: 12, dy: -6 },
+    { id: 'C', v: Vmax, t: Tk, dx: 12, dy: 14 },
+    { id: 'D', v: Vmin, t: Tk, dx: -14, dy: 14 }
+  ];
+  cornerData.forEach((c, i) => {
+    const pos = statePos2(c.v, c.t);
+    const dot = document.getElementById('pt' + c.id);
+    const lbl = document.getElementById('lbl' + c.id);
+    dot.setAttribute('cx', pos.x);
+    dot.setAttribute('cy', pos.y);
+    lbl.setAttribute('x', pos.x + c.dx);
+    lbl.setAttribute('y', pos.y + c.dy);
+    lbl.textContent = (i + 1).toString();
+  });
+
+  // ===========================
+  // ANIMATE THE STATE POINT in sync with engine angle
+  // ===========================
+  // Real motor physics with magnetic-coupled displacer:
+  //   V(θ) = V_avg + V_amp · sin(θ)   (V_max at θ=π/2 — piston highest)
+  //   The displacer flips: UP when piston at bottom (sin near -1, θ ≈ 3π/2)
+  //                       DOWN when piston rising (sin > 0.2, after θ=0)
+  //   So T_max occurs near θ=3π/2 (displacer up = air at warm bottom)
+  //
+  // Mapping engine angle to position in the idealized 4-leg cycle:
+  //   θ=3π/2 (V=min, T=hot)  → corner 1 → f = 0
+  //   θ=2π   (V=mid, T=hot→cold transition) → mid of leg 1→2 → f = 0.125
+  //   θ=π/2  (V=max, T=cold) → corner 3 → f = 0.5
+  //   θ=π    (V=mid, T=cold) → mid of leg 3→4 → f = 0.625
+  // Linear mapping: f = (θ + π/2) / (2π), mod 1
+  function getCycleFrac(eng_angle) {
+    let p = (eng_angle + Math.PI/2) / (2 * Math.PI);
+    p = ((p % 1) + 1) % 1;
+    return p;
+  }
+
+  // Get state (v, t) along Stirling cycle at fraction f (0..1)
+  function getStirlingState(f) {
+    const seg = Math.floor(f * 4);
+    const localF = (f * 4) - seg;
+    if (seg === 0) {
+      // 1->2: isoterm at Tv, V Vmin -> Vmax
+      return { v: Vmin + (Vmax - Vmin) * localF, t: Tv, leg: '1→2' };
+    } else if (seg === 1) {
+      // 2->3: isokor Vmax, T Tv -> Tk
+      return { v: Vmax, t: Tv + (Tk - Tv) * localF, leg: '2→3' };
+    } else if (seg === 2) {
+      // 3->4: isoterm at Tk, V Vmax -> Vmin
+      return { v: Vmax + (Vmin - Vmax) * localF, t: Tk, leg: '3→4' };
+    } else {
+      // 4->1: isokor Vmin, T Tk -> Tv
+      return { v: Vmin, t: Tk + (Tv - Tk) * localF, leg: '4→1' };
+    }
+  }
+
+  const phaseNames = {
+    '1→2': 'Isothermal expansion',
+    '2→3': 'Isochoric cooling',
+    '3→4': 'Isoterm kompression',
+    '4→1': 'Isochoric heating'
+  };
+
+  const statePoint = document.getElementById('statePoint');
+  const statePulse = document.getElementById('statePulse');
+  const prName = document.getElementById('prName');
+  const prLeg = document.getElementById('prLeg');
+  let lastLeg = '';
+
+  function updatePV() {
+    const f = getCycleFrac(angle);
+    const st = getStirlingState(f);
+    const pos = statePos2(st.v, st.t);
+    statePoint.setAttribute('cx', pos.x);
+    statePoint.setAttribute('cy', pos.y);
+    statePulse.setAttribute('cx', pos.x);
+    statePulse.setAttribute('cy', pos.y);
+    if (st.leg !== lastLeg) {
+      prName.textContent = phaseNames[st.leg];
+      prLeg.textContent = st.leg.replace('→', ' → ');
+      lastLeg = st.leg;
+    }
+    requestAnimationFrame(updatePV);
+  }
+  requestAnimationFrame(updatePV);
+
+  // Mode toggle
+  const modeButtons = document.querySelectorAll('.ct-btn');
+  const stirlingPath = document.getElementById('stirlingPath');
+  const stirlingArea = document.getElementById('stirlingArea');
+  const carnotPath = document.getElementById('carnotPath');
+  const carnotArea = document.getElementById('carnotArea');
+
+  function setMode(mode) {
+    modeButtons.forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+    document.getElementById('modeStirling').style.display = mode === 'stirling' ? '' : 'none';
+    document.getElementById('modeCarnot').style.display = mode === 'carnot' ? '' : 'none';
+    document.getElementById('modeBoth').style.display = mode === 'both' ? '' : 'none';
+
+    if (mode === 'stirling') {
+      stirlingPath.style.opacity = '1';
+      stirlingArea.style.opacity = '1';
+      carnotPath.style.opacity = '0';
+      carnotArea.style.opacity = '0';
+    } else if (mode === 'carnot') {
+      stirlingPath.style.opacity = '0.2';
+      stirlingArea.style.opacity = '0';
+      carnotPath.style.opacity = '1';
+      carnotArea.style.opacity = '1';
+    } else {
+      stirlingPath.style.opacity = '1';
+      stirlingArea.style.opacity = '1';
+      carnotPath.style.opacity = '1';
+      carnotArea.style.opacity = '0.6';
+    }
+  }
+  modeButtons.forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+
+  // Parts list interaction
+  document.querySelectorAll('.parts-list li').forEach(li => {
+    li.addEventListener('mouseenter', () => {
+      document.querySelectorAll('.parts-list li').forEach(l => l.classList.remove('active'));
+      li.classList.add('active');
+    });
+  });
+
+  // ============================================================
+  // EFFICIENCY CALCULATOR (Carnot)
+  // ============================================================
+  const thotSlider = document.getElementById('thotSlider');
+  const tcoldSlider = document.getElementById('tcoldSlider');
+  const thotValue = document.getElementById('thotValue');
+  const tcoldValue = document.getElementById('tcoldValue');
+  const etaResult = document.getElementById('etaResult');
+  const etaBar = document.getElementById('etaBar');
+  const workOut = document.getElementById('workOut');
+  const resultFormula = document.getElementById('resultFormula');
+
+  function formatDanish(num, decimals) {
+    return num.toFixed(decimals);
+  }
+
+  function updateCalc() {
+    let thotC = parseFloat(thotSlider.value);
+    let tcoldC = parseFloat(tcoldSlider.value);
+    // Ensure hot > cold + 1 (otherwise efficiency negative or zero)
+    if (tcoldC >= thotC) {
+      tcoldC = thotC - 1;
+      tcoldSlider.value = tcoldC;
+    }
+
+    const thotK = thotC + 273.15;
+    const tcoldK = tcoldC + 273.15;
+    const eta = 1 - tcoldK / thotK;
+    const etaPct = eta * 100;
+
+    thotValue.textContent = thotC + ' °C';
+    tcoldValue.textContent = tcoldC + ' °C';
+    etaResult.textContent = `η = ${formatDanish(etaPct, 1)} %`;
+    etaBar.style.width = Math.max(0.5, etaPct) + '%';
+    workOut.textContent = formatDanish(etaPct, 1);
+    resultFormula.innerHTML = `<em>η</em><sub>max</sub> = 1 − <span class="formulaT">${Math.round(tcoldK)}</span>/<span class="formulaT">${Math.round(thotK)}</span> ≈ ${formatDanish(eta, 3)}`;
+  }
+
+  if (thotSlider && tcoldSlider) {
+    thotSlider.addEventListener('input', updateCalc);
+    tcoldSlider.addEventListener('input', updateCalc);
+    updateCalc();
+  }
+
+})();
+</script>
+<script src="lang-switch.js" defer></script>
+</body>
+</html>
