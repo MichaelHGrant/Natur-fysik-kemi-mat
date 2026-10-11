@@ -30,6 +30,7 @@
     "Periodisk Tabel 3.html": "periodisk-tabel-en.html",
     "Frossen soe lyde.html": "frossen-soe-lyde-en.html",
     "flokkens-visdom.html": "flokkens-visdom-en.html",
+    "solure.html": "solure-en.html",
     "den-nye-ateismes-kategorifejl.html": "den-nye-ateismes-kategorifejl-en.html",
     "maanens-bane-af-et-fotografi.html": "maanens-bane-af-et-fotografi-en.html",
     "solformoerkelse-2027-globus.html": "solformoerkelse-2027-globus-en.html",
