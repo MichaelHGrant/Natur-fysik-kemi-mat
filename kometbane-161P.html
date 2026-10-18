@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Komet 161P/Hartley–IRAS</title>
+<meta name="description" content="Interaktiv 3D-model af kometen 161P/Hartley–IRAS’ bane omkring Solen.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,500;1,400&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: fuldskærms 3D-lærred; data-panel øverst til venstre, tidsstyring nederst, info som pop-up. Bevidst mørkt rum-tema. */
+:root{
+  --void:#060911; --panel:rgba(12,17,30,.84); --panel-solid:#0e1424; --line:rgba(150,175,215,.18);
+  --text:#dde5f2; --muted:#8c97b0; --ice:#9fe6ff; --sun:#ffc768; --node:#c9b7ff;
+  --f-display:"Spectral",Georgia,serif; --f-body:"IBM Plex Sans",system-ui,sans-serif; --f-mono:"IBM Plex Mono",ui-monospace,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box;}
+html,body{height:100%;margin:0;}
+body{background:var(--void);color:var(--text);font-family:var(--f-body);font-size:14px;overflow:hidden;}
+[hidden]{display:none!important;}
+#app{position:relative;height:100%;}
+#gl{position:absolute;inset:0;display:block;width:100%;height:100%;touch-action:none;}
+#labels{position:absolute;inset:0;pointer-events:none;overflow:hidden;}
+.lbl{position:absolute;font:500 11px var(--f-mono);color:var(--muted);transform:translate(8px,-50%);white-space:nowrap;letter-spacing:.03em;}
+.lbl.comet{color:var(--ice);font-size:12px;}
+.lbl.sun{color:var(--sun);}
+.lbl.node{color:var(--node);}
+.hud{position:absolute;left:0;right:0;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));pointer-events:none;display:flex;}
+.hud>*{pointer-events:auto;}
+#top{top:0;padding-top:max(14px,env(safe-area-inset-top,0px));padding-bottom:14px;}
+#bottom{bottom:0;padding-top:14px;padding-bottom:max(14px,env(safe-area-inset-bottom,0px));}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);}
+#info{padding:14px 16px;max-width:330px;width:100%;}
+.head{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;}
+h1{font:500 24px/1.1 var(--f-display);margin:0;text-wrap:balance;}
+.sub{font:italic 400 14px var(--f-display);color:var(--muted);margin:4px 0 12px;}
+.lang{font:500 11px var(--f-mono);color:var(--muted);text-decoration:none;border:1px solid var(--line);border-radius:4px;padding:3px 7px;letter-spacing:.05em;}
+.lang:hover{color:var(--text);}
+dl{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;margin:0;font-variant-numeric:tabular-nums;}
+dt{color:var(--muted);font-size:12px;}
+dd{margin:0;font:500 13px var(--f-mono);text-align:right;}
+dd.date{color:var(--ice);}
+.elems{margin-top:12px;padding-top:10px;border-top:1px solid var(--line);font:400 11px/1.55 var(--f-mono);color:var(--muted);}
+#bInfo{margin-top:12px;width:100%;}
+#ctrl{padding:12px 14px;width:100%;display:flex;flex-direction:column;gap:10px;}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+button,select{font:500 13px var(--f-body);color:var(--text);background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:4px;padding:6px 11px;cursor:pointer;}
+button:hover,select:hover{background:rgba(255,255,255,.12);}
+button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--ice);outline-offset:2px;}
+#play{min-width:90px;color:var(--ice);border-color:rgba(159,230,255,.4);}
+#bInfo{color:var(--ice);border-color:rgba(159,230,255,.3);}
+input[type=range]{flex:1;min-width:140px;accent-color:var(--ice);}
+.yr{font:400 11px var(--f-mono);color:var(--muted);}
+label.tg{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--muted);cursor:pointer;}
+label.tg input{accent-color:var(--ice);margin:0;}
+.spacer{flex:1;}
+.hint{font-size:11px;color:var(--muted);}
+
+/* info-pop-up */
+dialog{background:var(--panel-solid);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:0;width:min(640px,calc(100vw - 32px));max-height:calc(100dvh - 48px);box-shadow:0 20px 60px rgba(0,0,0,.6);}
+dialog::backdrop{background:rgba(3,5,10,.65);backdrop-filter:blur(3px);}
+.dlg-head{position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 20px 12px;background:var(--panel-solid);border-bottom:1px solid var(--line);}
+.dlg-head h2{font:500 22px var(--f-display);margin:0;min-width:0;}
+.dlg-head button{white-space:nowrap;flex-shrink:0;}
+.dlg-body{padding:6px 20px 22px;font-size:14px;line-height:1.6;}
+.dlg-body h3{font:500 16px var(--f-display);color:var(--ice);margin:20px 0 6px;}
+.dlg-body p{margin:0 0 10px;max-width:65ch;}
+.dlg-body ul{margin:0 0 10px;padding-left:18px;}
+.dlg-body li{margin-bottom:4px;}
+.dlg-body table{border-collapse:collapse;font:400 12.5px var(--f-mono);width:100%;font-variant-numeric:tabular-nums;}
+.dlg-body td{padding:4px 8px 4px 0;border-bottom:1px solid var(--line);vertical-align:top;}
+.dlg-body td:first-child{color:var(--muted);white-space:nowrap;}
+.sw{display:inline-block;width:18px;height:3px;vertical-align:middle;margin-right:6px;border-radius:2px;}
+.src{font-size:12px;color:var(--muted);}
+.src a{color:var(--ice);}
+
+@media (max-width:640px){
+  #info{max-width:none;padding:10px 12px;}
+  h1{font-size:19px;} .sub{margin-bottom:8px;font-size:13px;}
+  dl{grid-template-columns:repeat(2,auto 1fr);gap:3px 10px;}
+  .elems,.hint{display:none;}
+  #bInfo{margin-top:8px;padding:4px 10px;}
+  #ctrl{padding:10px 12px;gap:8px;}
+}
+@media (max-height:560px){ .elems{display:none;} }
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="gl"></canvas>
+  <div id="labels"></div>
+
+  <div class="hud" id="top">
+    <div class="card" id="info">
+      <div class="head">
+        <h1>161P/Hartley–IRAS</h1>
+        <nav><a class="lang" href="kometbane-161P-en.html?lang=en" hreflang="en">EN</a></nav>
+      </div>
+      <div class="sub">Heliocentrisk bane i 3D · perihelium 27. november 2026</div>
+      <dl>
+        <dt>Dato</dt><dd class="date" id="oDate">–</dd>
+        <dt>r, Sol</dt><dd id="oR">–</dd>
+        <dt>Δ, Jord</dt><dd id="oD">–</dd>
+        <dt>Fart</dt><dd id="oV">–</dd>
+        <dt>Højde over ekliptika</dt><dd id="oZ">–</dd>
+        <dt>Perihelium</dt><dd id="oT">–</dd>
+      </dl>
+      <div class="elems">q = 1,2651 AU · e = 0,83617 · a = 7,722 AU<br>i = 95,79° · Ω = 1,47° · ω = 47,07°<br>P = 21,46 år · aphel 14,18 AU</div>
+      <button id="bInfo" type="button">ⓘ Om kometen og modellen</button>
+    </div>
+  </div>
+
+  <div class="hud" id="bottom">
+    <div class="card" id="ctrl">
+      <div class="row">
+        <button id="play" type="button"></button>
+        <select id="speed" aria-label="Tempo"><option value="1">1 dag/s</option><option value="5" selected>5 dage/s</option><option value="20">20 dage/s</option><option value="100">100 dage/s</option><option value="365.25">1 år/s</option></select>
+        <button id="bToday" type="button">I dag</button>
+        <button id="bPeri" type="button">Perihelium</button>
+        <button id="bRev" type="button" title="Skift tidsretning">⇄ Retning</button>
+      </div>
+      <div class="row">
+        <span class="yr">2004</span>
+        <input type="range" id="slider" min="0" max="1000" step="1" aria-label="Dato">
+        <span class="yr">2050</span>
+      </div>
+      <div class="row">
+        <label class="tg"><input type="checkbox" id="tOrb" checked>Planetbaner</label>
+        <label class="tg"><input type="checkbox" id="tLbl" checked>Navne</label>
+        <label class="tg"><input type="checkbox" id="tDrop" checked>Lodlinje til ekliptika</label>
+        <label class="tg"><input type="checkbox" id="tNode" checked>Knudelinje</label>
+        <span class="spacer"></span>
+        <span class="hint">Træk for at dreje · rul eller knib for at zoome · lys bane = over ekliptika</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<dialog id="dlg" aria-labelledby="dlgTitle">
+  <div class="dlg-head">
+    <h2 id="dlgTitle">Om 161P/Hartley–IRAS</h2>
+    <button id="bClose" type="button" aria-label="Luk">✕ Luk</button>
+  </div>
+  <div class="dlg-body">
+<h3>Kometen</h3>
+<p>161P/Hartley–IRAS blev fundet i november 1983 af den australske astronom Malcolm Hartley på en plade fra UK Schmidt-teleskopet ved Siding Spring. Få dage efter registrerede infrarødsatellitten IRAS den samme komet. Det blev den sjette og sidste komet, IRAS opdagede, og derfor bærer den begge navne.</p>
+<p>Med en omløbstid på cirka 21,5 år hører den til de Halley-lignende kometer (20–200 år). Den har passeret perihelium omkring årsskiftet 1983/84, den 20. juni 2005 og nu igen den 27. november 2026. Robert McNaught genfandt den i november 2004.</p>
+<p>Den må ikke forveksles med 103P/Hartley 2, som rumsonden EPOXI besøgte i 2010. Hartley har opdaget i alt 12 kometer.</p>
+
+<h3>En næsten polær bane</h3>
+<p>Banehældningen er 95,8°, altså lidt over 90°. Banen står næsten vinkelret på ekliptika, og kometen bevæger sig en anelse retrogradt, dvs. modsat planeternes omløbsretning. Drej modellen, så du ser ekliptika fra kanten, og det bliver tydeligt.</p>
+<p>Banen skærer ekliptika i den opstigende knude ☊ ca. 1,48 AU fra Solen og i den nedstigende knude ☋ ca. 5,40 AU fra Solen. Den nedstigende knude ligger tæt på Jupiters bane, og den mindste afstand mellem de to baner (MOID) er kun ca. 0,11 AU. Jupiter kan derfor ændre kometens bane mærkbart. Over for Jorden er MOID ca. 0,45 AU.</p>
+
+<h3>Baneelementer</h3>
+<table>
+<tr><td>Periheliumafstand q</td><td>1,2651 AU</td></tr>
+<tr><td>Excentricitet e</td><td>0,83617</td></tr>
+<tr><td>Halv storakse a</td><td>7,722 AU</td></tr>
+<tr><td>Aphel Q</td><td>14,18 AU (mellem Saturn og Uranus)</td></tr>
+<tr><td>Hældning i</td><td>95,79°</td></tr>
+<tr><td>Opstigende knude Ω</td><td>1,47°</td></tr>
+<tr><td>Periheliumargument ω</td><td>47,07°</td></tr>
+<tr><td>Perihelium T</td><td>27. nov. 2026, 04:24 UT</td></tr>
+<tr><td>Omløbstid P</td><td>21,46 år</td></tr>
+</table>
+
+<h3>Sådan læser du modellen</h3>
+<ul>
+<li><span class="sw" style="background:#9fe6ff"></span>Kometbanen over ekliptika. <span class="sw" style="background:#2f5f78"></span>Kometbanen under ekliptika.</li>
+<li><span class="sw" style="background:#ffc768"></span>Den gule ruder markerer perihelium.</li>
+<li><span class="sw" style="background:#c9b7ff"></span>Den stiplede violette linje er knudelinjen, hvor banen skærer ekliptika.</li>
+<li>Den stiplede lodlinje viser kometens højde over eller under ekliptika.</li>
+<li>Ringene i ekliptikaplanet ligger ved 1, 2, 5, 10, 15 og 20 AU, og ♈ viser retningen mod forårspunktet.</li>
+<li>Ionhalen (blålig) peger altid lige væk fra Solen. Støvhalen (hvidlig) bøjer bagud langs banen. Begge vokser kraftigt tæt på Solen.</li>
+<li>Farten beregnes med vis-viva-ligningen v² = GM(2/r − 1/a).</li>
+</ul>
+
+<h3>Modellens begrænsninger</h3>
+<p>Kometen følger en ren Keplerellipse uden forstyrrelser fra planeterne, så positioner langt fra 2026 er kun omtrentlige. Planeterne bruger forenklede middelelementer fra J2000. Solens og planeternes størrelser er ikke i skala, og halerne er skematiske. Modellen egner sig til undervisning, ikke til at finde kometen på himlen.</p>
+
+<p class="src">Kilder: MPC-baneelementer (MPEC 2026-PB7) via <a href="https://www.cobs.si/comet/393/" target="_blank" rel="noopener">COBS</a> · <a href="https://en.wikipedia.org/wiki/161P/Hartley%E2%80%93IRAS" target="_blank" rel="noopener">Wikipedia</a> · <a href="https://arxiv.org/abs/2503.17725" target="_blank" rel="noopener">arXiv 2503.17725</a> (MOID-værdier).</p>
+</div>
+</dialog>
+
+<script src="js/three.min.js"></script>
+<script src="js/OrbitControls.js"></script>
+<script>
+(function(){
+const S = {"locale": "da-DK", "sun": "Solen", "qlabel": "q = 1,27 AU", "asc": "opstigende knude", "des": "nedstigende knude", "vernal": "forårspunkt", "play": "Afspil", "pause": "Pause", "ago": "for # d siden", "inn": "om # d", "planets": {"mercury": "Merkur", "venus": "Venus", "earth": "Jorden", "mars": "Mars", "jupiter": "Jupiter", "saturn": "Saturn", "uranus": "Uranus"}};
+const D2R = Math.PI/180, J2000 = 2451545.0;
+
+// ---------- Baneelementer (MPC, epoke 2026 aug. 16, MPEC 2026-PB7) ----------
+const COMET = { q:1.265134, e:0.836172, i:95.7914, node:1.4747, peri:47.0656, T:2461371.6840 };
+COMET.a = COMET.q/(1-COMET.e);
+COMET.n = 0.9856076686/Math.pow(COMET.a,1.5);
+COMET.P = 360/COMET.n;
+
+// Middelelementer J2000: a, e, i, L, ϖ, Ω, dL/dt (grader pr. århundrede)
+const PLANETS = [
+  {k:"mercury",a:0.38710,e:0.20563,i:7.005, L:252.2503,w:77.4577, node:48.3308, Ld:149472.674, size:.020,col:0xa8a39a},
+  {k:"venus",  a:0.72333,e:0.00677,i:3.3946,L:181.9791,w:131.6025,node:76.6799, Ld:58517.8156, size:.030,col:0xe8d6a8},
+  {k:"earth",  a:1.00000,e:0.01671,i:0.0,   L:100.4645,w:102.9377,node:0,       Ld:35999.3724, size:.032,col:0x5fa8ff},
+  {k:"mars",   a:1.52371,e:0.09339,i:1.8497,L:-4.5534, w:-23.9436,node:49.5595, Ld:19140.3027, size:.025,col:0xe0714d},
+  {k:"jupiter",a:5.2029, e:0.0484, i:1.3044,L:34.3965, w:14.7285, node:100.4739,Ld:3034.7461,  size:.10, col:0xd9b48a},
+  {k:"saturn", a:9.5367, e:0.0539, i:2.4859,L:49.9548, w:92.5989, node:113.6624,Ld:1222.4936,  size:.085,col:0xe6d39a},
+  {k:"uranus", a:19.189, e:0.0473, i:0.7726,L:313.2381,w:170.9543,node:74.0168, Ld:428.4820,   size:.06, col:0x9fe0e0}
+];
+
+function kepler(M,e){
+  M = ((M%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
+  let E = e<0.8 ? M : Math.PI;
+  for(let k=0;k<50;k++){ const d=(E-e*Math.sin(E)-M)/(1-e*Math.cos(E)); E-=d; if(Math.abs(d)<1e-12) break; }
+  return E;
+}
+function fromE(a,e,i,node,peri,E){
+  const nu = 2*Math.atan2(Math.sqrt(1+e)*Math.sin(E/2), Math.sqrt(1-e)*Math.cos(E/2));
+  return fromNu(a*(1-e*Math.cos(E)),i,node,peri,nu);
+}
+function fromNu(r,i,node,peri,nu){
+  const O=node*D2R, w=peri*D2R, I=i*D2R, u=w+nu;
+  return { x:r*(Math.cos(O)*Math.cos(u)-Math.sin(O)*Math.sin(u)*Math.cos(I)),
+           y:r*(Math.sin(O)*Math.cos(u)+Math.cos(O)*Math.sin(u)*Math.cos(I)),
+           z:r*Math.sin(u)*Math.sin(I), r };
+}
+function cometPos(jd){ const c=COMET; return fromE(c.a,c.e,c.i,c.node,c.peri,kepler(c.n*(jd-c.T)*D2R,c.e)); }
+function planetPos(p,jd){
+  const L = p.L + p.Ld*(jd-J2000)/36525;
+  return fromE(p.a,p.e,p.i,p.node,p.w-p.node,kepler((L-p.w)*D2R,p.e));
+}
+// ekliptiske (x,y,z) -> three.js med y opad
+const V = p => new THREE.Vector3(p.x, p.z, -p.y);
+
+// ---------- Scene ----------
+const canvas = document.getElementById('gl');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x060911);
+const camera = new THREE.PerspectiveCamera(45,1,0.01,2000);
+camera.position.set(3.6,3.0,5.2);
+const controls = new THREE.OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.minDistance = 0.4; controls.maxDistance = 90;
+
+function glowTex(inner,outer){
+  const c=document.createElement('canvas'); c.width=c.height=128; const g=c.getContext('2d');
+  const gr=g.createRadialGradient(64,64,0,64,64,64);
+  gr.addColorStop(0,inner); gr.addColorStop(0.25,inner.replace(/[\d.]+\)$/,'0.55)')); gr.addColorStop(1,outer);
+  g.fillStyle=gr; g.fillRect(0,0,128,128); return new THREE.CanvasTexture(c);
+}
+const dotTex = glowTex('rgba(255,255,255,1)','rgba(255,255,255,0)');
+
+{ // stjernehimmel
+  const N=2500, pos=new Float32Array(N*3);
+  for(let k=0;k<N;k++){ const u=Math.random()*2-1, t=Math.random()*Math.PI*2, s=Math.sqrt(1-u*u), R=600;
+    pos[3*k]=R*s*Math.cos(t); pos[3*k+1]=R*u; pos[3*k+2]=R*s*Math.sin(t); }
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  scene.add(new THREE.Points(g,new THREE.PointsMaterial({color:0x8a96b4,size:1.3,sizeAttenuation:false,transparent:true,opacity:.7})));
+}
+
+const sun = new THREE.Mesh(new THREE.SphereGeometry(0.07,32,16), new THREE.MeshBasicMaterial({color:0xffd27a}));
+scene.add(sun);
+const sunGlow = new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex('rgba(255,200,104,1)','rgba(255,160,60,0)'),blending:THREE.AdditiveBlending,depthWrite:false}));
+sunGlow.scale.set(0.7,0.7,1); scene.add(sunGlow);
+
+// ekliptikaplan: ringe i AU, radiale linjer pr. 30°, forårspunktet
+const eclGroup = new THREE.Group(); scene.add(eclGroup);
+[1,2,5,10,15,20].forEach(R=>{
+  const pts=[]; for(let k=0;k<=180;k++){const t=k/180*Math.PI*2; pts.push(new THREE.Vector3(R*Math.cos(t),0,R*Math.sin(t)));}
+  eclGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0x2a3550,transparent:true,opacity:R<=5?.55:.35})));
+});
+for(let k=0;k<12;k++){ const t=k/12*Math.PI*2;
+  eclGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(Math.cos(t)*0.3,0,Math.sin(t)*0.3),new THREE.Vector3(Math.cos(t)*20,0,Math.sin(t)*20)]),
+    new THREE.LineBasicMaterial({color:0x1d2640,transparent:true,opacity:.6})));
+}
+eclGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0),new THREE.Vector3(2.6,0,0)]),new THREE.LineBasicMaterial({color:0x6e7da0})));
+
+const orbitGroup = new THREE.Group(); scene.add(orbitGroup);
+PLANETS.forEach(p=>{
+  const pts=[]; for(let k=0;k<=360;k++) pts.push(V(fromE(p.a,p.e,p.i,p.node,p.w-p.node,k/360*Math.PI*2)));
+  orbitGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:p.col,transparent:true,opacity:.35})));
+  p.mesh = new THREE.Mesh(new THREE.SphereGeometry(p.size,20,12),new THREE.MeshBasicMaterial({color:p.col}));
+  scene.add(p.mesh);
+});
+
+{ // kometbane: lys over ekliptika, mørk under
+  const N=1400, pos=new Float32Array((N+1)*3), col=new Float32Array((N+1)*3);
+  const above=new THREE.Color(0x9fe6ff), below=new THREE.Color(0x2f5f78);
+  for(let k=0;k<=N;k++){
+    const p=fromE(COMET.a,COMET.e,COMET.i,COMET.node,COMET.peri,k/N*Math.PI*2), v=V(p);
+    pos.set([v.x,v.y,v.z],3*k); const c=p.z>=0?above:below; col.set([c.r,c.g,c.b],3*k);
+  }
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3)); g.setAttribute('color',new THREE.BufferAttribute(col,3));
+  scene.add(new THREE.Line(g,new THREE.LineBasicMaterial({vertexColors:true})));
+}
+const periPos = V(fromNu(COMET.q,COMET.i,COMET.node,COMET.peri,0));
+{ const m=new THREE.Mesh(new THREE.OctahedronGeometry(0.025),new THREE.MeshBasicMaterial({color:0xffc768})); m.position.copy(periPos); scene.add(m); }
+
+const pLat = COMET.a*(1-COMET.e*COMET.e);
+const nuA = -COMET.peri*D2R, nuD = (180-COMET.peri)*D2R;
+const ascPos = V(fromNu(pLat/(1+COMET.e*Math.cos(nuA)),COMET.i,COMET.node,COMET.peri,nuA));
+const desPos = V(fromNu(pLat/(1+COMET.e*Math.cos(nuD)),COMET.i,COMET.node,COMET.peri,nuD));
+const nodeLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([ascPos,desPos]),new THREE.LineDashedMaterial({color:0xb9a6ff,dashSize:.08,gapSize:.06}));
+nodeLine.computeLineDistances(); scene.add(nodeLine);
+
+// komet: kerne, koma og to haler
+const comet = new THREE.Group(); scene.add(comet);
+comet.add(new THREE.Mesh(new THREE.SphereGeometry(0.012,12,8),new THREE.MeshBasicMaterial({color:0xffffff})));
+const coma = new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex('rgba(170,240,255,1)','rgba(80,170,220,0)'),blending:THREE.AdditiveBlending,depthWrite:false,transparent:true}));
+comet.add(coma);
+function makeTail(N,color){
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(N*3),3));
+  const seeds=[]; for(let k=0;k<N;k++) seeds.push([Math.pow(Math.random(),0.7),Math.random()*2-1,Math.random()*2-1]);
+  const pts=new THREE.Points(g,new THREE.PointsMaterial({color,size:0.035,map:dotTex,transparent:true,opacity:.55,blending:THREE.AdditiveBlending,depthWrite:false}));
+  pts.frustumCulled=false; scene.add(pts); return {pts,seeds,N};
+}
+const ionTail = makeTail(500,0x7fc8ff), dustTail = makeTail(700,0xfff1d6);
+
+const dropLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]),new THREE.LineDashedMaterial({color:0x9fe6ff,dashSize:.04,gapSize:.04,transparent:true,opacity:.7}));
+scene.add(dropLine);
+const footRing = new THREE.Mesh(new THREE.RingGeometry(0.03,0.04,32),new THREE.MeshBasicMaterial({color:0x9fe6ff,side:THREE.DoubleSide,transparent:true,opacity:.7}));
+footRing.rotation.x=-Math.PI/2; scene.add(footRing);
+
+// ---------- Etiketter ----------
+const labelBox=document.getElementById('labels');
+function mkLabel(text,cls){ const d=document.createElement('div'); d.className='lbl '+(cls||''); d.textContent=text; labelBox.appendChild(d); return d; }
+const vernal = new THREE.Vector3(2.6,0,0);
+const labels=[
+  {el:mkLabel(S.sun,'sun'),obj:()=>sun.position},
+  {el:mkLabel('161P','comet'),obj:()=>comet.position},
+  {el:mkLabel(S.qlabel,'sun'),obj:()=>periPos},
+  {el:mkLabel('☊ '+S.asc,'node'),obj:()=>ascPos,node:true},
+  {el:mkLabel('☋ '+S.des,'node'),obj:()=>desPos,node:true},
+  {el:mkLabel('♈ '+S.vernal),obj:()=>vernal}
+];
+PLANETS.forEach(p=>labels.push({el:mkLabel(S.planets[p.k]),obj:()=>p.mesh.position,orbit:true}));
+
+// ---------- Tid og styring ----------
+const jdNow = () => Date.now()/86400000 + 2440587.5;
+const jdMin = 2453006.5, jdMax = 2469807.5; // 2004-01-01 .. 2050-01-01
+let jd = jdNow(), playing = true, dir = 1;
+const $ = id=>document.getElementById(id);
+const fmt = (x,d)=>x.toLocaleString(S.locale,{minimumFractionDigits:d,maximumFractionDigits:d});
+const dateStr = j=>new Date((j-2440587.5)*86400000).toLocaleDateString(S.locale,{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'});
+function setPlay(p){ playing=p; $('play').textContent = p ? '❚❚ '+S.pause : '▶ '+S.play; }
+
+$('play').onclick=()=>setPlay(!playing);
+$('bRev').onclick=()=>{dir=-dir;};
+$('bToday').onclick=()=>{jd=jdNow();};
+$('bPeri').onclick=()=>{ jd=COMET.T; setPlay(false); };
+$('slider').oninput=e=>{ jd=jdMin+(jdMax-jdMin)*e.target.value/1000; };
+$('tOrb').onchange=e=>orbitGroup.visible=e.target.checked;
+$('tLbl').onchange=e=>labelBox.hidden=!e.target.checked;
+$('tDrop').onchange=e=>{dropLine.visible=footRing.visible=e.target.checked;};
+$('tNode').onchange=e=>{nodeLine.visible=e.target.checked;};
+
+// info-pop-up
+const dlg=$('dlg'); let wasPlaying=false;
+$('bInfo').onclick=()=>{ wasPlaying=playing; setPlay(false);
+  if(dlg.showModal) dlg.showModal(); else dlg.setAttribute('open',''); };
+function closeDlg(){ if(dlg.close) dlg.close(); else dlg.removeAttribute('open'); }
+$('bClose').onclick=closeDlg;
+dlg.addEventListener('close',()=>setPlay(wasPlaying));
+dlg.addEventListener('click',e=>{ if(e.target===dlg) closeDlg(); });
+
+function update(){
+  const c = cometPos(jd), cv = V(c);
+  comet.position.copy(cv);
+  PLANETS.forEach(p=>p.mesh.position.copy(V(planetPos(p,jd))));
+  const earth = PLANETS[2].mesh.position;
+
+  // ionhalen peger lige væk fra Solen; støvhalen bøjer bagud langs banen
+  const r=c.r, anti=cv.clone().normalize();
+  const vel = V(cometPos(jd+1)).sub(cv).normalize();
+  const show = r<5;
+  const perp1 = new THREE.Vector3().crossVectors(anti,vel).normalize(), perp2 = new THREE.Vector3().crossVectors(anti,perp1);
+  [[ionTail,Math.min(1.6,0.9/(r*r)),0.05,0],[dustTail,Math.min(1.1,0.6/(r*r)),0.14,0.45]].forEach(([T,L,spread,bend])=>{
+    T.pts.visible=show; if(!show) return;
+    const a=T.pts.geometry.attributes.position.array;
+    for(let k=0;k<T.N;k++){ const [t,s1,s2]=T.seeds[k], d=t*L, w=spread*d, b=bend*d*t;
+      a[3*k]  = cv.x + anti.x*d - vel.x*b + perp1.x*w*s1 + perp2.x*w*s2;
+      a[3*k+1]= cv.y + anti.y*d - vel.y*b + perp1.y*w*s1 + perp2.y*w*s2;
+      a[3*k+2]= cv.z + anti.z*d - vel.z*b + perp1.z*w*s1 + perp2.z*w*s2;
+    }
+    T.pts.geometry.attributes.position.needsUpdate=true;
+  });
+  const cs = Math.max(0.06, Math.min(0.35, 0.28/r)); coma.scale.set(cs,cs,1);
+
+  const foot = new THREE.Vector3(cv.x,0,cv.z);
+  dropLine.geometry.setFromPoints([cv,foot]); dropLine.computeLineDistances();
+  footRing.position.copy(foot);
+
+  const delta = cv.distanceTo(earth);
+  const v = 29.7847*Math.sqrt(2/r - 1/COMET.a);
+  const since = ((jd-COMET.T)%COMET.P+COMET.P)%COMET.P, until = COMET.P - since;
+  $('oDate').textContent = dateStr(jd);
+  $('oR').textContent = fmt(r,3)+' AU';
+  $('oD').textContent = fmt(delta,3)+' AU';
+  $('oV').textContent = fmt(v,1)+' km/s';
+  $('oZ').textContent = (c.z>=0?'+':'−')+fmt(Math.abs(c.z),2)+' AU';
+  $('oT').textContent = since<until ? S.ago.replace('#',fmt(since,0)) : S.inn.replace('#',fmt(until,0));
+  if(document.activeElement!==$('slider')) $('slider').value = Math.round(1000*(jd-jdMin)/(jdMax-jdMin));
+}
+
+function placeLabels(){
+  if(labelBox.hidden) return;
+  const w=canvas.clientWidth, h=canvas.clientHeight, v=new THREE.Vector3();
+  labels.forEach(l=>{
+    v.copy(l.obj()).project(camera);
+    const off = v.z>1 || (l.node && !nodeLine.visible);
+    l.el.hidden = off;
+    if(!off){ l.el.style.left=((v.x+1)/2*w)+'px'; l.el.style.top=((1-v.y)/2*h)+'px'; }
+  });
+}
+
+function resize(){
+  const w=canvas.clientWidth, h=canvas.clientHeight;
+  renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix();
+}
+window.addEventListener('resize',resize); resize();
+
+setPlay(!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches));
+let last=performance.now();
+function loop(now){
+  const dt=Math.min(0.1,(now-last)/1000); last=now;
+  if(playing){ jd += dir*dt*parseFloat($('speed').value); if(jd>jdMax) jd=jdMin; if(jd<jdMin) jd=jdMax; }
+  update(); controls.update(); renderer.render(scene,camera); placeLabels();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+})();
+</script>
+<script src="lang-switch.js" defer></script>
+</body>
+</html>
