@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sort sol i 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body { margin: 0; }
+img { max-width: 100%; }
+/* Layout: et observatorie-instrument — én stor 3D-scene som hovedperson, instrumentpanel under, forklaring nederst */
+:root {
+  --void: #0b0a10;
+  --panel: #15131c;
+  --raise: #201c29;
+  --line: #302a3a;
+  --ink: #e9e6dd;
+  --muted: #9097a8;
+  --mw: #f3b46c;
+  --m31: #8db4ff;
+  --dusk: #f0a060;
+  --hl: #ff6a3d;
+  --nb: #ffd27a;
+  --m51: #9cc0ff;
+  --n5195: #f4a07a;
+  --m33: #7fe0c0;
+  --sun: #fff1a8;
+  --focus: #c9d8ff;
+  --f-display: "Spectral", Georgia, "Times New Roman", serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { background: var(--void); color: var(--ink); }
+body { font-family: var(--f-body); font-size: 15px; line-height: 1.55; }
+.wrap {
+  max-width: 1180px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 56px;
+  display: grid; gap: 18px;
+}
+header { display: grid; gap: 6px; }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+h1 { font-family: var(--f-display); font-weight: 400; font-size: clamp(30px, 5vw, 48px); line-height: 1.08; margin: 0; text-wrap: balance; }
+h1 em { font-style: italic; color: var(--m31); }
+h1 .mw { color: var(--mw); font-style: italic; }
+.lede { margin: 4px 0 0; max-width: 64ch; color: var(--muted); }
+
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.tab {
+  font: 500 14px/1.2 var(--f-body); color: var(--muted);
+  background: transparent; border: 1px solid var(--line); border-radius: 999px;
+  padding: 9px 16px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+}
+.tab .dots { display: inline-flex; gap: 3px; }
+.tab .dots i { width: 9px; height: 9px; border-radius: 50%; display: block; }
+.tab[aria-selected="true"] { color: var(--ink); background: var(--raise); border-color: #3a4560; }
+.tab:hover { color: var(--ink); }
+
+.stage {
+  position: relative; height: clamp(380px, 66vh, 740px);
+  background: #1a1420;
+  border: 1px solid var(--line); border-radius: 6px; overflow: hidden;
+}
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.stage canvas:active { cursor: grabbing; }
+.hud { position: absolute; pointer-events: none; }
+.hud.tl { top: 14px; left: 16px; right: 16px; display: grid; gap: 2px; max-width: 46ch; }
+.clock { font-family: var(--f-mono); font-size: clamp(22px, 3.2vw, 32px); font-weight: 500; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.phase-title { font-family: var(--f-display); font-size: 19px; font-style: italic; }
+.phase-text { color: #c5c8d2; font-size: 14px; text-shadow: 0 1px 6px var(--void); }
+.hud.br { bottom: 12px; right: 16px; text-align: right; font-family: var(--f-mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; display: grid; gap: 2px; }
+.hud.br b { color: var(--ink); font-weight: 500; font-size: 14px; }
+.hud.br .pair:not(:first-child) { margin-top: 6px; }
+.hud.bl { bottom: 12px; left: 16px; font-size: 12px; color: var(--muted); }
+.busy { position: absolute; top: 14px; right: 16px; font-family: var(--f-mono); font-size: 12px; color: var(--muted); background: var(--panel); border: 1px solid var(--line); padding: 4px 10px; border-radius: 999px; }
+.labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.lbl { position: absolute; left: 0; top: 0; font-family: var(--f-mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; transform: translate(-50%, -50%); padding-left: 0; }
+.lbl::before { content: ""; position: absolute; left: -10px; top: 50%; width: 6px; height: 1px; background: currentColor; opacity: .7; }
+.lbl.sun { text-transform: none; letter-spacing: .02em; font-size: 12px; }
+.lbl.sun::before { left: auto; right: -10px; }
+
+.controls {
+  display: grid; gap: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+  padding: 14px 16px;
+}
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.transport { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.play {
+  height: 44px; min-width: 112px; padding: 0 18px 0 14px; border-radius: 999px; border: 1px solid #4a5878; background: #1b2233;
+  color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 600 15px/1 var(--f-body);
+}
+.play:hover { background: #222b40; }
+.play svg { width: 16px; height: 16px; fill: currentColor; }
+.dir button { display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px; }
+.dir svg { width: 14px; height: 14px; fill: currentColor; }
+.speedctl { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.speedctl button { width: 40px; height: 36px; border: 0; background: transparent; color: var(--ink); font: 500 20px/1 var(--f-body); cursor: pointer; }
+.speedctl button:hover { background: var(--raise); }
+.speedctl button:disabled { color: #4a5068; cursor: default; background: transparent; }
+.speedctl output { min-width: 9.5em; text-align: center; font: 500 13px/1 var(--f-mono); font-variant-numeric: tabular-nums; border-inline: 1px solid var(--line); padding: 11px 8px; }
+.keys { margin-left: auto; }
+.track { position: relative; padding-top: 26px; min-width: 0; }
+.ticks { position: absolute; top: 0; left: 9px; right: 9px; height: 24px; }
+.tick {
+  position: absolute; top: 0; transform: translateX(-50%); font: 500 11px/1 var(--f-mono); color: var(--muted);
+  background: none; border: 0; padding: 2px 3px; cursor: pointer; white-space: nowrap;
+}
+.tick::after { content: ""; position: absolute; left: 50%; top: 17px; width: 1px; height: 9px; background: currentColor; }
+.tick:hover, .tick.on { color: var(--ink); }
+.tick.small { font-size: 0; width: 14px; height: 18px; }
+input[type=range] { width: 100%; accent-color: var(--m31); margin: 0; height: 22px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.seg button {
+  font: 500 13px/1 var(--f-body); color: var(--muted); background: transparent; border: 0; padding: 8px 12px; cursor: pointer;
+  border-right: 1px solid var(--line);
+}
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { color: var(--ink); background: var(--raise); }
+.ctl-label { font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.group { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.chk { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); cursor: pointer; }
+.chk input { accent-color: var(--m31); }
+.hint { font-size: 12px; color: var(--muted); margin: 0; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.notes { display: grid; grid-template-columns: 1.3fr 1fr; gap: 28px; padding-top: 8px; }
+.notes > section { min-width: 0; }
+.notes h2 { font-family: var(--f-display); font-weight: 400; font-size: 24px; margin: 0 0 8px; text-wrap: balance; }
+.notes h3 { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 500; margin: 0 0 8px; }
+.notes p { margin: 0 0 10px; max-width: 66ch; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 12px 0 0; font-size: 14px; }
+.facts dt { font-family: var(--f-mono); font-size: 12px; color: var(--muted); padding-top: 2px; }
+.facts dd { margin: 0; font-variant-numeric: tabular-nums; }
+.model { border-left: 1px solid var(--line); padding-left: 24px; color: #c5c8d2; font-size: 14px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+@media (max-width: 760px) {
+  .notes { grid-template-columns: 1fr; }
+  .model { border-left: 0; border-top: 1px solid var(--line); padding-left: 0; padding-top: 16px; }
+  .phase-text { font-size: 13px; }
+  .hud.bl { display: none; }
+}
+@media (max-width: 640px) { .keys { display: none; } }
+@media (max-width: 480px) { .tick { font-size: 10px; } .speedctl output { min-width: 8em; } }
+.range { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.range input { width: 140px; accent-color: var(--dusk); }
+.range output { font: 500 13px/1 var(--f-mono); color: var(--ink); min-width: 2ch; }
+.action { font: 600 14px/1 var(--f-body); color: #1b0f08; background: var(--dusk); border: 0; border-radius: 999px; padding: 11px 16px; cursor: pointer; }
+.action:hover { filter: brightness(1.08); }
+.hud.tl { text-shadow: 0 1px 8px rgba(0,0,0,.6); }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Vadehavet · flokadfærd i 3D</div>
+    <h1>Sort sol: hver stær følger kun sine <span class="mw">syv nærmeste</span></h1>
+    <p class="lede">Om foråret og efteråret danser hundredtusindvis af stære over marsken, før de går i rørskoven for natten. Ingen fører an. Hver fugl retter sig blot efter sine nærmeste naboer, og alligevel bevæger flokken sig som ét væsen. Træk i billedet for at dreje, rul eller knib for at zoome.</p>
+  </header>
+
+  <div class="stage" id="stage">
+    <canvas id="cv" aria-label="3D-animation af en stæreflok over marsken ved solnedgang. Træk for at dreje."></canvas>
+    <div class="hud tl">
+      <div class="phase-title" id="modeTitle">Topologisk: 7 nærmeste naboer</div>
+      <div class="phase-text" id="modeText"></div>
+    </div>
+    <div class="hud br" id="stats"></div>
+    <div class="hud bl"><div class="legend"><span><i style="background:var(--hl)"></i>den udvalgte fugl</span><span><i style="background:var(--nb)"></i>dens naboer</span></div></div>
+  </div>
+
+  <div class="controls">
+    <div class="transport">
+      <button class="play" id="play"><svg viewBox="0 0 20 20" id="playIcon" aria-hidden="true"><path d="M4 4h12v12H4z"/></svg><span id="playTxt">Stop</span></button>
+      <div class="speedctl" role="group" aria-label="Fart">
+        <button id="slower" aria-label="Langsommere">−</button>
+        <output id="speedOut" aria-live="polite">1×</output>
+        <button id="faster" aria-label="Hurtigere">+</button>
+      </div>
+      <button class="action" id="falcon">Send en vandrefalk</button>
+      <p class="hint keys">Mellemrum: start/stop · + −: fart · F: falk</p>
+    </div>
+    <div class="row">
+      <div class="group"><span class="ctl-label">Regel</span>
+        <div class="seg" id="mode">
+          <button data-mode="topo" aria-pressed="true">De k nærmeste</button>
+          <button data-mode="metric" aria-pressed="false">Alle inden for 4 m</button>
+        </div>
+      </div>
+      <label class="range" id="kWrap">k = <input type="range" id="k" min="1" max="20" value="7"><output id="kOut">7</output></label>
+      <div class="group"><span class="ctl-label">Fugle</span>
+        <div class="seg" id="count">
+          <button data-n="600">600</button>
+          <button data-n="1500" aria-pressed="true">1 500</button>
+          <button data-n="3000">3 000</button>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="group"><span class="ctl-label">Visning</span>
+        <div class="seg" id="views">
+          <button data-view="ground" aria-pressed="true">Fra marsken</button>
+          <button data-view="side">Fra siden</button>
+          <button data-view="top">Ovenfra</button>
+          <button data-view="bird">Følg fuglen</button>
+        </div>
+      </div>
+      <div class="group">
+        <label class="chk"><input type="checkbox" id="showNb" checked> Vis naboerne</label>
+        <label class="chk"><input type="checkbox" id="autoFalcon" checked> Falk af og til</label>
+        <label class="chk"><input type="checkbox" id="autoZoom" checked> Automatisk zoom</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <section id="story">
+      <h2>Syv naboer er nok</h2>
+      <p>I 2008 fotograferede italienske fysikere stæreflokke over Rom med tre kameraer på én gang og regnede hver fugls position ud i 3D (Ballerini m.fl., <em>PNAS</em>). Det overraskende var, at en stær ikke retter sig efter alle fugle inden for en bestemt afstand, men efter et fast antal: de seks til syv nærmeste, uanset om flokken er tæt eller spredt.</p>
+      <p>Den topologiske regel gør flokken robust. Når den trækker sig sammen eller strækkes ud, har hver fugl stadig lige så mange at følge, så den falder ikke fra hinanden. Prøv at skifte til «Alle inden for 4 m» og send en falk efter flokken: med den metriske regel mister de fugle, der kommer for langt ud, kontakten og flyver alene videre.</p>
+      <p>Når falken angriber, viger de nærmeste fugle. Deres naboer følger efter, så vigebevægelsen løber som en bølge gennem flokken, hurtigere end en enkelt fugl kan flyve. Cavagna m.fl. viste i 2010, at en ændring i én fugls retning kan mærkes tværs gennem hele flokken. Det er derfor, sort sol ser ud som et levende, mørkt tæppe, der folder sig.</p>
+      <dl class="facts">
+        <dt>Hvor</dt><dd>Marsken ved Vadehavet, især omkring Tøndermarsken og Ribe</dd>
+        <dt>Hvornår</dt><dd>Marts–april og september–oktober, ved solnedgang</dd>
+        <dt>Flokkens størrelse</dt><dd>op til omkring en million stære</dd>
+        <dt>Fart</dt><dd>ca. 10 m/s; fuglene holder ca. 1 m afstand</dd>
+      </dl>
+    </section>
+    <section class="model">
+      <h3>Om modellen</h3>
+      <p>Hver fugl gør tre ting med sine naboer: den holder afstand til dem, der kommer for tæt på, den drejer mod deres gennemsnitlige retning, og den søger mod deres midte. Derudover holder den farten omkring 10 m/s og bliver over marsken og rørskoven.</p>
+      <p>Naboerne findes på ny i hvert tidsskridt med et rumligt gitter. Den udvalgte fugl er markeret med rødt, og linjerne viser, hvem den følger lige nu.</p>
+      <p>Tallene nederst til højre: <em>orden</em> er 1, når alle flyver samme vej, og 0, når retningerne er tilfældige. Rigtige stæreflokke ligger omkring 0,96.</p>
+    </section>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ---------- parameters (metres, seconds) ----------
+  const P = {
+    v0: 10, sepR: 1.1, wSep: 14, wAli: 2.0, wCoh: 0.5, metricR: 4,
+    roostR: 35, hMin: 16, hMax: 50, noise: 2.5, cell: 2.2,
+    fleeR: 30, wFlee: 90, falconV: 20
+  };
+  let N = 1500, K = 7, mode = 'topo';
+  let pos, vel, acc, phase, nbCount;
+  const HL = 0; // the highlighted bird
+
+  function rnd(seed) { let s = seed; return () => { s = (s * 16807) % 2147483647; return s / 2147483647; }; }
+  function init(n) {
+    N = n;
+    pos = new Float32Array(3 * N); vel = new Float32Array(3 * N); acc = new Float32Array(3 * N);
+    phase = new Float32Array(N); nbCount = new Uint8Array(N);
+    const r = rnd(12345);
+    for (let i = 0; i < N; i++) {
+      let x, y, z; do { x = 2 * r() - 1; y = 2 * r() - 1; z = 2 * r() - 1; } while (x * x + y * y + z * z > 1);
+      const R = 6 * Math.cbrt(N / 600);
+      pos[3 * i] = -20 + R * x * 1.6; pos[3 * i + 1] = 30 + R * y * 0.7; pos[3 * i + 2] = R * z;
+      vel[3 * i] = P.v0 * (0.95 + 0.1 * r()); vel[3 * i + 1] = 0.6 * (r() - 0.5); vel[3 * i + 2] = 1.5 * (r() - 0.5);
+      phase[i] = r() * 6.283;
+    }
+    grid.alloc(N);
+    if (birds) rebuildBirds();
+  }
+
+  // ---------- spatial hash ----------
+  const grid = {
+    size: 1 << 15, head: null, next: null,
+    alloc(n) { this.head = new Int32Array(this.size); this.next = new Int32Array(n); },
+    key(ix, iy, iz) { return ((ix * 73856093) ^ (iy * 19349663) ^ (iz * 83492791)) & (this.size - 1); },
+    build() {
+      this.head.fill(-1);
+      for (let i = 0; i < N; i++) {
+        const k = this.key(Math.floor(pos[3 * i] / P.cell), Math.floor(pos[3 * i + 1] / P.cell), Math.floor(pos[3 * i + 2] / P.cell));
+        this.next[i] = this.head[k]; this.head[k] = i;
+      }
+    }
+  };
+  const candI = new Int32Array(4096), candD = new Float32Array(4096);
+  function gather(i, ring) {
+    const x = pos[3 * i], y = pos[3 * i + 1], z = pos[3 * i + 2];
+    const cx = Math.floor(x / P.cell), cy = Math.floor(y / P.cell), cz = Math.floor(z / P.cell);
+    let n = 0;
+    for (let a = -ring; a <= ring; a++) for (let b = -ring; b <= ring; b++) for (let c = -ring; c <= ring; c++) {
+      let j = grid.head[grid.key(cx + a, cy + b, cz + c)];
+      while (j >= 0) {
+        if (j !== i && n < 4096) {
+          const dx = pos[3 * j] - x, dy = pos[3 * j + 1] - y, dz = pos[3 * j + 2] - z;
+          const d2 = dx * dx + dy * dy + dz * dz;
+          // the hash can map far cells onto the same bucket; keep only true neighbours of this box
+          if (d2 < (ring + 1) * (ring + 1) * P.cell * P.cell * 3) { candI[n] = j; candD[n] = d2; n++; }
+        }
+        j = grid.next[j];
+      }
+    }
+    return n;
+  }
+  // current neighbour list of the highlighted bird (for drawing)
+  const hlNb = [];
+  const kI = new Int32Array(32), kD = new Float32Array(32);
+  function neighbours(i, out) {
+    // returns count and fills kI with the chosen neighbour indices
+    if (mode === 'topo') {
+      let ring = 1, n = gather(i, ring);
+      while (n < K && ring < 6) { ring++; n = gather(i, ring); }
+      let m = 0;
+      for (let q = 0; q < n; q++) {
+        const d = candD[q];
+        if (m < K) { let s = m++; while (s > 0 && kD[s - 1] > d) { kD[s] = kD[s - 1]; kI[s] = kI[s - 1]; s--; } kD[s] = d; kI[s] = candI[q]; }
+        else if (d < kD[K - 1]) { let s = K - 1; while (s > 0 && kD[s - 1] > d) { kD[s] = kD[s - 1]; kI[s] = kI[s - 1]; s--; } kD[s] = d; kI[s] = candI[q]; }
+      }
+      return m;
+    }
+    const n = gather(i, 2), R2 = P.metricR * P.metricR;
+    let m = 0;
+    for (let q = 0; q < n && m < 32; q++) if (candD[q] < R2) { kI[m] = candI[q]; kD[m] = candD[q]; m++; }
+    return m;
+  }
+
+  // ---------- falcon ----------
+  const falcon = { on: false, t: 0, p: [0, 0, 0], v: [0, 0, 0] };
+  function sendFalcon() {
+    const c = centroid();
+    const ang = Math.random() * 6.283;
+    falcon.on = true; falcon.t = 0;
+    falcon.p = [c[0] + 90 * Math.cos(ang), c[1] + 35, c[2] + 90 * Math.sin(ang)];
+    falcon.v = [0, 0, 0];
+  }
+  function centroid() {
+    let x = 0, y = 0, z = 0;
+    for (let i = 0; i < N; i++) { x += pos[3 * i]; y += pos[3 * i + 1]; z += pos[3 * i + 2]; }
+    return [x / N, y / N, z / N];
+  }
+
+  // ---------- one time step ----------
+  let simTime = 0, nextAutoFalcon = 9;
+  function step(dt) {
+    grid.build();
+    const c = centroid();
+    for (let i = 0; i < N; i++) {
+      const x = pos[3 * i], y = pos[3 * i + 1], z = pos[3 * i + 2];
+      const vx = vel[3 * i], vy = vel[3 * i + 1], vz = vel[3 * i + 2];
+      let ax = 0, ay = 0, az = 0;
+      // separation from anyone very close
+      const nn = gather(i, 1);
+      for (let q = 0; q < nn; q++) {
+        const d2 = candD[q]; if (d2 > P.sepR * P.sepR || d2 < 1e-6) continue;
+        const j = candI[q], d = Math.sqrt(d2), f = P.wSep * (P.sepR - d) / (P.sepR * d);
+        ax -= f * (pos[3 * j] - x); ay -= f * (pos[3 * j + 1] - y); az -= f * (pos[3 * j + 2] - z);
+      }
+      // alignment and cohesion with the chosen neighbours
+      const m = neighbours(i);
+      nbCount[i] = m;
+      if (i === HL) { hlNb.length = 0; for (let q = 0; q < m; q++) hlNb.push(kI[q]); }
+      if (m > 0) {
+        let mvx = 0, mvy = 0, mvz = 0, mx = 0, my = 0, mz = 0;
+        for (let q = 0; q < m; q++) { const j = kI[q]; mvx += vel[3 * j]; mvy += vel[3 * j + 1]; mvz += vel[3 * j + 2]; mx += pos[3 * j]; my += pos[3 * j + 1]; mz += pos[3 * j + 2]; }
+        mvx /= m; mvy /= m; mvz /= m; mx /= m; my /= m; mz /= m;
+        ax += P.wAli * (mvx - vx); ay += P.wAli * (mvy - vy); az += P.wAli * (mvz - vz);
+        ax += P.wCoh * (mx - x); ay += P.wCoh * (my - y); az += P.wCoh * (mz - z);
+      }
+      // stay over the marsh: soft horizontal ring and a height band
+      const rh = Math.hypot(x, z);
+      if (rh > P.roostR) { const f = 0.35 * (rh - P.roostR) / rh; ax -= f * x; az -= f * z; }
+      if (y < P.hMin) ay += 1.2 * (P.hMin - y);
+      if (y > P.hMax) ay -= 0.6 * (y - P.hMax);
+      // flee the falcon
+      if (falcon.on) {
+        const dx = x - falcon.p[0], dy = y - falcon.p[1], dz = z - falcon.p[2], d = Math.hypot(dx, dy, dz);
+        if (d < P.fleeR) { const f = P.wFlee * (1 - d / P.fleeR) / (d + 0.5); ax += f * dx; ay += f * dy * 0.5; az += f * dz; }
+      }
+      // keep cruising speed, plus a little noise
+      const sp = Math.hypot(vx, vy, vz) + 1e-6, g = 1.2 * (P.v0 - sp) / sp;
+      ax += g * vx; ay += g * vy; az += g * vz;
+      ax += P.noise * (Math.random() - 0.5) * 2; ay += P.noise * (Math.random() - 0.5); az += P.noise * (Math.random() - 0.5) * 2;
+      acc[3 * i] = ax; acc[3 * i + 1] = ay; acc[3 * i + 2] = az;
+    }
+    for (let i = 0; i < N; i++) {
+      for (let k = 0; k < 3; k++) vel[3 * i + k] += acc[3 * i + k] * dt;
+      const sp = Math.hypot(vel[3 * i], vel[3 * i + 1], vel[3 * i + 2]), mx = 1.8 * P.v0;
+      if (sp > mx) for (let k = 0; k < 3; k++) vel[3 * i + k] *= mx / sp;
+      for (let k = 0; k < 3; k++) pos[3 * i + k] += vel[3 * i + k] * dt;
+      if (pos[3 * i + 1] < 4) { pos[3 * i + 1] = 4; if (vel[3 * i + 1] < 0) vel[3 * i + 1] = -0.5 * vel[3 * i + 1]; }
+    }
+    // falcon: chase the nearest edge of the flock, then pull away
+    if (falcon.on) {
+      falcon.t += dt;
+      let tx = c[0], ty = c[1], tz = c[2];
+      if (falcon.t > 7) { tx = falcon.p[0] + falcon.v[0] * 10; ty = falcon.p[1] + 30; tz = falcon.p[2] + falcon.v[2] * 10; }
+      const dx = tx - falcon.p[0], dy = ty - falcon.p[1], dz = tz - falcon.p[2], d = Math.hypot(dx, dy, dz) + 1e-6;
+      const want = [dx / d * P.falconV, dy / d * P.falconV, dz / d * P.falconV];
+      for (let k = 0; k < 3; k++) { falcon.v[k] += (want[k] - falcon.v[k]) * Math.min(1, 1.6 * dt); falcon.p[k] += falcon.v[k] * dt; } if (falcon.p[1] < 3) falcon.p[1] = 3;
+      if (falcon.t > 12) falcon.on = false;
+    }
+    simTime += dt;
+    if ($('autoFalcon') && $('autoFalcon').checked && simTime > nextAutoFalcon) { sendFalcon(); nextAutoFalcon = simTime + 28; }
+  }
+
+  // ---------- three.js scene ----------
+  const stage = $('stage'), canvas = $('cv');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(50, 1, 0.3, 6000);
+  const SUN = new THREE.Vector3(-1, 0.06, 0.25).normalize();
+  const horizon = new THREE.Color(0xf2a35e);
+  scene.fog = new THREE.Fog(0x8a5a5a, 400, 2600);
+
+  // sky dome with a sunset gradient
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(4000, 32, 16), new THREE.ShaderMaterial({
+    side: THREE.BackSide, depthWrite: false, fog: false,
+    uniforms: { uSun: { value: SUN } },
+    vertexShader: 'varying vec3 vD; void main(){ vD = normalize(position); gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+    fragmentShader: `varying vec3 vD; uniform vec3 uSun;
+      void main(){ float h = vD.y; float s = max(dot(vD, uSun), 0.0);
+        vec3 top = vec3(0.10, 0.12, 0.28), mid = vec3(0.55, 0.32, 0.42), low = vec3(0.98, 0.62, 0.34);
+        vec3 c = h > 0.18 ? mix(mid, top, smoothstep(0.18, 0.75, h)) : mix(low, mid, smoothstep(-0.02, 0.18, h));
+        c += vec3(1.0, 0.55, 0.25) * pow(s, 8.0) * 0.55 + vec3(1.0, 0.85, 0.6) * pow(s, 400.0) * 1.6;
+        if (h < -0.01) c = vec3(0.12, 0.09, 0.08);
+        gl_FragColor = vec4(c, 1.0); }`
+  }));
+  scene.add(sky);
+  // marsh: dark ground with a band of reeds and a glint of water
+  const ground = new THREE.Mesh(new THREE.CircleGeometry(3000, 64), new THREE.MeshBasicMaterial({ color: 0x241c17 }));
+  ground.rotation.x = -Math.PI / 2; scene.add(ground);
+  const water = new THREE.Mesh(new THREE.PlaneGeometry(3000, 60), new THREE.MeshBasicMaterial({ color: 0x8a5c48 }));
+  water.rotation.x = -Math.PI / 2; water.position.set(-200, 0.05, -120); water.rotation.z = 0.3; scene.add(water);
+  (function reeds() {
+    const n = 2500, g = new THREE.BufferGeometry(), p = new Float32Array(6 * n);
+    const r = rnd(777);
+    for (let i = 0; i < n; i++) {
+      const a = r() * 6.283, d = 20 + 260 * Math.sqrt(r());
+      const x = d * Math.cos(a), z = d * Math.sin(a) + 40, h = 1.8 + 1.2 * r(), lean = (r() - 0.5) * 0.5;
+      p.set([x, 0, z, x + lean, h, z], 6 * i);
+    }
+    g.setAttribute('position', new THREE.BufferAttribute(p, 3));
+    scene.add(new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0x3a2b1f })));
+  })();
+
+  // birds: instanced silhouettes with flapping wings
+  function birdGeometry(len, span) {
+    const v = [
+      // body (two thin triangles, a cross)
+      len * 0.55, 0, 0, -len * 0.45, 0.02 * len, 0, -len * 0.45, -0.02 * len, 0,
+      len * 0.55, 0, 0, -len * 0.45, 0, 0.05 * len, -len * 0.45, 0, -0.05 * len,
+      // left wing
+      len * 0.15, 0, 0, -len * 0.15, 0, 0, -len * 0.05, 0, span * 0.5,
+      // right wing
+      len * 0.15, 0, 0, -len * 0.15, 0, 0, -len * 0.05, 0, -span * 0.5,
+      // tail
+      -len * 0.35, 0, 0, -len * 0.62, 0, 0.12 * len, -len * 0.62, 0, -0.12 * len
+    ];
+    const w = [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0];
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(v, 3));
+    g.setAttribute('aWing', new THREE.Float32BufferAttribute(w, 1));
+    return g;
+  }
+  const birdVS = `attribute float aWing; attribute float aPhase; attribute vec3 aCol; uniform float uTime; uniform float uFlap;
+    varying vec3 vC; varying float vFog;
+    void main(){ vec3 p = position; p.y += aWing * sin(uTime * uFlap + aPhase) * abs(p.z) * 0.6;
+      vC = aCol; vec4 mv = modelViewMatrix * instanceMatrix * vec4(p, 1.0); vFog = -mv.z; gl_Position = projectionMatrix * mv; }`;
+  const birdFS = `varying vec3 vC; varying float vFog; uniform vec3 uFogC;
+    void main(){ float f = smoothstep(400.0, 2600.0, vFog); gl_FragColor = vec4(mix(vC, uFogC, f), 1.0); }`;
+  const birdMat = new THREE.ShaderMaterial({ uniforms: { uTime: { value: 0 }, uFlap: { value: 26 }, uFogC: { value: new THREE.Color(0x8a5a5a) } }, vertexShader: birdVS, fragmentShader: birdFS, side: THREE.DoubleSide });
+  const falconMat = new THREE.ShaderMaterial({ uniforms: { uTime: { value: 0 }, uFlap: { value: 9 }, uFogC: { value: new THREE.Color(0x8a5a5a) } }, vertexShader: birdVS, fragmentShader: birdFS, side: THREE.DoubleSide });
+  let birds = null, colAttr = null;
+  const BIRD_SCALE = 2.2; // drawn larger than life (a starling is 20 cm long) so they show at a distance
+  function rebuildBirds() {
+    if (birds) { scene.remove(birds); birds.geometry.dispose(); }
+    const g = birdGeometry(0.21 * BIRD_SCALE, 0.4 * BIRD_SCALE);
+    const ph = new Float32Array(N), col = new Float32Array(3 * N);
+    for (let i = 0; i < N; i++) { ph[i] = phase[i]; col[3 * i] = 0.04; col[3 * i + 1] = 0.035; col[3 * i + 2] = 0.05; }
+    g.setAttribute('aPhase', new THREE.InstancedBufferAttribute(ph, 1));
+    colAttr = new THREE.InstancedBufferAttribute(col, 3); colAttr.setUsage(THREE.DynamicDrawUsage);
+    g.setAttribute('aCol', colAttr);
+    birds = new THREE.InstancedMesh(g, birdMat, N);
+    birds.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    birds.frustumCulled = false;
+    scene.add(birds);
+  }
+  const falconMesh = (() => {
+    const g = birdGeometry(0.45 * BIRD_SCALE, 1.0 * BIRD_SCALE);
+    g.setAttribute('aPhase', new THREE.InstancedBufferAttribute(new Float32Array([0]), 1));
+    g.setAttribute('aCol', new THREE.InstancedBufferAttribute(new Float32Array([0.22, 0.12, 0.1]), 3));
+    const m = new THREE.InstancedMesh(g, falconMat, 1); m.frustumCulled = false; m.visible = false; scene.add(m); return m;
+  })();
+  const nbLines = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xffd27a, transparent: true, opacity: 0.9, depthTest: false }));
+  nbLines.geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6 * 40), 3));
+  nbLines.renderOrder = 3; nbLines.frustumCulled = false; scene.add(nbLines);
+
+  const M4 = new THREE.Matrix4(), vF = new THREE.Vector3(), vU = new THREE.Vector3(), vS = new THREE.Vector3(), vP = new THREE.Vector3();
+  function orient(x, y, z, vx, vy, vz, out) {
+    vF.set(vx, vy, vz).normalize();
+    vU.set(0, 1, 0); vS.crossVectors(vF, vU); if (vS.lengthSq() < 1e-6) vS.set(0, 0, 1); vS.normalize();
+    vU.crossVectors(vS, vF);
+    // bank into turns a little: not tracked, keep level wings
+    out.makeBasis(vF, vU, vS); out.setPosition(x, y, z);
+  }
+  function updateMeshes() {
+    for (let i = 0; i < N; i++) { orient(pos[3 * i], pos[3 * i + 1], pos[3 * i + 2], vel[3 * i], vel[3 * i + 1], vel[3 * i + 2], M4); birds.setMatrixAt(i, M4); }
+    birds.instanceMatrix.needsUpdate = true;
+    // colours: highlighted bird and its neighbours
+    const show = $('showNb').checked, col = colAttr.array;
+    for (let i = 0; i < N; i++) { col[3 * i] = 0.04; col[3 * i + 1] = 0.035; col[3 * i + 2] = 0.05; }
+    const L = nbLines.geometry.attributes.position.array; let nl = 0;
+    if (show) {
+      col[3 * HL] = 1.0; col[3 * HL + 1] = 0.35; col[3 * HL + 2] = 0.15;
+      for (const j of hlNb) {
+        col[3 * j] = 1.0; col[3 * j + 1] = 0.8; col[3 * j + 2] = 0.42;
+        if (nl < 40) { L.set([pos[3 * HL], pos[3 * HL + 1], pos[3 * HL + 2], pos[3 * j], pos[3 * j + 1], pos[3 * j + 2]], 6 * nl); nl++; }
+      }
+    }
+    nbLines.geometry.setDrawRange(0, 2 * nl); nbLines.geometry.attributes.position.needsUpdate = true;
+    colAttr.needsUpdate = true;
+    falconMesh.visible = falcon.on;
+    if (falcon.on) { orient(falcon.p[0], falcon.p[1], falcon.p[2], falcon.v[0] + 1e-3, falcon.v[1], falcon.v[2], M4); falconMesh.setMatrixAt(0, M4); falconMesh.instanceMatrix.needsUpdate = true; }
+  }
+
+  // ---------- camera ----------
+  const cam = { theta: 0.35, phi: 1.5, dist: 120, view: 'ground', auto: true, target: new THREE.Vector3(0, 45, 0) };
+  const ptrs = new Map(); let pinch0 = 0;
+  canvas.addEventListener('pointerdown', e => { canvas.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch0 = Math.hypot(a.x - b.x, a.y - b.y); } });
+  canvas.addEventListener('pointermove', e => {
+    if (!ptrs.has(e.pointerId)) return;
+    const p = ptrs.get(e.pointerId), dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
+    if (ptrs.size === 1) { cam.theta -= dx * 0.006; cam.phi = Math.min(Math.PI - 0.05, Math.max(0.05, cam.phi - dy * 0.006)); cam.tgtPhi = null; if (cam.view === 'ground') setView('free'); }
+    else if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y); if (pinch0 > 0 && d > 0) zoomBy(pinch0 / d); pinch0 = d; }
+  });
+  const endPtr = e => { ptrs.delete(e.pointerId); pinch0 = 0; };
+  canvas.addEventListener('pointerup', endPtr); canvas.addEventListener('pointercancel', endPtr);
+  canvas.addEventListener('wheel', e => { e.preventDefault(); zoomBy(Math.exp(e.deltaY * 0.0012)); }, { passive: false });
+  function zoomBy(f) { cam.auto = false; $('autoZoom').checked = false; cam.dist = Math.min(1500, Math.max(4, cam.dist * f)); }
+  $('autoZoom').addEventListener('change', e => { cam.auto = e.target.checked; });
+  function setView(v) {
+    cam.view = v;
+    document.querySelectorAll('#views button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === v)));
+    if (v === 'side') cam.tgtPhi = Math.PI / 2; else if (v === 'top') cam.tgtPhi = 0.08; else cam.tgtPhi = null;
+  }
+  document.querySelectorAll('#views button').forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
+
+  function flockSize() {
+    const c = centroid(); let r2 = 0;
+    for (let i = 0; i < N; i++) { const dx = pos[3 * i] - c[0], dy = pos[3 * i + 1] - c[1], dz = pos[3 * i + 2] - c[2]; r2 += dx * dx + dy * dy + dz * dz; }
+    return [c, Math.sqrt(r2 / N)];
+  }
+  const tgt = new THREE.Vector3(), camPos = new THREE.Vector3(), look = new THREE.Vector3();
+  function updateCamera(dtR, c, rms) {
+    const k = 1 - Math.exp(-dtR * 3);
+    if (cam.view === 'bird') {
+      const i = HL, sp = Math.hypot(vel[3 * i], vel[3 * i + 1], vel[3 * i + 2]) + 1e-6;
+      const fx = vel[3 * i] / sp, fy = vel[3 * i + 1] / sp, fz = vel[3 * i + 2] / sp;
+      tgt.set(pos[3 * i] - fx * 7, pos[3 * i + 1] - fy * 7 + 1.8, pos[3 * i + 2] - fz * 7);
+      camPos.lerp(tgt, 1 - Math.exp(-dtR * 5)); camera.position.copy(camPos);
+      look.set(pos[3 * i] + fx * 8, pos[3 * i + 1] + fy * 8, pos[3 * i + 2] + fz * 8);
+      camera.up.set(0, 1, 0); camera.lookAt(look);
+      cam.target.copy(look);
+      return;
+    }
+    tgt.set(c[0], c[1], c[2]); cam.target.lerp(tgt, k);
+    if (cam.auto) { const want = Math.max(45, 3.2 * rms + 20) * Math.max(1, 0.9 / camera.aspect); cam.dist += (want - cam.dist) * (1 - Math.exp(-dtR * 1.2)); }
+    if (cam.view === 'ground') {
+      cam.dist += (Math.max(cam.dist, 4.5 * cam.target.y) - cam.dist) * k;
+      // stand in the marsh, 1.7 m above the ground, looking up at the flock with the sunset behind it
+      const want = Math.acos(Math.max(-0.99, Math.min(0.99, (1.7 - cam.target.y) / cam.dist)));
+      cam.phi += (want - cam.phi) * k;
+      const sunTheta = Math.atan2(-SUN.z, -SUN.x); // put the camera on the side away from the sun
+      let d = sunTheta - cam.theta; d = Math.atan2(Math.sin(d), Math.cos(d)); cam.theta += d * k * 0.5;
+    } else if (cam.tgtPhi != null) { cam.phi += (cam.tgtPhi - cam.phi) * k; if (Math.abs(cam.tgtPhi - cam.phi) < 0.002) cam.tgtPhi = null; }
+    const sp = Math.sin(cam.phi);
+    camPos.set(cam.target.x + cam.dist * sp * Math.cos(cam.theta), cam.target.y + cam.dist * Math.cos(cam.phi), cam.target.z + cam.dist * sp * Math.sin(cam.theta));
+    if (camPos.y < 1.2) camPos.y = 1.2;
+    camera.position.copy(camPos); camera.up.set(0, 1, 0); camera.lookAt(cam.target);
+  }
+
+  function resize() { const w = stage.clientWidth, h = stage.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(resize).observe(stage); else window.addEventListener('resize', resize);
+  resize();
+
+  // ---------- controls ----------
+  let playing = !reduceMotion;
+  const SPEEDS = [0.25, 0.5, 1, 2], speedLbl = ['¼×', '½×', '1×', '2×'];
+  let si = 2;
+  function setPlayUI() {
+    $('playIcon').innerHTML = playing ? '<path d="M4 4h12v12H4z"/>' : '<path d="M5 3l12 7-12 7z"/>';
+    $('playTxt').textContent = playing ? 'Stop' : 'Start'; $('play').setAttribute('aria-pressed', String(playing));
+  }
+  function setSpeedUI() { $('speedOut').textContent = speedLbl[si] + ' (' + (si === 2 ? 'virkelig tid' : si < 2 ? 'langsomt' : 'hurtigt') + ')'; $('slower').disabled = si === 0; $('faster').disabled = si === SPEEDS.length - 1; }
+  $('play').addEventListener('click', () => { playing = !playing; setPlayUI(); });
+  $('slower').addEventListener('click', () => { si = Math.max(0, si - 1); setSpeedUI(); });
+  $('faster').addEventListener('click', () => { si = Math.min(SPEEDS.length - 1, si + 1); setSpeedUI(); });
+  $('falcon').addEventListener('click', () => { sendFalcon(); if (!playing) { playing = true; setPlayUI(); } });
+  function setModeUI() {
+    document.querySelectorAll('#mode button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === mode)));
+    $('kWrap').hidden = mode !== 'topo';
+    $('modeTitle').textContent = mode === 'topo' ? `Topologisk: de ${K} nærmeste naboer` : `Metrisk: alle naboer inden for ${P.metricR} m`;
+    $('modeText').textContent = mode === 'topo' ? 'Hver fugl følger et fast antal naboer, uanset hvor langt væk de er. Sådan gør rigtige stære.'
+      : 'Hver fugl følger alle inden for en fast afstand. Antallet svinger med tætheden, og fugle i udkanten kan miste kontakten.';
+  }
+  document.querySelectorAll('#mode button').forEach(b => b.addEventListener('click', () => { mode = b.dataset.mode; setModeUI(); }));
+  $('k').addEventListener('input', e => { K = +e.target.value; $('kOut').textContent = K; setModeUI(); });
+  document.querySelectorAll('#count button').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('#count button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    init(+b.dataset.n);
+  }));
+  document.addEventListener('keydown', e => {
+    const tag = (e.target && e.target.tagName) || '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === ' ' && tag !== 'BUTTON') { e.preventDefault(); playing = !playing; setPlayUI(); }
+    else if (e.key === '+' || e.key === '=') { si = Math.min(SPEEDS.length - 1, si + 1); setSpeedUI(); }
+    else if (e.key === '-' || e.key === '_') { si = Math.max(0, si - 1); setSpeedUI(); }
+    else if (e.key === 'f' || e.key === 'F') sendFalcon();
+  });
+
+  // ---------- loop ----------
+  let last = performance.now(), statTick = 0, budgetHit = 0;
+  function frame(now) {
+    const dtR = Math.min(0.05, (now - last) / 1000); last = now;
+    if (playing) {
+      const simDt = dtR * SPEEDS[si], sub = Math.max(1, Math.ceil(simDt / (1 / 60)));
+      for (let s = 0; s < sub; s++) step(simDt / sub);
+    }
+    birdMat.uniforms.uTime.value = now / 1000; falconMat.uniforms.uTime.value = now / 1000;
+    birdMat.uniforms.uFlap.value = playing ? 26 * Math.sqrt(SPEEDS[si]) : 0;
+    updateMeshes();
+    const [c, rms] = flockSize();
+    updateCamera(dtR, c, rms);
+    if (++statTick % 10 === 0) {
+      let ox = 0, oy = 0, oz = 0, sp = 0;
+      for (let i = 0; i < N; i++) { const s = Math.hypot(vel[3 * i], vel[3 * i + 1], vel[3 * i + 2]) + 1e-6; ox += vel[3 * i] / s; oy += vel[3 * i + 1] / s; oz += vel[3 * i + 2] / s; sp += s; }
+      const order = Math.hypot(ox, oy, oz) / N;
+      $('stats').innerHTML = `<span>orden</span><b>${order.toFixed(2).replace('.', ',')}</b>` +
+        `<span>flokkens bredde ca. ${Math.round(2.5 * rms)} m</span><span>fart ${(sp / N).toFixed(1).replace('.', ',')} m/s</span>` +
+        `<span class="pair">den røde fugl følger</span><b>${nbCount[HL]} naboer</b>` + (falcon.on ? '<span style="color:var(--hl)">vandrefalk angriber</span>' : '');
+    }
+    renderer.render(scene, camera);
+    requestAnimationFrame(frame);
+  }
+
+  init(N);
+  rebuildBirds();
+  setPlayUI(); setSpeedUI(); setModeUI();
+  requestAnimationFrame(frame);
+})();
+
+</script>
+
+</body>
+</html>

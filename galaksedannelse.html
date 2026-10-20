@@ -1,0 +1,971 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Galaksedannelse i 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body { margin: 0; }
+img { max-width: 100%; }
+/* Layout: et observatorie-instrument — én stor 3D-scene som hovedperson, instrumentpanel under, forklaring nederst */
+:root {
+  --void: #06070b;
+  --panel: #0d1017;
+  --raise: #141824;
+  --line: #232a3a;
+  --ink: #e9e6dd;
+  --muted: #9097a8;
+  --mw: #f3b46c;
+  --m31: #8db4ff;
+  --gas: #5fd0ff;
+  --hot: #e0805a;
+  --young: #b9d4ff;
+  --old: #f2b46c;
+  --dm: #8a6fd0;
+  --m51: #9cc0ff;
+  --n5195: #f4a07a;
+  --m33: #7fe0c0;
+  --sun: #fff1a8;
+  --focus: #c9d8ff;
+  --f-display: "Spectral", Georgia, "Times New Roman", serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { background: var(--void); color: var(--ink); }
+body { font-family: var(--f-body); font-size: 15px; line-height: 1.55; }
+.wrap {
+  max-width: 1180px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 56px;
+  display: grid; gap: 18px;
+}
+header { display: grid; gap: 6px; }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+h1 { font-family: var(--f-display); font-weight: 400; font-size: clamp(30px, 5vw, 48px); line-height: 1.08; margin: 0; text-wrap: balance; }
+h1 em { font-style: italic; color: var(--m31); }
+h1 .mw { color: var(--mw); font-style: italic; }
+.lede { margin: 4px 0 0; max-width: 64ch; color: var(--muted); }
+
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.tab {
+  font: 500 14px/1.2 var(--f-body); color: var(--muted);
+  background: transparent; border: 1px solid var(--line); border-radius: 999px;
+  padding: 9px 16px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+}
+.tab .dots { display: inline-flex; gap: 3px; }
+.tab .dots i { width: 9px; height: 9px; border-radius: 50%; display: block; }
+.tab[aria-selected="true"] { color: var(--ink); background: var(--raise); border-color: #3a4560; }
+.tab:hover { color: var(--ink); }
+
+.stage {
+  position: relative; height: clamp(380px, 66vh, 740px);
+  background: radial-gradient(ellipse at 50% 45%, #0c1020 0%, var(--void) 70%);
+  border: 1px solid var(--line); border-radius: 6px; overflow: hidden;
+}
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.stage canvas:active { cursor: grabbing; }
+.hud { position: absolute; pointer-events: none; }
+.hud.tl { top: 14px; left: 16px; right: 16px; display: grid; gap: 2px; max-width: 46ch; }
+.clock small { font-size: .5em; color: var(--muted); font-weight: 400; }
+.clock { font-family: var(--f-mono); font-size: clamp(22px, 3.2vw, 32px); font-weight: 500; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.phase-title { font-family: var(--f-display); font-size: 19px; font-style: italic; }
+.phase-text { color: #c5c8d2; font-size: 14px; text-shadow: 0 1px 6px var(--void); }
+.hud.br { bottom: 12px; right: 16px; text-align: right; font-family: var(--f-mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; display: grid; gap: 2px; }
+.hud.br b { color: var(--ink); font-weight: 500; font-size: 14px; }
+.hud.br .pair:not(:first-child) { margin-top: 6px; }
+.hud.bl { bottom: 12px; left: 16px; font-size: 12px; color: var(--muted); }
+.busy { position: absolute; top: 14px; right: 16px; font-family: var(--f-mono); font-size: 12px; color: var(--muted); background: var(--panel); border: 1px solid var(--line); padding: 4px 10px; border-radius: 999px; }
+.labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.lbl { position: absolute; left: 0; top: 0; font-family: var(--f-mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; transform: translate(-50%, -50%); padding-left: 0; }
+.lbl::before { content: ""; position: absolute; left: -10px; top: 50%; width: 6px; height: 1px; background: currentColor; opacity: .7; }
+.lbl.sun { text-transform: none; letter-spacing: .02em; font-size: 12px; }
+.lbl.sun::before { left: auto; right: -10px; }
+
+.controls {
+  display: grid; gap: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+  padding: 14px 16px;
+}
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.transport { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.play {
+  height: 44px; min-width: 112px; padding: 0 18px 0 14px; border-radius: 999px; border: 1px solid #4a5878; background: #1b2233;
+  color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 600 15px/1 var(--f-body);
+}
+.play:hover { background: #222b40; }
+.play svg { width: 16px; height: 16px; fill: currentColor; }
+.dir button { display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px; }
+.dir svg { width: 14px; height: 14px; fill: currentColor; }
+.speedctl { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.speedctl button { width: 40px; height: 36px; border: 0; background: transparent; color: var(--ink); font: 500 20px/1 var(--f-body); cursor: pointer; }
+.speedctl button:hover { background: var(--raise); }
+.speedctl button:disabled { color: #4a5068; cursor: default; background: transparent; }
+.speedctl output { min-width: 9.5em; text-align: center; font: 500 13px/1 var(--f-mono); font-variant-numeric: tabular-nums; border-inline: 1px solid var(--line); padding: 11px 8px; }
+.keys { margin-left: auto; }
+.track { position: relative; padding-top: 26px; min-width: 0; }
+.ticks { position: absolute; top: 0; left: 9px; right: 9px; height: 24px; }
+.tick {
+  position: absolute; top: 0; transform: translateX(-50%); font: 500 11px/1 var(--f-mono); color: var(--muted);
+  background: none; border: 0; padding: 2px 3px; cursor: pointer; white-space: nowrap;
+}
+.tick::after { content: ""; position: absolute; left: 50%; top: 17px; width: 1px; height: 9px; background: currentColor; }
+.tick:hover, .tick.on { color: var(--ink); }
+.tick.small { font-size: 0; width: 14px; height: 18px; }
+input[type=range] { width: 100%; accent-color: var(--m31); margin: 0; height: 22px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.seg button {
+  font: 500 13px/1 var(--f-body); color: var(--muted); background: transparent; border: 0; padding: 8px 12px; cursor: pointer;
+  border-right: 1px solid var(--line);
+}
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { color: var(--ink); background: var(--raise); }
+.ctl-label { font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.group { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.chk { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); cursor: pointer; }
+.chk input { accent-color: var(--m31); }
+.hint { font-size: 12px; color: var(--muted); margin: 0; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.notes { display: grid; grid-template-columns: 1.3fr 1fr; gap: 28px; padding-top: 8px; }
+.notes > section { min-width: 0; }
+.notes h2 { font-family: var(--f-display); font-weight: 400; font-size: 24px; margin: 0 0 8px; text-wrap: balance; }
+.notes h3 { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 500; margin: 0 0 8px; }
+.notes p { margin: 0 0 10px; max-width: 66ch; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 12px 0 0; font-size: 14px; }
+.facts dt { font-family: var(--f-mono); font-size: 12px; color: var(--muted); padding-top: 2px; }
+.facts dd { margin: 0; font-variant-numeric: tabular-nums; }
+.model { border-left: 1px solid var(--line); padding-left: 24px; color: #c5c8d2; font-size: 14px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+@media (max-width: 760px) {
+  .notes { grid-template-columns: 1fr; }
+  .model { border-left: 0; border-top: 1px solid var(--line); padding-left: 0; padding-top: 16px; }
+  .phase-text { font-size: 13px; }
+  .hud.bl { display: none; }
+}
+@media (max-width: 640px) { .keys { display: none; } }
+@media (max-width: 480px) { .tick { font-size: 10px; } .speedctl output { min-width: 8em; } }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Kosmologi · simulering i 3D</div>
+    <h1>Sådan bliver en galakse til: <span class="mw">spiral</span> eller <em>elliptisk</em></h1>
+    <p class="lede">Fra en sky af mørkt stof og varm gas til en galakse af stjerner, gennem 13 milliarder år. Gassen køler, falder ind og danner stjerner; farven viser stjernernes alder. Træk i billedet for at dreje, rul eller knib for at zoome.</p>
+  </header>
+
+  <div class="tabs" role="tablist" aria-label="Vælg forløb">
+    <button class="tab" role="tab" id="tab-spiral" aria-selected="true" data-scene="spiral">
+      <span class="dots"><i style="background:var(--gas)"></i><i style="background:var(--young)"></i></span>1 · Stille afkøling → spiralgalakse
+    </button>
+    <button class="tab" role="tab" id="tab-ellip" aria-selected="false" data-scene="ellip">
+      <span class="dots"><i style="background:var(--old)"></i><i style="background:var(--hot)"></i></span>2 · Mange sammenstød → elliptisk galakse
+    </button>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="cv" aria-label="3D-animation af en galakse, der dannes. Træk for at dreje."></canvas>
+    <div class="labels" id="labels"></div>
+    <div class="hud tl">
+      <div class="clock" id="clock">I dag</div>
+      <div class="phase-title" id="phaseTitle"></div>
+      <div class="phase-text" id="phaseText"></div>
+    </div>
+    <div class="hud br" id="stats"></div>
+    <div class="hud bl" id="legend"></div>
+    <div class="busy" id="busy" hidden>Beregner …</div>
+  </div>
+
+  <div class="controls">
+    <div class="transport">
+      <button class="play" id="play"><svg viewBox="0 0 20 20" id="playIcon" aria-hidden="true"><path d="M5 3l12 7-12 7z"/></svg><span id="playTxt">Start</span></button>
+      <div class="seg dir" id="dir" role="group" aria-label="Retning">
+        <button data-dir="-1" aria-pressed="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4L2 10l8 6zM18 4l-8 6 8 6z"/></svg>Baglæns</button>
+        <button data-dir="1" aria-pressed="true">Fremad<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2 4l8 6-8 6zM10 4l8 6-8 6z"/></svg></button>
+      </div>
+      <div class="speedctl" role="group" aria-label="Fart">
+        <button id="slower" aria-label="Langsommere">−</button>
+        <output id="speedOut" aria-live="polite">200 mio. år/s</output>
+        <button id="faster" aria-label="Hurtigere">+</button>
+      </div>
+      <p class="hint keys">Mellemrum: start/stop · ← →: retning · + −: fart</p>
+    </div>
+    <div class="track">
+      <div class="ticks" id="ticks"></div>
+      <input type="range" id="time" min="0" max="1000" value="0" step="1" aria-label="Tid">
+    </div>
+    <div class="row">
+      <div class="group"><span class="ctl-label">Visning</span>
+        <div class="seg" id="views"></div>
+      </div>
+      <div class="group"><span class="ctl-label">Følg</span>
+        <div class="seg" id="follow"></div>
+      </div>
+      <div class="group">
+        <label class="chk"><input type="checkbox" id="autoZoom" checked> Automatisk zoom</label>
+        <label class="chk"><input type="checkbox" id="showDM" checked> Mørkt stof</label>
+        <label class="chk"><input type="checkbox" id="showGas" checked> Gas</label>
+        <label class="chk"><input type="checkbox" id="showStars" checked> Stjerner</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <section id="story"></section>
+    <section class="model">
+      <h3>Om modellen</h3>
+      <p>Det mørke stof er glatte haloer (Hernquist-profiler), der bevæger sig efter hinandens tyngdekraft og smelter sammen med en enkel model for dynamisk friktion. De violette prikker er sporpartikler i haloerne.</p>
+      <p>Gassen afkøles ved, at dens tilfældige bevægelser dæmpes mod den lokale middelstrøm på et gitter. Køletiden er kortest, hvor gassen er tættest, så galaksen vokser indefra og ud. Kold, tæt gas danner stjerner (stjernedannelseslov i stil med Kennicutt), og i spiralforløbet bliver stjernerne helst født i en roterende tæthedsbølge med to arme.</p>
+      <p>Skiven får sin egen tyngdekraft (Miyamoto–Nagai-potential) efterhånden som den bygges op. Det er en forenklet model: partiklerne trækker ikke i hinanden enkeltvis, og der er ingen supernova-feedback. Formerne og tidsforløbet er realistiske i grove træk.</p>
+    </section>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+function formFactory() {
+  // Units: kpc, Myr, 1e10 Msun.
+  const G = 0.04498, KMS = 1.0227e-3, BIG = 1 << 30;
+
+  function rng(a) {
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function hash01(a, b) {
+    let h = Math.imul(a ^ 0x9E3779B9, 0x85EBCA6B) ^ Math.imul(b + 0x632BE5AB, 0xC2B2AE35);
+    h ^= h >>> 15; h = Math.imul(h, 0x2C1B3C6D); h ^= h >>> 12; h = Math.imul(h, 0x297A2D39); h ^= h >>> 15;
+    return (h >>> 0) / 4294967296;
+  }
+  function gauss(r) { let u = 0; while (u === 0) u = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(6.283185307179586 * r()); }
+  function norm(v) { const l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; }
+  function cross(a, b) { return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]; }
+  function basis(L) { L = norm(L); const t = Math.abs(L[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0]; const e1 = norm(cross(L, t)); return [e1, cross(L, e1), L]; }
+
+  // enclosed-mass circular speed of a halo's two Hernquist components
+  function vcHalo(h, r) { return Math.sqrt(G * (h.M * r / ((r + h.a) * (r + h.a)) + h.Mi * r / ((r + h.ai) * (r + h.ai)))); }
+
+  function build(cfg) {
+    const r = rng(cfg.seed);
+    const halos = cfg.halos;
+    const nh = halos.length;
+    // particle counts
+    let N = 0;
+    for (const h of halos) N += (h.nDM || 0) + (h.stars ? h.stars.n : 0) + (h.gas ? h.gas.n : 0);
+    const pos = new Float32Array(3 * N), vel = new Float32Array(3 * N);
+    const kind = new Uint8Array(N); // 0 dark matter tracer, 1 baryon
+    const owner = new Uint8Array(N);
+    const birth = new Int32Array(N);
+    // halo state: x y z vx vy vz M a Mi ai alive
+    const hs = new Float64Array(11 * nh);
+    halos.forEach((h, i) => {
+      hs[11 * i] = h.pos[0]; hs[11 * i + 1] = h.pos[1]; hs[11 * i + 2] = h.pos[2];
+      hs[11 * i + 3] = h.vel[0] * KMS; hs[11 * i + 4] = h.vel[1] * KMS; hs[11 * i + 5] = h.vel[2] * KMS;
+      hs[11 * i + 6] = h.M; hs[11 * i + 7] = h.a; hs[11 * i + 8] = h.Mi; hs[11 * i + 9] = h.ai; hs[11 * i + 10] = 1;
+    });
+    let p = 0;
+    halos.forEach((h, hi) => {
+      const C = h.pos, V = h.vel.map(v => v * KMS);
+      const [e1, e2, L] = basis(h.spin || [0, 0, 1]);
+      const place = (x, y, z, vx, vy, vz, k, b) => {
+        pos[3 * p] = C[0] + x; pos[3 * p + 1] = C[1] + y; pos[3 * p + 2] = C[2] + z;
+        vel[3 * p] = V[0] + vx; vel[3 * p + 1] = V[1] + vy; vel[3 * p + 2] = V[2] + vz;
+        kind[p] = k; owner[p] = hi; birth[p] = b; p++;
+      };
+      const sphere = (n, a, rmax, rotFrac, sigFrac, k, b) => {
+        for (let j = 0; j < n; j++) {
+          let R; do { const u = Math.sqrt(r() * 0.97); R = a * u / (1 - u); } while (R > rmax);
+          const z = 2 * r() - 1, ph = r() * 6.283185307179586, q = Math.sqrt(1 - z * z);
+          const d = [q * Math.cos(ph), q * Math.sin(ph), z];
+          const x = R * d[0], y = R * d[1], zz = R * d[2];
+          const vc = vcHalo(h, R);
+          // rotation about the halo's spin axis
+          const dl = d[0] * L[0] + d[1] * L[1] + d[2] * L[2];
+          const Rc = Math.sqrt(Math.max(1e-9, 1 - dl * dl));
+          const t = norm(cross(L, d));
+          const vr = rotFrac * vc * Rc;
+          const s = sigFrac * vc;
+          place(x, y, zz, vr * t[0] + s * gauss(r), vr * t[1] + s * gauss(r), vr * t[2] + s * gauss(r), k, b);
+        }
+      };
+      const disk = (n, Rd, Rmin, Rmax, hz, sig, k, b) => {
+        for (let j = 0; j < n; j++) {
+          let R; do { R = -Rd * Math.log(r() * r() + 1e-12); } while (R < Rmin || R > Rmax);
+          const ph = r() * 6.283185307179586, c = Math.cos(ph), s = Math.sin(ph);
+          const z = gauss(r) * hz;
+          const vc = vcHalo(h, R) * (1 + sig * gauss(r));
+          place(R * (c * e1[0] + s * e2[0]) + z * L[0], R * (c * e1[1] + s * e2[1]) + z * L[1], R * (c * e1[2] + s * e2[2]) + z * L[2],
+            vc * (-s * e1[0] + c * e2[0]), vc * (-s * e1[1] + c * e2[1]), vc * (-s * e1[2] + c * e2[2]), k, b);
+        }
+      };
+      if (h.nDM) sphere(h.nDM, h.a * (h.dmScale || 1), h.dmMax || 6 * h.a, 0, 0.55, 0, -BIG);
+      if (h.stars) {
+        const s = h.stars, b = -Math.round(s.age / cfg.dt);
+        if (s.type === 'disk') disk(s.n, s.Rd, s.Rmin || 0.3, s.Rmax, s.hz || 0.2, 0.05, 1, b);
+        else sphere(s.n, s.a, s.rmax, s.rot || 0.2, s.sig || 0.5, 1, b);
+      }
+      if (h.gas) {
+        const g = h.gas;
+        if (g.type === 'disk') disk(g.n, g.Rd, g.Rmin || 0.5, g.Rmax, g.hz || 0.15, 0.02, 1, BIG);
+        else sphere(g.n, g.a, g.rmax, g.rot, g.sig, 1, BIG);
+      }
+    });
+    // centre of mass frame of the halos
+    let Mt = 0; const cm = [0, 0, 0, 0, 0, 0];
+    for (let i = 0; i < nh; i++) { const m = hs[11 * i + 6] + hs[11 * i + 8]; Mt += m; for (let k = 0; k < 6; k++) cm[k] += m * hs[11 * i + k]; }
+    for (let k = 0; k < 6; k++) cm[k] /= Mt;
+    for (let i = 0; i < nh; i++) for (let k = 0; k < 6; k++) hs[11 * i + k] -= cm[k];
+    for (let q = 0; q < N; q++) for (let k = 0; k < 3; k++) { pos[3 * q + k] -= cm[k]; vel[3 * q + k] -= cm[k + 3]; }
+
+    const Gn = cfg.grid.n, G3 = Gn * Gn * Gn;
+    const st = {
+      cfg, N, nh, hs, pos, vel, kind, owner, birth, step: 0,
+      acc: new Float32Array(3 * N), hacc: new Float64Array(3 * nh),
+      gN: new Float32Array(G3), gvx: new Float32Array(G3), gvy: new Float32Array(G3), gvz: new Float32Array(G3),
+      cell: new Int32Array(N), diskM: 0
+    };
+    st.mPart = cfg.mGasPart; // baryon particle mass (for densities)
+    accel(st);
+    return st;
+  }
+
+  // ---------- halos: mutual gravity, dynamical friction, mergers ----------
+  function haloAcc(st) {
+    const { cfg, nh, hs, hacc } = st;
+    hacc.fill(0);
+    for (let i = 0; i < nh; i++) {
+      if (!hs[11 * i + 10]) continue;
+      for (let j = 0; j < nh; j++) {
+        if (i === j || !hs[11 * j + 10]) continue;
+        const dx = hs[11 * i] - hs[11 * j], dy = hs[11 * i + 1] - hs[11 * j + 1], dz = hs[11 * i + 2] - hs[11 * j + 2];
+        const rr = Math.sqrt(dx * dx + dy * dy + dz * dz + 1e-4);
+        const f = -G * (hs[11 * j + 6] / (rr * (rr + hs[11 * j + 7]) ** 2) + hs[11 * j + 8] / (rr * (rr + hs[11 * j + 9]) ** 2));
+        hacc[3 * i] += f * dx; hacc[3 * i + 1] += f * dy; hacc[3 * i + 2] += f * dz;
+        if (i < j) {
+          const Mi = hs[11 * i + 6] + hs[11 * i + 8], Mj = hs[11 * j + 6] + hs[11 * j + 8];
+          const df = cfg.df;
+          const gam = df.g0 / (1 + (rr / df.rd) ** 2) + (df.g1 || 0) / (1 + (rr / (df.r1 || 1)) ** 2);
+          const sc = Math.min(1, Math.min(Mi, Mj) / df.mref);
+          const vx = hs[11 * i + 3] - hs[11 * j + 3], vy = hs[11 * i + 4] - hs[11 * j + 4], vz = hs[11 * i + 5] - hs[11 * j + 5];
+          const wi = sc * gam * Mj / (Mi + Mj), wj = sc * gam * Mi / (Mi + Mj);
+          hacc[3 * i] -= wi * vx; hacc[3 * i + 1] -= wi * vy; hacc[3 * i + 2] -= wi * vz;
+          hacc[3 * j] += wj * vx; hacc[3 * j + 1] += wj * vy; hacc[3 * j + 2] += wj * vz;
+        }
+      }
+    }
+  }
+  function mergeHalos(st) {
+    const { nh, hs, cfg } = st;
+    for (let i = 0; i < nh; i++) for (let j = 0; j < nh; j++) {
+      if (i === j || !hs[11 * i + 10] || !hs[11 * j + 10]) continue;
+      const Mi = hs[11 * i + 6] + hs[11 * i + 8], Mj = hs[11 * j + 6] + hs[11 * j + 8];
+      if (Mi < Mj || (Mi === Mj && i > j)) continue; // i is the larger
+      const dx = hs[11 * i] - hs[11 * j], dy = hs[11 * i + 1] - hs[11 * j + 1], dz = hs[11 * i + 2] - hs[11 * j + 2];
+      const rr = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      const dv = Math.hypot(hs[11 * i + 3] - hs[11 * j + 3], hs[11 * i + 4] - hs[11 * j + 4], hs[11 * i + 5] - hs[11 * j + 5]);
+      if (rr < cfg.mergeR && dv < cfg.mergeV) {
+        const Mt = Mi + Mj;
+        for (let k = 0; k < 6; k++) hs[11 * i + k] = (Mi * hs[11 * i + k] + Mj * hs[11 * j + k]) / Mt;
+        const Mh = hs[11 * i + 6] + hs[11 * j + 6], Min = hs[11 * i + 8] + hs[11 * j + 8];
+        hs[11 * i + 7] *= Math.pow(Mh / hs[11 * i + 6], 0.4); hs[11 * i + 6] = Mh;
+        hs[11 * i + 9] *= Math.pow(Min / hs[11 * i + 8], 0.3); hs[11 * i + 8] = Min;
+        hs[11 * j + 10] = 0;
+      }
+    }
+  }
+
+  // ---------- particle accelerations ----------
+  function accel(st) {
+    haloAcc(st);
+    const { cfg, N, nh, hs, pos, acc, kind, birth } = st;
+    const ax0 = [], ay0 = [], az0 = [], GM = [], A = [];
+    for (let j = 0; j < nh; j++) {
+      if (!hs[11 * j + 10]) continue;
+      ax0.push(hs[11 * j], hs[11 * j]); ay0.push(hs[11 * j + 1], hs[11 * j + 1]); az0.push(hs[11 * j + 2], hs[11 * j + 2]);
+      GM.push(G * hs[11 * j + 6], G * hs[11 * j + 8]); A.push(hs[11 * j + 7], hs[11 * j + 9]);
+    }
+    const nc = GM.length;
+    // disk potential of the main galaxy (Miyamoto-Nagai), mass from settled baryons
+    const D = cfg.disk;
+    let md = 0, cx = hs[0], cy = hs[1], cz = hs[2];
+    if (D) {
+      let n = 0;
+      for (let p = 0; p < N; p++) {
+        if (!kind[p]) continue;
+        const dx = pos[3 * p] - cx, dy = pos[3 * p + 1] - cy, dz = pos[3 * p + 2] - cz;
+        if (Math.abs(dz) < D.zIn && dx * dx + dy * dy < D.rIn * D.rIn) n++;
+      }
+      md = D.frac * n * cfg.mGasPart;
+      st.diskM = md;
+    }
+    const GMd = G * md, da = D ? D.a : 1, db = D ? D.b : 1;
+    // spiral density wave
+    const S = cfg.spiral, t = cfg.tStart + st.step * cfg.dt;
+    let sA = 0, sOm = 0, sCot = 0, sRs = 1;
+    if (S && md > 0) {
+      sA = S.amp * Math.min(1, md / S.mFull); sRs = S.Rs; sCot = S.m / Math.tan(S.pitch * Math.PI / 180);
+      sOm = S.omega;
+    }
+    for (let p = 0; p < N; p++) {
+      const x = pos[3 * p], y = pos[3 * p + 1], z = pos[3 * p + 2];
+      let ax = 0, ay = 0, az = 0;
+      for (let k = 0; k < nc; k++) {
+        const dx = x - ax0[k], dy = y - ay0[k], dz = z - az0[k];
+        const rr = Math.sqrt(dx * dx + dy * dy + dz * dz + 0.01);
+        const ra = rr + A[k];
+        const f = -GM[k] / (rr * ra * ra);
+        ax += f * dx; ay += f * dy; az += f * dz;
+      }
+      if (md > 0) {
+        const dx = x - cx, dy = y - cy, dz = z - cz;
+        const R2 = dx * dx + dy * dy, zb = Math.sqrt(dz * dz + db * db), s = da + zb;
+        const Dn = Math.pow(R2 + s * s + 0.01, 1.5);
+        ax -= GMd * dx / Dn; ay -= GMd * dy / Dn; az -= GMd * dz * s / (Dn * zb);
+        if (sA > 0) {
+          const R = Math.sqrt(R2) + 1e-3;
+          const phi = Math.atan2(dy, dx);
+          const psi = S.m * (phi - sOm * t) - sCot * Math.log(R);
+          const g = (R / sRs) * Math.exp(-R / sRs), gp = (1 - R / sRs) / sRs * Math.exp(-R / sRs);
+          const fz = Math.exp(-Math.abs(dz) / 1.0);
+          const cs = Math.cos(psi), sn = Math.sin(psi);
+          // Phi = -sA g cos(psi)
+          const dPdR = -sA * (gp * cs + g * sn * sCot / R);
+          const dPdphi = sA * g * S.m * sn;
+          const aR = -dPdR * fz, aphi = -dPdphi / R * fz;
+          ax += aR * dx / R - aphi * dy / R; ay += aR * dy / R + aphi * dx / R;
+        }
+      }
+      acc[3 * p] = ax; acc[3 * p + 1] = ay; acc[3 * p + 2] = az;
+    }
+  }
+
+  // ---------- gas: cooling on a grid, star formation ----------
+  function gasPhysics(st) {
+    const { cfg, N, pos, vel, kind, birth, cell, gN, gvx, gvy, gvz, hs } = st;
+    const g = cfg.grid, Gn = g.n, L = g.L, h = 2 * L / Gn, dt = cfg.dt;
+    const cx = hs[0], cy = hs[1], cz = hs[2];
+    gN.fill(0); gvx.fill(0); gvy.fill(0); gvz.fill(0);
+    for (let p = 0; p < N; p++) {
+      if (!kind[p] || birth[p] !== BIG) { cell[p] = -1; continue; }
+      const ix = Math.floor((pos[3 * p] - cx + L) / h), iy = Math.floor((pos[3 * p + 1] - cy + L) / h), iz = Math.floor((pos[3 * p + 2] - cz + L) / h);
+      if (ix < 0 || iy < 0 || iz < 0 || ix >= Gn || iy >= Gn || iz >= Gn) { cell[p] = -1; continue; }
+      const c = ix + Gn * (iy + Gn * iz); cell[p] = c;
+      gN[c] += 1; gvx[c] += vel[3 * p]; gvy[c] += vel[3 * p + 1]; gvz[c] += vel[3 * p + 2];
+    }
+    const vol = h * h * h, mp = cfg.mGasPart, C = cfg.cool, SF = cfg.sf;
+    const t = cfg.tStart + st.step * dt;
+    for (let p = 0; p < N; p++) {
+      const c = cell[p]; if (c < 0) continue;
+      const k = gN[c]; if (k < 2) continue;
+      const rho = k * mp / vol;
+      const mx = gvx[c] / k, my = gvy[c] / k, mz = gvz[c] / k;
+      const rate = Math.min(C.max, rho / C.rho0) / C.t0;
+      const damp = 1 - Math.exp(-dt * rate);
+      const ux = vel[3 * p] - mx, uy = vel[3 * p + 1] - my, uz = vel[3 * p + 2] - mz;
+      vel[3 * p] -= ux * damp; vel[3 * p + 1] -= uy * damp; vel[3 * p + 2] -= uz * damp;
+      if (rho > SF.rho && t >= (SF.tMin || -1e9)) {
+        const u2 = (ux * ux + uy * uy + uz * uz) * (1 - damp) * (1 - damp);
+        if (u2 < SF.vCold * SF.vCold) {
+          let pr = dt / SF.t0 * Math.min(SF.boost || 4, Math.sqrt(rho / SF.rho));
+          const Sp = cfg.spiral;
+          if (Sp && Sp.sfArm) {
+            const dx = pos[3 * p] - cx, dy = pos[3 * p + 1] - cy;
+            const R = Math.sqrt(dx * dx + dy * dy) + 1e-3;
+            const psi = Sp.m * (Math.atan2(dy, dx) - Sp.omega * t) - Sp.m / Math.tan(Sp.pitch * Math.PI / 180) * Math.log(R);
+            const w = Math.pow(0.5 + 0.5 * Math.cos(psi), 6);
+            pr *= (1 - Sp.sfArm) + Sp.sfArm * 5 * w;
+          }
+          if (hash01(st.step, p) < pr) birth[p] = st.step;
+        }
+      }
+    }
+  }
+
+  function step(st) {
+    const dt = st.cfg.dt, h = dt / 2, N = st.N, vel = st.vel, pos = st.pos, acc = st.acc, hs = st.hs, ha = st.hacc, nh = st.nh;
+    for (let i = 0; i < nh; i++) for (let k = 0; k < 3; k++) hs[11 * i + 3 + k] += h * ha[3 * i + k];
+    for (let i = 0; i < 3 * N; i++) vel[i] += h * acc[i];
+    for (let i = 0; i < nh; i++) for (let k = 0; k < 3; k++) hs[11 * i + k] += dt * hs[11 * i + 3 + k];
+    for (let i = 0; i < 3 * N; i++) pos[i] += dt * vel[i];
+    st.step++;
+    mergeHalos(st);
+    accel(st);
+    for (let i = 0; i < nh; i++) for (let k = 0; k < 3; k++) hs[11 * i + 3 + k] += h * ha[3 * i + k];
+    for (let i = 0; i < 3 * N; i++) vel[i] += h * acc[i];
+    gasPhysics(st);
+  }
+
+  function snapshot(st) { return { step: st.step, hs: st.hs.slice(), pos: st.pos.slice(), vel: st.vel.slice(), birth: st.birth.slice() }; }
+  function restore(st, cp) { st.step = cp.step; st.hs.set(cp.hs); st.pos.set(cp.pos); st.vel.set(cp.vel); st.birth.set(cp.birth); accel(st); }
+
+  return { build, step, snapshot, restore, BIG, KMS };
+}
+
+
+const SCEN2 = {
+  spiral: {
+    seed: 21, dt: 2, tStart: 1000, tEnd: 13800, cpEvery: 500, mGasPart: 0.000714,
+    df: { g0: 0, rd: 1, mref: 1 }, mergeR: 3, mergeV: 0.1,
+    grid: { n: 28, L: 45 },
+    cool: { rho0: 1.5e-4, t0: 300, max: 20 },
+    sf: { rho: 8e-5, t0: 2000, vCold: 0.03, boost: 4 },
+    disk: { a: 3.5, b: 0.3, frac: 0.8, rIn: 30, zIn: 4 },
+    spiral: { m: 2, pitch: 22, Rs: 9, amp: 0.008, mFull: 6, omega: 0.013, sfArm: 0.9 },
+    halos: [
+      { name: 'Galaksen', pos: [0, 0, 0], vel: [0, 0, 0], spin: [0, 0, 1], M: 100, a: 25, Mi: 1, ai: 1,
+        nDM: 1500, dmScale: 1.2, dmMax: 150,
+        gas: { type: 'hot', n: 14000, a: 30, rmax: 120, rot: 0.45, sig: 0.42 } }
+    ]
+  },
+  ellip: {
+    seed: 33, dt: 2, tStart: 1000, tEnd: 13800, cpEvery: 500, mGasPart: 0.000625,
+    df: { g0: 0.001, rd: 30, g1: 0.003, r1: 5, mref: 30 }, mergeR: 4, mergeV: 0.12,
+    grid: { n: 28, L: 45 },
+    cool: { rho0: 1.5e-4, t0: 300, max: 20 },
+    sf: { rho: 8e-5, t0: 2000, vCold: 0.03, boost: 4 },
+    disk: { a: 3, b: 0.3, frac: 0.8, rIn: 25, zIn: 4 },
+    spiral: { m: 2, pitch: 22, Rs: 8, amp: 0.006, mFull: 6, omega: 0.014, sfArm: 0.85 },
+    halos: [
+      { name: 'Galaksen', pos: [0, 0, 0], vel: [0, 0, 0], spin: [0, 0, 1], M: 30, a: 12, Mi: 0.5, ai: 1,
+        nDM: 800, dmMax: 80, gas: { type: 'hot', n: 7000, a: 15, rmax: 60, rot: 0.45, sig: 0.42 } },
+      { name: 'A', pos: [112, 32, 16], vel: [-16, 48, 8], spin: [0.3, 0.2, 0.9], M: 15, a: 9, Mi: 0.6, ai: 1,
+        nDM: 300, dmMax: 40, stars: { type: 'sphere', n: 500, a: 1.5, rmax: 8, age: 600, rot: 0.3, sig: 0.5 }, gas: { type: 'disk', n: 900, Rd: 2.5, Rmax: 9 } },
+      { name: 'B', pos: [-144, 64, -48], vel: [24, -32, 16], spin: [-0.5, 0.3, 0.8], M: 8, a: 7, Mi: 0.3, ai: 0.8,
+        nDM: 250, dmMax: 30, stars: { type: 'sphere', n: 350, a: 1.2, rmax: 6, age: 700, rot: 0.3, sig: 0.5 }, gas: { type: 'disk', n: 500, Rd: 2, Rmax: 7 } },
+      { name: 'C', pos: [32, -176, 64], vel: [-8, 32, -28], spin: [0.1, -0.7, 0.7], M: 10, a: 8, Mi: 0.4, ai: 0.9,
+        nDM: 250, dmMax: 35, stars: { type: 'sphere', n: 400, a: 1.3, rmax: 7, age: 500, rot: 0.3, sig: 0.5 }, gas: { type: 'disk', n: 600, Rd: 2.2, Rmax: 8 } },
+      { name: 'D', pos: [-64, -96, 144], vel: [32, 8, -16], spin: [0.6, 0.6, 0.5], M: 5, a: 5, Mi: 0.2, ai: 0.6,
+        nDM: 200, dmMax: 25, stars: { type: 'sphere', n: 250, a: 1, rmax: 5, age: 800, rot: 0.2, sig: 0.5 }, gas: { type: 'disk', n: 300, Rd: 1.5, Rmax: 5 } },
+      { name: 'E', pos: [208, -128, -64], vel: [-32, 24, 24], spin: [-0.2, 0.9, 0.3], M: 12, a: 9, Mi: 0.5, ai: 1,
+        nDM: 300, dmMax: 40, stars: { type: 'sphere', n: 450, a: 1.4, rmax: 7, age: 600, rot: 0.3, sig: 0.5 }, gas: { type: 'disk', n: 700, Rd: 2.4, Rmax: 8 } },
+      { name: 'F', pos: [-224, 160, 96], vel: [20, -16, -24], spin: [0.8, -0.1, 0.5], M: 4, a: 4, Mi: 0.15, ai: 0.5,
+        nDM: 150, dmMax: 20, stars: { type: 'sphere', n: 200, a: 0.9, rmax: 4, age: 900, rot: 0.2, sig: 0.5 }, gas: { type: 'disk', n: 250, Rd: 1.2, Rmax: 4 } }
+    ]
+  }
+};
+
+
+(function () {
+  'use strict';
+  const SF = formFactory();
+  const BIG = SF.BIG;
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const fmt2 = x => x.toFixed(2).replace('.', ',');
+  const STRIDE = 2, Q = 0.05;
+
+  const META = {
+    spiral: {
+      speeds: [25, 50, 100, 200, 300], speed: 100,
+      zoom: t => t < 1500 ? 170 : t > 5000 ? 75 : 170 + (75 - 170) * (t - 1500) / 3500,
+      phases: () => [
+        [1000, 'Varm gas i en halo af mørkt stof', 'Én milliard år efter Big Bang. Gassen er millioner af grader varm og fylder hele haloen. Den drejer langsomt.'],
+        [1500, 'Gassen køler og falder ind', 'Inde ved centrum, hvor gassen er tættest, køler den hurtigst. Den mister sin varme, men ikke sin rotation, og falder ind.'],
+        [2300, 'Bulen tændes', 'Gassen med mindst rotation når helt ind. Her dannes de første stjerner i en tæt, rund bule.'],
+        [3500, 'En skive vokser', 'Gas med mere rotation kan ikke nå ind til centrum. Den lægger sig i en tynd, roterende skive, der vokser udad.'],
+        [5000, 'Spiralarme', 'Stjernerne fødes helst i tæthedsbølgens to arme. De unge, blå stjerner tegner armene; de ældre bliver gule.'],
+        [9000, 'En moden spiralgalakse', 'Den varme gas i haloen er ved at være brugt op, og stjernedannelsen aftager langsomt.'],
+        [13700, 'I dag', 'En gammel, gul bule, en tynd skive og unge, blå stjerner i armene, ligesom Mælkevejen og Andromeda.']
+      ],
+      ticks: () => [[2300, 'Bule', 'Bulen tændes'], [3500, 'Skive', 'Skiven vokser'], [5000, 'Arme', 'Spiralarme'], [13800, 'I dag', 'I dag']],
+      story: () => `<h2>Stille afkøling: en spiralgalakse</h2>
+<p>Efter Big Bang trak det mørke stof sig sammen i haloer, og almindeligt stof fulgte med som varm gas. Hvis en halo får lov at udvikle sig i fred, køler gassen langsomt og falder ind. Gassen bevarer sin rotation (impulsmomentet), så den kan ikke falde helt ind til centrum, men lægger sig i en roterende skive. Det er billedet fra Fall & Efstathiou (1980) og Mo, Mao & White (1998).</p>
+<p>Galaksen vokser indefra og ud: de inderste stjerner er ældst, og skiven bliver ved med at vokse udad, mens der falder ny gas ind. Spiralarmene er ikke faste strukturer, men en tæthedsbølge, som stjernerne passerer igennem (Lin & Shu 1964). Unge, varme stjerner lever kort, så de lyser kun op i armene, hvor de blev født.</p>
+<dl class="facts">
+<dt>Masse i modellen</dt><dd>Halo 1 × 10¹² M☉ · gas 1 × 10¹¹ M☉</dd>
+<dt>Partikler</dt><dd>14 000 gas/stjerner + 1 500 mørkt stof</dd>
+<dt>Tidsskridt</dt><dd>2 mio. år</dd>
+<dt>Farver</dt><dd>blå: ung stjerne · gul/orange: gammel · cyan: kold gas · rødlig: varm gas · violet: mørkt stof</dd>
+</dl>`
+    },
+    ellip: {
+      speeds: [25, 50, 100, 200, 300], speed: 100,
+      zoom: t => t < 1500 ? 480 : t > 9000 ? 130 : 480 + (130 - 480) * (t - 1500) / 7500,
+      phases: ev => {
+        const ph = [[1000, 'En ung galaksegruppe', 'Seks dværggalakser, hver med sin halo af mørkt stof, sine stjerner og sin gas, kredser om en større galakse.']];
+        ev.merges.forEach((tm, i) => ph.push([tm - 60, 'Sammenstød nr. ' + (i + 1), 'En dværggalakse bliver opslugt. Tidevandet spreder dens stjerner, og dens gas støder sammen med værtens og danner et udbrud af nye stjerner.']));
+        const last = ev.merges.length ? ev.merges[ev.merges.length - 1] : 6000;
+        ph.push([last + 300, 'En elliptisk galakse', 'Sammenstødene har blandet stjernernes baner. Der er ingen skive tilbage, men en rund sky af stjerner, der bevæger sig i alle retninger.']);
+        ph.push([Math.max(last + 1500, 11000), 'Gammel og rød', 'Gassen blev brugt op i udbruddene. Uden ny stjernedannelse ældes galaksen og bliver gul og rød.']);
+        return ph;
+      },
+      ticks: ev => {
+        const t = ev.merges.map((m, i) => [m, String(i + 1), (i + 1) + '. sammenstød']);
+        t.push([13800, 'I dag', 'I dag']);
+        return t;
+      },
+      story: ev => `<h2>Mange sammenstød: en elliptisk galakse</h2>
+<p>I tætte omgivelser vokser galakser mest ved at sluge andre. I modellen smelter ${ev.merges.length} dværggalakser sammen med værten, den første efter ${fmt2(ev.merges[0] / 1000)} mia. år. Hvert sammenstød ryster stjernernes baner, så en eventuel skive bliver tyk og til sidst rund (Toomre 1977 foreslog, at elliptiske galakser opstår sådan).</p>
+<p>Ved sammenstødene presses gassen sammen, og der dannes mange stjerner på kort tid. Derfor bliver gassen brugt tidligt, og en elliptisk galakse består i dag mest af gamle, gul-røde stjerner. Store elliptiske galakser findes især i midten af galaksehobe.</p>
+<dl class="facts">
+<dt>Masse i modellen</dt><dd>Vært 3 × 10¹¹ M☉ · dværge 4–15 × 10¹⁰ M☉</dd>
+<dt>Sammenstød</dt><dd>${ev.merges.map(m => fmt2(m / 1000)).join(' · ')} mia. år efter Big Bang</dd>
+<dt>Farver</dt><dd>blå: ung stjerne · gul/orange: gammel · cyan: kold gas · rødlig: varm gas · violet: mørkt stof</dd>
+</dl>`
+    }
+  };
+
+  // ---------- three.js ----------
+  const stage = document.getElementById('stage');
+  const canvas = document.getElementById('cv');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setClearColor(0x06070b, 1);
+  const scene3 = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, 1, 0.5, 30000);
+  const uniforms = { uScale: { value: 700 } };
+  const ptVS = `attribute vec3 aColor; varying vec3 vC; uniform float uScale; uniform float uSize; uniform float uMin;
+    void main(){ vC=aColor; vec4 mv=modelViewMatrix*vec4(position,1.0); gl_Position=projectionMatrix*mv;
+    gl_PointSize=clamp(uSize*uScale/max(-mv.z,0.1), uMin, 7.0); if (dot(aColor,aColor) < 1e-6) gl_PointSize = 0.0; }`;
+  const ptFS = `varying vec3 vC; uniform float uAlpha;
+    void main(){ vec2 d=gl_PointCoord-0.5; float r=dot(d,d)*4.0; if(r>1.0) discard; float a=exp(-r*2.5);
+    gl_FragColor=vec4(vC*a*uAlpha,1.0); }`;
+  function pointMat(size, alpha, min) {
+    return new THREE.ShaderMaterial({
+      uniforms: { uScale: uniforms.uScale, uSize: { value: size }, uAlpha: { value: alpha }, uMin: { value: min } },
+      vertexShader: ptVS, fragmentShader: ptFS, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
+    });
+  }
+  (function starfield() {
+    const n = 2000, p = new Float32Array(3 * n), c = new Float32Array(3 * n);
+    let s = 77; const r = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
+    for (let i = 0; i < n; i++) {
+      const u = 2 * r() - 1, ph = 6.2831853 * r(), q = Math.sqrt(1 - u * u), R = 9000;
+      p[3 * i] = R * q * Math.cos(ph); p[3 * i + 1] = R * q * Math.sin(ph); p[3 * i + 2] = R * u;
+      const b = 0.1 + 0.4 * Math.pow(r(), 3); c[3 * i] = b; c[3 * i + 1] = b * 0.95; c[3 * i + 2] = b;
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(p, 3));
+    g.setAttribute('aColor', new THREE.BufferAttribute(c, 3));
+    scene3.add(new THREE.Points(g, pointMat(0, 1, 1.3)));
+  })();
+
+  // ---------- scenes ----------
+  const scenes = {};
+  let cur = null;
+
+  function mergeTimes(cfg) {
+    const c = JSON.parse(JSON.stringify(cfg));
+    c.halos.forEach(h => { h.nDM = 0; delete h.stars; delete h.gas; }); c.disk = null; c.spiral = null;
+    const st = SF.build(c), steps = Math.round((c.tEnd - c.tStart) / c.dt), out = [], seen = {};
+    for (let s = 1; s <= steps; s++) {
+      SF.step(st);
+      for (let i = 1; i < st.nh; i++) if (!st.hs[11 * i + 10] && !seen[i]) { seen[i] = 1; out.push(c.tStart + s * c.dt); }
+    }
+    return out.sort((a, b) => a - b);
+  }
+
+  function makeWorker(cfg, S) {
+    if (typeof Worker === 'undefined') return;
+    try {
+      const src = 'const SF=(' + formFactory.toString() + ')();\n' +
+        'onmessage=function(e){var cfg=e.data.cfg;var st=SF.build(cfg);var cp=Math.round(cfg.cpEvery/cfg.dt);var tot=Math.round((cfg.tEnd-cfg.tStart)/cfg.dt);' +
+        'for(var s=1;s<=tot;s++){SF.step(st);if(s%cp===0){var c=SF.snapshot(st);postMessage(c,[c.hs.buffer,c.pos.buffer,c.vel.buffer,c.birth.buffer]);}}postMessage({done:true});};';
+      const w = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+      w.onmessage = e => { if (e.data.done) { w.terminate(); return; } if (!S.cps.has(e.data.step)) S.cps.set(e.data.step, e.data); };
+      w.onerror = ev => { if (ev && ev.preventDefault) ev.preventDefault(); };
+      w.postMessage({ cfg });
+    } catch (err) { /* main thread does the work */ }
+  }
+
+  function buildScene(key) {
+    const cfg = SCEN2[key], meta = META[key];
+    const st = SF.build(cfg);
+    const total = Math.round((cfg.tEnd - cfg.tStart) / cfg.dt);
+    const cpSteps = Math.round(cfg.cpEvery / cfg.dt);
+    const ev = { merges: cfg.halos.length > 1 ? mergeTimes(cfg) : [] };
+    const S = {
+      key, cfg, meta, st, total, cpSteps, ev, target: 0, cps: new Map(), segs: new Map(),
+      disp: new Float32Array(st.pos.length), dhs: new Float64Array(st.hs.length), dbirth: st.birth, dstep: 0, revReady: true
+    };
+    S.disp.set(st.pos); S.dhs.set(st.hs);
+    S.cps.set(0, SF.snapshot(st));
+
+    const group = new THREE.Group();
+    S.col = new Float32Array(3 * st.N);
+    const geo = new THREE.BufferGeometry();
+    S.posAttr = new THREE.BufferAttribute(S.disp, 3); S.posAttr.setUsage(THREE.DynamicDrawUsage);
+    S.colAttr = new THREE.BufferAttribute(S.col, 3); S.colAttr.setUsage(THREE.DynamicDrawUsage);
+    geo.setAttribute('position', S.posAttr); geo.setAttribute('aColor', S.colAttr);
+    const pts = new THREE.Points(geo, pointMat(0.5, 0.42, 1.0));
+    pts.frustumCulled = false; group.add(pts);
+    group.visible = false; scene3.add(group); S.group = group;
+    S.jit = new Float32Array(st.N);
+    for (let p = 0; p < st.N; p++) S.jit[p] = 0.8 + 0.4 * ((p * 2654435761 >>> 0) % 1000) / 1000;
+
+    S.cam = { theta: 0.5, phi: 1.1, tgtPhi: null, view: 'tilt', dist: meta.zoom(cfg.tStart) * Math.max(1, 0.9 / camera.aspect), target: new THREE.Vector3(st.hs[0], st.hs[1], st.hs[2]), auto: true };
+    S.speed = meta.speed;
+    makeWorker(cfg, S);
+    return S;
+  }
+
+  // ---------- colours ----------
+  const AGE = [[0, 0.45, 0.68, 1.6], [200, 0.62, 0.78, 1.3], [1000, 0.95, 0.95, 1.0], [3000, 1.0, 0.88, 0.62], [7000, 1.0, 0.7, 0.4], [12000, 0.95, 0.5, 0.3]];
+  function ageCol(a, out) {
+    let k = 0; while (k < AGE.length - 2 && a > AGE[k + 1][0]) k++;
+    const A = AGE[k], B = AGE[k + 1], w = Math.max(0, Math.min(1, (a - A[0]) / (B[0] - A[0])));
+    out[0] = A[1] + (B[1] - A[1]) * w; out[1] = A[2] + (B[2] - A[2]) * w; out[2] = A[3] + (B[3] - A[3]) * w;
+  }
+  const tmpc = [0, 0, 0];
+  function colorize(S) {
+    const st = S.st, col = S.col, P = S.disp, B = S.dbirth, step = S.dstep, dt = S.cfg.dt;
+    const cx = S.dhs[0], cy = S.dhs[1], cz = S.dhs[2];
+    const sDM = $('showDM').checked, sGas = $('showGas').checked, sSt = $('showStars').checked;
+    let nStar = 0, nGas = 0;
+    for (let p = 0; p < st.N; p++) {
+      const j = S.jit[p];
+      let r = 0, g = 0, b = 0;
+      if (!st.kind[p]) { if (sDM) { r = 0.22 * j; g = 0.14 * j; b = 0.42 * j; } }
+      else if (B[p] !== BIG && B[p] <= step) {
+        nStar++;
+        if (sSt) { ageCol((step - B[p]) * dt, tmpc); r = tmpc[0] * j; g = tmpc[1] * j; b = tmpc[2] * j; }
+      } else {
+        nGas++;
+        if (sGas) {
+          const dz = P[3 * p + 2] - cz, dx = P[3 * p] - cx, dy = P[3 * p + 1] - cy;
+          if (Math.abs(dz) < 2.5 && dx * dx + dy * dy < 1600) { r = 0.25 * j; g = 0.75 * j; b = 1.0 * j; }
+          else { r = 0.42 * j; g = 0.17 * j; b = 0.1 * j; }
+        }
+      }
+      col[3 * p] = r; col[3 * p + 1] = g; col[3 * p + 2] = b;
+    }
+    S.colAttr.needsUpdate = true;
+    return [nStar, nGas];
+  }
+
+  // ---------- UI ----------
+  const $ = id => document.getElementById(id);
+  const timeEl = $('time'), playBtn = $('play'), busyEl = $('busy');
+  let playing = !reduceMotion, dragging = false, dir = 1;
+
+  function setPlayUI() {
+    $('playIcon').innerHTML = playing ? '<path d="M4 4h12v12H4z"/>' : '<path d="M5 3l12 7-12 7z"/>';
+    $('playTxt').textContent = playing ? 'Stop' : 'Start';
+    playBtn.setAttribute('aria-pressed', String(playing));
+  }
+  function setDirUI() { document.querySelectorAll('#dir button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.dir === dir))); }
+  function setSpeedUI() {
+    const sp = cur.meta.speeds, i = sp.indexOf(cur.speed);
+    $('speedOut').textContent = cur.speed.toLocaleString('da-DK') + ' mio. år/s';
+    $('slower').disabled = i <= 0; $('faster').disabled = i >= sp.length - 1;
+  }
+  function togglePlay() {
+    if (!playing) {
+      const s = Math.round(cur.target);
+      if (dir > 0 && s >= cur.total) cur.target = 0;
+      if (dir < 0 && s <= 0) cur.target = cur.total;
+    }
+    playing = !playing; setPlayUI();
+  }
+  function setDir(d) { dir = d; setDirUI(); if (!playing) togglePlay(); }
+  function changeSpeed(k) { const sp = cur.meta.speeds, i = Math.max(0, Math.min(sp.length - 1, sp.indexOf(cur.speed) + k)); cur.speed = sp[i]; setSpeedUI(); }
+  playBtn.addEventListener('click', togglePlay);
+  document.querySelectorAll('#dir button').forEach(b => b.addEventListener('click', () => setDir(+b.dataset.dir)));
+  $('slower').addEventListener('click', () => changeSpeed(-1));
+  $('faster').addEventListener('click', () => changeSpeed(1));
+  document.addEventListener('keydown', e => {
+    const tag = (e.target && e.target.tagName) || '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === ' ' && tag !== 'BUTTON') { e.preventDefault(); togglePlay(); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); setDir(-1); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); setDir(1); }
+    else if (e.key === '+' || e.key === '=') changeSpeed(1);
+    else if (e.key === '-' || e.key === '_') changeSpeed(-1);
+  });
+  timeEl.addEventListener('pointerdown', () => { dragging = true; });
+  window.addEventListener('pointerup', () => { dragging = false; });
+  timeEl.addEventListener('input', () => { cur.target = +timeEl.value; });
+
+  function segButtons(el, items, active, onPick) {
+    el.innerHTML = '';
+    items.forEach(([val, label]) => {
+      const b = document.createElement('button'); b.textContent = label; b.setAttribute('aria-pressed', String(val === active));
+      b.addEventListener('click', () => { [...el.children].forEach(c => c.setAttribute('aria-pressed', 'false')); b.setAttribute('aria-pressed', 'true'); onPick(val); });
+      el.appendChild(b);
+    });
+  }
+  const VIEWS = [['top', 'Ovenfra', 0.04], ['side', 'Fra siden', Math.PI / 2 - 0.02], ['tilt', 'Skråt', 1.1]];
+  $('follow').parentElement.hidden = true;
+  $('autoZoom').addEventListener('change', e => { cur.cam.auto = e.target.checked; });
+
+  function buildTicks(S) {
+    const el = $('ticks'); el.innerHTML = '';
+    S.tickEls = S.meta.ticks(S.ev).map(([t, txt, title]) => {
+      const step = Math.round((t - S.cfg.tStart) / S.cfg.dt);
+      const b = document.createElement('button'); b.className = 'tick'; b.textContent = txt; b.title = title;
+      b.setAttribute('aria-label', 'Gå til: ' + title);
+      b.style.left = (100 * step / S.total) + '%'; b.dataset.step = step;
+      b.addEventListener('click', () => { cur.target = step; });
+      el.appendChild(b); return b;
+    });
+  }
+  function activate(key) {
+    if (!scenes[key]) scenes[key] = buildScene(key);
+    if (cur) cur.group.visible = false;
+    cur = scenes[key]; cur.group.visible = true;
+    document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.scene === key)));
+    timeEl.max = cur.total; timeEl.value = Math.round(cur.dstep);
+    $('autoZoom').checked = cur.cam.auto;
+    $('story').innerHTML = cur.meta.story(cur.ev);
+    $('legend').innerHTML = '<div class="legend"><span><i style="background:var(--young)"></i>unge stjerner</span><span><i style="background:var(--old)"></i>gamle stjerner</span><span><i style="background:var(--gas)"></i>kold gas</span><span><i style="background:var(--hot)"></i>varm gas</span><span><i style="background:var(--dm)"></i>mørkt stof</span></div>';
+    cur.phases = cur.meta.phases(cur.ev).sort((a, b) => a[0] - b[0]);
+    lastPhase = null;
+    buildTicks(cur); setSpeedUI();
+    segButtons($('views'), VIEWS.map(v => [v[0], v[1]]), cur.cam.view, k => { cur.cam.view = k; cur.cam.tgtPhi = VIEWS.find(v => v[0] === k)[2]; });
+    if (dir > 0 && Math.round(cur.target) >= cur.total) cur.target = 0;
+  }
+  document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => activate(t.dataset.scene)));
+
+  // camera interaction
+  const ptrs = new Map(); let pinch0 = 0;
+  canvas.addEventListener('pointerdown', e => { canvas.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch0 = Math.hypot(a.x - b.x, a.y - b.y); } });
+  canvas.addEventListener('pointermove', e => {
+    if (!ptrs.has(e.pointerId)) return;
+    const p = ptrs.get(e.pointerId), dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
+    const c = cur.cam;
+    if (ptrs.size === 1) { c.theta -= dx * 0.006; c.phi = Math.min(Math.PI - 0.03, Math.max(0.03, c.phi - dy * 0.006)); c.tgtPhi = null; }
+    else if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y); if (pinch0 > 0 && d > 0) zoomBy(pinch0 / d); pinch0 = d; }
+  });
+  const endPtr = e => { ptrs.delete(e.pointerId); pinch0 = 0; };
+  canvas.addEventListener('pointerup', endPtr); canvas.addEventListener('pointercancel', endPtr);
+  canvas.addEventListener('wheel', e => { e.preventDefault(); zoomBy(Math.exp(e.deltaY * 0.0012)); }, { passive: false });
+  function zoomBy(f) { const c = cur.cam; c.auto = false; $('autoZoom').checked = false; c.dist = Math.min(6000, Math.max(5, c.dist * f)); }
+
+  function resize() {
+    const w = stage.clientWidth, h = stage.clientHeight;
+    renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+    uniforms.uScale.value = h * renderer.getPixelRatio() / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)));
+  }
+  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(resize).observe(stage); else window.addEventListener('resize', resize);
+  resize();
+
+  // ---------- simulation driving (forward live, backward from cached segments) ----------
+  function bestCheckpoint(S, tgt) {
+    for (let s = Math.floor(tgt / S.cpSteps) * S.cpSteps; s >= 0; s -= S.cpSteps) if (S.cps.has(s)) return S.cps.get(s);
+    return S.cps.get(0);
+  }
+  function stepAndSave(S, st) { SF.step(st); if (st.step % S.cpSteps === 0 && !S.cps.has(st.step)) S.cps.set(st.step, SF.snapshot(st)); }
+  function advance(S, budgetMs) {
+    const tgt = Math.max(0, Math.min(S.total, Math.round(S.target))), st = S.st;
+    if (tgt === st.step) return;
+    const cp = bestCheckpoint(S, tgt);
+    if (tgt < st.step || cp.step > st.step) SF.restore(st, cp);
+    const t0 = performance.now();
+    while (st.step < tgt && performance.now() - t0 < budgetMs) stepAndSave(S, st);
+  }
+  function segIndex(S, t) { return Math.max(0, Math.min(Math.floor(t / S.cpSteps), Math.floor((S.total - 1) / S.cpSteps))); }
+  function getSeg(S, k, create) {
+    let c = S.segs.get(k);
+    if (!c && create) {
+      const start = k * S.cpSteps, end = Math.min(start + S.cpSteps, S.total);
+      const nf = Math.floor((end - start) / STRIDE) + 1, n3 = S.st.pos.length, nh = S.st.hs.length;
+      c = { k, start, nf, n3, nh, pos: new Int16Array(nf * n3), hs: new Float64Array(nf * nh), birth: null, filled: 0 };
+      S.segs.set(k, c);
+    }
+    return c || null;
+  }
+  function fillSeg(S, c, budgetMs) {
+    if (c.filled >= c.nf) return;
+    const sc = S.scratch || (S.scratch = SF.build(S.cfg));
+    const want0 = c.start + c.filled * STRIDE;
+    if (S.scratchOwner !== c || sc.step > want0) { SF.restore(sc, bestCheckpoint(S, want0)); S.scratchOwner = c; }
+    const t0 = performance.now(), n3 = c.n3;
+    while (c.filled < c.nf && performance.now() - t0 < budgetMs) {
+      const want = c.start + c.filled * STRIDE;
+      while (sc.step < want) stepAndSave(S, sc);
+      const o = c.filled * n3, p = sc.pos;
+      for (let i = 0; i < n3; i++) { const v = Math.round(p[i] / Q); c.pos[o + i] = v > 32767 ? 32767 : v < -32767 ? -32767 : v; }
+      c.hs.set(sc.hs, c.filled * c.nh);
+      c.filled++;
+      if (c.filled === c.nf) c.birth = sc.birth.slice();
+    }
+  }
+  function showFromCache(S, tgt, fill) {
+    const k = segIndex(S, tgt), c = getSeg(S, k, fill);
+    if (!c) return false;
+    if (fill) fillSeg(S, c, 20);
+    if (c.filled < c.nf) return false;
+    const f = Math.max(0, Math.min(c.nf - 1, (tgt - c.start) / STRIDE));
+    const f0 = Math.floor(f), f1 = Math.min(c.nf - 1, f0 + 1), w = f - f0;
+    const n3 = c.n3, o0 = f0 * n3, o1 = f1 * n3, d = S.disp, P = c.pos;
+    for (let i = 0; i < n3; i++) d[i] = (P[o0 + i] + (P[o1 + i] - P[o0 + i]) * w) * Q;
+    for (let i = 0; i < c.nh; i++) S.dhs[i] = c.hs[f0 * c.nh + i] + (c.hs[f1 * c.nh + i] - c.hs[f0 * c.nh + i]) * w;
+    S.dbirth = c.birth; S.dstep = c.start + f * STRIDE;
+    if (fill && k > 0) fillSeg(S, getSeg(S, k - 1, true), 6);
+    for (const key of S.segs.keys()) if (key < k - 1 || key > k + 1) S.segs.delete(key);
+    return true;
+  }
+
+  // ---------- frame ----------
+  const tmpTarget = new THREE.Vector3();
+  let lastPhase = null, last = performance.now(), statTick = 0;
+  function frame(now) {
+    const dtR = Math.min(0.1, (now - last) / 1000); last = now;
+    const S = cur, st = S.st, cfg = S.cfg, revMode = playing && dir < 0;
+    if (playing && !dragging) {
+      const d = S.speed * dtR / cfg.dt;
+      if (dir > 0) {
+        if (st.step + 2 >= Math.round(S.target)) S.target = Math.min(S.total, Math.min(S.target, st.step + 30) + d);
+        if (st.step >= S.total) { playing = false; setPlayUI(); }
+      } else {
+        if (S.revReady) S.target = Math.max(0, S.target - d);
+        if (S.dstep <= 0) { playing = false; setPlayUI(); }
+      }
+    }
+    if (!revMode) advance(S, playing ? 16 : 26);
+    const liveOk = st.step === Math.round(S.target);
+    let shown = false;
+    if (revMode || !liveOk) shown = showFromCache(S, S.target, revMode);
+    S.revReady = !revMode || shown;
+    if (!shown && (liveOk || !revMode)) { S.disp.set(st.pos); S.dhs.set(st.hs); S.dbirth = st.birth; S.dstep = st.step; }
+    busyEl.hidden = !(revMode && !S.revReady) && Math.abs(S.target - S.dstep) < 40;
+    S.posAttr.needsUpdate = true;
+    const [nStar, nGas] = colorize(S);
+
+    const t = cfg.tStart + S.dstep * cfg.dt;
+    $('clock').innerHTML = t >= 13790 ? '13,8 mia. år <small>· i dag</small>' : fmt2(t / 1000) + ' mia. år <small>efter Big Bang</small>';
+    let ph = S.phases[0]; for (const p of S.phases) if (t >= p[0]) ph = p;
+    if (ph !== lastPhase) { $('phaseTitle').textContent = ph[1]; $('phaseText').textContent = ph[2]; lastPhase = ph; }
+    if (!dragging) timeEl.value = Math.round(S.dstep);
+    S.tickEls.forEach(b => b.classList.toggle('on', Math.abs(+b.dataset.step - S.dstep) < S.total * 0.01));
+    if (++statTick % 6 === 0) {
+      const tot = nStar + nGas || 1;
+      let alive = 0; for (let i = 1; i < st.nh; i++) if (S.dhs[11 * i + 10] > 0.5) alive++;
+      $('stats').innerHTML = `<span>stjerner</span><b>${Math.round(100 * nStar / tot)} %</b><span>gas ${Math.round(100 * nGas / tot)} %</span>` +
+        (st.nh > 1 ? `<span class="pair">dværggalakser tilbage</span><b>${alive}</b>` : '');
+    }
+
+    // camera follows the main galaxy
+    const cam = S.cam;
+    tmpTarget.set(S.dhs[0], S.dhs[1], S.dhs[2]);
+    const k = 1 - Math.exp(-dtR * 4);
+    cam.target.lerp(tmpTarget, k);
+    if (cam.tgtPhi != null) { cam.phi += (cam.tgtPhi - cam.phi) * k; if (Math.abs(cam.tgtPhi - cam.phi) < 0.002) cam.tgtPhi = null; }
+    if (cam.auto) { const want = S.meta.zoom(t) * Math.max(1, 0.9 / camera.aspect); cam.dist += (want - cam.dist) * (1 - Math.exp(-dtR * 1.5)); }
+    const sp = Math.sin(cam.phi);
+    camera.position.set(cam.target.x + cam.dist * sp * Math.cos(cam.theta), cam.target.y + cam.dist * sp * Math.sin(cam.theta), cam.target.z + cam.dist * Math.cos(cam.phi));
+    camera.up.set(0, 0, 1); camera.lookAt(cam.target);
+    renderer.render(scene3, camera);
+    requestAnimationFrame(frame);
+  }
+
+  activate(location.hash === '#elliptisk' ? 'ellip' : 'spiral');
+  setPlayUI(); setDirUI();
+  requestAnimationFrame(frame);
+})();
+
+</script>
+
+</body>
+</html>
