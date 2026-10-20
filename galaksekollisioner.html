@@ -1,0 +1,1033 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Galaksekollisioner i 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body { margin: 0; }
+img { max-width: 100%; }
+/* Layout: et observatorie-instrument — én stor 3D-scene som hovedperson, instrumentpanel under, forklaring nederst */
+:root {
+  --void: #06070b;
+  --panel: #0d1017;
+  --raise: #141824;
+  --line: #232a3a;
+  --ink: #e9e6dd;
+  --muted: #9097a8;
+  --mw: #f3b46c;
+  --m31: #8db4ff;
+  --m51: #9cc0ff;
+  --n5195: #f4a07a;
+  --m33: #7fe0c0;
+  --sun: #fff1a8;
+  --focus: #c9d8ff;
+  --f-display: "Spectral", Georgia, "Times New Roman", serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { background: var(--void); color: var(--ink); }
+body { font-family: var(--f-body); font-size: 15px; line-height: 1.55; }
+.wrap {
+  max-width: 1180px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 56px;
+  display: grid; gap: 18px;
+}
+header { display: grid; gap: 6px; }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+h1 { font-family: var(--f-display); font-weight: 400; font-size: clamp(30px, 5vw, 48px); line-height: 1.08; margin: 0; text-wrap: balance; }
+h1 em { font-style: italic; color: var(--m31); }
+h1 .mw { color: var(--mw); font-style: italic; }
+.lede { margin: 4px 0 0; max-width: 64ch; color: var(--muted); }
+
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.tab {
+  font: 500 14px/1.2 var(--f-body); color: var(--muted);
+  background: transparent; border: 1px solid var(--line); border-radius: 999px;
+  padding: 9px 16px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+}
+.tab .dots { display: inline-flex; gap: 3px; }
+.tab .dots i { width: 9px; height: 9px; border-radius: 50%; display: block; }
+.tab[aria-selected="true"] { color: var(--ink); background: var(--raise); border-color: #3a4560; }
+.tab:hover { color: var(--ink); }
+
+.stage {
+  position: relative; height: clamp(380px, 66vh, 740px);
+  background: radial-gradient(ellipse at 50% 45%, #0c1020 0%, var(--void) 70%);
+  border: 1px solid var(--line); border-radius: 6px; overflow: hidden;
+}
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.stage canvas:active { cursor: grabbing; }
+.hud { position: absolute; pointer-events: none; }
+.hud.tl { top: 14px; left: 16px; right: 16px; display: grid; gap: 2px; max-width: 46ch; }
+.clock { font-family: var(--f-mono); font-size: clamp(22px, 3.2vw, 32px); font-weight: 500; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.phase-title { font-family: var(--f-display); font-size: 19px; font-style: italic; }
+.phase-text { color: #c5c8d2; font-size: 14px; text-shadow: 0 1px 6px var(--void); }
+.hud.br { bottom: 12px; right: 16px; text-align: right; font-family: var(--f-mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; display: grid; gap: 2px; }
+.hud.br b { color: var(--ink); font-weight: 500; font-size: 14px; }
+.hud.br .pair:not(:first-child) { margin-top: 6px; }
+.hud.bl { bottom: 12px; left: 16px; font-size: 12px; color: var(--muted); }
+.busy { position: absolute; top: 14px; right: 16px; font-family: var(--f-mono); font-size: 12px; color: var(--muted); background: var(--panel); border: 1px solid var(--line); padding: 4px 10px; border-radius: 999px; }
+.labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.lbl { position: absolute; left: 0; top: 0; font-family: var(--f-mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; transform: translate(-50%, -50%); padding-left: 0; }
+.lbl::before { content: ""; position: absolute; left: -10px; top: 50%; width: 6px; height: 1px; background: currentColor; opacity: .7; }
+.lbl.sun { text-transform: none; letter-spacing: .02em; font-size: 12px; }
+.lbl.sun::before { left: auto; right: -10px; }
+
+.controls {
+  display: grid; gap: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+  padding: 14px 16px;
+}
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.transport { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.play {
+  height: 44px; min-width: 112px; padding: 0 18px 0 14px; border-radius: 999px; border: 1px solid #4a5878; background: #1b2233;
+  color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 600 15px/1 var(--f-body);
+}
+.play:hover { background: #222b40; }
+.play svg { width: 16px; height: 16px; fill: currentColor; }
+.dir button { display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px; }
+.dir svg { width: 14px; height: 14px; fill: currentColor; }
+.speedctl { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.speedctl button { width: 40px; height: 36px; border: 0; background: transparent; color: var(--ink); font: 500 20px/1 var(--f-body); cursor: pointer; }
+.speedctl button:hover { background: var(--raise); }
+.speedctl button:disabled { color: #4a5068; cursor: default; background: transparent; }
+.speedctl output { min-width: 9.5em; text-align: center; font: 500 13px/1 var(--f-mono); font-variant-numeric: tabular-nums; border-inline: 1px solid var(--line); padding: 11px 8px; }
+.keys { margin-left: auto; }
+.track { position: relative; padding-top: 26px; min-width: 0; }
+.ticks { position: absolute; top: 0; left: 9px; right: 9px; height: 24px; }
+.tick {
+  position: absolute; top: 0; transform: translateX(-50%); font: 500 11px/1 var(--f-mono); color: var(--muted);
+  background: none; border: 0; padding: 2px 3px; cursor: pointer; white-space: nowrap;
+}
+.tick::after { content: ""; position: absolute; left: 50%; top: 17px; width: 1px; height: 9px; background: currentColor; }
+.tick:hover, .tick.on { color: var(--ink); }
+.tick.small { font-size: 0; width: 14px; height: 18px; }
+input[type=range] { width: 100%; accent-color: var(--m31); margin: 0; height: 22px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.seg button {
+  font: 500 13px/1 var(--f-body); color: var(--muted); background: transparent; border: 0; padding: 8px 12px; cursor: pointer;
+  border-right: 1px solid var(--line);
+}
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { color: var(--ink); background: var(--raise); }
+.ctl-label { font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.group { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.chk { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); cursor: pointer; }
+.chk input { accent-color: var(--m31); }
+.hint { font-size: 12px; color: var(--muted); margin: 0; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.notes { display: grid; grid-template-columns: 1.3fr 1fr; gap: 28px; padding-top: 8px; }
+.notes > section { min-width: 0; }
+.notes h2 { font-family: var(--f-display); font-weight: 400; font-size: 24px; margin: 0 0 8px; text-wrap: balance; }
+.notes h3 { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 500; margin: 0 0 8px; }
+.notes p { margin: 0 0 10px; max-width: 66ch; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 12px 0 0; font-size: 14px; }
+.facts dt { font-family: var(--f-mono); font-size: 12px; color: var(--muted); padding-top: 2px; }
+.facts dd { margin: 0; font-variant-numeric: tabular-nums; }
+.model { border-left: 1px solid var(--line); padding-left: 24px; color: #c5c8d2; font-size: 14px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+@media (max-width: 760px) {
+  .notes { grid-template-columns: 1fr; }
+  .model { border-left: 0; border-top: 1px solid var(--line); padding-left: 0; padding-top: 16px; }
+  .phase-text { font-size: 13px; }
+  .hud.bl { display: none; }
+}
+@media (max-width: 640px) { .keys { display: none; } }
+@media (max-width: 480px) { .tick { font-size: 10px; } .speedctl output { min-width: 8em; } }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Lokalgruppen · simulering i 3D</div>
+    <h1>Når galakser støder sammen: <span class="mw">Mælkevejen</span>, <em>Andromeda</em> og Malstrømsgalaksen</h1>
+    <p class="lede">To sammenstød i vores kosmiske nabolag. Det første ligger milliarder af år ude i fremtiden og involverer også Trekantgalaksen M33. Det andet er Malstrømsgalaksen M51, hvis spiralarme blev vakt af den lille nabo NGC 5195. Træk i billedet for at dreje, rul eller knib for at zoome.</p>
+  </header>
+
+  <div class="tabs" role="tablist" aria-label="Vælg sammenstød">
+    <button class="tab" role="tab" id="tab-mw" aria-selected="true" data-scene="mw">
+      <span class="dots"><i style="background:var(--mw)"></i><i style="background:var(--m31)"></i><i style="background:var(--m33)"></i></span>1 · Mælkevejen, Andromeda og M33
+    </button>
+    <button class="tab" role="tab" id="tab-m51" aria-selected="false" data-scene="m51">
+      <span class="dots"><i style="background:var(--m51)"></i><i style="background:var(--n5195)"></i></span>2 · M51 og naboen NGC 5195
+    </button>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="cv" aria-label="3D-animation af galaksesammenstødet. Træk for at dreje."></canvas>
+    <div class="labels" id="labels"></div>
+    <div class="hud tl">
+      <div class="clock" id="clock">I dag</div>
+      <div class="phase-title" id="phaseTitle"></div>
+      <div class="phase-text" id="phaseText"></div>
+    </div>
+    <div class="hud br" id="seps"></div>
+    <div class="hud bl" id="legend"></div>
+    <div class="busy" id="busy" hidden>Beregner …</div>
+  </div>
+
+  <div class="controls">
+    <div class="transport">
+      <button class="play" id="play"><svg viewBox="0 0 20 20" id="playIcon" aria-hidden="true"><path d="M5 3l12 7-12 7z"/></svg><span id="playTxt">Start</span></button>
+      <div class="seg dir" id="dir" role="group" aria-label="Retning">
+        <button data-dir="-1" aria-pressed="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4L2 10l8 6zM18 4l-8 6 8 6z"/></svg>Baglæns</button>
+        <button data-dir="1" aria-pressed="true">Fremad<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2 4l8 6-8 6zM10 4l8 6-8 6z"/></svg></button>
+      </div>
+      <div class="speedctl" role="group" aria-label="Fart">
+        <button id="slower" aria-label="Langsommere">−</button>
+        <output id="speedOut" aria-live="polite">200 mio. år/s</output>
+        <button id="faster" aria-label="Hurtigere">+</button>
+      </div>
+      <p class="hint keys">Mellemrum: start/stop · ← →: retning · + −: fart</p>
+    </div>
+    <div class="track">
+      <div class="ticks" id="ticks"></div>
+      <input type="range" id="time" min="0" max="1000" value="0" step="1" aria-label="Tid">
+    </div>
+    <div class="row">
+      <div class="group"><span class="ctl-label">Visning</span>
+        <div class="seg" id="views"></div>
+      </div>
+      <div class="group"><span class="ctl-label">Følg</span>
+        <div class="seg" id="follow"></div>
+      </div>
+      <div class="group">
+        <label class="chk"><input type="checkbox" id="autoZoom" checked> Automatisk zoom</label>
+        <label class="chk"><input type="checkbox" id="trails" checked> Baner</label>
+        <label class="chk" id="sunWrap"><input type="checkbox" id="showSun" checked> Solen</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <section id="story"></section>
+    <section class="model">
+      <h3>Om modellen</h3>
+      <p>Hver galakse er en mørk halo plus en kompakt skive og bule, beskrevet med Hernquist-potentialer. Galaksernes centre bevæger sig efter hinandens tyngdekraft, og en simpel model for dynamisk friktion lader dem miste fart og smelte sammen.</p>
+      <p>Stjernerne er testpartikler: de mærker alle galaksernes tyngdekraft, men ikke hinandens. Det er samme metode som brødrene Toomre brugte i 1972, da de første gang forklarede tidevandshaler. Den viser formerne godt, men er ikke en fuld N-legeme-simulering.</p>
+      <p>Simuleringen regnes ud i din browser med tidsskridt på 1 million år (½ million år for M51). Baglæns afspilning genberegner korte stykker fra gemte mellemtilstande, så der kan gå et øjeblik, før den kommer i gang. Afstande i kiloparsec: 1 kpc ≈ 3 262 lysår.</p>
+    </section>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+function simFactory() {
+  const G = 0.04498; // kpc^3 / (1e10 Msun Myr^2)
+  const KMS = 1.0227e-3; // km/s -> kpc/Myr
+
+  function rng(a) {
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function gauss(r) {
+    let u = 0; while (u === 0) u = r();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(6.283185307179586 * r());
+  }
+  function norm(v) { const l = Math.hypot(v[0], v[1], v[2]); return [v[0] / l, v[1] / l, v[2] / l]; }
+  function cross(a, b) { return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]; }
+
+  function totalMass(g) { let m = 0; for (const c of g.comps) m += c.M; return m; }
+  function vcirc(g, R) {
+    let s = 0; for (const c of g.comps) s += G * c.M * R / ((R + c.a) * (R + c.a));
+    return Math.sqrt(s);
+  }
+
+  // Build initial state for a scenario config
+  function build(cfg) {
+    const r = rng(cfg.seed);
+    const gals = cfg.galaxies;
+    const ng = gals.length;
+    // centre of mass frame
+    let Mt = 0; const cm = [0, 0, 0, 0, 0, 0];
+    for (const g of gals) {
+      const m = totalMass(g); Mt += m;
+      for (let k = 0; k < 3; k++) { cm[k] += m * g.pos[k]; cm[k + 3] += m * g.vel[k] * KMS; }
+    }
+    for (let k = 0; k < 6; k++) cm[k] /= Mt;
+    const cen = new Float64Array(6 * ng);
+    gals.forEach((g, i) => {
+      for (let k = 0; k < 3; k++) { cen[6 * i + k] = g.pos[k] - cm[k]; cen[6 * i + 3 + k] = g.vel[k] * KMS - cm[k + 3]; }
+    });
+    let N = 0; for (const g of gals) N += g.nDisk + g.nBulge;
+    const pos = new Float32Array(3 * N), vel = new Float32Array(3 * N);
+    const gid = new Uint8Array(N), kind = new Uint8Array(N); // kind 0 disk, 1 bulge
+    let p = 0;
+    gals.forEach((g, i) => {
+      const L = norm(g.spin);
+      const tmp = Math.abs(L[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0];
+      const e1 = norm(cross(L, tmp)), e2 = cross(L, e1);
+      const C = [cen[6 * i], cen[6 * i + 1], cen[6 * i + 2]], V = [cen[6 * i + 3], cen[6 * i + 4], cen[6 * i + 5]];
+      for (let n = 0; n < g.nDisk; n++, p++) {
+        let R;
+        if (n === 0 && g.sunR) R = g.sunR;
+        else do { R = -g.Rd * Math.log(r() * r() + 1e-12); } while (R < g.Rmin || R > g.Rmax);
+        const ph = n === 0 && g.sunR ? 0.6 : r() * 6.283185307179586;
+        const z = n === 0 && g.sunR ? 0 : gauss(r) * g.h;
+        const c = Math.cos(ph), s = Math.sin(ph);
+        const rx = c * e1[0] + s * e2[0], ry = c * e1[1] + s * e2[1], rz = c * e1[2] + s * e2[2];
+        const tx = -s * e1[0] + c * e2[0], ty = -s * e1[1] + c * e2[1], tz = -s * e1[2] + c * e2[2];
+        const vc = vcirc(g, R) * (n === 0 && g.sunR ? 1 : 1 + (g.sigma == null ? 0.04 : g.sigma) * gauss(r));
+        pos[3 * p] = C[0] + R * rx + z * L[0]; pos[3 * p + 1] = C[1] + R * ry + z * L[1]; pos[3 * p + 2] = C[2] + R * rz + z * L[2];
+        vel[3 * p] = V[0] + vc * tx; vel[3 * p + 1] = V[1] + vc * ty; vel[3 * p + 2] = V[2] + vc * tz;
+        gid[p] = i; kind[p] = 0;
+      }
+      for (let n = 0; n < g.nBulge; n++, p++) {
+        const R = g.bulgeR * (0.25 + 1.6 * Math.pow(r(), 1.6));
+        const u = 2 * r() - 1, ph = r() * 6.283185307179586, sq = Math.sqrt(1 - u * u);
+        const d = [sq * Math.cos(ph), sq * Math.sin(ph), u];
+        const t0 = norm(cross(d, Math.abs(d[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0]));
+        const t1 = cross(d, t0);
+        // bias bulge rotation slightly with the disk
+        const w = r() * 6.283185307179586;
+        let t = [Math.cos(w) * t0[0] + Math.sin(w) * t1[0], Math.cos(w) * t0[1] + Math.sin(w) * t1[1], Math.cos(w) * t0[2] + Math.sin(w) * t1[2]];
+        const vc = vcirc(g, R);
+        pos[3 * p] = C[0] + R * d[0]; pos[3 * p + 1] = C[1] + R * d[1]; pos[3 * p + 2] = C[2] + R * d[2];
+        vel[3 * p] = V[0] + vc * t[0]; vel[3 * p + 1] = V[1] + vc * t[1]; vel[3 * p + 2] = V[2] + vc * t[2];
+        gid[p] = i; kind[p] = 1;
+      }
+    });
+    const st = { cfg, ng, N, cen, pos, vel, acc: new Float32Array(3 * N), cacc: new Float64Array(3 * ng), step: 0, gid, kind };
+    accel(st);
+    return st;
+  }
+
+  function centreAcc(st) {
+    const { cfg, ng, cen, cacc } = st; const gals = cfg.galaxies;
+    cacc.fill(0);
+    for (let i = 0; i < ng; i++) for (let j = 0; j < ng; j++) {
+      if (i === j) continue;
+      const dx = cen[6 * i] - cen[6 * j], dy = cen[6 * i + 1] - cen[6 * j + 1], dz = cen[6 * i + 2] - cen[6 * j + 2];
+      const rr = Math.sqrt(dx * dx + dy * dy + dz * dz + 1e-4);
+      let f = 0; for (const c of gals[j].comps) f -= G * c.M / (rr * (rr + c.a) * (rr + c.a));
+      cacc[3 * i] += f * dx; cacc[3 * i + 1] += f * dy; cacc[3 * i + 2] += f * dz;
+      if (i < j) {
+        const Mi = totalMass(gals[i]), Mj = totalMass(gals[j]);
+        const gam = cfg.df.g0 / (1 + (rr / cfg.df.rd) * (rr / cfg.df.rd)) + (cfg.df.g1 || 0) / (1 + (rr / (cfg.df.r1 || 1)) * (rr / (cfg.df.r1 || 1)));
+        const vx = cen[6 * i + 3] - cen[6 * j + 3], vy = cen[6 * i + 4] - cen[6 * j + 4], vz = cen[6 * i + 5] - cen[6 * j + 5];
+        const sc = cfg.df.mref ? Math.min(1, Math.min(Mi, Mj) / cfg.df.mref) : 1;
+        const wi = sc * gam * Mj / (Mi + Mj), wj = sc * gam * Mi / (Mi + Mj);
+        cacc[3 * i] -= wi * vx; cacc[3 * i + 1] -= wi * vy; cacc[3 * i + 2] -= wi * vz;
+        cacc[3 * j] += wj * vx; cacc[3 * j + 1] += wj * vy; cacc[3 * j + 2] += wj * vz;
+      }
+    }
+  }
+
+  function accel(st) {
+    centreAcc(st);
+    const { cfg, ng, N, cen, pos, acc } = st; const gals = cfg.galaxies;
+    // flatten comps
+    const cx = [], cy = [], cz = [], GM = [], A = [];
+    for (let j = 0; j < ng; j++) for (const c of gals[j].comps) { cx.push(cen[6 * j]); cy.push(cen[6 * j + 1]); cz.push(cen[6 * j + 2]); GM.push(G * c.M); A.push(c.a); }
+    const nc = GM.length;
+    for (let p = 0; p < N; p++) {
+      const x = pos[3 * p], y = pos[3 * p + 1], z = pos[3 * p + 2];
+      let ax = 0, ay = 0, az = 0;
+      for (let k = 0; k < nc; k++) {
+        const dx = x - cx[k], dy = y - cy[k], dz = z - cz[k];
+        const rr = Math.sqrt(dx * dx + dy * dy + dz * dz + 0.01);
+        const ra = rr + A[k];
+        const f = -GM[k] / (rr * ra * ra);
+        ax += f * dx; ay += f * dy; az += f * dz;
+      }
+      acc[3 * p] = ax; acc[3 * p + 1] = ay; acc[3 * p + 2] = az;
+    }
+  }
+
+  function step(st) {
+    const dt = st.cfg.dt, h = dt / 2; const { ng, N, cen, cacc, pos, vel, acc } = st;
+    for (let i = 0; i < ng; i++) for (let k = 0; k < 3; k++) cen[6 * i + 3 + k] += h * cacc[3 * i + k];
+    for (let i = 0; i < 3 * N; i++) vel[i] += h * acc[i];
+    for (let i = 0; i < ng; i++) for (let k = 0; k < 3; k++) cen[6 * i + k] += dt * cen[6 * i + 3 + k];
+    for (let i = 0; i < 3 * N; i++) pos[i] += dt * vel[i];
+    accel(st);
+    for (let i = 0; i < ng; i++) for (let k = 0; k < 3; k++) cen[6 * i + 3 + k] += h * cacc[3 * i + k];
+    for (let i = 0; i < 3 * N; i++) vel[i] += h * acc[i];
+    st.step++;
+  }
+
+  // Centres only (cheap) — for orbit lines and event markers
+  function centreTrack(cfg, every) {
+    const full = build(Object.assign({}, cfg, { galaxies: cfg.galaxies.map(g => Object.assign({}, g, { nDisk: 0, nBulge: 0 })) }));
+    const out = [];
+    const steps = Math.round((cfg.tEnd - cfg.tStart) / cfg.dt);
+    for (let s = 0; s <= steps; s++) {
+      if (s % every === 0) out.push(Array.from(full.cen));
+      if (s < steps) step(full);
+    }
+    return out;
+  }
+
+  function snapshot(st) { return { step: st.step, cen: st.cen.slice(), pos: st.pos.slice(), vel: st.vel.slice() }; }
+  function restore(st, cp) { st.step = cp.step; st.cen.set(cp.cen); st.pos.set(cp.pos); st.vel.set(cp.vel); accel(st); }
+
+  return { build, step, accel, centreTrack, snapshot, restore, totalMass, KMS };
+}
+
+
+const SCEN = {
+  mw: {
+    seed: 7, dt: 1, tStart: 0, tEnd: 10000, cpEvery: 250,
+    df: { g0: 0.0009, rd: 60, g1: 0.0035, r1: 5, mref: 106 },
+    galaxies: [
+      { name: 'Mælkevejen', pos: [0, 0, 0], vel: [0, 0, 0], spin: [0, 0, -1],
+        comps: [{ M: 100, a: 28 }, { M: 6, a: 3 }], nDisk: 4200, nBulge: 800, Rd: 3.5, Rmin: 1.2, Rmax: 22, h: 0.3, bulgeR: 1.6, sunR: 8.2 },
+      { name: 'Andromeda', pos: [-378.9, 612.7, -283.1], vel: [66.1, -76.3, 45.1], spin: [0.36, 0.53, 0.77],
+        comps: [{ M: 150, a: 32 }, { M: 10, a: 4 }], nDisk: 5000, nBulge: 1000, Rd: 5, Rmin: 1.5, Rmax: 30, h: 0.4, bulgeR: 2.2 },
+      { name: 'M33', pos: [-476.1, 491.1, -412.9], vel: [43.1, 101.3, 138.8], spin: [0.2, -0.5, 0.84],
+        comps: [{ M: 18, a: 12 }, { M: 1, a: 2 }], nDisk: 2500, nBulge: 200, Rd: 1.8, Rmin: 0.6, Rmax: 10, h: 0.2, bulgeR: 0.6 }
+    ]
+  },
+  m51: {
+    seed: 5, dt: 0.5, tStart: -780, tEnd: 340, cpEvery: 100,
+    df: { g0: 0.001, rd: 20 },
+    galaxies: [
+      { name: 'M51', pos: [0, 0, 0], vel: [0, 0, 0], spin: [0, 0, 1],
+        comps: [{ M: 40, a: 15 }, { M: 6, a: 2.5 }], nDisk: 9500, nBulge: 700, Rd: 4.5, Rmin: 1.2, Rmax: 14, h: 0.08, bulgeR: 1.0, sigma: 0.015 },
+      { name: 'NGC 5195', pos: [-22.65, -37.24, -10.56], vel: [117.8, -22.3, 54.9], spin: [0, 0, 1],
+        comps: [{ M: 4, a: 6 }, { M: 1.5, a: 1.0 }], nDisk: 200, nBulge: 2000, Rd: 0.8, Rmin: 0.3, Rmax: 2.5, h: 0.1, bulgeR: 0.8 }
+    ]
+  }
+};
+
+
+(function () {
+  'use strict';
+  const SF = simFactory();
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const COL = {
+    mw: { disk: [1.0, 0.70, 0.40], bulge: [1.0, 0.86, 0.62], css: 'var(--mw)', hex: 0xf3b46c },
+    m31: { disk: [0.50, 0.68, 1.0], bulge: [0.95, 0.90, 0.80], css: 'var(--m31)', hex: 0x8db4ff },
+    m51: { disk: [0.58, 0.74, 1.0], bulge: [1.0, 0.92, 0.78], css: 'var(--m51)', hex: 0x9cc0ff },
+    n5195: { disk: [1.0, 0.62, 0.48], bulge: [1.0, 0.80, 0.62], css: 'var(--n5195)', hex: 0xf4a07a },
+    m33: { disk: [0.42, 0.95, 0.76], bulge: [0.80, 1.0, 0.90], css: 'var(--m33)', hex: 0x7fe0c0 }
+  };
+  const fmt2 = x => x.toFixed(2).replace('.', ',');
+  const gyr = t => fmt2(Math.abs(t) / 1000);
+  const STRIDE = 2, Q = 0.025;
+
+  const META = {
+    mw: {
+      views: [['top', 'Ovenfra', 0.04, null], ['side', 'Fra siden', Math.PI / 2 - 0.02, null], ['tilt', 'Skråt', 1.05, null]], view: 'tilt',
+      gal: ['mw', 'm31', 'm33'], names: ['Mælkevejen', 'Andromeda', 'M33'], merged: 'Milkomeda',
+      speeds: [10, 25, 50, 100, 200, 400, 800], speed: 200, minDist: 150, pad: 60, sun: true,
+      pairs: [[0, 1, 'Mælkevejen – Andromeda'], [2, 1, 'M33 – Andromeda']],
+      follow: [['cm', 'Midtpunkt'], [0, 'Mælkevejen'], [1, 'Andromeda'], [2, 'M33']],
+      clock: t => Math.abs(t) < 0.5 ? 'I dag' : 'om ' + gyr(t) + ' mia. år',
+      phases(ev) {
+        const [p1, p2] = ev.passes, tm = ev.merge;
+        const ph = [
+          [0, 'Andromeda nærmer sig', 'Afstanden er 2,5 millioner lysår. Andromeda kommer imod os med omkring 110 km/s. Den lille Trekantgalakse M33 kredser om Andromeda.'],
+          [700, 'M33 svinger tæt forbi Andromeda', 'M33 når sit nærmeste punkt ved Andromeda og slynges derefter ud på en vid bane.'],
+          [p1 - 700, 'Tidevandet tager fat', 'Mælkevejen og Andromeda trækker i hinanden. Skiverne begynder at bøje og strække sig.'],
+          [p1 - 60, 'Første passage', 'Galakserne fejer gennem hinanden. Stjernerne selv rammer næsten aldrig hinanden, så store er afstandene mellem dem.'],
+          [p1 + 150, 'Tidevandshaler', 'Lange buer af stjerner slynges ud. Galakserne fjerner sig igen, men de mørke haloer bremser dem, så de falder tilbage.']
+        ];
+        if (p2 != null) ph.push([p2 - 60, 'Anden passage', 'Banen er blevet kortere. Galakserne vikles ind i hinanden, og skiverne går i opløsning.']);
+        if (tm != null) ph.push([tm, 'Milkomeda', 'Kernerne er smeltet sammen til en stor, næsten elliptisk galakse. M33 kredser stadig om den på en vid bane.']);
+        return ph;
+      },
+      ticks(ev) {
+        const t = [[0, 'I dag', 'I dag']];
+        ev.passes.slice(0, 3).forEach((p, i) => t.push([p, String(i + 1), (i + 1) + '. passage']));
+        if (ev.merge != null) t.push([ev.merge, 'Fusion', 'Kernerne smelter sammen']);
+        return t;
+      },
+      story(ev) {
+        return `<h2>Mælkevejen, Andromeda og M33</h2>
+<p>Andromeda er den nærmeste store galakse. Dens lys er blåforskudt, så vi ved, at den bevæger sig imod os. Hubble-målinger af dens sidelæns bevægelse (van der Marel m.fl. 2012) viste, at bevægelsen næsten er rettet direkte mod os. Simuleringen bruger de startbetingelser for alle tre galakser.</p>
+<p>Trekantgalaksen M33 er Lokalgruppens tredjestørste galakse og en ledsager til Andromeda. I modellen svinger den først tæt forbi Andromeda og ender derefter i en vid bane om den sammensmeltede galakse. Det svarer til det mest sandsynlige udfald hos van der Marel m.fl.; i omkring 9 % af deres beregninger rammer M33 Mælkevejen først.</p>
+<p>I modellen sker første passage om ${gyr(ev.passes[0])} mia. år, og kernerne er smeltet sammen om ca. ${ev.merge != null ? gyr(ev.merge) : '?'} mia. år. Solen (den gule prik) overlever næsten sikkert, men kan ende langt længere ude i den nye galakse.</p>
+<p>Nyere målinger med Gaia og Hubble (Sawala m.fl. 2025) giver Andromeda en lidt større sidelæns fart. Med Den Store Magellanske Sky regnet med er sammenstødet inden for 10 mia. år kun omkring 50 % sandsynligt. Simuleringen viser altså det klassiske scenarie.</p>
+<dl class="facts">
+<dt>Afstand i dag</dt><dd>Andromeda ca. 780 kpc · M33 ca. 800 kpc</dd>
+<dt>Radial fart</dt><dd>Andromeda ca. 110 km/s mod os</dd>
+<dt>Masser i modellen</dt><dd>Mælkevejen 1,06 × 10¹² M☉ · Andromeda 1,6 × 10¹² M☉ · M33 1,9 × 10¹¹ M☉</dd>
+<dt>Partikler</dt><dd>5 000 + 6 000 + 2 700 stjerner</dd>
+</dl>`;
+      }
+    },
+    m51: {
+      views: [['earth', 'Fra Jorden', Math.PI / 2, 0], ['above', 'Ovenfra', Math.PI / 2, 0.36], ['side', 'Fra siden', Math.PI / 2, Math.PI / 2], ['tilt', 'Skråt', 0.75, 0.5]], view: 'earth',
+      earthView: { tilt: 20, rotate: -28 },
+      gal: ['m51', 'n5195'], names: ['M51', 'NGC 5195'], merged: 'M51',
+      speeds: [5, 10, 25, 50, 100, 200], speed: 50, minDist: 55, pad: 30, sun: false,
+      pairs: [[0, 1, 'M51 – NGC 5195']],
+      follow: [['mid', 'Begge'], [0, 'M51'], [1, 'NGC 5195']], followDefault: 'mid', trails: false,
+      clock: t => Math.abs(t) < 0.25 ? 'I dag' : (t < 0 ? 'for ' + Math.round(-t) + ' mio. år siden' : 'om ' + Math.round(t) + ' mio. år'),
+      phases(ev) {
+        const [p1, p2] = ev.passes;
+        const ph = [
+          [-780, 'NGC 5195 nærmer sig', 'M51 er endnu en almindelig skivegalakse uden tydelige spiralarme. Den mindre galakse NGC 5195 falder ind mod den.'],
+          [p1 - 40, 'Første passage', 'NGC 5195 passerer tæt forbi kanten af M51\'s skive i samme omløbsretning som stjernerne. Det giver det stærkeste tidevandstræk.'],
+          [p1 + 60, 'Armene trækkes ud', 'Tidevandet trækker to modsatte arme ud af skiven: en bro af stjerner mod NGC 5195 og en arm på den modsatte side.'],
+          [p1 + 250, 'Spiralerne vikles op', 'Skiven roterer hurtigere inde ved centrum end ude ved kanten, så armene vikles op til en stor, åben spiral.'],
+          [-1, 'Sådan ser vi M51 i dag', 'Vist «Fra Jorden»: to store spiralarme, og den ene når hen til NGC 5195, som ligger bag M51 set herfra. Sammenlign med dit eget billede.']
+        ];
+        if (p2 != null && p2 > 0) ph.push([p2 - 40, 'Næste passage', 'NGC 5195 svinger igen tæt forbi M51 og river nye stjerner løs.']);
+        else ph.push([60, 'Fremtiden', 'NGC 5195 mister fart ved hver passage. Efter flere omløb smelter de to galakser sammen.']);
+        return ph;
+      },
+      ticks(ev) {
+        const t = [];
+        ev.passes.slice(0, 2).forEach((p, i) => t.push([p, p < 0 ? 'Passage' : 'Næste', p < 0 ? 'Første passage' : 'Næste passage']));
+        t.push([0, 'I dag', 'I dag']);
+        return t;
+      },
+      story(ev) {
+        return `<h2>Malstrømsgalaksen M51 og NGC 5195</h2>
+<p>M51 i Jagthundene er den første galakse, hvor man så spiralarme. Lord Rosse tegnede dem i 1845 med sit store spejlteleskop i Irland. Galaksen ligger 23–28 millioner lysår borte, og for enden af den ene arm sidder den lille følgegalakse NGC 5195.</p>
+<p>Brødrene Alar og Juri Toomre viste i 1972 med netop denne slags beregning, at en tæt passage af NGC 5195 kan trække de to store arme ud af skiven. Senere modeller (Salo & Laurikainen 2000) tyder på flere passager.</p>
+<p>I modellen passerede NGC 5195 tæt forbi M51 for ca. ${Math.round(-ev.passes[0])} mio. år siden. Siden er armene viklet op, og i dag er NGC 5195 på vej ind igen for enden af den ene arm. Visningen «Fra Jorden» viser parret, som vi ser det: skiven hælder ca. 20° fra ret forfra, og NGC 5195 ligger bag M51.</p>
+<dl class="facts">
+<dt>Afstand</dt><dd>ca. 7–8,6 Mpc · 23–28 mio. lysår</dd>
+<dt>Masser i modellen</dt><dd>M51 4,6 × 10¹¹ M☉ · NGC 5195 5,5 × 10¹⁰ M☉</dd>
+<dt>Synlig i</dt><dd>Jagthundene, lige syd for Karlsvognens hank</dd>
+<dt>Partikler</dt><dd>10 200 + 2 200 stjerner</dd>
+</dl>`;
+      }
+    }
+  };
+
+  // ---------- three.js setup ----------
+  const stage = document.getElementById('stage');
+  const canvas = document.getElementById('cv');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setClearColor(0x06070b, 1);
+  const scene3 = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, 1, 0.5, 30000);
+  const uniforms = { uScale: { value: 700 } };
+
+  const ptVS = `attribute vec3 aColor; varying vec3 vC; uniform float uScale; uniform float uSize; uniform float uMin;
+    void main(){ vC=aColor; vec4 mv=modelViewMatrix*vec4(position,1.0); gl_Position=projectionMatrix*mv;
+    gl_PointSize=clamp(uSize*uScale/max(-mv.z,0.1), uMin, 7.0); }`;
+  const ptFS = `varying vec3 vC; uniform float uAlpha;
+    void main(){ vec2 d=gl_PointCoord-0.5; float r=dot(d,d)*4.0; if(r>1.0) discard; float a=exp(-r*2.5);
+    gl_FragColor=vec4(vC*a*uAlpha,1.0); }`;
+  function pointMat(size, alpha, min, extra) {
+    return new THREE.ShaderMaterial(Object.assign({
+      uniforms: { uScale: uniforms.uScale, uSize: { value: size }, uAlpha: { value: alpha }, uMin: { value: min } },
+      vertexShader: ptVS, fragmentShader: ptFS, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
+    }, extra || {}));
+  }
+
+  (function starfield() {
+    const n = 2200, p = new Float32Array(3 * n), c = new Float32Array(3 * n);
+    let s = 99; const r = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
+    for (let i = 0; i < n; i++) {
+      const u = 2 * r() - 1, ph = 6.2831853 * r(), q = Math.sqrt(1 - u * u), R = 9000;
+      p[3 * i] = R * q * Math.cos(ph); p[3 * i + 1] = R * q * Math.sin(ph); p[3 * i + 2] = R * u;
+      const b = 0.15 + 0.5 * Math.pow(r(), 3), w = r();
+      c[3 * i] = b * (0.85 + 0.15 * w); c[3 * i + 1] = b * 0.9; c[3 * i + 2] = b * (1.0 - 0.1 * w);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(p, 3));
+    g.setAttribute('aColor', new THREE.BufferAttribute(c, 3));
+    scene3.add(new THREE.Points(g, pointMat(0, 1, 1.4)));
+  })();
+
+  // ---------- scenes ----------
+  const scenes = {};
+  let cur = null;
+
+  function detectEvents(cfg, track, every) {
+    const sep = track.map(c => Math.hypot(c[0] - c[6], c[1] - c[7], c[2] - c[8]));
+    const tOf = i => cfg.tStart + i * every * cfg.dt;
+    const passes = []; let hi = sep[0];
+    for (let i = 1; i < sep.length - 1; i++) {
+      hi = Math.max(hi, sep[i]);
+      if (sep[i] < sep[i - 1] && sep[i] <= sep[i + 1] && sep[i] < 80 && hi - sep[i] > 10) { passes.push(tOf(i)); hi = sep[i]; }
+    }
+    let last = -1; for (let i = 0; i < sep.length; i++) if (sep[i] >= 6) last = i;
+    const merge = last < sep.length - 1 ? tOf(last + 1) : null;
+    return { passes: passes.filter(p => merge == null || p < merge), merge, sep };
+  }
+
+  function makeWorker(cfg, S) {
+    if (typeof Worker === 'undefined') return;
+    try {
+      const src = 'const SF=(' + simFactory.toString() + ')();\n' +
+        'onmessage=function(e){var cfg=e.data.cfg;var st=SF.build(cfg);var cp=Math.round(cfg.cpEvery/cfg.dt);var tot=Math.round((cfg.tEnd-cfg.tStart)/cfg.dt);' +
+        'for(var s=1;s<=tot;s++){SF.step(st);if(s%cp===0){var c=SF.snapshot(st);postMessage({step:c.step,cen:c.cen,pos:c.pos,vel:c.vel},[c.cen.buffer,c.pos.buffer,c.vel.buffer]);}}postMessage({done:true});};';
+      const w = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+      w.onmessage = e => { if (e.data.done) { w.terminate(); return; } if (!S.cps.has(e.data.step)) S.cps.set(e.data.step, e.data); };
+      w.onerror = ev => { if (ev && ev.preventDefault) ev.preventDefault(); };
+      w.postMessage({ cfg });
+    } catch (err) { /* the main thread computes everything instead */ }
+  }
+
+  function buildScene(key) {
+    const cfg = SCEN[key], meta = META[key];
+    const st = SF.build(cfg);
+    const ng = cfg.galaxies.length;
+    const total = Math.round((cfg.tEnd - cfg.tStart) / cfg.dt);
+    const cpSteps = Math.round(cfg.cpEvery / cfg.dt);
+    const every = Math.max(1, Math.round(5 / cfg.dt));
+    const track = SF.centreTrack(cfg, every);
+    const ev = detectEvents(cfg, track, every);
+    const S = {
+      key, cfg, meta, st, ng, total, cpSteps, every, track, ev, target: 0, cps: new Map(), segs: new Map(),
+      disp: new Float32Array(st.pos.length), dcen: new Float64Array(st.cen.length), dstep: 0, revReady: true
+    };
+    S.disp.set(st.pos); S.dcen.set(st.cen);
+    S.cps.set(0, SF.snapshot(st));
+
+    // orbital-plane basis from total angular momentum
+    const L = [0, 0, 0];
+    cfg.galaxies.forEach((g, i) => {
+      const m = SF.totalMass(g), c = st.cen;
+      const x = c.slice(6 * i, 6 * i + 3), v = c.slice(6 * i + 3, 6 * i + 6);
+      L[0] += m * (x[1] * v[2] - x[2] * v[1]); L[1] += m * (x[2] * v[0] - x[0] * v[2]); L[2] += m * (x[0] * v[1] - x[1] * v[0]);
+    });
+    const Lv = new THREE.Vector3(L[0], L[1], L[2]);
+    if (Lv.length() < 1e-9) Lv.set(0, 0, 1); Lv.normalize();
+    const e1 = new THREE.Vector3(), e2 = new THREE.Vector3();
+    const d0 = new THREE.Vector3(st.cen[0] - st.cen[6], st.cen[1] - st.cen[7], st.cen[2] - st.cen[8]);
+    d0.sub(Lv.clone().multiplyScalar(d0.dot(Lv)));
+    if (d0.length() > 1e-6) e1.copy(d0.normalize());
+    else e1.crossVectors(Lv, Math.abs(Lv.x) < 0.9 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0)).normalize();
+    e2.crossVectors(Lv, e1);
+    S.basis = { L: Lv, e1, e2 };
+    if (meta.earthView) {
+      // Camera basis so that phi = 90°, theta = 0 shows the pair as seen from Earth today:
+      // disk tilted ~20° from face-on, companion behind the disk and towards the top of the view.
+      const i0 = Math.round((0 - cfg.tStart) / cfg.dt / every);
+      const c0 = track[i0];
+      const rel = new THREE.Vector3(c0[6] - c0[0], c0[7] - c0[1], c0[8] - c0[2]);
+      const sp = cfg.galaxies[0].spin, Ld = new THREE.Vector3(sp[0], sp[1], sp[2]).normalize();
+      const relIn = rel.clone().sub(Ld.clone().multiplyScalar(rel.dot(Ld))).normalize();
+      const axis = relIn.clone();
+      const n = Ld.clone().applyAxisAngle(axis, THREE.MathUtils.degToRad(meta.earthView.tilt));
+      if (rel.dot(n) > 0) n.negate();
+      const up = rel.clone().sub(n.clone().multiplyScalar(rel.dot(n))).normalize();
+      up.applyAxisAngle(n, THREE.MathUtils.degToRad(meta.earthView.rotate));
+      const side = new THREE.Vector3().crossVectors(up, n);
+      S.basis = { L: up, e1: n, e2: side };
+      const Lf = Ld.clone(); if (Lf.dot(n) < 0) Lf.negate();
+      const above = meta.views.find(v => v[0] === 'above');
+      if (above) { above[2] = Math.acos(Math.max(-1, Math.min(1, Lf.dot(up)))); above[3] = Math.atan2(Lf.dot(side), Lf.dot(n)); }
+    }
+
+    const group = new THREE.Group();
+    const col = new Float32Array(3 * st.N);
+    for (let p = 0; p < st.N; p++) {
+      const C = COL[meta.gal[st.gid[p]]], base = st.kind[p] ? C.bulge : C.disk;
+      const j = 0.8 + 0.4 * ((p * 2654435761 >>> 0) % 1000) / 1000;
+      col[3 * p] = base[0] * j; col[3 * p + 1] = base[1] * j; col[3 * p + 2] = base[2] * j;
+    }
+    const geo = new THREE.BufferGeometry();
+    const posAttr = new THREE.BufferAttribute(S.disp, 3); posAttr.setUsage(THREE.DynamicDrawUsage);
+    geo.setAttribute('position', posAttr);
+    geo.setAttribute('aColor', new THREE.BufferAttribute(col, 3));
+    const pts = new THREE.Points(geo, pointMat(0.55, 0.48, 1.0));
+    pts.frustumCulled = false;
+    group.add(pts);
+    S.posAttr = posAttr;
+
+    S.trails = cfg.galaxies.map((g, i) => {
+      const n = track.length, arr = new Float32Array(3 * n);
+      track.forEach((c, k) => { arr[3 * k] = c[6 * i]; arr[3 * k + 1] = c[6 * i + 1]; arr[3 * k + 2] = c[6 * i + 2]; });
+      const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+      const line = new THREE.Line(lg, new THREE.LineBasicMaterial({ color: COL[meta.gal[i]].hex, transparent: true, opacity: 0.45, depthWrite: false }));
+      line.frustumCulled = false; group.add(line); return line;
+    });
+
+    if (meta.sun) {
+      const sg = new THREE.BufferGeometry();
+      S.sunArr = new Float32Array(3);
+      sg.setAttribute('position', new THREE.BufferAttribute(S.sunArr, 3));
+      sg.setAttribute('aColor', new THREE.BufferAttribute(new Float32Array([1, 0.95, 0.55]), 3));
+      S.sun = new THREE.Points(sg, pointMat(0, 1, 7, { depthTest: false }));
+      S.sun.frustumCulled = false; S.sun.renderOrder = 5;
+      group.add(S.sun);
+    }
+    group.visible = false;
+    scene3.add(group);
+    S.group = group;
+
+    const v0 = meta.views.find(v => v[0] === meta.view);
+    S.cam = { theta: v0[3] == null ? 0.35 : v0[3], phi: v0[2], tgtTheta: null, view: meta.view, dist: meta.followDefault === 'mid' ? 1.1 * (0.5 * ev.sep[0] + 16) / (0.414 * Math.min(1, camera.aspect)) : Math.max(meta.minDist, 1.35 * ev.sep[0] + meta.pad) * Math.max(1, 0.9 / camera.aspect), tgtPhi: null, follow: meta.followDefault || 'cm', target: new THREE.Vector3(), auto: true };
+    if (S.cam.follow === 'mid') S.cam.target.set((st.cen[0] + st.cen[6]) / 2, (st.cen[1] + st.cen[7]) / 2, (st.cen[2] + st.cen[8]) / 2);
+    S.trailsOn = meta.trails !== false;
+    S.speed = meta.speed;
+    makeWorker(cfg, S);
+    return S;
+  }
+
+  // ---------- UI ----------
+  const $ = id => document.getElementById(id);
+  const timeEl = $('time'), playBtn = $('play'), busyEl = $('busy'), labelsEl = $('labels');
+  let playing = !reduceMotion, dragging = false, dir = 1;
+
+  function setPlayUI() {
+    $('playIcon').innerHTML = playing ? '<path d="M4 4h12v12H4z"/>' : '<path d="M5 3l12 7-12 7z"/>';
+    $('playTxt').textContent = playing ? 'Stop' : 'Start';
+    playBtn.setAttribute('aria-pressed', String(playing));
+  }
+  function setDirUI() {
+    document.querySelectorAll('#dir button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.dir === dir)));
+  }
+  function setSpeedUI() {
+    const sp = cur.meta.speeds, i = sp.indexOf(cur.speed);
+    $('speedOut').textContent = cur.speed.toLocaleString('da-DK') + ' mio. år/s';
+    $('slower').disabled = i <= 0; $('faster').disabled = i >= sp.length - 1;
+  }
+  function togglePlay() {
+    if (!playing) {
+      const s = Math.round(cur.target);
+      if (dir > 0 && s >= cur.total) cur.target = 0;
+      if (dir < 0 && s <= 0) cur.target = cur.total;
+    }
+    playing = !playing; setPlayUI();
+  }
+  function setDir(d) {
+    dir = d; setDirUI();
+    if (!playing) togglePlay();
+  }
+  function changeSpeed(k) {
+    const sp = cur.meta.speeds, i = Math.max(0, Math.min(sp.length - 1, sp.indexOf(cur.speed) + k));
+    cur.speed = sp[i]; setSpeedUI();
+  }
+  playBtn.addEventListener('click', togglePlay);
+  document.querySelectorAll('#dir button').forEach(b => b.addEventListener('click', () => setDir(+b.dataset.dir)));
+  $('slower').addEventListener('click', () => changeSpeed(-1));
+  $('faster').addEventListener('click', () => changeSpeed(1));
+  document.addEventListener('keydown', e => {
+    const tag = (e.target && e.target.tagName) || '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === ' ' && tag !== 'BUTTON') { e.preventDefault(); togglePlay(); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); setDir(-1); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); setDir(1); }
+    else if (e.key === '+' || e.key === '=') changeSpeed(1);
+    else if (e.key === '-' || e.key === '_') changeSpeed(-1);
+  });
+
+  timeEl.addEventListener('pointerdown', () => { dragging = true; });
+  window.addEventListener('pointerup', () => { dragging = false; });
+  timeEl.addEventListener('input', () => { cur.target = +timeEl.value; });
+
+  function segButtons(el, items, active, onPick) {
+    el.innerHTML = '';
+    items.forEach(([val, label]) => {
+      const b = document.createElement('button'); b.textContent = label; b.setAttribute('aria-pressed', String(val === active));
+      b.addEventListener('click', () => { [...el.children].forEach(c => c.setAttribute('aria-pressed', 'false')); b.setAttribute('aria-pressed', 'true'); onPick(val); });
+      el.appendChild(b);
+    });
+  }
+
+  function buildViews(S) {
+    segButtons($('views'), S.meta.views.map(v => [v[0], v[1]]), S.cam.view, key => {
+      const v = S.meta.views.find(x => x[0] === key);
+      S.cam.view = key; S.cam.tgtPhi = v[2];
+      if (v[3] != null) {
+        let d = v[3] - S.cam.theta; d = Math.atan2(Math.sin(d), Math.cos(d));
+        S.cam.tgtTheta = S.cam.theta + d;
+      }
+    });
+  }
+  $('autoZoom').addEventListener('change', e => { cur.cam.auto = e.target.checked; });
+  $('trails').addEventListener('change', e => { cur.trailsOn = e.target.checked; });
+
+  function buildLabels(S) {
+    labelsEl.innerHTML = '';
+    S.labels = S.meta.names.map((n, i) => {
+      const d = document.createElement('div'); d.className = 'lbl'; d.textContent = n; d.style.color = COL[S.meta.gal[i]].css;
+      labelsEl.appendChild(d); return d;
+    });
+    S.sunLabel = null;
+    if (S.meta.sun) {
+      const d = document.createElement('div'); d.className = 'lbl sun'; d.textContent = 'Solen'; d.style.color = 'var(--sun)';
+      labelsEl.appendChild(d); S.sunLabel = d;
+    }
+  }
+
+  function buildTicks(S) {
+    const el = $('ticks'); el.innerHTML = '';
+    S.tickEls = S.meta.ticks(S.ev).map(([t, txt, title]) => {
+      const step = Math.round((t - S.cfg.tStart) / S.cfg.dt);
+      const b = document.createElement('button'); b.className = 'tick'; b.textContent = txt; b.title = title;
+      b.setAttribute('aria-label', 'Gå til: ' + title);
+      b.style.left = (100 * step / S.total) + '%'; b.dataset.step = step;
+      b.addEventListener('click', () => { cur.target = step; });
+      el.appendChild(b); return b;
+    });
+  }
+
+  function buildSeps(S) {
+    $('seps').innerHTML = S.meta.pairs.map((p, i) =>
+      `<span class="pair">${p[2]}</span><b id="sep${i}">–</b><span id="sepLy${i}"></span>`).join('');
+  }
+
+  function activate(key) {
+    if (!scenes[key]) scenes[key] = buildScene(key);
+    if (cur) cur.group.visible = false;
+    cur = scenes[key];
+    cur.group.visible = true;
+    document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.scene === key)));
+    const m = cur.meta;
+    timeEl.max = cur.total; timeEl.value = Math.round(cur.dstep);
+    segButtons($('follow'), m.follow, cur.cam.follow, v => { cur.cam.follow = v; });
+    $('autoZoom').checked = cur.cam.auto;
+    $('trails').checked = cur.trailsOn;
+    $('sunWrap').hidden = !m.sun;
+    $('story').innerHTML = m.story(cur.ev);
+    $('legend').innerHTML = '<div class="legend">' + m.names.map((n, i) => `<span><i style="background:${COL[m.gal[i]].css}"></i>${n}</span>`).join('') +
+      (m.sun ? '<span><i style="background:var(--sun)"></i>Solen</span>' : '') + '</div>';
+    cur.phases = m.phases(cur.ev).sort((a, b) => a[0] - b[0]);
+    lastPhase = null;
+    buildLabels(cur); buildTicks(cur); buildSeps(cur); setSpeedUI();
+    buildViews(cur);
+    if (dir > 0 && Math.round(cur.target) >= cur.total) cur.target = 0;
+  }
+  document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => activate(t.dataset.scene)));
+
+  // ---------- camera interaction ----------
+  const ptrs = new Map(); let pinch0 = 0;
+  canvas.addEventListener('pointerdown', e => {
+    canvas.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch0 = Math.hypot(a.x - b.x, a.y - b.y); }
+  });
+  canvas.addEventListener('pointermove', e => {
+    if (!ptrs.has(e.pointerId)) return;
+    const p = ptrs.get(e.pointerId), dx = e.clientX - p.x, dy = e.clientY - p.y;
+    p.x = e.clientX; p.y = e.clientY;
+    const c = cur.cam;
+    if (ptrs.size === 1) {
+      c.theta -= dx * 0.006; c.phi = Math.min(Math.PI - 0.03, Math.max(0.03, c.phi - dy * 0.006)); c.tgtPhi = null; c.tgtTheta = null;
+    } else if (ptrs.size === 2) {
+      const [a, b] = [...ptrs.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (pinch0 > 0 && d > 0) zoomBy(pinch0 / d); pinch0 = d;
+    }
+  });
+  const endPtr = e => { ptrs.delete(e.pointerId); pinch0 = 0; };
+  canvas.addEventListener('pointerup', endPtr); canvas.addEventListener('pointercancel', endPtr);
+  canvas.addEventListener('wheel', e => { e.preventDefault(); zoomBy(Math.exp(e.deltaY * 0.0012)); }, { passive: false });
+  function zoomBy(f) {
+    const c = cur.cam; c.auto = false; $('autoZoom').checked = false;
+    c.dist = Math.min(6000, Math.max(8, c.dist * f));
+  }
+
+  function resize() {
+    const w = stage.clientWidth, h = stage.clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h; camera.updateProjectionMatrix();
+    uniforms.uScale.value = h * renderer.getPixelRatio() / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)));
+  }
+  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(resize).observe(stage); else window.addEventListener('resize', resize);
+  resize();
+
+  // ---------- forward simulation ----------
+  function bestCheckpoint(S, tgt) {
+    for (let s = Math.floor(tgt / S.cpSteps) * S.cpSteps; s >= 0; s -= S.cpSteps) if (S.cps.has(s)) return S.cps.get(s);
+    return S.cps.get(0);
+  }
+  function stepAndSave(S, st) {
+    SF.step(st);
+    if (st.step % S.cpSteps === 0 && !S.cps.has(st.step)) S.cps.set(st.step, SF.snapshot(st));
+  }
+  function advance(S, budgetMs) {
+    const tgt = Math.max(0, Math.min(S.total, Math.round(S.target)));
+    const st = S.st;
+    if (tgt === st.step) return;
+    const cp = bestCheckpoint(S, tgt);
+    if (tgt < st.step || cp.step > st.step) SF.restore(st, cp);
+    const t0 = performance.now();
+    while (st.step < tgt && performance.now() - t0 < budgetMs) stepAndSave(S, st);
+  }
+
+  // ---------- backward playback: segments recomputed from checkpoints and cached ----------
+  function segIndex(S, t) { return Math.max(0, Math.min(Math.floor(t / S.cpSteps), Math.floor((S.total - 1) / S.cpSteps))); }
+  function getSeg(S, k, create) {
+    let c = S.segs.get(k);
+    if (!c && create) {
+      const start = k * S.cpSteps, end = Math.min(start + S.cpSteps, S.total);
+      const nf = Math.floor((end - start) / STRIDE) + 1, n3 = S.st.pos.length;
+      c = { k, start, nf, n3, pos: new Int16Array(nf * n3), cen: new Float64Array(nf * S.st.cen.length), filled: 0 };
+      S.segs.set(k, c);
+    }
+    return c || null;
+  }
+  function fillSeg(S, c, budgetMs) {
+    if (c.filled >= c.nf) return;
+    const sc = S.scratch || (S.scratch = SF.build(S.cfg));
+    const want0 = c.start + c.filled * STRIDE;
+    if (S.scratchOwner !== c || sc.step > want0) { SF.restore(sc, bestCheckpoint(S, want0)); S.scratchOwner = c; }
+    const t0 = performance.now(), n3 = c.n3, nc = sc.cen.length;
+    while (c.filled < c.nf && performance.now() - t0 < budgetMs) {
+      const want = c.start + c.filled * STRIDE;
+      while (sc.step < want) stepAndSave(S, sc);
+      const o = c.filled * n3, p = sc.pos;
+      for (let i = 0; i < n3; i++) { const v = Math.round(p[i] / Q); c.pos[o + i] = v > 32767 ? 32767 : v < -32767 ? -32767 : v; }
+      c.cen.set(sc.cen, c.filled * nc);
+      c.filled++;
+    }
+  }
+  function showFromCache(S, tgt, fill) {
+    const k = segIndex(S, tgt);
+    const c = getSeg(S, k, fill);
+    if (!c) return false;
+    if (fill) fillSeg(S, c, 20);
+    const f = Math.max(0, Math.min(c.nf - 1, (tgt - c.start) / STRIDE));
+    const f0 = Math.floor(f), f1 = Math.min(c.nf - 1, f0 + 1), w = f - f0;
+    if (fill) { if (c.filled < c.nf) return false; }   // playing backwards needs the whole segment
+    else if (c.filled <= f1) return false;
+    const n3 = c.n3, o0 = f0 * n3, o1 = f1 * n3, d = S.disp, P = c.pos;
+    for (let i = 0; i < n3; i++) d[i] = (P[o0 + i] + (P[o1 + i] - P[o0 + i]) * w) * Q;
+    const nc = S.dcen.length;
+    for (let i = 0; i < nc; i++) S.dcen[i] = c.cen[f0 * nc + i] + (c.cen[f1 * nc + i] - c.cen[f0 * nc + i]) * w;
+    S.dstep = c.start + f * STRIDE;
+    if (fill && k > 0) fillSeg(S, getSeg(S, k - 1, true), 6);
+    for (const key of S.segs.keys()) if (key < k - 1 || key > k + 1) S.segs.delete(key);
+    return true;
+  }
+
+  // ---------- per-frame visuals ----------
+  const v3 = new THREE.Vector3(), tmpTarget = new THREE.Vector3();
+  function project(x, y, z) {
+    v3.set(x, y, z).project(camera);
+    if (v3.z > 1 || v3.z < -1) return null;
+    return [(v3.x * 0.5 + 0.5) * stage.clientWidth, (-v3.y * 0.5 + 0.5) * stage.clientHeight];
+  }
+  function placeLabel(el, xy, mode) {
+    const w = stage.clientWidth, h = stage.clientHeight;
+    if (!xy || xy[0] < -40 || xy[0] > w + 40 || xy[1] < -20 || xy[1] > h + 20) { el.hidden = true; return; }
+    el.hidden = false;
+    if (mode === 'left') el.style.transform = `translate(${(xy[0] - 14).toFixed(1)}px, ${(xy[1] - 7).toFixed(1)}px) translateX(-100%)`;
+    else el.style.transform = `translate(${(xy[0] + 16).toFixed(1)}px, ${(xy[1] - 7 + (mode || 0)).toFixed(1)}px)`;
+  }
+  function fmtSep(d) {
+    const ly = d * 3262;
+    return [Math.round(d).toLocaleString('da-DK') + ' kpc',
+      ly >= 1e6 ? fmt2(ly / 1e6) + ' mio. lysår' : (Math.round(ly / 1000) * 1000).toLocaleString('da-DK') + ' lysår'];
+  }
+
+  let lastPhase = null, last = performance.now();
+  function frame(now) {
+    const dtR = Math.min(0.1, (now - last) / 1000); last = now;
+    const S = cur, st = S.st, cfg = S.cfg;
+    const revMode = playing && dir < 0;
+
+    if (playing && !dragging) {
+      const d = S.speed * dtR / cfg.dt;
+      if (dir > 0) {
+        if (st.step + 2 >= Math.round(S.target)) S.target = Math.min(S.total, Math.min(S.target, st.step + 40) + d);
+        if (st.step >= S.total) { playing = false; setPlayUI(); }
+      } else {
+        if (S.revReady) S.target = Math.max(0, S.target - d);
+        if (S.dstep <= 0) { playing = false; setPlayUI(); }
+      }
+    }
+
+    if (!revMode) advance(S, playing ? 14 : 24);
+    const liveOk = st.step === Math.round(S.target);
+    let shown = false;
+    if (revMode || !liveOk) shown = showFromCache(S, S.target, revMode);
+    S.revReady = !revMode || shown;
+    if (!shown && (liveOk || !revMode)) { S.disp.set(st.pos); S.dcen.set(st.cen); S.dstep = st.step; }
+    busyEl.hidden = !(revMode && !S.revReady) && Math.abs(S.target - S.dstep) < 60;
+    S.posAttr.needsUpdate = true;
+
+    const c = S.dcen, step = S.dstep;
+    const t = cfg.tStart + step * cfg.dt;
+    $('clock').textContent = S.meta.clock(t);
+    let ph = S.phases[0]; for (const p of S.phases) if (t >= p[0]) ph = p;
+    if (ph !== lastPhase) { $('phaseTitle').textContent = ph[1]; $('phaseText').textContent = ph[2]; lastPhase = ph; }
+    if (!dragging) timeEl.value = Math.round(step);
+    S.tickEls.forEach(b => b.classList.toggle('on', Math.abs(+b.dataset.step - step) < S.total * 0.01));
+
+    const dist = (i, j) => Math.hypot(c[6 * i] - c[6 * j], c[6 * i + 1] - c[6 * j + 1], c[6 * i + 2] - c[6 * j + 2]);
+    S.meta.pairs.forEach((p, i) => { const [a, b] = fmtSep(dist(p[0], p[1])); $('sep' + i).textContent = a; $('sepLy' + i).textContent = b; });
+
+    const showTrails = $('trails').checked;
+    const nT = Math.min(S.track.length, Math.floor(step / S.every) + 1);
+    S.trails.forEach(l => { l.visible = showTrails; l.geometry.setDrawRange(0, nT); });
+
+    if (S.sun) {
+      S.sun.visible = $('showSun').checked;
+      S.sunArr[0] = S.disp[0]; S.sunArr[1] = S.disp[1]; S.sunArr[2] = S.disp[2];
+      S.sun.geometry.attributes.position.needsUpdate = true;
+    }
+
+    // camera
+    const cam = S.cam, f = cam.follow;
+    if (f === 'cm') tmpTarget.set(0, 0, 0);
+    else if (f === 'mid') tmpTarget.set((c[0] + c[6]) / 2, (c[1] + c[7]) / 2, (c[2] + c[8]) / 2);
+    else tmpTarget.set(c[6 * f], c[6 * f + 1], c[6 * f + 2]);
+    const k = 1 - Math.exp(-dtR * 4);
+    cam.target.lerp(tmpTarget, k);
+    if (cam.tgtPhi != null) { cam.phi += (cam.tgtPhi - cam.phi) * k; if (Math.abs(cam.tgtPhi - cam.phi) < 0.002) cam.tgtPhi = null; }
+    if (cam.tgtTheta != null) { cam.theta += (cam.tgtTheta - cam.theta) * k; if (Math.abs(cam.tgtTheta - cam.theta) < 0.002) cam.tgtTheta = null; }
+    if (cam.auto) {
+      let want = Math.max(S.meta.minDist, (f === 'cm' ? 1.35 : f === 'mid' ? 1.1 : 2.3) * dist(0, 1) + S.meta.pad);
+      if (f === 'cm') for (let i = 2; i < S.ng; i++) want = Math.max(want, 1.5 * Math.hypot(c[6 * i], c[6 * i + 1], c[6 * i + 2]) + S.meta.pad);
+      want *= Math.max(1, 0.9 / camera.aspect);
+      if (f === 'mid') want = Math.max(S.meta.minDist, 1.1 * (0.5 * dist(0, 1) + 16) / (0.414 * Math.min(1, camera.aspect)));
+      cam.dist += (want - cam.dist) * (1 - Math.exp(-dtR * 2));
+    }
+    const { L, e1, e2 } = S.basis, sp = Math.sin(cam.phi);
+    camera.position.copy(cam.target)
+      .addScaledVector(e1, cam.dist * sp * Math.cos(cam.theta))
+      .addScaledVector(e2, cam.dist * sp * Math.sin(cam.theta))
+      .addScaledVector(L, cam.dist * Math.cos(cam.phi));
+    camera.up.copy(L); camera.lookAt(cam.target);
+    camera.updateMatrixWorld();
+
+    // labels
+    const merged = S.ev.merge != null && t >= S.ev.merge;
+    const placed = [];
+    S.labels.forEach((el, i) => {
+      if (merged && i === 1) { el.hidden = true; return; }
+      let xy;
+      if (merged && i === 0) {
+        el.textContent = S.meta.merged;
+        const M0 = SF.totalMass(cfg.galaxies[0]), M1 = SF.totalMass(cfg.galaxies[1]), Mt = M0 + M1;
+        xy = project((M0 * c[0] + M1 * c[6]) / Mt, (M0 * c[1] + M1 * c[7]) / Mt, (M0 * c[2] + M1 * c[8]) / Mt);
+      } else {
+        el.textContent = S.meta.names[i];
+        xy = project(c[6 * i], c[6 * i + 1], c[6 * i + 2]);
+      }
+      let shift = 0;
+      if (xy) for (const q of placed) if (Math.abs(xy[0] - q[0]) < 140 && Math.abs(xy[1] + shift - q[1]) < 16) shift += xy[1] >= q[1] ? 16 : -16;
+      placeLabel(el, xy, shift);
+      if (xy) placed.push([xy[0], xy[1] + shift]);
+    });
+    if (S.sunLabel) {
+      if ($('showSun').checked) {
+        const xy = project(S.disp[0], S.disp[1], S.disp[2]);
+        if (xy) for (const q of placed) if (Math.abs(xy[0] - q[0]) < 160 && Math.abs(xy[1] - q[1]) < 16) { xy[1] = q[1] + 18; }
+        placeLabel(S.sunLabel, xy, 'left');
+      } else S.sunLabel.hidden = true;
+    }
+
+    renderer.render(scene3, camera);
+    requestAnimationFrame(frame);
+  }
+
+  activate(location.hash === '#m51' ? 'm51' : 'mw');
+  setPlayUI(); setDirUI();
+  requestAnimationFrame(frame);
+})();
+
+</script>
+
+</body>
+</html>
