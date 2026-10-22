@@ -83,9 +83,21 @@ python3 -m http.server 8000
 3. Tilføj et kort (`<article class="content-card">`) under det rette afsnit i `index.html`, med dybe links til sidens afsnit.
 4. Tilføj siden i denne README.
 
+## Licens og download
+
+Indholdet er udgivet under [Creative Commons Kreditering 4.0 (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/deed.da). Du må frit kopiere, dele og tilpasse siderne, også i undervisning og kompendier, når du krediterer: **Michael Grant, mhgfysik.dk — CC BY 4.0**. Billeder og tekster fra andre ophavspersoner er ikke omfattet; se [LICENSE](LICENSE).
+
+Hele sitet kan hentes som zip-fil med **Code → Download ZIP** på GitHub, eller med fuld historik:
+
+```bash
+git clone https://github.com/michaelhgrant/natur-fysik-kemi-mat.git
+```
+
+Mange sider indlæser three.js og skrifttyper fra nettet, så en lokal kopi kræver internetforbindelse.
+
 ## Forfatter
 
 **Michael Grant**, lektor emeritus i fysik, matematik og kemi, Grenaa Gymnasium.
 Kontakt: [michael.h.grant@gmail.com](mailto:michael.h.grant@gmail.com)
 
-© Michael Grant
+© Michael Grant · CC BY 4.0
