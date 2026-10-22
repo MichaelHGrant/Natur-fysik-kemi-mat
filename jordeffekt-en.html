@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ground Effect</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body { margin: 0; }
+img { max-width: 100%; }
+/* Layout: et observatorie-instrument — én stor 3D-scene som hovedperson, instrumentpanel under, forklaring nederst */
+:root {
+  --void: #081218;
+  --panel: #0f1c24;
+  --raise: #162a35;
+  --line: #22404e;
+  --ink: #e9e6dd;
+  --muted: #9097a8;
+  --mw: #f3b46c;
+  --m31: #8db4ff;
+  --dusk: #f0a060;
+  --hl: #ff6a3d;
+  --nb: #ffd27a;
+  --m51: #9cc0ff;
+  --n5195: #f4a07a;
+  --m33: #7fe0c0;
+  --sun: #fff1a8;
+  --focus: #c9d8ff;
+  --f-display: "Spectral", Georgia, "Times New Roman", serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { background: var(--void); color: var(--ink); }
+body { font-family: var(--f-body); font-size: 15px; line-height: 1.55; }
+.wrap {
+  max-width: 1180px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 56px;
+  display: grid; gap: 18px;
+}
+header { display: grid; gap: 6px; }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+h1 { font-family: var(--f-display); font-weight: 400; font-size: clamp(30px, 5vw, 48px); line-height: 1.08; margin: 0; text-wrap: balance; }
+h1 em { font-style: italic; color: var(--m31); }
+h1 .mw { color: var(--mw); font-style: italic; }
+.lede { margin: 4px 0 0; max-width: 64ch; color: var(--muted); }
+
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.tab {
+  font: 500 14px/1.2 var(--f-body); color: var(--muted);
+  background: transparent; border: 1px solid var(--line); border-radius: 999px;
+  padding: 9px 16px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+}
+.tab .dots { display: inline-flex; gap: 3px; }
+.tab .dots i { width: 9px; height: 9px; border-radius: 50%; display: block; }
+.tab[aria-selected="true"] { color: var(--ink); background: var(--raise); border-color: #3a4560; }
+.tab:hover { color: var(--ink); }
+
+.stage {
+  position: relative; height: clamp(380px, 66vh, 740px);
+  background: #0d1a22;
+  border: 1px solid var(--line); border-radius: 6px; overflow: hidden;
+}
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.stage canvas:active { cursor: grabbing; }
+.hud { position: absolute; pointer-events: none; }
+.hud.tl { top: 14px; left: 16px; right: 16px; display: grid; gap: 2px; max-width: 46ch; }
+.clock { font-family: var(--f-mono); font-size: clamp(22px, 3.2vw, 32px); font-weight: 500; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.phase-title { font-family: var(--f-display); font-size: 19px; font-style: italic; }
+.phase-text { color: #c5c8d2; font-size: 14px; text-shadow: 0 1px 6px var(--void); }
+.hud.br { bottom: 12px; right: 16px; text-align: right; font-family: var(--f-mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; display: grid; gap: 2px; }
+.hud.br b { color: var(--ink); font-weight: 500; font-size: 14px; }
+.hud.br .pair:not(:first-child) { margin-top: 6px; }
+.hud.bl { bottom: 12px; left: 16px; font-size: 12px; color: var(--muted); }
+.busy { position: absolute; top: 14px; right: 16px; font-family: var(--f-mono); font-size: 12px; color: var(--muted); background: var(--panel); border: 1px solid var(--line); padding: 4px 10px; border-radius: 999px; }
+.labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.lbl { position: absolute; left: 0; top: 0; font-family: var(--f-mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; transform: translate(-50%, -50%); padding-left: 0; }
+.lbl::before { content: ""; position: absolute; left: -10px; top: 50%; width: 6px; height: 1px; background: currentColor; opacity: .7; }
+.lbl.sun { text-transform: none; letter-spacing: .02em; font-size: 12px; }
+.lbl.sun::before { left: auto; right: -10px; }
+
+.controls {
+  display: grid; gap: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+  padding: 14px 16px;
+}
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.transport { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.play {
+  height: 44px; min-width: 112px; padding: 0 18px 0 14px; border-radius: 999px; border: 1px solid #4a5878; background: #1b2233;
+  color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 600 15px/1 var(--f-body);
+}
+.play:hover { background: #222b40; }
+.play svg { width: 16px; height: 16px; fill: currentColor; }
+.dir button { display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px; }
+.dir svg { width: 14px; height: 14px; fill: currentColor; }
+.speedctl { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.speedctl button { width: 40px; height: 36px; border: 0; background: transparent; color: var(--ink); font: 500 20px/1 var(--f-body); cursor: pointer; }
+.speedctl button:hover { background: var(--raise); }
+.speedctl button:disabled { color: #4a5068; cursor: default; background: transparent; }
+.speedctl output { min-width: 9.5em; text-align: center; font: 500 13px/1 var(--f-mono); font-variant-numeric: tabular-nums; border-inline: 1px solid var(--line); padding: 11px 8px; }
+.keys { margin-left: auto; }
+.track { position: relative; padding-top: 26px; min-width: 0; }
+.ticks { position: absolute; top: 0; left: 9px; right: 9px; height: 24px; }
+.tick {
+  position: absolute; top: 0; transform: translateX(-50%); font: 500 11px/1 var(--f-mono); color: var(--muted);
+  background: none; border: 0; padding: 2px 3px; cursor: pointer; white-space: nowrap;
+}
+.tick::after { content: ""; position: absolute; left: 50%; top: 17px; width: 1px; height: 9px; background: currentColor; }
+.tick:hover, .tick.on { color: var(--ink); }
+.tick.small { font-size: 0; width: 14px; height: 18px; }
+input[type=range] { width: 100%; accent-color: var(--m31); margin: 0; height: 22px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.seg button {
+  font: 500 13px/1 var(--f-body); color: var(--muted); background: transparent; border: 0; padding: 8px 12px; cursor: pointer;
+  border-right: 1px solid var(--line);
+}
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { color: var(--ink); background: var(--raise); }
+.ctl-label { font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.group { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.chk { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); cursor: pointer; }
+.chk input { accent-color: var(--m31); }
+.hint { font-size: 12px; color: var(--muted); margin: 0; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.notes { display: grid; grid-template-columns: 1.3fr 1fr; gap: 28px; padding-top: 8px; }
+.notes > section { min-width: 0; }
+.notes h2 { font-family: var(--f-display); font-weight: 400; font-size: 24px; margin: 0 0 8px; text-wrap: balance; }
+.notes h3 { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 500; margin: 0 0 8px; }
+.notes p { margin: 0 0 10px; max-width: 66ch; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 12px 0 0; font-size: 14px; }
+.facts dt { font-family: var(--f-mono); font-size: 12px; color: var(--muted); padding-top: 2px; }
+.facts dd { margin: 0; font-variant-numeric: tabular-nums; }
+.model { border-left: 1px solid var(--line); padding-left: 24px; color: #c5c8d2; font-size: 14px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+@media (max-width: 760px) {
+  .notes { grid-template-columns: 1fr; }
+  .model { border-left: 0; border-top: 1px solid var(--line); padding-left: 0; padding-top: 16px; }
+  .phase-text { font-size: 13px; }
+  .hud.bl { display: none; }
+}
+@media (max-width: 640px) { .keys { display: none; } }
+@media (max-width: 480px) { .tick { font-size: 10px; } .speedctl output { min-width: 8em; } }
+.range { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.range input { width: 140px; accent-color: var(--dusk); }
+.range output { font: 500 13px/1 var(--f-mono); color: var(--ink); min-width: 2ch; }
+.action { font: 600 14px/1 var(--f-body); color: #1b0f08; background: var(--dusk); border: 0; border-radius: 999px; padding: 11px 16px; cursor: pointer; }
+.action:hover { filter: brightness(1.08); }
+.hud.tl { text-shadow: 0 1px 8px rgba(0,0,0,.6); }
+.chartbox { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; display: grid; gap: 8px; }
+.chartbox svg { width: 100%; height: auto; display: block; }
+.chartbox .gl { stroke: var(--line); stroke-width: 1; }
+.chartbox .ax { fill: var(--muted); font: 11px var(--f-mono); }
+.chartbox .cv { fill: none; stroke: #7fd0ff; stroke-width: 2.2; }
+.chartbox .exl { stroke: var(--dusk); stroke-dasharray: 3 3; }
+.chartbox .ex { fill: var(--dusk); font: 11px var(--f-mono); }
+.chartbox .dot { fill: #ffb36b; stroke: var(--void); stroke-width: 2; }
+.readouts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.readouts div { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; min-width: 0; }
+.readouts span { display: block; font: 500 11px/1.3 var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.readouts b { display: block; font: 500 22px/1.2 var(--f-mono); font-variant-numeric: tabular-nums; margin-top: 4px; }
+.split { display: grid; grid-template-columns: 1.4fr 1fr; gap: 18px; align-items: start; }
+.split > * { min-width: 0; }
+.notes h2 { margin-top: 18px; }
+.notes section > h2:first-child { margin-top: 0; }
+@media (max-width: 760px) { .readouts { grid-template-columns: repeat(2, minmax(0, 1fr)); } .split { grid-template-columns: 1fr; } }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow"><a href="index-en.html#mekanik" style="color:inherit">← Home</a> · Mechanics and everyday physics · aerodynamics</div>
+    <h1>Ground effect: why pelicans and aircraft <span class="mw">float</span> close to the surface</h1>
+    <p class="lede">When a wing comes down to a height of less than about half its span above ground or water, its drag falls noticeably and it lifts a little better. Birds use this to save energy, pilots feel it when the aircraft “floats” just before landing, and Russian engineers built whole craft around it.</p>
+  </header>
+
+  <div class="stage" id="stage">
+    <canvas id="cv" aria-label="3D animation of a wing over water with vortices from the wingtips. Drag to rotate."></canvas>
+    <div class="hud tl">
+      <div class="phase-title" id="craftName">Wingtip vortices</div>
+      <div class="phase-text" id="wakeText"></div>
+    </div>
+    <div class="hud bl"><div class="legend"><span><i style="background:#ffb36b"></i>vortex cores</span><span><i style="background:#7fb0ff"></i>image vortices below the surface</span><span><i style="background:#8fd8ff"></i>air particles from the trailing edge</span></div></div>
+  </div>
+
+  <div class="readouts" aria-live="polite">
+    <div><span>Height / wingspan</span><b id="hbOut">0.16</b></div>
+    <div><span>Height above the surface</span><b id="hM">34 cm</b></div>
+    <div><span>Induced drag</span><b id="ratio">–</b></div>
+    <div><span>Induced drag saved</span><b id="saving">–</b></div>
+  </div>
+
+  <div class="controls">
+    <div class="transport">
+      <button class="play" id="play"><svg viewBox="0 0 20 20" id="playIcon" aria-hidden="true"><path d="M4 4h12v12H4z"/></svg><span id="playTxt">Stop</span></button>
+      <div class="speedctl" role="group" aria-label="Speed">
+        <button id="slower" aria-label="Slower">−</button>
+        <output id="speedOut" aria-live="polite">1×</output>
+        <button id="faster" aria-label="Faster">+</button>
+      </div>
+      <label class="range">Height h/b <input type="range" id="hb" min="3" max="100" value="16" aria-label="Height above the surface relative to the wingspan"></label>
+    </div>
+    <div class="row">
+      <div class="group"><span class="ctl-label">Who is flying</span>
+        <div class="seg" id="craft">
+          <button data-craft="pelican" aria-pressed="true">Pelican</button>
+          <button data-craft="plane" aria-pressed="false">Airliner</button>
+          <button data-craft="ekrano" aria-pressed="false">Ekranoplan</button>
+        </div>
+      </div>
+      <div class="group"><span class="ctl-label">View</span>
+        <div class="seg" id="views">
+          <button data-view="persp" aria-pressed="true">Oblique</button>
+          <button data-view="behind">Behind</button>
+          <button data-view="front">Front</button>
+          <button data-view="side">Side</button>
+        </div>
+      </div>
+      <div class="group">
+        <label class="chk"><input type="checkbox" id="mirror" checked> Surface under the wing</label>
+        <label class="chk"><input type="checkbox" id="showImg" checked> Show the mirror image</label>
+      </div>
+    </div>
+    <p class="hint" id="craftNote"></p>
+  </div>
+
+  <div class="split">
+    <div class="chartbox">
+      <span class="ctl-label">Induced drag relative to free air</span>
+      <div id="chart"></div>
+      <p class="hint">Model: Phillips &amp; Hunsaker (2013) after Torenbeek. The orange dot is the chosen height; the dashed line is a typical height for the chosen craft.</p>
+    </div>
+    <div class="chartbox">
+      <span class="ctl-label">Try it yourself</span>
+      <p class="hint">Pull the height right down and choose “Behind”: the vortices hit the water and slide out sideways. Untick “Surface under the wing” and you see how in free air they sink straight down. That difference is the whole ground effect.</p>
+    </div>
+  </div>
+
+  <div class="notes">
+    <section>
+      <h2>Why a wing has drag, even without friction</h2>
+      <p>A wing lifts by pushing air downwards. The air under the wing has a higher pressure than the air above, and out at the wingtips it slips round from the underside to the upper side. That gives two rotating vortices, trailed behind the aircraft like two invisible tornadoes. They set the air behind the wing moving downwards, so the wing has to hold a slightly higher angle of attack to carry the same load. That costs an extra drag, the <em>induced drag</em>. It is largest at low speed, that is at take-off and landing, and for a bird in slow gliding flight.</p>
+      <h2>The surface acts as a mirror</h2>
+      <p>Close to the ground the air cannot flow freely downwards. Mathematically one can handle this by imagining a mirror wing below the surface with counter-rotating vortices (the method of images from electrostatics). The image vortices push upwards where the real ones push downwards, so the downwash behind the wing becomes weaker. The wing lifts a little more at the same angle, and the induced drag falls. At the same time the image vortices push the real vortices out sideways along the surface; you can see that in the animation.</p>
+      <p>The effect is felt below about half a wingspan and becomes strong below a tenth. At a tenth of the wingspan the induced drag in this model is about 28 % less than in free air; at a twentieth it is nearly halved.</p>
+      <h2>Birds that fly on the air cushion</h2>
+      <p>Pelicans glide in long lines just above the waves. Hainsworth (1988) filmed brown pelicans in Florida and found an average gliding height of 33 cm, a sixth of the 2.1 m wingspan. He estimated that they thereby saved about half the induced drag (other models give less, but the saving is clear). The skimmer drags its lower bill through the water and so always flies in ground effect. Shearwaters, puffins and sea ducks follow the contours of the waves, and over land it is seen less often, because grass and bushes are in the way.</p>
+      <h2>Aircraft: floating on landing and false security on take-off</h2>
+      <p>When an aircraft flares just above the runway, the drag falls and the aircraft tends to “float” some way further than expected. On take-off a heavily loaded aircraft can get airborne inside the ground effect but start to sink as it climbs out of it, because the drag suddenly grows. Pilots are therefore taught to hold the aircraft low and gain speed before climbing.</p>
+      <h2>The ekranoplan: a ship that flies</h2>
+      <p>In the 1960s the Soviet designer Rostislav Alekseyev built ekranoplans, large craft with short wings that fly a few metres above the water. The largest, the KM, known as the “Caspian Sea Monster”, was 92 m long, weighed up to 544 t and flew at about 430 km/h at a height of 4–14 m. It first flew in 1966 and crashed in 1980. The principle is efficient, but the craft are hard to control in waves and today are mostly used in smaller versions.</p>
+      <h2>Another “ground effect”: racing cars</h2>
+      <p>In Formula 1 the term means something else. There the floor of the car is shaped as a venturi channel, so the air under the car flows faster and gives a suction that pulls the car down onto the track. So it is a pressure drop under a body close to the ground, not less induced drag. Both come from the ground limiting how the air can flow.</p>
+    </section>
+    <section class="model">
+      <h3>About the animation</h3>
+      <p>The wing is elliptic. The vortex cores sit at π/4 of the half-span out from the centre, and their path behind the wing is computed as a vortex pair in the cross-plane with image vortices below the surface (Lamb's classic solution). The particles follow the flow from the cores and their images.</p>
+      <p>The distance downstream is shown compressed, and the strength of the vortices is scaled so that the motion can be seen. The drag figures come from the formula in the diagram and apply only to the induced drag, not the friction drag.</p>
+      <h3>Sources</h3>
+      <p>F. R. Hainsworth (1988), <em>J. Exp. Biol.</em> 135: 431–444. W. F. Phillips &amp; D. F. Hunsaker (2013), <em>J. Aircraft</em> 50. E. Torenbeek (1982). Data for the KM: Wikipedia, “Caspian Sea Monster”.</p>
+    </section>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const fmt = (x, d) => x.toFixed(d);
+
+  // Induced drag in ground effect relative to free flight (Phillips & Hunsaker 2013, after Torenbeek)
+  const phi = hb => 1 - Math.exp(-4.01 * Math.pow(2 * Math.max(hb, 1e-4), 0.717));
+
+  const CRAFT = {
+    pelican: { name: 'Brown pelican', b: 2.1, U: 11, note: 'Pelicans often glide 25–45 cm above the water (Hainsworth 1988).', ex: 0.16 },
+    plane: { name: 'Airliner (A320)', b: 35.8, U: 70, note: 'The wing is about 4 m above the runway when the wheels touch: h/b ≈ 0.12.', ex: 0.12 },
+    ekrano: { name: 'Ekranoplan KM', b: 37.6, U: 120, note: 'The “Caspian Sea Monster” flew 4–14 m above the water at 430 km/h.', ex: 0.2 }
+  };
+  let craft = 'pelican', hb = 0.16, mirror = true, playing = !reduceMotion, speed = 1;
+
+  // ---------- vortex wake in the cross-flow plane (wing frame; y spanwise, z height above ground) ----------
+  // Tip vortices of an elliptic wing sit at y = ±(pi/4) b/2. Units: span b = 1, time in b/U.
+  const B0 = Math.PI / 4;
+  let G = 0.5; // circulation (scaled so the free-flight pair sinks at a visible rate)
+  function coreTrack(h) {
+    // integrate the pair (and its mirror images) for wake age tau in [0, T]
+    const T = 30, n = 600, dt = T / n, out = new Float32Array(2 * (n + 1));
+    let y = B0 / 2, z = h;
+    out[0] = y; out[1] = z;
+    for (let k = 1; k <= n; k++) {
+      // velocity of the right vortex (circulation -G... sign so the pair moves down) from: left vortex, own image, left image
+      const v = vortexVel(y, z, y, z, true);
+      y += v[0] * dt; z += v[1] * dt;
+      if (mirror && z < 0.01) z = 0.01;
+      out[2 * k] = y; out[2 * k + 1] = z;
+    }
+    return { T, n, dt, p: out };
+  }
+  // velocity at point (py,pz) induced by the vortex system whose right core is at (yc,zc)
+  function vortexVel(py, pz, yc, zc, selfIsCore) {
+    // right core: +G (clockwise looking downstream gives downwash between the cores), left core at (-yc, zc): -G
+    const sys = [[yc, zc, G], [-yc, zc, -G]];
+    if (mirror) { sys.push([yc, -zc, -G], [-yc, -zc, G]); }
+    let uy = 0, uz = 0;
+    for (const [vy, vz, g] of sys) {
+      const dy = py - vy, dz = pz - vz, r2 = dy * dy + dz * dz;
+      if (selfIsCore && r2 < 1e-9) continue;
+      const rr = r2 + 0.0025; // small viscous core
+      uy += -g / (2 * Math.PI) * dz / rr; uz += g / (2 * Math.PI) * dy / rr;
+    }
+    return [uy, uz];
+  }
+  let track = null;
+  function coreAt(tau) {
+    const k = Math.min(track.n, Math.max(0, tau / track.dt)), i = Math.floor(k), w = k - i, j = Math.min(track.n, i + 1);
+    return [track.p[2 * i] * (1 - w) + track.p[2 * j] * w, track.p[2 * i + 1] * (1 - w) + track.p[2 * j + 1] * w];
+  }
+
+  // ---------- tracer particles ----------
+  const NP = 4000, TMAX = 30;
+  const py = new Float32Array(NP), pz = new Float32Array(NP), pt = new Float32Array(NP);
+  let nextP = 0;
+  function seed(n) {
+    for (let k = 0; k < n; k++) {
+      const i = nextP; nextP = (nextP + 1) % NP;
+      // release along the trailing edge, more near the tips where the sheet rolls up
+      const s = Math.random() < 0.7 ? (0.36 + 0.14 * Math.random()) : 0.5 * Math.random();
+      py[i] = (Math.random() < 0.5 ? -1 : 1) * s; pz[i] = hb + (Math.random() - 0.5) * 0.01; pt[i] = 0;
+    }
+  }
+  function advect(dt) {
+    for (let i = 0; i < NP; i++) {
+      if (pt[i] >= TMAX) continue;
+      const c = coreAt(pt[i]);
+      const v = vortexVel(py[i], pz[i], c[0], c[1], false);
+      py[i] += v[0] * dt; pz[i] += v[1] * dt; pt[i] += dt;
+      if (mirror && pz[i] < 0.002) pz[i] = 0.002;
+    }
+  }
+
+  // ---------- scene (Three.js, y up; x = downstream, z = spanwise) ----------
+  const stage = $('stage'), canvas = $('cv');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setClearColor(0x0d1a22, 1);
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0x0d1a22, 8, 40);
+  const camera = new THREE.PerspectiveCamera(42, 1, 0.01, 200);
+  const S = 2; // scene units per span
+
+  // water surface
+  const water = new THREE.Mesh(new THREE.PlaneGeometry(80, 40, 1, 1), new THREE.MeshBasicMaterial({ color: 0x15394a, transparent: true, opacity: 0.78, depthWrite: false }));
+  water.rotation.x = -Math.PI / 2; water.position.x = 30; scene.add(water);
+  const gridH = new THREE.GridHelper(80, 80, 0x2a5a6e, 0x1c4252); gridH.position.set(30, 0.001, 0); scene.add(gridH);
+  // mirror world under the surface (faint)
+  const mirrorGroup = new THREE.Group(); scene.add(mirrorGroup);
+
+  // wing: an elliptic planform, chord 0.18 b
+  function wingMesh(color, opacity) {
+    const n = 48, c0 = 0.18 * S, v = [];
+    const st = k => { const z = -S / 2 + S * k / n, c = c0 * Math.sqrt(Math.max(0, 1 - (2 * z / S) ** 2)); return [z, -0.25 * c, 0.75 * c]; };
+    for (let k = 0; k < n; k++) {
+      const [z1, a1, b1] = st(k), [z2, a2, b2] = st(k + 1);
+      v.push(a1, 0, z1, b1, 0, z1, a2, 0, z2, b1, 0, z1, b2, 0, z2, a2, 0, z2);
+    }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(v, 3));
+    const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, transparent: opacity < 1, opacity }));
+    const grp = new THREE.Group(); grp.add(m); return grp;
+  }
+  const wing = wingMesh(0xe9e2d0, 1); scene.add(wing);
+  const wingImg = wingMesh(0xe9e2d0, 0.18); mirrorGroup.add(wingImg);
+
+  // vortex core lines (real and mirror)
+  function coreLine(color, opacity) {
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3 * 601), 3));
+    const l = new THREE.Line(g, new THREE.LineBasicMaterial({ color, transparent: true, opacity })); l.frustumCulled = false; return l;
+  }
+  const cores = [coreLine(0xffb36b, 0.9), coreLine(0xffb36b, 0.9)]; cores.forEach(c => scene.add(c));
+  const imgCores = [coreLine(0x7fb0ff, 0.6), coreLine(0x7fb0ff, 0.6)]; imgCores.forEach(c => mirrorGroup.add(c));
+
+  // tracers
+  const tg = new THREE.BufferGeometry();
+  const tpos = new Float32Array(3 * NP), tcol = new Float32Array(3 * NP);
+  tg.setAttribute('position', new THREE.BufferAttribute(tpos, 3)); tg.setAttribute('color', new THREE.BufferAttribute(tcol, 3));
+  const tracers = new THREE.Points(tg, new THREE.PointsMaterial({ size: 0.035, vertexColors: true, transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending }));
+  tracers.frustumCulled = false; scene.add(tracers);
+  const UX = 0.55; // downstream distance (scene units) per unit of wake age, purely for display
+
+  function updateScene() {
+    const h = hb * S;
+    wing.position.set(0, h, 0); wingImg.position.set(0, -h, 0);
+    mirrorGroup.visible = mirror && $('showImg').checked; water.visible = mirror; gridH.visible = mirror;
+    for (let s = 0; s < 2; s++) {
+      const a = cores[s].geometry.attributes.position.array, b = imgCores[s].geometry.attributes.position.array, sg = s ? -1 : 1;
+      for (let k = 0; k <= track.n; k++) {
+        const x = k * track.dt * UX, y = track.p[2 * k] * S * sg, z = track.p[2 * k + 1] * S;
+        a[3 * k] = x; a[3 * k + 1] = z; a[3 * k + 2] = y;
+        b[3 * k] = x; b[3 * k + 1] = -z; b[3 * k + 2] = y;
+      }
+      cores[s].geometry.attributes.position.needsUpdate = true; imgCores[s].geometry.attributes.position.needsUpdate = true;
+    }
+    for (let i = 0; i < NP; i++) {
+      const vis = pt[i] < TMAX;
+      tpos[3 * i] = pt[i] * UX; tpos[3 * i + 1] = vis ? pz[i] * S : -100; tpos[3 * i + 2] = py[i] * S;
+      const f = Math.max(0, 1 - pt[i] / TMAX);
+      tcol[3 * i] = 0.55 * f + 0.15; tcol[3 * i + 1] = 0.85 * f + 0.15; tcol[3 * i + 2] = 1.0 * f + 0.2;
+    }
+    tg.attributes.position.needsUpdate = true; tg.attributes.color.needsUpdate = true;
+  }
+
+  // ---------- readouts and chart ----------
+  function refresh() {
+    track = coreTrack(hb);
+    const c = CRAFT[craft], f = mirror ? phi(hb) : 1, hM = hb * c.b;
+    $('hbOut').textContent = fmt(hb, 2);
+    $('hM').textContent = hM < 1 ? Math.round(hM * 100) + ' cm' : fmt(hM, 1) + ' m';
+    $('ratio').textContent = Math.round(f * 100) + ' %';
+    $('saving').textContent = Math.round((1 - f) * 100) + ' %';
+    $('craftNote').textContent = c.note;
+    $('craftName').textContent = c.name + (mirror ? ' over the water' : ' in free air');
+    const zEnd = track.p[2 * track.n + 1], yEnd = track.p[2 * track.n];
+    $('wakeText').textContent = mirror
+      ? (zEnd < hb * 0.6 + 0.02 && yEnd > B0 / 2 * 1.4 ? 'The vortices reach the surface and slide out sideways: the ground pushes them apart.' : yEnd > B0 / 2 * 1.15 ? 'The vortices sink only a little and are pushed out sideways by the surface.' : 'Langt fra overfladen synker hvirvelparret frit nedad, som i fri luft.')
+      : 'Without image vortices (as in free air) the pair sinks straight down, carrying the wing’s downwash with it.';
+    drawChart();
+    // restart the tracer field so it shows the new height at once
+    pt.fill(TMAX); nextP = 0;
+  }
+  function drawChart() {
+    const W = 320, H = 170, L = 40, R = 12, T = 12, Bm = 32;
+    const x = v => L + (W - L - R) * v / 1.0, y = v => T + (H - T - Bm) * (1 - v);
+    let path = '';
+    for (let k = 0; k <= 100; k++) { const v = k / 100; path += (k ? 'L' : 'M') + x(v).toFixed(1) + ' ' + y(phi(v)).toFixed(1); }
+    const c = CRAFT[craft];
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Induced drag relative to free air as a function of height over wingspan">`;
+    for (const v of [0, 0.25, 0.5, 0.75, 1]) s += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" class="gl"/><text x="${L - 6}" y="${y(v) + 4}" class="ax" text-anchor="end">${Math.round(v * 100)} %</text>`;
+    for (const v of [0, 0.25, 0.5, 0.75, 1]) s += `<text x="${x(v)}" y="${H - Bm + 16}" class="ax" text-anchor="middle">${fmt(v, 2)}</text>`;
+    s += `<text x="${(L + W - R) / 2}" y="${H - 4}" class="ax" text-anchor="middle">height / wingspan (h/b)</text>`;
+    s += `<path d="${path}" class="cv"/>`;
+    s += `<line x1="${x(c.ex)}" x2="${x(c.ex)}" y1="${T}" y2="${H - Bm}" class="exl"/><text x="${x(c.ex) + 4}" y="${T + 10}" class="ex">${c.name.split(' ')[0]}</text>`;
+    s += `<circle cx="${x(hb)}" cy="${y(phi(hb))}" r="5" class="dot"/></svg>`;
+    $('chart').innerHTML = s;
+  }
+
+  // ---------- camera ----------
+  const cam = { theta: 2.45, phi: 1.15, dist: 6.5, target: new THREE.Vector3(2.2, 0.3, 0) };
+  const ptrs = new Map(); let pinch0 = 0;
+  canvas.addEventListener('pointerdown', e => { canvas.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch0 = Math.hypot(a.x - b.x, a.y - b.y); } });
+  canvas.addEventListener('pointermove', e => {
+    if (!ptrs.has(e.pointerId)) return;
+    const p = ptrs.get(e.pointerId), dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
+    if (ptrs.size === 1) { cam.theta -= dx * 0.006; cam.phi = Math.min(Math.PI - 0.05, Math.max(0.05, cam.phi - dy * 0.006)); setViewUI(''); }
+    else if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y); if (pinch0 > 0 && d > 0) cam.dist = Math.min(40, Math.max(1.5, cam.dist * pinch0 / d)); pinch0 = d; }
+  });
+  const endPtr = e => { ptrs.delete(e.pointerId); pinch0 = 0; };
+  canvas.addEventListener('pointerup', endPtr); canvas.addEventListener('pointercancel', endPtr);
+  canvas.addEventListener('wheel', e => { e.preventDefault(); cam.dist = Math.min(40, Math.max(1.5, cam.dist * Math.exp(e.deltaY * 0.0012))); }, { passive: false });
+  const VIEWS = { persp: [2.45, 1.15, 6.5, 2.2, 0.3], behind: [0.0, 1.5, 7, 0, 0.4], front: [Math.PI, 1.45, 4.5, 0, 0.3], side: [-Math.PI / 2, 1.52, 8, 3, 0.2] };
+  let vt = null;
+  function setViewUI(v) { document.querySelectorAll('#views button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === v))); }
+  document.querySelectorAll('#views button').forEach(b => b.addEventListener('click', () => { vt = VIEWS[b.dataset.view]; setViewUI(b.dataset.view); }));
+
+  function resize() { const w = stage.clientWidth, h = stage.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(resize).observe(stage); else window.addEventListener('resize', resize);
+  resize();
+
+  // ---------- controls ----------
+  $('hb').addEventListener('input', e => { hb = +e.target.value / 100; refresh(); });
+  document.querySelectorAll('#craft button').forEach(b => b.addEventListener('click', () => {
+    craft = b.dataset.craft; document.querySelectorAll('#craft button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    hb = CRAFT[craft].ex; $('hb').value = Math.round(hb * 100); refresh();
+  }));
+  $('mirror').addEventListener('change', e => { mirror = e.target.checked; refresh(); });
+  $('showImg').addEventListener('change', () => {});
+  function setPlayUI() { $('playIcon').innerHTML = playing ? '<path d="M4 4h12v12H4z"/>' : '<path d="M5 3l12 7-12 7z"/>'; $('playTxt').textContent = playing ? 'Stop' : 'Start'; $('play').setAttribute('aria-pressed', String(playing)); }
+  const SP = [0.25, 0.5, 1, 2], SPL = ['¼×', '½×', '1×', '2×']; let si = 2;
+  function setSpeedUI() { $('speedOut').textContent = SPL[si]; $('slower').disabled = si === 0; $('faster').disabled = si === SP.length - 1; speed = SP[si]; }
+  $('play').addEventListener('click', () => { playing = !playing; setPlayUI(); });
+  $('slower').addEventListener('click', () => { si = Math.max(0, si - 1); setSpeedUI(); });
+  $('faster').addEventListener('click', () => { si = Math.min(SP.length - 1, si + 1); setSpeedUI(); });
+  document.addEventListener('keydown', e => {
+    const tag = (e.target && e.target.tagName) || '';
+    if (tag === 'INPUT' || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === ' ' && tag !== 'BUTTON') { e.preventDefault(); playing = !playing; setPlayUI(); }
+  });
+
+  // ---------- loop ----------
+  let last = performance.now();
+  function frame(now) {
+    const dtR = Math.min(0.05, (now - last) / 1000); last = now;
+    if (playing) { const d = dtR * 2.4 * speed, sub = Math.ceil(d / 0.05); seed(Math.round(260 * dtR * speed)); for (let k = 0; k < sub; k++) advect(d / sub); }
+    updateScene();
+    if (vt) {
+      const k = 1 - Math.exp(-dtR * 3);
+      let d = vt[0] - cam.theta; d = Math.atan2(Math.sin(d), Math.cos(d));
+      cam.theta += d * k; cam.phi += (vt[1] - cam.phi) * k; cam.dist += (vt[2] - cam.dist) * k;
+      cam.target.x += (vt[3] - cam.target.x) * k; cam.target.y += (vt[4] - cam.target.y) * k;
+      if (Math.abs(d) < 0.003 && Math.abs(vt[1] - cam.phi) < 0.003) vt = null;
+    }
+    const sp = Math.sin(cam.phi);
+    camera.position.set(cam.target.x + cam.dist * sp * Math.cos(cam.theta), cam.target.y + cam.dist * Math.cos(cam.phi), cam.target.z + cam.dist * sp * Math.sin(cam.theta));
+    camera.lookAt(cam.target);
+    renderer.render(scene, camera);
+    requestAnimationFrame(frame);
+  }
+  refresh(); setPlayUI(); setSpeedUI();
+  if (!playing) { seed(NP); advect(0.01); }
+  requestAnimationFrame(frame);
+})();
+
+</script>
+
+</body>
+</html>

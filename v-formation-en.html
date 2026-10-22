@@ -1,0 +1,626 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>V Formation in 3D</title>
+<meta name="description" content="Why geese, swans and cranes fly in a V: an interactive 3D simulation with wingtip vortices, upwash, changes of leader and flocks that split up.">
+<link rel="canonical" href="https://mhgfysik.dk/v-formation-en.html">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body { margin: 0; }
+img { max-width: 100%; }
+/* Layout: et feltinstrument — én stor 3D-himmel som hovedperson, instrumentpanel under, forklaring nederst */
+:root {
+  --void: #0c0e14;
+  --panel: #151821;
+  --raise: #1f2430;
+  --line: #2c3342;
+  --ink: #ece8de;
+  --muted: #939aaa;
+  --amber: #e8b35c;
+  --up: #3dd6c0;
+  --down: #ff6b45;
+  --focus: #c9d8ff;
+  --f-display: "Spectral", Georgia, "Times New Roman", serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { background: var(--void); color: var(--ink); }
+body { font-family: var(--f-body); font-size: 15px; line-height: 1.55; }
+a { color: var(--amber); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 56px; display: grid; gap: 18px; }
+header { display: grid; gap: 6px; }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.eyebrow a { color: inherit; }
+h1 { font-family: var(--f-display); font-weight: 400; font-size: clamp(30px, 5vw, 48px); line-height: 1.08; margin: 0; text-wrap: balance; }
+h1 em { font-style: italic; color: var(--amber); }
+.lede { margin: 4px 0 0; max-width: 66ch; color: var(--muted); }
+.stage { position: relative; height: clamp(380px, 66vh, 740px); background: #1b1d29; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.stage canvas:active { cursor: grabbing; }
+.hud { position: absolute; pointer-events: none; text-shadow: 0 1px 8px rgba(0,0,0,.7); }
+.hud.tl { top: 14px; left: 16px; right: 16px; display: grid; gap: 2px; max-width: 48ch; }
+.sp-name { font-family: var(--f-display); font-size: clamp(22px, 3vw, 30px); }
+.sp-latin { font-family: var(--f-display); font-style: italic; color: var(--muted); font-size: 15px; }
+.event { margin-top: 8px; font-size: 14px; color: #e9dcc4; min-height: 1.5em; transition: opacity .4s; }
+.hud.br { bottom: 12px; right: 16px; text-align: right; font-family: var(--f-mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; display: grid; gap: 1px; }
+.hud.br b { color: var(--ink); font-weight: 500; font-size: 14px; }
+.hud.bl { bottom: 12px; left: 16px; font-size: 12px; color: var(--muted); display: grid; gap: 6px; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.legend i.bar { width: 90px; height: 8px; border-radius: 2px; background: linear-gradient(90deg, var(--down), #3a3f4e 45%, var(--up)); }
+.camtabs { position: absolute; top: 12px; right: 12px; display: flex; gap: 4px; }
+.camtabs button { font: 500 11px/1 var(--f-mono); color: var(--ink); background: rgba(21,24,33,.75); border: 1px solid var(--line); border-radius: 999px; padding: 6px 10px; cursor: pointer; }
+.camtabs button[aria-pressed="true"] { background: var(--raise); border-color: #4a5470; }
+.controls { display: grid; gap: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.play { height: 44px; min-width: 112px; padding: 0 18px 0 14px; border-radius: 999px; border: 1px solid #4a5878; background: #1b2233; color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 600 15px/1 var(--f-body); }
+.play:hover { background: #222b40; }
+.play svg { width: 16px; height: 16px; fill: currentColor; }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
+.seg button { font: 500 13px/1 var(--f-body); color: var(--muted); background: transparent; border: 0; padding: 9px 12px; cursor: pointer; border-right: 1px solid var(--line); display: inline-flex; align-items: center; gap: 6px; }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { color: var(--ink); background: var(--raise); }
+.seg svg { width: 14px; height: 14px; fill: currentColor; }
+.speedctl { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.speedctl button { width: 40px; height: 36px; border: 0; background: transparent; color: var(--ink); font: 500 20px/1 var(--f-body); cursor: pointer; }
+.speedctl button:hover { background: var(--raise); }
+.speedctl button:disabled { color: #4a5068; cursor: default; background: transparent; }
+.speedctl output { min-width: 5.5em; text-align: center; font: 500 13px/1 var(--f-mono); font-variant-numeric: tabular-nums; border-inline: 1px solid var(--line); padding: 11px 8px; }
+.action { font: 600 14px/1 var(--f-body); color: #1d1406; background: var(--amber); border: 0; border-radius: 999px; padding: 11px 16px; cursor: pointer; }
+.action:hover { filter: brightness(1.08); }
+.ghost { font: 500 14px/1 var(--f-body); color: var(--ink); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 10px 15px; cursor: pointer; }
+.ghost:hover { background: var(--raise); }
+.ctl-label { font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.group { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.range { display: inline-flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); flex-wrap: wrap; }
+.range input { width: 170px; accent-color: var(--amber); }
+.range output { font: 500 13px/1 var(--f-mono); color: var(--ink); min-width: 3ch; }
+.range .scale { font-size: 11.5px; }
+.chk { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); cursor: pointer; }
+.chk input { accent-color: var(--amber); width: 15px; height: 15px; }
+.hint { font-size: 12px; color: var(--muted); margin: 0; }
+.keys { margin-left: auto; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.notes { display: grid; grid-template-columns: 1.3fr 1fr; gap: 28px 36px; padding-top: 8px; }
+.notes > section { min-width: 0; }
+.notes h2 { font-family: var(--f-display); font-weight: 400; font-size: 25px; margin: 0 0 8px; text-wrap: balance; }
+.notes h3 { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 500; margin: 0 0 8px; }
+.notes p { margin: 0 0 10px; max-width: 66ch; }
+.eq { font-family: var(--f-display); font-style: italic; font-size: 18px; padding: 6px 0 10px; overflow-x: auto; white-space: nowrap; }
+.side { border-left: 1px solid var(--line); padding-left: 24px; color: #c9ccd5; font-size: 14px; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 6px 0 16px; font-size: 14px; }
+.facts dt { font-family: var(--f-mono); font-size: 12px; color: var(--muted); padding-top: 2px; }
+.facts dd { margin: 0; font-variant-numeric: tabular-nums; }
+.wide { grid-column: 1 / -1; }
+figure { margin: 6px 0 14px; }
+figure svg { width: 100%; height: auto; display: block; }
+figcaption { font-size: 12.5px; color: var(--muted); margin-top: 4px; max-width: 70ch; }
+ul.refs { margin: 0; padding-left: 18px; font-size: 13.5px; color: #c9ccd5; } ul.refs li { margin-bottom: 5px; }
+@media (max-width: 760px) {
+  .notes { grid-template-columns: 1fr; }
+  .side { border-left: 0; border-top: 1px solid var(--line); padding-left: 0; padding-top: 16px; }
+  .hud.bl { display: none; }
+  .hud.br { font-size: 11px; }
+}
+@media (max-width: 640px) { .keys { display: none; } .camtabs { top: auto; bottom: 12px; left: 12px; right: auto; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow"><a href="index-en.html#mekanik">← Home</a> · Mechanics and everyday physics · migrating birds in 3D</div>
+    <h1>Why geese fly in a <em>V</em></h1>
+    <p class="lede">Every wing leaves two vortices behind it, one from each wingtip. Inside them the air flows downwards; outside them it flows upwards. A bird that puts its inner wing in the upwash from the bird ahead gets free lift and saves energy. Here the upwash is computed for every bird while the flock flies. Drag the picture to rotate it; scroll or pinch to zoom.</p>
+  </header>
+
+  <div class="stage" id="stage">
+    <canvas id="cv" aria-label="3D animation of migrating birds in V formation. Drag to rotate."></canvas>
+    <div class="hud tl">
+      <div class="sp-name" id="spName">Greylag goose</div>
+      <div class="sp-latin" id="spLatin">Anser anser</div>
+      <div class="event" id="event"></div>
+    </div>
+    <div class="camtabs" id="cams">
+      <button type="button" data-cam="chase" aria-pressed="true">Behind</button>
+      <button type="button" data-cam="side" aria-pressed="false">Side</button>
+      <button type="button" data-cam="top" aria-pressed="false">Above</button>
+    </div>
+    <div class="hud bl">
+      <div class="legend"><span><i style="background:var(--amber)"></i>leader</span><span><i class="bar"></i></span><span>downwash → upwash / saving</span></div>
+    </div>
+    <div class="hud br" id="stats"></div>
+  </div>
+
+  <div class="controls">
+    <div class="row">
+      <button class="play" id="play" type="button"><svg viewBox="0 0 20 20" id="playIcon" aria-hidden="true"><path d="M4 4h12v12H4z"/></svg><span id="playTxt">Stop</span></button>
+      <div class="seg" id="dir" role="group" aria-label="Direction">
+        <button type="button" data-dir="-1" aria-pressed="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16 4v12L6 10zM6 4H4v12h2z"/></svg>Rewind</button>
+        <button type="button" data-dir="1" aria-pressed="true"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4v12l10-6zM14 4h2v12h-2z"/></svg>Forward</button>
+      </div>
+      <div class="speedctl" role="group" aria-label="Speed">
+        <button type="button" id="slower" aria-label="Slower">−</button>
+        <output id="speedOut" aria-live="polite">1×</output>
+        <button type="button" id="faster" aria-label="Faster">+</button>
+      </div>
+      <button class="action" id="swap" type="button">Change leader now</button>
+      <button class="ghost" id="reset" type="button">Start again</button>
+      <p class="hint keys">Space: start/stop · + −: speed · R: rewind · L: change leader</p>
+    </div>
+    <div class="row">
+      <div class="group"><span class="ctl-label">Bird</span>
+        <div class="seg" id="species"></div>
+      </div>
+    </div>
+    <div class="row">
+      <label class="range">Number of birds <input type="range" id="count" min="3" max="91" step="2" value="31"><output id="countOut">31</output></label>
+      <label class="range">Formation stability <input type="range" id="stab" min="0" max="100" value="55"><output id="stabOut">55 %</output><span class="scale" id="stabTxt">slightly gusty</span></label>
+    </div>
+    <div class="row">
+      <label class="chk"><input type="checkbox" id="tVort" checked> Wingtip vortices</label>
+      <label class="chk"><input type="checkbox" id="tField"> Up- and downwash at flight level</label>
+      <label class="chk"><input type="checkbox" id="tSave" checked> Saving per bird</label>
+      <label class="chk"><input type="checkbox" id="tFlap" checked> Phase-matched wingbeats</label>
+    </div>
+    <p class="hint">Changing the bird or the number starts again. The stability can be changed while the flock flies: low stability means gusty air, slow reactions and poor precision.</p>
+  </div>
+
+  <div class="notes">
+    <section>
+      <h2>Upwash behind the wingtips</h2>
+      <p>A bird stays up by giving the air a downward momentum. Behind the wing the air rolls up into two vortices, one from each wingtip, turning in opposite directions. Between them, right behind the bird, the air flows downwards. Outside them it flows upwards.</p>
+      <figure>
+        <svg viewBox="0 0 560 190" role="img" aria-label="Two birds seen from behind. Behind the leading bird there is downwash between the wingtip vortices and upwash outside them; the inner wing of the following bird lies in the upwash.">
+          <defs><marker id="ah" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#c9ccd5"/></marker></defs>
+          <line x1="20" y1="150" x2="540" y2="150" stroke="#2c3342"/>
+          <g stroke="#ff6b45" stroke-width="2" marker-end="url(#ah)"><line x1="150" y1="60" x2="150" y2="100"/><line x1="190" y1="60" x2="190" y2="100"/><line x1="230" y1="60" x2="230" y2="100"/></g>
+          <g stroke="#3dd6c0" stroke-width="2" marker-end="url(#ah)"><line x1="85" y1="105" x2="85" y2="65"/><line x1="300" y1="105" x2="300" y2="65"/><line x1="330" y1="105" x2="330" y2="70"/></g>
+          <g fill="none" stroke="#c9ccd5" stroke-width="1.5"><circle cx="118" cy="85" r="14"/><circle cx="262" cy="85" r="14"/></g>
+          <path d="M126 76a10 10 0 1 0 2 4" fill="none" stroke="#c9ccd5" stroke-width="1.5" marker-end="url(#ah)"/>
+          <path d="M254 76a10 10 0 1 1 -2 4" fill="none" stroke="#c9ccd5" stroke-width="1.5" marker-end="url(#ah)"/>
+          <g fill="#e8b35c"><path d="M110 85 Q190 70 270 85 Q190 80 110 85z"/><ellipse cx="190" cy="83" rx="10" ry="8"/></g>
+          <g fill="#ece8de" opacity=".85"><path d="M250 120 Q330 105 410 120 Q330 115 250 120z"/><ellipse cx="330" cy="118" rx="10" ry="8"/></g>
+          <text x="190" y="40" fill="#ff6b45" font-size="13" text-anchor="middle" font-family="IBM Plex Mono, monospace">downwash</text>
+          <text x="315" y="52" fill="#3dd6c0" font-size="13" text-anchor="middle" font-family="IBM Plex Mono, monospace">upwash</text>
+          <text x="85" y="52" fill="#3dd6c0" font-size="13" text-anchor="middle" font-family="IBM Plex Mono, monospace">upwash</text>
+          <text x="190" y="172" fill="#939aaa" font-size="12" text-anchor="middle" font-family="IBM Plex Mono, monospace">bird ahead</text>
+          <text x="400" y="145" fill="#939aaa" font-size="12" text-anchor="middle" font-family="IBM Plex Mono, monospace">bird behind</text>
+        </svg>
+        <figcaption>Seen from behind. The bird behind puts its inner wing in the upwash outside the wingtip of the bird ahead.</figcaption>
+      </figure>
+      <p>Pushing air downwards costs energy: the <em>induced power</em>. For a wing with elliptic lift distribution, span b and speed U, the downwash at the wing is</p>
+      <div class="eq">w₀ = Γ / (2b), &nbsp; Γ = mg / (ρU·πb/4), &nbsp; P<sub>i</sub> = mg·w₀</div>
+      <p>If another bird flies in an upwash w, it only has to give the air w₀ − w, and its induced power falls by the fraction w/w₀. The simulation puts a horseshoe vortex behind every bird and uses the Biot–Savart law to compute the upwash over the whole wing of every single bird, from all the other birds at once.</p>
+      <p>The best place to fly turns out to be with the centre about 0.9 span to the side of the bird ahead, so that the wingtips just overlap. Repeat that rule bird by bird to both sides, and you get a V. How far behind each other the birds fly matters less, because the upwash from a long vortex is nearly the same over several spans.</p>
+      <h2>Why not a straight line?</h2>
+      <p>In theory a flock flying side by side in a long line saves just as much. But then nobody can see the bird they have to keep station on. In a V each bird looks diagonally forward at its neighbour and can hold its place by eye. The formation is also robust: if one bird loses its place, only the birds behind it on the same leg suffer.</p>
+      <h2>The leader is replaced</h2>
+      <p>The bird in front has no bird ahead of it and flies in still air. It pays the full price. In northern bald ibises it has been measured that the birds take turns leading, and that two birds flying together keep a rough account of who has led longer. In the simulation the bird in front tires after 25–50 seconds. The more rested of the two birds behind it moves up, and the old leader slides out to the side and back to the end of the shorter leg.</p>
+      <h2>Large flocks split up</h2>
+      <p>Each bird keeps station on the bird ahead, but it reacts with a small delay. If the bird ahead goes off course, the one behind corrects too late and too much, and the error grows from bird to bird down the leg, like the concertina effect in a traffic queue. The longer the leg, the bigger the swings at the end. In the end a bird loses the upwash completely, and it and the birds behind it form their own smaller formation alongside. Try 61 birds at 50 % stability, and compare with 15 birds.</p>
+      <p>The same is true of small birds such as starlings, only much more so. Their vortices are weak compared with the disturbed air from their rapid wingbeats, so instead they fly in dense flocks without fixed order, as in a <a href="sort-sol-en.html">murmuration</a>.</p>
+    </section>
+    <section class="side">
+      <h3>The chosen bird</h3>
+      <dl class="facts" id="facts"></dl>
+      <h3>What the model computes</h3>
+      <p>Each bird is a horseshoe vortex: a bound vortex along the wing with effective span πb/4 and two trailing vortices going back from the tips. The upwash is found at nine points along each wing, weighted by the elliptic lift distribution, and summed over all birds. The vortices have a core of 0.1 b so that the velocities do not become infinite.</p>
+      <p>The birds steer towards their place with a damped spring that reacts to where the bird ahead was a moment ago. The stability sets reaction time, precision and gusts. A bird that has been more than 1.5 spans from its place for more than 2.5 seconds breaks away.</p>
+      <p>The saving shown is for the induced power alone. The rest of a bird's power goes to drag on body and wings and is not affected by the upwash. The simulation is idealised: real vortices sink, wave with the wingbeat and decay, and birds do not fly precisely. Measured savings are therefore smaller, typically 10–15 % of the total power.</p>
+      <p>With phase-matched wingbeats, each bird flaps in step with the path of the wingtip of the bird ahead, as seen in northern bald ibises.</p>
+      <h3>Sources</h3>
+      <ul class="refs">
+        <li>Lissaman &amp; Shollenberger, <i>Science</i> 168 (1970): the classic calculation of the flock's saving.</li>
+        <li>Weimerskirch et al., <i>Nature</i> 413 (2001): pelicans in formation have an 11–14 % lower heart rate.</li>
+        <li>Portugal et al., <i>Nature</i> 505 (2014): northern bald ibises position themselves in the upwash and match the phase of their wingbeats.</li>
+        <li>Voelkl et al., <i>PNAS</i> 112 (2015): northern bald ibises take turns leading.</li>
+      </ul>
+    </section>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ---- V-formation simulation core (pure JS, no DOM) ----
+const SPECIES={
+  gaas:{name:"Greylag goose",latin:"Anser anser",b:1.6,m:3.3,U:17,f:3.5,ki:0.45,col:"goose"},
+  bramgaas:{name:"Barnacle goose",latin:"Branta leucopsis",b:1.38,m:1.8,U:17,f:4.2,ki:0.42,col:"barnacle"},
+  svane:{name:"Whooper swan",latin:"Cygnus cygnus",b:2.3,m:9.5,U:19,f:2.6,ki:0.55,col:"swan"},
+  trane:{name:"Common crane",latin:"Grus grus",b:2.1,m:5.5,U:16,f:2.3,ki:0.45,col:"crane"},
+  skarv:{name:"Great cormorant",latin:"Phalacrocorax carbo",b:1.4,m:2.3,U:15,f:4.6,ki:0.4,col:"cormorant"},
+  pelikan:{name:"Great white pelican",latin:"Pelecanus onocrotalus",b:2.9,m:9,U:13,f:1.6,ki:0.5,col:"pelican"},
+  ibis:{name:"Northern bald ibis",latin:"Geronticus eremita",b:1.25,m:1.3,U:12,f:3.6,ki:0.4,col:"ibis"}
+};
+const RHO=1.2,G=9.81,DT=1/30;
+
+// Biot–Savart for a straight vortex segment A->B, returns vertical (z) velocity at P, with core rc
+function segW(ax,ay,az,bx,by,bz,px,py,pz,gam,rc2){
+  const r1x=px-ax,r1y=py-ay,r1z=pz-az,r2x=px-bx,r2y=py-by,r2z=pz-bz;
+  const cx=r1y*r2z-r1z*r2y,cy=r1z*r2x-r1x*r2z,cz=r1x*r2y-r1y*r2x;
+  const c2=cx*cx+cy*cy+cz*cz;
+  const r1=Math.sqrt(r1x*r1x+r1y*r1y+r1z*r1z),r2=Math.sqrt(r2x*r2x+r2y*r2y+r2z*r2z);
+  const r0x=bx-ax,r0y=by-ay,r0z=bz-az,l2=r0x*r0x+r0y*r0y+r0z*r0z;
+  const k=(r0x*(r1x/r1-r2x/r2)+r0y*(r1y/r1-r2y/r2)+r0z*(r1z/r1-r2z/r2));
+  return gam/(4*Math.PI)*cz*k/(c2+rc2*l2);
+}
+// vertical velocity at point from a horseshoe vortex of a bird at (x,y,z), heading +x, effective span bp
+// trailing legs go downstream (−x) to −LT
+function horseW(x,y,z,bp,gam,px,py,pz,rc2){
+  const LT=300, yl=y+bp/2, yr=y-bp/2; // left tip y+, right tip y−
+  // circulation sense: bound vortex from right tip to left tip gives lift for flow +x? We set sign so self downwash is negative.
+  let w=0;
+  w+=segW(x-LT,yr,z, x,yr,z, px,py,pz,gam,rc2);   // trailing right: from far wake to wing
+  w+=segW(x,yr,z, x,yl,z, px,py,pz,gam,rc2);      // bound
+  w+=segW(x,yl,z, x-LT,yl,z, px,py,pz,gam,rc2);   // trailing left: wing to far wake
+  return w;
+}
+const ETA=[-0.95,-0.75,-0.5,-0.25,0,0.25,0.5,0.75,0.95];
+const WGT=ETA.map(e=>Math.sqrt(1-e*e));const WS=WGT.reduce((a,b)=>a+b,0);
+
+function makeSim(spKey,N,sigma){
+  const sp=SPECIES[spKey],b=sp.b,bp=Math.PI*b/4;
+  const gam=sp.m*G/(RHO*sp.U*bp), w0=gam/(2*b), rc2=(0.1*b)**2;
+  // sign check & optimal lateral spacing
+  let sgn=1;{const ws=horseW(0,0,0,bp,gam,0.0,0,0,rc2)*0+horseW(0,0,0,bp,gam,-0.01,0,0,rc2);if(ws>0)sgn=-1;}
+  const S={sp,b,bp,gam:gam*sgn,w0,rc2,N,sigma,t:0,frame:0};
+  const dxT=0.9*b;let best=-1,bestY=b;
+  for(let y=0.4*b;y<=1.5*b;y+=0.005*b){let s=0;for(let k=0;k<9;k++)s+=WGT[k]*horseW(0,0,0,bp,S.gam,-dxT,y+ETA[k]*b/2,0,rc2);s/=WS*w0;if(s>best){best=s;bestY=y;}}
+  S.dyT=bestY;S.dxT=dxT;S.pairSaving=best;
+  S.x=new Float32Array(N);S.y=new Float32Array(N);S.z=new Float32Array(N);
+  S.vx=new Float32Array(N);S.vy=new Float32Array(N);S.vz=new Float32Array(N);
+  S.gx=new Float32Array(N);S.gy=new Float32Array(N);S.gz=new Float32Array(N);
+  S.fat=new Float32Array(N);S.sav=new Float32Array(N);S.err=new Float32Array(N);S.errT=new Float32Array(N);S.trans=new Float32Array(N);S.grace=new Float32Array(N);
+  // single V
+  const g={leader:0,L:[],R:[],lt:25+Math.random()*20,age:10};
+  for(let i=1;i<N;i++)(i%2?g.L:g.R).push(i);
+  S.groups=[g];S.switches=0;S.splits=0;S.merges=0;
+  placeAll(S,true);
+  S.hist=[];S.histMax=1800;
+  computeSavings(S);
+  return S;
+}
+function slotTarget(S,parent,side){const p=parent;return [S.x[p]-S.dxT,S.y[p]+side*S.dyT,S.z[p]];}
+function placeAll(S,exact){
+  for(const g of S.groups){
+    for(const [arr,side] of [[g.L,1],[g.R,-1]]){let prev=g.leader;
+      for(const i of arr){const t=slotTarget(S,prev,side);if(exact){S.x[i]=t[0];S.y[i]=t[1];S.z[i]=t[2];}prev=i;}}}
+}
+function groupOf(S,i){for(const g of S.groups){if(g.leader===i||g.L.includes(i)||g.R.includes(i))return g;}return null;}
+function params(S){const s=S.sigma;const om=0.6+1.0*s;return {kp:om*om,kd:2*(0.4+0.4*s)*om,delay:Math.round((0.65-0.5*s)/DT),gust:(1.0-0.8*s)*0.3*S.b,amax:2.5};}
+
+function computeSavings(S,part,parts){
+  part=part||0;parts=parts||1;
+  const N=S.N,b=S.b,bp=S.bp,gam=S.gam,rc2=S.rc2,w0=S.w0;
+  for(let i=part;i<N;i+=parts){let s=0;
+    for(let k=0;k<9;k++){const px=S.x[i],py=S.y[i]+ETA[k]*b/2,pz=S.z[i];let w=0;
+      for(let j=0;j<N;j++){if(j===i)continue;const dx=S.x[j]-px;if(dx<-2*b||Math.abs(S.y[j]-py)>10*b)continue; // birds well behind contribute ~nothing
+        w+=horseW(S.x[j],S.y[j],S.z[j],bp,gam,px,py,pz,rc2);}
+      s+=WGT[k]*w;}
+    S.sav[i]=Math.max(-0.5,Math.min(0.95,s/WS/w0));}
+}
+function gauss(){let u=0,v=0;while(!u)u=Math.random();v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+
+function step(S){
+  const P=params(S),N=S.N,b=S.b,H=S.hist;
+  const old=H.length>P.delay?H[H.length-1-P.delay]:null;
+  const ox=old?old.x:S.x,oy=old?old.y:S.y,oz=old?old.z:S.z;
+  const mainG=S.groups[0];
+  // group leader targets
+  const tgt=new Float32Array(3*N);
+  S.groups.forEach((g,gi)=>{
+    let tx,ty,tz=0;
+    if(gi===0){tx=0;ty=1.5*b*Math.sin(S.t*0.07)+0.8*b*Math.sin(S.t*0.023);}
+    else{ // beside the main group, alternating sides, a bit back
+      const side=gi%2?1:-1, rank=Math.ceil(gi/2);
+      const wMain=Math.max(mainG.L.length,mainG.R.length)*S.dyT, wG=Math.max(g.L.length,g.R.length)*S.dyT;
+      tx=S.x[mainG.leader]-(0.25+0.35*rank)*Math.max(mainG.L.length,mainG.R.length,3)*S.dxT;
+      ty=S.y[mainG.leader]+side*(wMain+wG*rank+ (4+2*rank)*b);}
+    g.tx=tx;g.ty=ty;
+    const i=g.leader;tgt[3*i]=tx;tgt[3*i+1]=ty;tgt[3*i+2]=tz;
+    for(const [arr,side] of [[g.L,1],[g.R,-1]]){let prev=g.leader;
+      for(const k of arr){tgt[3*k]=ox[prev]-S.dxT;tgt[3*k+1]=oy[prev]+side*S.dyT;tgt[3*k+2]=oz[prev];
+        if(S.trans[k]>0){tgt[3*k+1]+=side*1.6*b;}
+        prev=k;}}
+  });
+  const sq=Math.sqrt(DT),tauG=2.0;
+  for(let i=0;i<N;i++){
+    S.gx[i]+=-S.gx[i]/tauG*DT+P.gust*sq*gauss();S.gy[i]+=-S.gy[i]/tauG*DT+P.gust*sq*gauss();S.gz[i]+=-S.gz[i]/tauG*DT+0.5*P.gust*sq*gauss();
+    const ex=tgt[3*i]-S.x[i],ey=tgt[3*i+1]-S.y[i],ez=tgt[3*i+2]-S.z[i];
+    const isLeader=S.groups.some(g=>g.leader===i);
+    const kp=isLeader?0.15:P.kp,kd=isLeader?0.6:P.kd;
+    let ax=kp*ex-kd*S.vx[i]+S.gx[i],ay=kp*ey-kd*S.vy[i]+S.gy[i],az=kp*ez-kd*S.vz[i]+S.gz[i];
+    const am=Math.hypot(ax,ay,az),lim=P.amax*(S.trans[i]>0?1.5:1);if(am>lim){ax*=lim/am;ay*=lim/am;az*=lim/am;}
+    S.vx[i]+=ax*DT;S.vy[i]+=ay*DT;S.vz[i]+=az*DT;
+    S.x[i]+=S.vx[i]*DT;S.y[i]+=S.vy[i]*DT;S.z[i]+=S.vz[i]*DT;
+    // error w.r.t. own (non-delayed) slot
+    S.err[i]=isLeader?0:Math.hypot(ex,ey)/b;
+    if(S.grace[i]>0)S.grace[i]-=DT;
+    if(S.trans[i]>0){S.trans[i]-=DT;if(Math.abs(ex)<1.2*b)S.trans[i]=Math.min(S.trans[i],0.8);S.errT[i]=0;}
+    else S.errT[i]=S.err[i]>1.5?S.errT[i]+DT:Math.max(0,S.errT[i]-2*DT);
+  }
+  computeSavings(S,S.frame%6,6);
+  for(let i=0;i<N;i++)S.fat[i]+=DT*(1-S.sav[i]);
+  structural(S);
+  S.t+=DT;S.frame++;
+  H.push({x:S.x.slice(),y:S.y.slice(),z:S.z.slice()});if(H.length>60)H.shift();
+}
+function structural(S){
+  const N=S.N;
+  // splits: a follower that has been out of position too long breaks away with the birds behind it
+  for(let gi=0;gi<S.groups.length;gi++){const g=S.groups[gi];
+    for(const [key] of [["L"],["R"]]){const arr=g[key];
+      for(let k=1;k<arr.length;k++){const i=arr[k];
+        if(S.errT[i]>2.5&&S.trans[i]<=0&&S.grace[i]<=0&&g.age>8&&arr.length-k>=4){
+          const tail=arr.splice(k);const ng={leader:tail[0],L:[],R:[],lt:20+Math.random()*20,age:0};
+          tail.slice(1).forEach((j,n)=>((n%2)?ng.R:ng.L).push(j));
+          tail.forEach((j,n)=>{S.errT[j]=0;S.grace[j]=6;});S.groups.push(ng);S.splits++;S.lastEvent={t:S.t,kind:"split",n:tail.length};return;}}}}
+  // tiny groups rejoin main group
+  S.groups[0].age+=DT;
+  for(let gi=1;gi<S.groups.length;gi++){const g=S.groups[gi];g.age+=DT;const n=1+g.L.length+g.R.length;
+    const stable=avgErr(S,S.groups[0])<0.35;
+    if((n<=2&&g.age>6)||(stable&&S.sigma>0.6&&g.age>25&&n+groupSize(S.groups[0])<=maxStable(S))){
+      const m=S.groups[0];for(const j of [g.leader,...g.L,...g.R]){(m.L.length<=m.R.length?m.L:m.R).push(j);S.trans[j]=6;S.errT[j]=0;S.grace[j]=8;}
+      for(const j of [m.leader,...m.L,...m.R])S.grace[j]=Math.max(S.grace[j],4);
+      S.groups.splice(gi,1);S.merges++;S.lastEvent={t:S.t,kind:"merge",n};return;}}
+  // leader rotation
+  for(const g of S.groups){g.lt-=DT;
+    if(g.lt<=0&&(g.L.length||g.R.length)){
+      const cands=[];if(g.L.length)cands.push(["L",g.L[0]]);if(g.R.length)cands.push(["R",g.R[0]]);
+      cands.sort((a,c)=>S.fat[a[1]]-S.fat[c[1]]);const [key,nl]=cands[0];g[key].shift();
+      const old=g.leader;g.leader=nl;for(const j of [nl,...g.L,...g.R])S.grace[j]=5;S.grace[old]=10;(g.L.length<=g.R.length?g.L:g.R).push(old);S.trans[old]=8;S.errT[old]=0;
+      g.lt=25+Math.random()*25;S.switches++;S.lastEvent={t:S.t,kind:"switch"};}}
+}
+function groupSize(g){return 1+g.L.length+g.R.length;}
+function avgErr(S,g){const a=[...g.L,...g.R];if(!a.length)return 0;let s=0;for(const i of a)s+=S.err[i];return s/a.length;}
+function maxStable(S){return Math.round(12+60*S.sigma*S.sigma);}
+</script>
+<script>
+(function(){
+"use strict";
+const $=s=>document.querySelector(s);
+const fmt=(v,d)=>(v<0?"−":"")+Math.abs(v).toFixed(d);
+const ORDER=["gaas","bramgaas","svane","trane","skarv","pelikan","ibis"];
+const LOOK={ // colours: body, wing root, wing tip, neck/head, bill, neck length, bill length, legs
+  gaas:{body:0x8a8277,root:0x9b9388,tip:0x4a4642,head:0x7d766c,bill:0xe08a4a,neck:0.2,billL:0.05,legs:0},
+  bramgaas:{body:0x9da3aa,root:0x8e949b,tip:0x3b3d42,head:0x1c1c1e,bill:0x1c1c1e,neck:0.18,billL:0.035,legs:0,face:0xf2efe8},
+  svane:{body:0xf3f1ea,root:0xf3f1ea,tip:0xe6e3da,head:0xf3f1ea,bill:0xf0c43a,neck:0.36,billL:0.06,legs:0},
+  trane:{body:0x8f959b,root:0x8f959b,tip:0x2c2e32,head:0x2a2b2e,bill:0x5a5a52,neck:0.32,billL:0.07,legs:0.32,crown:0xc0392b},
+  skarv:{body:0x1d2023,root:0x2a2d2f,tip:0x15171a,head:0x1d2023,bill:0x6a6458,neck:0.17,billL:0.06,legs:0},
+  pelikan:{body:0xf4ede4,root:0xf4ede4,tip:0x1e1e22,head:0xf4ede4,bill:0xf2b84b,neck:0.1,billL:0.17,legs:0},
+  ibis:{body:0x1f2420,root:0x27302b,tip:0x161a17,head:0xc0504a,bill:0xc0504a,neck:0.1,billL:0.11,legs:0.12}
+};
+const state={sp:"gaas",N:31,sigma:0.55,running:true,dir:1,speedIx:2,vort:true,field:false,save:true,phase:true,cam:"chase"};
+const SPEEDS=[0.25,0.5,1,2,4,8];
+let S=null,tape=[],cur=-1,acc=0;
+const ARRS=["x","y","z","vx","vy","vz","gx","gy","gz","fat","sav","err","errT","trans","grace"];
+function snap(){const o={t:S.t,frame:S.frame,sw:S.switches,spl:S.splits,mg:S.merges,ev:S.lastEvent||null,groups:JSON.stringify(S.groups)};for(const k of ARRS)o[k]=S[k].slice();return o;}
+function restore(o){for(const k of ARRS)S[k].set(o[k]);S.t=o.t;S.frame=o.frame;S.switches=o.sw;S.splits=o.spl;S.merges=o.mg;S.lastEvent=o.ev;S.groups=JSON.parse(o.groups);}
+function rebuildHist(){S.hist=[];for(let k=Math.max(0,cur-59);k<=cur;k++){const o=tape[k];S.hist.push({x:o.x,y:o.y,z:o.z});}}
+
+/* ---------- three.js ---------- */
+const cv=$("#cv"),stage=$("#stage");
+const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true});
+renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(45,1,0.5,4000);
+// sky gradient as background texture
+{const c=document.createElement("canvas");c.width=4;c.height=256;const g=c.getContext("2d");const gr=g.createLinearGradient(0,0,0,256);
+ gr.addColorStop(0,"#1c2338");gr.addColorStop(0.45,"#3d3f5c");gr.addColorStop(0.7,"#a8706a");gr.addColorStop(0.82,"#e9a86a");gr.addColorStop(1,"#3a2e33");
+ g.fillStyle=gr;g.fillRect(0,0,4,256);const t=new THREE.CanvasTexture(c);scene.background=t;}
+scene.fog=new THREE.Fog(0x8a6a68,250,1400);
+scene.add(new THREE.HemisphereLight(0xffe2c4,0x2a2836,0.95));
+const sun=new THREE.DirectionalLight(0xffd1a0,0.8);sun.position.set(-200,90,-300);scene.add(sun);
+// sea far below, scrolling
+const seaTex=(()=>{const c=document.createElement("canvas");c.width=c.height=256;const g=c.getContext("2d");g.fillStyle="#2e3446";g.fillRect(0,0,256,256);
+  for(let i=0;i<900;i++){const x=Math.random()*256,y=Math.random()*256,w=6+Math.random()*26;g.strokeStyle="rgba(233,168,106,"+(0.05+Math.random()*0.18)+")";g.lineWidth=1;g.beginPath();g.moveTo(x,y);g.lineTo(x+w,y);g.stroke();}
+  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(60,60);return t;})();
+const sea=new THREE.Mesh(new THREE.PlaneGeometry(6000,6000),new THREE.MeshLambertMaterial({map:seaTex}));sea.rotation.x=-Math.PI/2;sea.position.y=-140;scene.add(sea);
+
+let birds=[],look=null,vortLines=null,fieldMesh=null,fieldTex=null,fieldCtx=null,fieldImg=null;
+function wingGeo(b,side,L){ // tapered wing in local coords: x fwd, y up, z span (left +)
+  const span=0.47*b,cr=0.2*b,ct=0.09*b,sw=0.06*b;const s=side;
+  const pos=[0,0,0.03*b*s, -cr,0,0.03*b*s, -sw-ct,0,s*span, -sw,0,s*span];
+  const col=[];const a=new THREE.Color(L.root),c=new THREE.Color(L.tip);for(const q of [a,a,c,c])col.push(q.r,q.g,q.b);
+  const g=new THREE.BufferGeometry();g.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));g.setAttribute("color",new THREE.Float32BufferAttribute(col,3));
+  g.setIndex(s>0?[0,1,2,0,2,3]:[0,2,1,0,3,2]);g.computeVertexNormals();return g;}
+function makeBird(b,L){
+  const grp=new THREE.Group();
+  const mb=new THREE.MeshLambertMaterial({color:L.body}),mh=new THREE.MeshLambertMaterial({color:L.head}),mbill=new THREE.MeshLambertMaterial({color:L.bill});
+  const body=new THREE.Mesh(new THREE.SphereGeometry(1,14,10),mb);body.scale.set(0.24*b,0.075*b,0.085*b);body.position.x=-0.05*b;grp.add(body);
+  const nk=new THREE.Mesh(new THREE.CylinderGeometry(0.022*b,0.035*b,L.neck*b,8),mh);nk.rotation.z=-Math.PI/2+0.08;nk.position.set(0.17*b+L.neck*b/2,0.01*b,0);grp.add(nk);
+  const hd=new THREE.Mesh(new THREE.SphereGeometry(0.04*b,10,8),L.face?new THREE.MeshLambertMaterial({color:L.face}):mh);hd.position.set(0.17*b+L.neck*b,0.015*b,0);grp.add(hd);
+  const bl=new THREE.Mesh(new THREE.ConeGeometry(0.018*b,L.billL*b,8),mbill);bl.rotation.z=-Math.PI/2-(L.billL>0.1&&L.head===0xc0504a?0.35:0);bl.position.set(0.17*b+L.neck*b+0.03*b+L.billL*b/2,0.005*b-(L.head===0xc0504a?0.02*b:0),0);grp.add(bl);
+  if(L.crown){const cr=new THREE.Mesh(new THREE.SphereGeometry(0.018*b,8,6),new THREE.MeshLambertMaterial({color:L.crown}));cr.position.set(0.17*b+L.neck*b,0.05*b,0);grp.add(cr);}
+  const tail=new THREE.Mesh(new THREE.ConeGeometry(0.06*b,0.12*b,6),mb);tail.rotation.z=Math.PI/2;tail.scale.z=0.3;tail.position.set(-0.32*b,0,0);grp.add(tail);
+  if(L.legs){const lg=new THREE.Mesh(new THREE.CylinderGeometry(0.008*b,0.008*b,L.legs*b,5),new THREE.MeshLambertMaterial({color:0x3a3632}));lg.rotation.z=Math.PI/2;lg.position.set(-0.3*b-L.legs*b/2,-0.01*b,0);grp.add(lg);}
+  const wm=new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide});
+  const wl=new THREE.Mesh(wingGeo(b,1,L),wm),wr=new THREE.Mesh(wingGeo(b,-1,L),wm);
+  const pl=new THREE.Group(),pr=new THREE.Group();pl.position.set(0.04*b,0.02*b,0.05*b);pr.position.set(0.04*b,0.02*b,-0.05*b);pl.add(wl);pr.add(wr);grp.add(pl,pr);
+  const ring=new THREE.Mesh(new THREE.RingGeometry(0.2*b,0.27*b,28),new THREE.MeshBasicMaterial({color:0x3dd6c0,transparent:true,opacity:0.75,side:THREE.DoubleSide,depthWrite:false}));ring.rotation.x=-Math.PI/2;ring.position.y=-0.12*b;grp.add(ring);
+  const crownMk=new THREE.Mesh(new THREE.ConeGeometry(0.06*b,0.14*b,4),new THREE.MeshBasicMaterial({color:0xe8b35c}));crownMk.rotation.z=Math.PI;crownMk.position.y=0.32*b;crownMk.visible=false;grp.add(crownMk);
+  scene.add(grp);
+  return {grp,pl,pr,ring,mk:crownMk};
+}
+function clearScene(){for(const B of birds){scene.remove(B.grp);B.grp.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material)o.material.dispose();});}birds=[];
+  if(vortLines){scene.remove(vortLines);vortLines.geometry.dispose();vortLines=null;}
+  if(fieldMesh){scene.remove(fieldMesh);fieldMesh.geometry.dispose();fieldMesh=null;}}
+
+const VSEG=6;
+function buildScene(){
+  clearScene();look=LOOK[state.sp];const b=S.b;
+  for(let i=0;i<S.N;i++)birds.push(makeBird(b,look));
+  const n=S.N*2*VSEG*2;const g=new THREE.BufferGeometry();g.setAttribute("position",new THREE.BufferAttribute(new Float32Array(n*3),3));g.setAttribute("color",new THREE.BufferAttribute(new Float32Array(n*3),3));
+  vortLines=new THREE.LineSegments(g,new THREE.LineBasicMaterial({vertexColors:true,transparent:true,opacity:0.9,blending:THREE.AdditiveBlending,depthWrite:false}));scene.add(vortLines);
+  // field plane
+  const FC=document.createElement("canvas");FC.width=FC.height=FG;fieldCtx=FC.getContext("2d");fieldImg=fieldCtx.createImageData(FG,FG);
+  fieldTex=new THREE.CanvasTexture(FC);fieldTex.magFilter=THREE.LinearFilter;
+  fieldMesh=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial({map:fieldTex,transparent:true,depthWrite:false,side:THREE.DoubleSide}));fieldMesh.rotation.x=-Math.PI/2;scene.add(fieldMesh);
+  fieldBox=null;fieldRow=0;
+}
+// sim (x fwd, y left, z up) → world (X fwd, Y up, Z right) : Z = −y
+const W=(x,y,z,v)=>v.set(x,z,-y);
+
+/* ---------- op/nedvind field ---------- */
+const FG=56;let fieldBox=null,fieldRow=0,nextBox=null;
+const fieldVals=new Float32Array(FG*FG);
+function fieldBounds(){let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;for(let i=0;i<S.N;i++){x0=Math.min(x0,S.x[i]);x1=Math.max(x1,S.x[i]);y0=Math.min(y0,S.y[i]);y1=Math.max(y1,S.y[i]);}
+  const b=S.b;const cx=(x0+x1)/2,cy=(y0+y1)/2;const h=Math.max(x1-x0+8*b,y1-y0+6*b)/2;return {x0:cx-h-1.5*b,x1:cx+h-1.5*b,y0:cy-h,y1:cy+h};}
+function fieldWork(rows){
+  if(!fieldBox){fieldBox=fieldBounds();fieldRow=0;}
+  const B=fieldBox,b=S.b,bp=S.bp,gam=S.gam,rc2=S.rc2,w0=S.w0;
+  for(let r=0;r<rows&&fieldRow<FG;r++,fieldRow++){const py=B.y1-(B.y1-B.y0)*(fieldRow+0.5)/FG;
+    for(let c=0;c<FG;c++){const px=B.x1-(B.x1-B.x0)*(c+0.5)/FG;let w=0;
+      for(let j=0;j<S.N;j++){if(S.x[j]-px<-2*b)continue;w+=horseW(S.x[j],S.y[j],S.z[j],bp,gam,px,py,0,rc2);}
+      fieldVals[fieldRow*FG+c]=w/w0;}}
+  if(fieldRow>=FG){ // paint and place
+    const d=fieldImg.data,up=[61,214,192],dn=[255,107,69];
+    for(let i=0;i<FG*FG;i++){const v=fieldVals[i],a=Math.min(1,Math.abs(v)/0.9),c=v>0?up:dn;d[4*i]=c[0];d[4*i+1]=c[1];d[4*i+2]=c[2];d[4*i+3]=Math.round(200*Math.pow(a,0.7));}
+    fieldCtx.putImageData(fieldImg,0,0);fieldTex.needsUpdate=true;
+    const B2=fieldBox;fieldMesh.scale.set(B2.x1-B2.x0,B2.y1-B2.y0,1);fieldMesh.position.set((B2.x0+B2.x1)/2,-0.02*b,-(B2.y0+B2.y1)/2);
+    // canvas: column 0 = x1 (front) … ; with rotation −π/2 about X, plane u→ +X, v→ −Z. Flip so it matches.
+    fieldMesh.scale.x=-(B2.x1-B2.x0);
+    fieldBox=null;}
+}
+
+/* ---------- reset ---------- */
+function reset(){
+  S=makeSim(state.sp,state.N,state.sigma);tape=[snap()];cur=0;acc=0;
+  buildScene();updateFacts();showEvent("The formation takes off. Each bird looks for the upwash behind the bird ahead.");
+  $("#spName").textContent=S.sp.name;$("#spLatin").textContent=S.sp.latin;
+  camSmooth=null;
+}
+
+/* ---------- stepping & tape ---------- */
+function forwardStep(){
+  if(cur<tape.length-1){tape.length=cur+1;restore(tape[cur]);rebuildHist();}
+  const ev=S.lastEvent;step(S);
+  tape.push(snap());if(tape.length>1800)tape.shift();cur=tape.length-1;
+  if(S.lastEvent&&S.lastEvent!==ev)announce(S.lastEvent);
+}
+function backStep(){if(cur>0){cur--;restore(tape[cur]);}else{setDir(1);}}
+let evTimer=0;
+function showEvent(t){const e=$("#event");e.textContent=t;e.style.opacity=1;evTimer=7;}
+function announce(ev){
+  if(ev.kind==="switch")showEvent("The leader is tired and drops back. The more rested of the two behind it takes over.");
+  else if(ev.kind==="split")showEvent("The swings have grown down the leg. "+ev.n+" birds lose the upwash and form their own formation.");
+  else if(ev.kind==="merge")showEvent(ev.n<=2?"The stragglers find their way back and join the end of a leg.":"The air is calm enough: a smaller group joins the main flock.");
+}
+
+/* ---------- drawing ---------- */
+const v3=new THREE.Vector3(),e3=new THREE.Euler(0,0,0,"YXZ"),tmpC=new THREE.Color();
+function saveColor(s,c){ // −0.3 → orange, 0 → grey, 0.6 → teal
+  const g=[0.23,0.25,0.31],u=[0.24,0.84,0.75],d=[1,0.42,0.27];const t=s>=0?Math.min(1,s/0.6):Math.min(1,-s/0.3),e=s>=0?u:d;
+  c.setRGB(g[0]+(e[0]-g[0])*t,g[1]+(e[1]-g[1])*t,g[2]+(e[2]-g[2])*t);}
+function draw(){
+  const b=S.b,U=S.sp.U,f=S.sp.f;
+  const leaderOf=new Int32Array(S.N),isL=new Uint8Array(S.N);
+  for(const g of S.groups){isL[g.leader]=1;for(const i of [g.leader,...g.L,...g.R])leaderOf[i]=g.leader;}
+  for(let i=0;i<S.N;i++){const B=birds[i];W(S.x[i],S.y[i],S.z[i],v3);B.grp.position.copy(v3);
+    const yaw=Math.atan2(S.vy[i],U),pitch=Math.atan2(S.vz[i],U);e3.set(0,yaw,0);B.grp.rotation.set(-0.9*yaw,yaw,pitch,"YXZ");
+    let ph=2*Math.PI*f*S.t+(state.phase?-2*Math.PI*f*(S.x[leaderOf[i]]-S.x[i])/U:i*1.37);
+    const a=0.5*Math.sin(ph)+0.08;B.pl.rotation.x=-a;B.pr.rotation.x=a;
+    B.ring.visible=state.save&&!isL[i];if(B.ring.visible){saveColor(S.sav[i],B.ring.material.color);}
+    B.mk.visible=!!isL[i];}
+  // vortices
+  vortLines.visible=state.vort;
+  if(state.vort){const P=vortLines.geometry.attributes.position.array,C=vortLines.geometry.attributes.color.array;let k=0;const Lw=7*b,bp=S.bp;
+    for(let i=0;i<S.N;i++)for(const s of [1,-1]){const y0=S.y[i]+s*bp/2;
+      for(let q=0;q<VSEG;q++){const t0=q/VSEG,t1=(q+1)/VSEG;
+        const pts=[[S.x[i]-0.1*b-t0*Lw,y0,S.z[i]-0.12*b*t0*Lw/b*0.15],[S.x[i]-0.1*b-t1*Lw,y0,S.z[i]-0.12*b*t1*Lw/b*0.15]];
+        for(let e=0;e<2;e++){W(pts[e][0],pts[e][1],pts[e][2],v3);P[k*3]=v3.x;P[k*3+1]=v3.y;P[k*3+2]=v3.z;const fade=0.75*(1-(e?t1:t0));C[k*3]=0.85*fade;C[k*3+1]=0.92*fade;C[k*3+2]=1.0*fade;k++;}}}
+    vortLines.geometry.attributes.position.needsUpdate=true;vortLines.geometry.attributes.color.needsUpdate=true;}
+  fieldMesh.visible=state.field;
+  sea.position.x=0;seaTex.offset.x=(S.t*U/100)%1;
+}
+
+/* ---------- camera ---------- */
+const cam={th:-2.55,ph:0.32,d:0},CAMS={chase:{th:-2.6,ph:0.3,k:1.0},side:{th:-1.5708,ph:0.12,k:1.1},top:{th:-1.5708,ph:1.35,k:1.15}};
+let camSmooth=null,camGoal=null;
+function flockBox(){const g=S.groups[0];let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9,cx=0,cy=0,n=0;for(const i of [g.leader,...g.L,...g.R]){x0=Math.min(x0,S.x[i]);x1=Math.max(x1,S.x[i]);y0=Math.min(y0,S.y[i]);y1=Math.max(y1,S.y[i]);}
+  for(let i=0;i<S.N;i++){cx+=S.x[i];cy+=S.y[i];n++;}return {cx:(x0+x1)/2*0.6+cx/n*0.4,cy:(y0+y1)/2*0.6+cy/n*0.4,size:Math.max(x1-x0,y1-y0,6*S.b)};}
+function updateCam(){
+  const fb=flockBox();let all=0;for(let i=0;i<S.N;i++){all=Math.max(all,Math.abs(S.y[i]-fb.cy),Math.abs(S.x[i]-fb.cx));}
+  const want=Math.max(fb.size,all*1.6)*1.25+8*S.b;
+  if(!camSmooth)camSmooth={cx:fb.cx,cy:fb.cy,d:want};
+  camSmooth.cx+=(fb.cx-camSmooth.cx)*0.04;camSmooth.cy+=(fb.cy-camSmooth.cy)*0.04;
+  if(!userZoom)camSmooth.d+=(want*CAMS[state.cam].k-camSmooth.d)*0.02;
+  if(camGoal){cam.th+=(camGoal.th-cam.th)*0.08;cam.ph+=(camGoal.ph-cam.ph)*0.08;if(Math.abs(camGoal.th-cam.th)+Math.abs(camGoal.ph-cam.ph)<1e-3)camGoal=null;}
+  W(camSmooth.cx,camSmooth.cy,0,v3);const c=Math.cos(cam.ph),d=camSmooth.d;
+  camera.position.set(v3.x+d*c*Math.cos(cam.th),v3.y+d*Math.sin(cam.ph),v3.z+d*c*Math.sin(cam.th));camera.lookAt(v3.x,v3.y,v3.z);
+}
+let userZoom=false;const ptrs=new Map();let pinch0=0,d0=0;
+cv.addEventListener("pointerdown",e=>{cv.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,[e.clientX,e.clientY]);camGoal=null;
+  if(ptrs.size===2&&camSmooth){const a=[...ptrs.values()];pinch0=Math.hypot(a[0][0]-a[1][0],a[0][1]-a[1][1]);d0=camSmooth.d;}});
+cv.addEventListener("pointermove",e=>{if(!ptrs.has(e.pointerId))return;const p=ptrs.get(e.pointerId),dx=e.clientX-p[0],dy=e.clientY-p[1];ptrs.set(e.pointerId,[e.clientX,e.clientY]);
+  if(ptrs.size===1){cam.th+=dx*0.006;cam.ph=Math.max(-0.2,Math.min(1.5,cam.ph+dy*0.006));setCamTab(null);}
+  else if(ptrs.size===2&&pinch0>0&&camSmooth){const a=[...ptrs.values()];const pd=Math.hypot(a[0][0]-a[1][0],a[0][1]-a[1][1]);camSmooth.d=Math.max(4*S.b,Math.min(900,d0*pinch0/pd));userZoom=true;}});
+const endP=e=>{ptrs.delete(e.pointerId);pinch0=0;};cv.addEventListener("pointerup",endP);cv.addEventListener("pointercancel",endP);
+cv.addEventListener("wheel",e=>{e.preventDefault();if(camSmooth){camSmooth.d=Math.max(4*S.b,Math.min(900,camSmooth.d*Math.exp(e.deltaY*0.001)));userZoom=true;}},{passive:false});
+function setCamTab(k){document.querySelectorAll("#cams button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.cam===k)));}
+$("#cams").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;state.cam=b.dataset.cam;camGoal={th:CAMS[state.cam].th,ph:CAMS[state.cam].ph};userZoom=false;setCamTab(state.cam);});
+function resize(){const w=stage.clientWidth,h=stage.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
+new ResizeObserver(resize).observe(stage);
+
+/* ---------- HUD & facts ---------- */
+function updateStats(){
+  const N=S.N;let sum=0,fol=0,best=-9;const leaders=new Set(S.groups.map(g=>g.leader));
+  for(let i=0;i<N;i++){if(leaders.has(i))continue;sum+=S.sav[i];fol++;best=Math.max(best,S.sav[i]);}
+  const avg=fol?sum/fol:0,allAvg=(sum)/N,ki=S.sp.ki;
+  const m=Math.floor(S.t/60),s=Math.floor(S.t%60);
+  $("#stats").innerHTML=
+    "<span>time <b>"+m+":"+String(s).padStart(2,"0")+"</b>"+(state.dir<0?" ◀":"")+"</span>"+
+    "<span>groups <b>"+S.groups.length+"</b> · "+S.groups.map(g=>1+g.L.length+g.R.length).join("+")+"</span>"+
+    "<span>saving, followers <b>"+fmt(avg*100,0)+" %</b> of induced</span>"+
+    "<span>whole flock ≈ <b>"+fmt(allAvg*ki*100,0)+" %</b> of total power</span>"+
+    "<span>leader changes <b>"+S.switches+"</b> · splits <b>"+S.splits+"</b></span>";
+}
+function updateFacts(){const sp=S.sp;const Pi=sp.m*9.81*S.w0;
+  $("#facts").innerHTML=
+   "<dt>Wingspan b</dt><dd>"+fmt(sp.b,2)+" m</dd><dt>Mass m</dt><dd>"+fmt(sp.m,1)+" kg</dd><dt>Migration speed U</dt><dd>"+sp.U+" m/s ("+Math.round(sp.U*3.6)+" km/h)</dd>"+
+   "<dt>Wingbeats</dt><dd>"+fmt(sp.f,1)+" per second</dd><dt>Circulation Γ</dt><dd>"+fmt(Math.abs(S.gam),2)+" m²/s</dd><dt>Downwash w₀</dt><dd>"+fmt(S.w0,2)+" m/s</dd>"+
+   "<dt>Induced power</dt><dd>"+fmt(Pi,0)+" W alone</dd><dt>Best lateral spacing</dt><dd>"+fmt(S.dyT/sp.b,2)+" b = "+fmt(S.dyT,2)+" m</dd>"+
+   "<dt>Two birds, best place</dt><dd>"+fmt(S.pairSaving*100,0)+" % of induced power</dd><dt>Induced share</dt><dd>≈ "+Math.round(sp.ki*100)+" % of total power</dd>";}
+
+/* ---------- controls ---------- */
+$("#species").innerHTML=ORDER.map(k=>'<button type="button" data-sp="'+k+'" aria-pressed="'+(k===state.sp)+'">'+SPECIES[k].name+"</button>").join("");
+$("#species").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;state.sp=b.dataset.sp;document.querySelectorAll("#species button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));reset();});
+let cT=0;$("#count").addEventListener("input",e=>{state.N=+e.target.value;$("#countOut").textContent=state.N;clearTimeout(cT);cT=setTimeout(reset,300);});
+const stabWords=v=>v<0.25?"very gusty air":v<0.45?"gusty air":v<0.65?"slightly gusty":v<0.85?"calm air":"dead calm";
+$("#stab").addEventListener("input",e=>{state.sigma=+e.target.value/100;$("#stabOut").textContent=e.target.value+" %";$("#stabTxt").textContent=stabWords(state.sigma);if(S)S.sigma=state.sigma;});
+$("#tVort").onchange=e=>state.vort=e.target.checked;$("#tField").onchange=e=>{state.field=e.target.checked;fieldBox=null;};$("#tSave").onchange=e=>state.save=e.target.checked;$("#tFlap").onchange=e=>state.phase=e.target.checked;
+function setRunning(r){state.running=r;$("#playTxt").textContent=r?"Stop":"Start";$("#playIcon").innerHTML=r?'<path d="M4 4h12v12H4z"/>':'<path d="M5 3l12 7-12 7z"/>';}
+function setDir(d){state.dir=d;document.querySelectorAll("#dir button").forEach(b=>b.setAttribute("aria-pressed",String(+b.dataset.dir===d)));if(d<0&&!state.running)setRunning(true);}
+$("#play").onclick=()=>setRunning(!state.running);
+$("#dir").addEventListener("click",e=>{const b=e.target.closest("button");if(b)setDir(+b.dataset.dir);});
+function setSpeed(ix){state.speedIx=Math.max(0,Math.min(SPEEDS.length-1,ix));const v=SPEEDS[state.speedIx];$("#speedOut").textContent=(v<1?fmt(v,v===0.25?2:1):v)+"×";$("#slower").disabled=state.speedIx===0;$("#faster").disabled=state.speedIx===SPEEDS.length-1;}
+$("#slower").onclick=()=>setSpeed(state.speedIx-1);$("#faster").onclick=()=>setSpeed(state.speedIx+1);
+$("#swap").onclick=()=>{if(state.dir<0)setDir(1);if(cur<tape.length-1){tape.length=cur+1;restore(tape[cur]);rebuildHist();}S.groups[0].lt=0;};
+$("#reset").onclick=reset;
+window.addEventListener("keydown",e=>{if(e.target.tagName==="INPUT"&&e.target.type!=="checkbox"&&e.target.type!=="range")return;
+  if(e.key===" "){e.preventDefault();setRunning(!state.running);}else if(e.key==="+"||e.key==="=")setSpeed(state.speedIx+1);else if(e.key==="-")setSpeed(state.speedIx-1);
+  else if(e.key==="r"||e.key==="R")setDir(-state.dir);else if(e.key==="l"||e.key==="L")$("#swap").click();});
+
+/* ---------- loop ---------- */
+let last=performance.now(),uiT=0;
+function frame(now){
+  const dt=Math.min(0.1,(now-last)/1000);last=now;
+  if(state.running){acc+=dt*SPEEDS[state.speedIx];let n=0;const DTs=1/30;
+    while(acc>=DTs&&n<12){if(state.dir>0)forwardStep();else backStep();acc-=DTs;n++;}if(n>=12)acc=0;}
+  if(state.field&&state.running&&state.dir>0)fieldWork(4);
+  draw();updateCam();renderer.render(scene,camera);
+  if(evTimer>0){evTimer-=dt;if(evTimer<=0)$("#event").style.opacity=0;}
+  if(now-uiT>250){updateStats();uiT=now;}
+  requestAnimationFrame(frame);
+}
+if(window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches){setSpeed(1);}else setSpeed(2);
+reset();resize();requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
