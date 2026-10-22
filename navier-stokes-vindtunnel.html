@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Navier–Stokes vindtunnel</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0}img{max-width:100%}[hidden]{display:none!important}
+/* Layout: laboratorie-opstilling — et mørkt tunnelvindue med instrumentpanel ved siden af, noter nedenunder */
+:root{
+  --ground:#eceff0; --panel:#fbfcfc; --ink:#141a1f; --muted:#56636c; --line:#cfd7db;
+  --chip:#e1e7e9; --accent:#0b7a83; --accent-ink:#ffffff; --warm:#c0531a;
+  --tunnel:#0a0e13; --tunnel-ink:#d9e2e8; --tunnel-muted:#7f8e99;
+  --display:"Newsreader",Georgia,"Times New Roman",serif;
+  --body:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --ground:#0e1316; --panel:#151c21; --ink:#e3e9ec; --muted:#93a1aa; --line:#27323a;
+  --chip:#1d272e; --accent:#3cb8c0; --accent-ink:#071114; --warm:#f08b4c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --ground:#0e1316; --panel:#151c21; --ink:#e3e9ec; --muted:#93a1aa; --line:#27323a;
+  --chip:#1d272e; --accent:#3cb8c0; --accent-ink:#071114; --warm:#f08b4c; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--ground);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 48px}
+.wrap{max-width:1240px;margin:0 auto}
+header.mast{padding-block:28px 18px;display:grid;gap:6px}
+.eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--display);font-weight:600;font-size:clamp(30px,4.6vw,48px);line-height:1.05;margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1 em{font-weight:400}
+.lede{max-width:68ch;color:var(--muted);margin:4px 0 0}
+.lab{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px;align-items:start}
+@media (max-width:900px){.lab{grid-template-columns:minmax(0,1fr)}}
+.stage{min-width:0;display:grid;gap:10px}
+.viewport{position:relative;background:var(--tunnel);border-radius:6px;overflow:hidden;aspect-ratio:16/9.5;max-width:100%;touch-action:none}
+@media (max-width:600px){.viewport{aspect-ratio:4/3.6}}
+.viewport canvas{display:block;width:100%;height:100%;cursor:grab}
+.viewport canvas:active{cursor:grabbing}
+.ov{position:absolute;pointer-events:none;color:var(--tunnel-ink);font-family:var(--mono);font-size:11px}
+.ov.tl{top:10px;left:12px;display:grid;gap:2px}
+.ov.tl b{font-family:var(--display);font-size:18px;font-weight:400;font-style:italic;letter-spacing:0}
+.ov.tl span{color:var(--tunnel-muted)}
+.ov.bl{left:12px;bottom:10px;display:grid;gap:4px}
+.cbar{width:170px;height:8px;border-radius:2px}
+.cbar-l{display:flex;justify-content:space-between;width:170px;color:var(--tunnel-muted)}
+.ov.br{right:12px;bottom:10px;color:var(--tunnel-muted);text-align:right}
+.ov.tr{top:10px;right:12px;display:flex;gap:6px;pointer-events:auto}
+.vbtn{font:500 11px var(--mono);color:var(--tunnel-ink);background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);border-radius:4px;padding:5px 8px;cursor:pointer}
+.vbtn:hover{background:rgba(255,255,255,.14)}
+.vbtn:focus-visible,.seg button:focus-visible,.chip:focus-visible,.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.blown{position:absolute;inset:0;display:grid;place-items:center;background:rgba(10,14,19,.82);color:var(--tunnel-ink);text-align:center;padding:20px}
+.blown p{max-width:40ch;margin:0 0 12px}
+.readouts{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+@media (max-width:700px){.readouts{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.ro{background:var(--panel);padding:8px 10px;display:grid;gap:1px;min-width:0}
+.ro .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.ro .v{font-family:var(--mono);font-size:17px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ro .s{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.regime{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px 14px;display:grid;gap:4px}
+.regime h3{margin:0;font-family:var(--display);font-weight:600;font-size:19px}
+.regime p{margin:0;color:var(--muted);max-width:75ch}
+.chartbox{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px 12px;display:grid;gap:6px}
+.chartbox .hd{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.chartbox canvas{width:100%;height:130px;display:block}
+.key{display:inline-flex;align-items:center;gap:5px}.key i{width:14px;height:2px;display:inline-block}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px;display:grid;gap:16px;min-width:0}
+.grp{display:grid;gap:7px}
+.grp>label,.lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;gap:8px}
+.lbl output{color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:0;text-transform:none;font-size:12.5px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.seg.four{grid-template-columns:repeat(2,1fr)}
+.seg button{font:500 13px var(--body);color:var(--ink);background:var(--chip);border:1px solid transparent;border-radius:4px;padding:8px 6px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:7px}
+.seg button svg{flex:none}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.seg button:disabled{opacity:.4;cursor:not-allowed}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{font:500 11.5px var(--mono);background:var(--chip);color:var(--ink);border:0;border-radius:3px;padding:4px 7px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
+.tog{display:flex;align-items:center;gap:8px;font-size:13.5px;cursor:pointer}
+.tog input{accent-color:var(--accent);width:16px;height:16px}
+.btns{display:flex;gap:6px;flex-wrap:wrap}
+.btn{font:600 13px var(--body);border-radius:4px;padding:8px 12px;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
+.btn.pri{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+.small{font-size:12px;color:var(--muted);margin:0}
+.notes{margin-top:44px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:36px 48px}
+@media (max-width:900px){.notes{grid-template-columns:minmax(0,1fr)}}
+.notes article{min-width:0}
+.notes h2{font-family:var(--display);font-weight:600;font-size:25px;line-height:1.15;margin:0 0 8px;text-wrap:balance}
+.notes p{margin:0 0 10px;max-width:66ch}
+.eq{font-family:var(--display);font-size:19px;font-style:italic;padding:10px 0;overflow-x:auto;white-space:nowrap}
+.eq .r{font-style:normal}
+.wide{grid-column:1/-1}
+.jbox{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px;display:grid;gap:8px}
+.jbox canvas{width:100%;aspect-ratio:2.3/1;display:block}
+.jstats{display:flex;flex-wrap:wrap;gap:6px 16px;font-family:var(--mono);font-size:12px;color:var(--muted)}
+.jstats b{color:var(--ink);font-weight:500}
+.tblwrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px}
+th,td{text-align:left;padding:7px 10px 7px 0;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--mono);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:500}
+td.n{font-family:var(--mono);white-space:nowrap;font-variant-numeric:tabular-nums}
+ul.lim{margin:0;padding-left:18px;max-width:70ch}ul.lim li{margin-bottom:6px}
+footer{margin-top:40px;font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="mast">
+  <div class="eyebrow"><a href="index.html" style="color:inherit">← Forsiden</a> · Numerisk strømningslære · gitter-Boltzmann D2Q9 · live i browseren</div>
+  <h1>Navier–Stokes-<em>vindtunnel</em></h1>
+  <p class="lede">Strømning om en cylinder, en kugle, en pære og en Joukowski-vingeprofil, regnet trin for trin fra Navier–Stokes-ligningerne. Skru på Reynolds-tallet og se strømningen gå fra krybende over hvirvelgade til turbulent kølvand. Træk i billedet for at dreje, knib eller rul for at zoome.</p>
+</header>
+
+<section class="lab">
+  <div class="stage">
+    <div class="viewport" id="vp">
+      <canvas id="gl" aria-label="3D-visning af strømningen"></canvas>
+      <div class="ov tl"><b id="ovBody">Cylinder</b><span id="ovRe">Re = 100</span></div>
+      <div class="ov tr">
+        <button class="vbtn" id="vSide" type="button">Plan</button>
+        <button class="vbtn" id="vOblique" type="button">Skråt</button>
+        <button class="vbtn" id="vTop" type="button">Opstrøms</button>
+      </div>
+      <div class="ov bl"><span id="cbTitle">Hvirvelstyrke ωL/U</span><canvas class="cbar" id="cbar" width="170" height="8"></canvas><div class="cbar-l"><span id="cbMin">−</span><span id="cbMid">0</span><span id="cbMax">+</span></div></div>
+      <div class="ov br" id="ovPerf">—</div>
+      <div class="blown" id="blown" hidden><div><p id="blownMsg">Simuleringen blev ustabil.</p><button class="btn pri" id="blownReset" type="button">Start forfra</button></div></div>
+    </div>
+
+    <div class="readouts" aria-live="off">
+      <div class="ro"><span class="k">C<sub>D</sub></span><span class="v" id="rCd">—</span><span class="s" id="rCdS">modstand</span></div>
+      <div class="ro"><span class="k">C<sub>L</sub></span><span class="v" id="rCl">—</span><span class="s" id="rClS">opdrift</span></div>
+      <div class="ro"><span class="k">St</span><span class="v" id="rSt">—</span><span class="s">fL/U</span></div>
+      <div class="ro"><span class="k">t·U/L</span><span class="v" id="rT">0</span><span class="s">dimensionsløs tid</span></div>
+      <div class="ro"><span class="k">τ · Ma</span><span class="v" id="rTau">—</span><span class="s" id="rMa">gitterparametre</span></div>
+      <div class="ro"><span class="k">Gitter</span><span class="v" id="rGrid">320×128</span><span class="s" id="rL">L = 24 celler</span></div>
+    </div>
+
+    <div class="regime"><h3 id="regName">Kármán-hvirvelgade</h3><p id="regText"></p></div>
+
+    <div class="chartbox">
+      <div class="hd"><span>Kraftkoefficienter over tid</span><span><span class="key"><i style="background:var(--warm)"></i>C<sub>D</sub></span> &nbsp; <span class="key"><i style="background:var(--accent)"></i>C<sub>L</sub></span></span></div>
+      <canvas id="chart"></canvas>
+    </div>
+  </div>
+
+  <aside class="panel" aria-label="Indstillinger">
+    <div class="grp">
+      <span class="lbl">Legeme</span>
+      <div class="seg four" id="bodySeg">
+        <button type="button" data-v="cylinder" aria-pressed="true"><svg width="18" height="14" viewBox="0 0 18 14"><ellipse cx="9" cy="3" rx="5" ry="2" fill="none" stroke="currentColor"/><path d="M4 3v8a5 2 0 0 0 10 0V3" fill="none" stroke="currentColor"/></svg>Cylinder</button>
+        <button type="button" data-v="sphere"><svg width="18" height="14" viewBox="0 0 18 14"><circle cx="9" cy="7" r="6" fill="none" stroke="currentColor"/><ellipse cx="9" cy="7" rx="6" ry="2" fill="none" stroke="currentColor" opacity=".6"/></svg>Kugle</button>
+        <button type="button" data-v="pear"><svg width="18" height="14" viewBox="0 0 18 14"><path d="M6 1.5a5.5 5.5 0 1 0 0 11c2 0 3-1.4 5-2.3s4.5-.9 4.5-3.2-2.5-2.3-4.5-3.2S8 1.5 6 1.5z" fill="none" stroke="currentColor"/></svg>Pære</button>
+        <button type="button" data-v="wing"><svg width="18" height="14" viewBox="0 0 18 14"><path d="M1.5 8c1-3.5 5-4.6 9-3.6 2.6.6 4.6 2 6 3.3-3.4-.6-6-.2-9 .4-2.6.5-4.6.6-6-.1z" fill="none" stroke="currentColor"/></svg>Vinge</button>
+      </div>
+    </div>
+
+    <div class="grp">
+      <label class="lbl" for="reSl">Reynolds-tal <output id="reOut">100</output></label>
+      <input type="range" id="reSl" min="0" max="3.477" step="0.005" value="2">
+      <div class="chips" id="reChips"></div>
+      <p class="small" id="reNote">Re = UL/ν. Ændringen slår igennem uden at nulstille.</p>
+    </div>
+
+    <div class="grp">
+      <span class="lbl">Farvelægning</span>
+      <div class="seg" id="modeSeg">
+        <button type="button" data-v="vort" aria-pressed="true">Hvirvelstyrke</button>
+        <button type="button" data-v="speed">Hastighed</button>
+        <button type="button" data-v="press">Tryk</button>
+        <button type="button" data-v="ideal">Ideal strømning</button>
+      </div>
+      <label class="tog"><input type="checkbox" id="tPart" checked> Sporpartikler</label>
+      <label class="tog"><input type="checkbox" id="tRelief" checked> Relief (felt som højde)</label>
+    </div>
+
+    <div class="grp" id="wingGrp" hidden>
+      <label class="lbl" for="aSl">Indfaldsvinkel α <output id="aOut">8°</output></label>
+      <input type="range" id="aSl" min="-6" max="20" step="1" value="8">
+      <label class="lbl" for="eSl">Tykkelse ε <output id="eOut">0,10</output></label>
+      <input type="range" id="eSl" min="0.02" max="0.22" step="0.01" value="0.10">
+      <label class="lbl" for="mSl">Krumning f <output id="mOut">0,08</output></label>
+      <input type="range" id="mSl" min="0" max="0.2" step="0.01" value="0.08">
+      <label class="tog"><input type="checkbox" id="tKutta" checked> Kutta-betingelse (ideal strømning)</label>
+      <p class="small">Profilen dannes af Joukowski-afbildningen z = ζ + 1/ζ af en cirkel med centrum −ε + i f.</p>
+    </div>
+
+    <div class="grp" id="pearGrp" hidden>
+      <label class="tog"><input type="checkbox" id="tFlip"> Vend pæren (spids ende mod strømmen)</label>
+    </div>
+
+    <div class="btns">
+      <button class="btn pri" id="bPause" type="button">Pause</button>
+      <button class="btn" id="bReset" type="button">Nulstil</button>
+    </div>
+  </aside>
+</section>
+
+<section class="notes">
+  <article>
+    <h2>Ligningerne</h2>
+    <p>For en inkompressibel væske med konstant viskositet siger Navier–Stokes-ligningerne, at accelerationen af et væskeelement skyldes trykgradienten og den viskose diffusion af impuls:</p>
+    <div class="eq">∂<b>u</b>/∂t + (<b>u</b>·∇)<b>u</b> = −∇p/ρ + ν∇²<b>u</b>, &nbsp; <span class="r">∇·</span><b>u</b> <span class="r">= 0</span></div>
+    <p>Gør man ligningen dimensionsløs med legemets længde L og fristrømshastigheden U, står der kun én parameter tilbage: Reynolds-tallet Re = UL/ν, forholdet mellem inertiens og viskositetens bidrag. To strømninger med samme form og samme Re er ens, uanset om det er olie om en blyant eller luft om en skorsten.</p>
+    <p>Hvirvelstyrken ω = ∇×<b>u</b> er farvelagt som standard, fordi den viser, hvor væsken roterer: i grænselagene og i det kølvand, de afgiver.</p>
+  </article>
+
+  <article>
+    <h2>Sådan regnes der</h2>
+    <p>Løseren er en gitter-Boltzmann-metode (D2Q9). I hver celle følger den ni fordelinger f<sub>i</sub> af partikler med hastigheder <b>c</b><sub>i</sub>. Hvert tidsskridt består af en kollision, der trækker f<sub>i</sub> mod en lokal ligevægt, og en forskydning til nabocellerne. En Chapman–Enskog-udvikling viser, at tæthed og impuls derved opfylder Navier–Stokes-ligningerne med ν = (τ − ½)/3, så længe Mach-tallet er lille.</p>
+    <p>Legemets overflade er halvvejs-tilbagekast (no-slip). Kraften på legemet findes ved impulsudveksling over alle overfladelænker og giver C<sub>D</sub> og C<sub>L</sub>. Ved høj Re øger en Smagorinsky-model den lokale viskositet i de mindste hvirvler (LES), så regningen ikke bryder sammen.</p>
+    <p>Cylinder og vinge regnes i 2D og trækkes ud langs spændvidden. Kugle og pære er omdrejningslegemer; dem regnes i meridianplanet med de ekstra kildeled fra cylinderkoordinater (−ρu<sub>r</sub>/r i kontinuitetsligningen og tilsvarende led i impulsligningen). Sporpartiklerne følger derefter feltet i fuld 3D ved at rotere det om aksen.</p>
+  </article>
+
+  <article class="wide">
+    <h2>Joukowski-transformationen</h2>
+    <div class="lab" style="grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:28px">
+      <div style="min-width:0">
+        <p>Den komplekse afbildning</p>
+        <div class="eq">z = ζ + 1/ζ</div>
+        <p>er konform: den bevarer vinkler, og derfor sender den en potentialstrømning i ζ-planet over i en potentialstrømning i z-planet. Enhedscirklen afbildes på linjestykket fra −2 til 2. Flytter man cirklen, så centrum ligger i μ = −ε + i f, men lader den stadig gå gennem ζ = 1, bliver billedet en vingeprofil med afrundet forkant og skarp bagkant i z = 2. ε styrer tykkelsen, f krumningen.</p>
+        <p>Strømningen om en cylinder kendes eksakt. Med indfaldsvinkel α er det komplekse potential</p>
+        <div class="eq">W(ζ) = U[(ζ−μ)e<sup>−iα</sup> + R²e<sup>iα</sup>/(ζ−μ)] + (iΓ/2π) ln(ζ−μ)</div>
+        <p>Cirkulationen Γ er fri. Kutta-betingelsen vælger den værdi, der fjerner den uendelige hastighed om bagkanten: Γ = 4πUR sin(α+β), hvor sin β = f/R. Kutta–Joukowski-sætningen giver så opdriften L′ = ρUΓ pr. længdeenhed, og C<sub>L</sub> = 8πR sin(α+β)/c ≈ 2π(α+β) for tynde profiler.</p>
+        <p>Vælg <em>Ideal strømning</em> for at se denne løsning. Bemærk, at den giver modstanden nul (d'Alemberts paradoks). Det er viskositeten i Navier–Stokes-regningen, der skaber modstand, og som i virkeligheden fastlægger Γ ved at skille grænselaget af ved bagkanten.</p>
+      </div>
+      <div class="jbox" style="min-width:0">
+        <canvas id="jcv"></canvas>
+        <div class="jstats" id="jstats"></div>
+      </div>
+    </div>
+  </article>
+
+  <article class="wide">
+    <h2>Strømningsregimer</h2>
+    <div class="tblwrap"><table>
+      <thead><tr><th>Re</th><th>Cylinder (2D)</th><th>Re</th><th>Kugle</th></tr></thead>
+      <tbody>
+        <tr><td class="n">&lt; 5</td><td>Krybende strømning, ingen separation</td><td class="n">&lt; 20</td><td>Vedhængende strømning</td></tr>
+        <tr><td class="n">5–47</td><td>Stationært hvirvelpar bag cylinderen</td><td class="n">20–210</td><td>Stationær, aksesymmetrisk hvirvelring</td></tr>
+        <tr><td class="n">47–190</td><td>Periodisk Kármán-hvirvelgade, St ≈ 0,12–0,19</td><td class="n">210–270</td><td>Stationær, men ikke længere aksesymmetrisk</td></tr>
+        <tr><td class="n">190–10³</td><td>Kølvandet bliver tredimensionalt</td><td class="n">270–800</td><td>Periodisk afgivelse af hårnålehvirvler</td></tr>
+        <tr><td class="n">10³–2·10⁵</td><td>Turbulent kølvand, laminært grænselag</td><td class="n">&gt; 800</td><td>Turbulent kølvand</td></tr>
+        <tr><td class="n">≈ 3·10⁵</td><td>Modstandskrise: grænselaget bliver turbulent, C<sub>D</sub> falder brat</td><td class="n">≈ 3·10⁵</td><td>Modstandskrise (golfboldens fordybninger flytter den ned)</td></tr>
+      </tbody>
+    </table></div>
+    <p class="small" style="margin-top:8px">Til sammenligning i ubegrænset strømning: cylinder ved Re = 100 har C<sub>D</sub> ≈ 1,33 og St ≈ 0,165; kugle ved Re = 20 har C<sub>D</sub> ≈ 2,6 og ved Re = 100 C<sub>D</sub> ≈ 1,1.</p>
+  </article>
+
+  <article class="wide">
+    <h2>Hvad modellen ikke kan</h2>
+    <ul class="lim">
+      <li>Cylinderen og vingen er 2D. Over Re ≈ 190 bliver det virkelige kølvand tredimensionalt; en 2D-model holder hvirvelgaden for regelmæssig og giver for store kraftudsving.</li>
+      <li>Kuglen og pæren er tvunget aksesymmetriske. Over Re ≈ 210 bryder den virkelige kugle symmetrien, hvilket modellen ikke kan vise.</li>
+      <li>Gitteret er 320 × 128 celler med 24 celler over cylinderens diameter. Tunnelvæggene (glatte, uden friktion) blokerer 19 % af tværsnittet, så cylinderens C<sub>D</sub> og opdriftsudsving ligger tydeligt over tallene for fri strømning.</li>
+      <li>Over Re ≈ 1000 opløser gitteret ikke grænselaget; turbulensen er modelleret, ikke beregnet. Resultaterne er kvalitative. Fly flyver ved Re ≈ 10⁶–10⁸, langt uden for hvad en browser kan regne.</li>
+    </ul>
+  </article>
+</section>
+<footer>Gitter-Boltzmann-løser (BGK med Smagorinsky-LES, halvvejs tilbagekast, impulsudveksling) i en Web Worker; 3D-visning med three.js.</footer>
+</div>
+<script type="text/plain" id="lbm-worker">
+// D2Q9 lattice-Boltzmann (BGK + Smagorinsky LES), 2D or axisymmetric (x, r)
+let NX=0,NY=0,N=0,axi=false,L=24,f=null,f2=null,solid=null,ux=null,uy=null,rho=null;
+let uxp=null,uyp=null,U=0.1,nu=0.1,tau=0.8,Re=100,running=true,blown=false;
+let gen=0,steps=0,tstar=0,Fx=0,Fy=0,nF=0;
+const ex=[0,1,0,-1,0,1,-1,-1,1],ey=[0,0,1,0,-1,1,1,-1,-1];
+const W=[4/9,1/9,1/9,1/9,1/9,1/36,1/36,1/36,1/36];
+const OPP=[0,3,4,1,2,7,8,5,6],MIR=[0,1,4,3,2,8,7,6,5];
+const CS2=0.16*0.16, SMAG=18*Math.SQRT2*CS2;
+const P=new Float64Array(9),feqIn=new Float64Array(9);
+let sponge=null;
+
+function setRe(r){
+  Re=r; U=Math.min(0.1,(axi?0.06:0.3)*Re/L); nu=U*L/Re; tau=3*nu+0.5;
+  for(let i=0;i<9;i++){const e=3*(ex[i]*U);feqIn[i]=W[i]*(1+e+0.5*e*e-1.5*U*U);}
+}
+
+function init(m){
+  gen=m.gen;NX=m.NX;NY=m.NY;N=NX*NY;axi=m.axi;L=m.L;solid=m.solid;
+  f=new Float32Array(9*N);f2=new Float32Array(9*N);
+  ux=new Float32Array(N);uy=new Float32Array(N);rho=new Float32Array(N);uxp=new Float32Array(N);uyp=new Float32Array(N);
+  setRe(m.Re);steps=0;tstar=0;blown=false;Fx=Fy=nF=0;
+  for(let y=0;y<NY;y++)for(let x=0;x<NX;x++){
+    const idx=y*NX+x; if(solid[idx]) continue;
+    const vx=U; let vy=0;
+    if(!axi && x>m.cx && x<m.cx+5*L) vy=0.05*U*Math.sin(Math.PI*(x-m.cx)/L);
+    const usq=1.5*(vx*vx+vy*vy);
+    for(let i=0;i<9;i++){const e=3*(ex[i]*vx+ey[i]*vy);f[i*N+idx]=W[i]*(1+e+0.5*e*e-usq);}
+    ux[idx]=vx;uy[idx]=vy;rho[idx]=1;
+  }
+  f2.set(f);uxp.set(ux);uyp.set(uy);
+  sponge=new Float64Array(NX);const sw=40;
+  for(let x=NX-sw;x<NX;x++){const q=(x-(NX-sw))/sw;sponge[x]=0.8*q*q;}
+}
+
+function step(){
+  const Nx=NX,Ny=NY,n=N,t0=tau,nuv=nu,ax=axi;
+  let fx=0,fy=0;
+  for(let y=0;y<Ny;y++){
+    const rr=y+0.5,row=y*Nx;
+    for(let x=0;x<Nx;x++){
+      const idx=row+x; if(solid[idx]) continue;
+      const f0=f[idx],f1=f[n+idx],f2_=f[2*n+idx],f3=f[3*n+idx],f4=f[4*n+idx],
+            f5=f[5*n+idx],f6=f[6*n+idx],f7=f[7*n+idx],f8=f[8*n+idx];
+      const r=f0+f1+f2_+f3+f4+f5+f6+f7+f8;
+      const vx=(f1-f3+f5-f6-f7+f8)/r, vy=(f2_-f4+f5+f6-f7-f8)/r;
+      let Sm=0,Sx=0,Sy=0;
+      if(ax){
+        const xl=x>0?idx-1:idx, xr=x<Nx-1?idx+1:idx, dd=(xr-xl)||1;
+        const durdx=(uyp[xr]-uyp[xl])/dd;
+        let duxdr,durdr;
+        if(y===0){duxdr=(uxp[idx+Nx]-uxp[idx])*0.5;durdr=(uyp[idx+Nx]+uyp[idx])*0.5;}
+        else if(y===Ny-1){duxdr=(uxp[idx]-uxp[idx-Nx])*0.5;durdr=(-uyp[idx]-uyp[idx-Nx])*0.5;}
+        else{duxdr=(uxp[idx+Nx]-uxp[idx-Nx])*0.5;durdr=(uyp[idx+Nx]-uyp[idx-Nx])*0.5;}
+        Sm=-r*vy/rr;
+        Sx=r*(-vy*vx/rr+nuv*(duxdr+durdx)/rr);
+        Sy=r*(-vy*vy/rr+2*nuv*(durdr/rr-vy/(rr*rr)));
+      }
+      ux[idx]=vx;uy[idx]=vy;rho[idx]=r;
+      const usq=1.5*(vx*vx+vy*vy);
+      const a=3*vx,b=3*vy,c5=a+b,c6=b-a;
+      const e0=W[0]*r*(1-usq);
+      const e1=W[1]*r*(1+a+0.5*a*a-usq), e3=W[3]*r*(1-a+0.5*a*a-usq);
+      const e2=W[2]*r*(1+b+0.5*b*b-usq), e4=W[4]*r*(1-b+0.5*b*b-usq);
+      const e5=W[5]*r*(1+c5+0.5*c5*c5-usq), e7=W[7]*r*(1-c5+0.5*c5*c5-usq);
+      const e6=W[6]*r*(1+c6+0.5*c6*c6-usq), e8=W[8]*r*(1-c6+0.5*c6*c6-usq);
+      const n0=f0-e0,n1=f1-e1,n2=f2_-e2,n3=f3-e3,n4=f4-e4,n5=f5-e5,n6=f6-e6,n7=f7-e7,n8=f8-e8;
+      const pxx=n1+n3+n5+n6+n7+n8, pyy=n2+n4+n5+n6+n7+n8, pxy=n5-n6+n7-n8;
+      const Q=Math.sqrt(pxx*pxx+pyy*pyy+2*pxy*pxy);
+      const tb=t0+sponge[x];
+      const om=2/(tb+Math.sqrt(tb*tb+SMAG*Q/r));
+      P[0]=f0-om*n0;P[1]=f1-om*n1;P[2]=f2_-om*n2;P[3]=f3-om*n3;P[4]=f4-om*n4;
+      P[5]=f5-om*n5;P[6]=f6-om*n6;P[7]=f7-om*n7;P[8]=f8-om*n8;
+      if(ax){for(let i=0;i<9;i++)P[i]+=W[i]*(Sm+3*(ex[i]*Sx+ey[i]*Sy));}
+      const wt=ax?rr:1;
+      for(let i=0;i<9;i++){
+        const tx=x+ex[i]; if(tx<0||tx>=Nx) continue;
+        let ty=y+ey[i],d=i;
+        if(ty<0||ty>=Ny){ty=y;d=MIR[i];}
+        const t=ty*Nx+tx;
+        if(solid[t]){f2[OPP[d]*n+idx]=P[i];fx+=2*ex[d]*P[i]*wt;fy+=2*ey[d]*P[i]*wt;}
+        else f2[d*n+t]=P[i];
+      }
+    }
+  }
+  // inlet: equilibrium; outlet: zero gradient
+  for(let y=0;y<Ny;y++){
+    const i0=y*Nx; if(!solid[i0]) for(let k=0;k<9;k++) f2[k*n+i0]=feqIn[k];
+    const iL=y*Nx+Nx-1; f2[3*n+iL]=f2[3*n+iL-1];f2[6*n+iL]=f2[6*n+iL-1];f2[7*n+iL]=f2[7*n+iL-1];
+  }
+  const tmp=f;f=f2;f2=tmp;
+  if(ax){let t=uxp;uxp=ux;ux=t;t=uyp;uyp=uy;uy=t;}
+  steps++;tstar+=U/L;
+  const s=ax?2*Math.PI:1; Fx+=fx*s;Fy+=fy*s;nF++;
+}
+
+function check(){
+  const probes=[(NY>>1)*NX+NX-4,(NY>>1)*NX+(NX>>1),(NY-2)*NX+(NX>>1)];
+  for(const p of probes){const v=rho[p]; if(!(v>0.3&&v<3)) return true;}
+  return false;
+}
+
+function post(k,ms){
+  const area=axi?Math.PI*(L/2)*(L/2):L, q=0.5*U*U*area;
+  const cd=nF?Fx/nF/q:0, cl=nF?Fy/nF/q:0; Fx=Fy=nF=0;
+  const a=(axi?uxp:ux).slice(),b=(axi?uyp:uy).slice(),c=rho.slice();
+  postMessage({type:'frame',gen,ux:a,uy:b,rho:c,steps,tstar,U,tau,nu,cd,cl,k,ms},[a.buffer,b.buffer,c.buffer]);
+}
+
+function loop(){
+  if(running&&f&&!blown){
+    const t0=performance.now();let k=0;
+    while(performance.now()-t0<18){step();k++;if((steps&31)===0&&check()){blown=true;break;}}
+    if(blown) postMessage({type:'blown',Re,gen});
+    else post(k,performance.now()-t0);
+  }
+  setTimeout(loop,running?0:60);
+}
+
+onmessage=e=>{
+  const m=e.data;
+  if(m.type==='init') init(m);
+  else if(m.type==='re') setRe(m.Re);
+  else if(m.type==='run') running=m.on;
+};
+loop();
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+"use strict";
+const NX=320, K=10/NX; // world units per cell
+const $=s=>document.querySelector(s);
+const fmt=(v,d)=>(v<0?"−":"")+Math.abs(v).toFixed(d).replace(".",",");
+const state={body:"cylinder",Re:100,mode:"vort",particles:true,relief:true,alpha:8,eps:0.10,camber:0.08,kutta:true,flip:false,paused:false};
+
+/* ---------- colour maps ---------- */
+function hex(h){return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];}
+function lut(stops){const o=new Uint8Array(256*3);for(let i=0;i<256;i++){const t=i/255;let k=0;while(k<stops.length-2&&t>stops[k+1][0])k++;
+  const a=stops[k],b=stops[k+1],u=Math.min(1,Math.max(0,(t-a[0])/(b[0]-a[0])));const ca=hex(a[1]),cb=hex(b[1]);
+  for(let c=0;c<3;c++)o[i*3+c]=Math.round(ca[c]+(cb[c]-ca[c])*u);}return o;}
+const MAPS={
+  vort:lut([[0,"#a8e6ff"],[0.22,"#2c8fd6"],[0.5,"#0c1117"],[0.78,"#e2572b"],[1,"#ffd585"]]),
+  speed:lut([[0,"#0c1117"],[0.3,"#173d5d"],[0.56,"#1f8b96"],[0.8,"#9fdcb7"],[1,"#fbf6da"]]),
+  press:lut([[0,"#cdbcff"],[0.24,"#6b5bd6"],[0.5,"#0c1117"],[0.76,"#27ae9b"],[1,"#cdf7d6"]])
+};
+MAPS.ideal=MAPS.speed;
+const BODYRGB=[34,40,48];
+
+/* ---------- geometry ---------- */
+function joukowski(eps,camber){
+  const mx=-eps,my=camber,R=Math.hypot(1-mx,my),n=360,pts=[];
+  for(let k=0;k<n;k++){const th=2*Math.PI*k/n,zr=mx+R*Math.cos(th),zi=my+R*Math.sin(th),d=zr*zr+zi*zi;pts.push([zr+zr/d,zi-zi/d]);}
+  let mnx=1e9,mxx=-1e9;for(const p of pts){mnx=Math.min(mnx,p[0]);mxx=Math.max(mxx,p[0]);}
+  const chord=mxx-mnx,zmid=(mxx+mnx)/2,beta=Math.asin(my/R);
+  // thickness & camber by vertical slices
+  let tmax=0,cmax=0;const le=pts.reduce((a,p)=>p[0]<a[0]?p:a,pts[0]);
+  for(let s=1;s<120;s++){const x=mnx+chord*s/120;const ys=[];
+    for(let i=0;i<n;i++){const a=pts[i],b=pts[(i+1)%n];if((a[0]-x)*(b[0]-x)<=0&&a[0]!==b[0]){ys.push(a[1]+(b[1]-a[1])*(x-a[0])/(b[0]-a[0]));}}
+    if(ys.length>=2){const hi=Math.max(...ys),lo=Math.min(...ys);tmax=Math.max(tmax,hi-lo);
+      const cl=le[1]+(0-le[1])*(x-le[0])/(mxx-le[0]);cmax=Math.max(cmax,(hi+lo)/2-cl);}}
+  return {mx,my,R,pts,chord,zmid,beta,tc:tmax/chord,fc:cmax/chord,mnx,mxx};
+}
+function pip(poly,x,y){let c=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const a=poly[i],b=poly[j];
+  if(((a[1]>y)!==(b[1]>y))&&(x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0]))c=!c;}return c;}
+function smin(a,b,k){const h=Math.max(0,Math.min(1,0.5+0.5*(b-a)/k));return b+(a-b)*h-k*h*(1-h);}
+
+function buildGeo(){
+  const b=state.body,axi=(b==="sphere"||b==="pear"),NY=axi?64:128,N=NX*NY,solid=new Uint8Array(N);
+  const g={body:b,axi,NY,H:axi?2*NY:NY,solid,cy:axi?0:NY/2};
+  if(b==="cylinder"){g.cx=72;g.R=12;g.L=24;
+    for(let y=0;y<NY;y++)for(let x=0;x<NX;x++)if((x-g.cx)**2+(y-g.cy)**2<=g.R*g.R)solid[y*NX+x]=1;}
+  else if(b==="sphere"){g.cx=72;g.R=12;g.L=24;
+    for(let y=0;y<NY;y++)for(let x=0;x<NX;x++)if((x-g.cx)**2+(y+0.5)**2<=g.R*g.R)solid[y*NX+x]=1;}
+  else if(b==="pear"){g.cx=74;g.R=12;g.L=24;const R=g.R,R2=0.6*R,c2=g.cx+(state.flip?-1:1)*1.3*R,k=0.5*R;
+    const sdf=(x,r)=>smin(Math.hypot(x-g.cx,r)-R,Math.hypot(x-c2,r)-R2,k);g.sdf=sdf;
+    for(let y=0;y<NY;y++)for(let x=0;x<NX;x++)if(sdf(x,y+0.5)<0)solid[y*NX+x]=1;
+    const x0=Math.min(g.cx-R,c2-R2)-1,x1=Math.max(g.cx+R,c2+R2)+1,prof=[];
+    for(let i=0;i<=120;i++){const x=x0+(x1-x0)*i/120;let r=0;
+      if(sdf(x,0)<0){let lo=0,hi=2*R;for(let it=0;it<30;it++){const m=(lo+hi)/2;if(sdf(x,m)<0)lo=m;else hi=m;}r=lo;}
+      prof.push([x,r]);}
+    g.prof=prof;}
+  else{ // wing
+    const J=joukowski(state.eps,state.camber);g.J=J;g.cx=100;g.L=80;g.s=g.L/J.chord;
+    const al=state.alpha*Math.PI/180,ca=Math.cos(al),sa=Math.sin(al);g.al=al;
+    g.poly=J.pts.map(p=>{const a=p[0]-J.zmid,c=p[1];return [g.cx+g.s*(a*ca+c*sa),g.cy+g.s*(-a*sa+c*ca)];});
+    let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;for(const p of g.poly){x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);y0=Math.min(y0,p[1]);y1=Math.max(y1,p[1]);}
+    for(let y=Math.floor(y0);y<=Math.ceil(y1);y++)for(let x=Math.floor(x0);x<=Math.ceil(x1);x++)if(pip(g.poly,x,y))solid[y*NX+x]=1;}
+  return g;
+}
+
+/* ---------- ideal (potential) flow ---------- */
+function computeIdeal(g){
+  const NY=g.NY,N=NX*NY,lev=new Float32Array(N),spd=new Float32Array(N),vx=new Float32Array(N),vy=new Float32Array(N),inside=new Uint8Array(N);
+  const U=1;
+  if(g.body==="cylinder"){const R=g.R;
+    for(let y=0;y<NY;y++)for(let x=0;x<NX;x++){const i=y*NX+x,a=(x-g.cx)/R,b=(y-g.cy)/R,d=a*a+b*b;
+      if(d<1){inside[i]=1;continue;}
+      const psi=b*(1-1/d);lev[i]=psi/0.25;
+      // w = 1 - 1/ζ², V = conj(w)
+      const ir=(a*a-b*b)/(d*d),ii=-2*a*b/(d*d);const wr=1-ir,wi=-ii;
+      vx[i]=U*wr;vy[i]=-U*wi;spd[i]=Math.hypot(wr,wi);}}
+  else if(g.body==="sphere"){const R=g.R;
+    for(let y=0;y<NY;y++)for(let x=0;x<NX;x++){const i=y*NX+x,dx=x-g.cx,r=y+0.5,rho=Math.hypot(dx,r);
+      if(rho<R){inside[i]=1;continue;}
+      const q=R*R*R/(rho*rho*rho),ct=dx/rho,st=r/rho;const ur_=ct*(1-q),ut=-st*(1+q/2);
+      const ax=ur_*ct-ut*st,ar=ur_*st+ut*ct;vx[i]=U*ax;vy[i]=U*ar;spd[i]=Math.hypot(ax,ar);
+      lev[i]=Math.sqrt(Math.max(0,r*r*(1-q)))/4;}}
+  else if(g.body==="wing"){const J=g.J,ca=Math.cos(g.al),sa=Math.sin(g.al),mx=J.mx,my=J.my,R=J.R;
+    const G=state.kutta?4*Math.PI*R*Math.sin(g.al+J.beta):0;
+    for(let y=0;y<NY;y++)for(let x=0;x<NX;x++){const i=y*NX+x;
+      const px=(x-g.cx)/g.s,py=(y-g.cy)/g.s;
+      // body frame z = p·e^{iα} + zmid
+      const zr=px*ca-py*sa+J.zmid,zi=px*sa+py*ca;
+      // ζ = (z ± sqrt(z²-4))/2
+      const wr=zr*zr-zi*zi-4,wi=2*zr*zi,m=Math.hypot(wr,wi);let sr=Math.sqrt((m+wr)/2),si=Math.sqrt(Math.max(0,(m-wr)/2));if(wi<0)si=-si;
+      let ar=(zr+sr)/2,ai=(zi+si)/2,br=(zr-sr)/2,bi=(zi-si)/2;
+      let qr,qi;const da=Math.hypot(ar-mx,ai-my),db=Math.hypot(br-mx,bi-my);
+      if(da>=db){qr=ar;qi=ai;}else{qr=br;qi=bi;}
+      const tr=qr-mx,ti=qi-my,t2=tr*tr+ti*ti;
+      if(t2<R*R*1.0001||inside_poly(g,x,y)){inside[i]=1;continue;}
+      // ψ = Im[t e^{-iα} + R² e^{iα}/t] + Γ/(2π) ln|t|
+      const psi=(ti*ca-tr*sa)+R*R*(sa*tr-ca*ti)/t2+G/(2*Math.PI)*0.5*Math.log(t2);
+      lev[i]=psi/0.14;
+      // dW/dζ = e^{-iα} − R² e^{iα}/t² + iΓ/(2π t)
+      const it2r=(tr*tr-ti*ti)/(t2*t2),it2i=-2*tr*ti/(t2*t2); // 1/t²
+      const eir=ca,eii=sa; // e^{iα}
+      let dWr=ca-R*R*(eir*it2r-eii*it2i),dWi=-sa-R*R*(eir*it2i+eii*it2r);
+      const itr=tr/t2,iti=-ti/t2; dWr+=-G/(2*Math.PI)*iti; dWi+=G/(2*Math.PI)*itr;
+      // dz/dζ = 1 − 1/ζ²
+      const q2=qr*qr+qi*qi,iqr=(qr*qr-qi*qi)/(q2*q2),iqi=-2*qr*qi/(q2*q2);const dzr=1-iqr,dzi=-iqi,dz2=Math.max(dzr*dzr+dzi*dzi,1e-4);
+      const wR=(dWr*dzr+dWi*dzi)/dz2,wI=(dWi*dzr-dWr*dzi)/dz2; // w = u − iv (body frame)
+      let u=wR,v=-wI;const sp=Math.min(Math.hypot(u,v),4);const sc=sp/Math.max(1e-9,Math.hypot(u,v));u*=sc;v*=sc;
+      // rotate body → physical: V·e^{-iα}
+      vx[i]=U*(u*ca+v*sa);vy[i]=U*(-u*sa+v*ca);spd[i]=sp;}}
+  // line intensity from level set
+  const line=new Float32Array(N);
+  for(let y=1;y<NY-1;y++)for(let x=1;x<NX-1;x++){const i=y*NX+x;if(inside[i])continue;
+    const gx=(lev[i+1]-lev[i-1])/2,gy=(lev[i+NX]-lev[i-NX])/2,gm=Math.hypot(gx,gy)+1e-6;
+    const fr=lev[i]-Math.round(lev[i]);const d=Math.abs(fr)/gm;line[i]=Math.max(0,1-d/0.9);}
+  return {spd,vx,vy,inside,line};
+}
+function inside_poly(g,x,y){return g.solid[y*NX+x]===1;}
+
+/* ---------- simulation worker ---------- */
+const worker=new Worker(URL.createObjectURL(new Blob([$("#lbm-worker").textContent],{type:"text/javascript"})));
+let geo=null,sim=null,ideal=null,hist=[],pendingSteps=0,lastSteps=0,frameDirty=false,perf={sps:0};
+let gen=0;
+worker.onmessage=e=>{const m=e.data;if(m.gen!==gen)return;
+  if(m.type==="frame"){
+    pendingSteps+=Math.max(0,m.steps-lastSteps);lastSteps=m.steps;sim=m;frameDirty=true;
+    perf.sps=perf.sps*0.9+0.1*(m.k/m.ms*1000);
+    hist.push([m.tstar,m.cd,geo.axi?0:m.cl]);if(hist.length>1600)hist.splice(0,hist.length-1600);}
+  else if(m.type==="blown"){$("#blownMsg").textContent="Regningen blev ustabil ved Re = "+reStr(m.Re)+". Gitteret er for groft til så høj en Reynolds-værdi her. Sænk Re, eller start forfra.";$("#blown").hidden=false;}
+};
+function reset(){
+  gen++;geo=buildGeo();sim=null;hist=[];pendingSteps=0;lastSteps=0;ideal=null;$("#blown").hidden=true;
+  const sol=geo.solid.slice();
+  worker.postMessage({type:"init",gen,NX,NY:geo.NY,axi:geo.axi,L:geo.L,solid:sol,Re:state.Re,cx:geo.cx},[sol.buffer]);
+  worker.postMessage({type:"run",on:!state.paused});
+  rebuildScene();seedParticles(true);updateRegime();updateLabels();drawJ();
+}
+
+/* ---------- three.js scene ---------- */
+const cv=$("#gl"),vp=$("#vp");
+const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true});
+renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x0a0e13);
+const camera=new THREE.PerspectiveCamera(38,1,0.05,200);
+scene.add(new THREE.HemisphereLight(0xe4ecff,0x1b2127,0.95));
+const dl=new THREE.DirectionalLight(0xffffff,0.75);dl.position.set(3,6,7);scene.add(dl);
+const dl2=new THREE.DirectionalLight(0x9fd6ff,0.25);dl2.position.set(-5,-2,-4);scene.add(dl2);
+const fieldCanvas=document.createElement("canvas"),fctx=fieldCanvas.getContext("2d");let fimg=null;
+const tex=new THREE.CanvasTexture(fieldCanvas);tex.minFilter=THREE.LinearFilter;tex.magFilter=THREE.LinearFilter;tex.generateMipmaps=false;
+let plane=null,bodyMesh=null,tunnel=null,streaks=null,reliefVal=null,SPAN=3;
+const SEGX=106;let SEGY=42;
+function disposeObj(o){if(!o)return;scene.remove(o);o.traverse(c=>{if(c.geometry)c.geometry.dispose();if(c.material&&c.material!==sharedMat)c.material.dispose();});}
+const sharedMat=null;
+function rebuildScene(){
+  [plane,bodyMesh,tunnel].forEach(disposeObj);
+  const H=geo.H;fieldCanvas.width=NX;fieldCanvas.height=H;fimg=fctx.createImageData(NX,H);reliefVal=new Float32Array(NX*H);
+  SEGY=Math.round(SEGX*H/NX);
+  const pg=new THREE.PlaneGeometry(NX*K,H*K,SEGX,SEGY);
+  plane=new THREE.Mesh(pg,new THREE.MeshLambertMaterial({map:tex,emissive:0xffffff,emissiveMap:tex,emissiveIntensity:0.6,side:THREE.DoubleSide}));scene.add(plane);
+  const mat=new THREE.MeshStandardMaterial({color:0xd5d9de,metalness:0.25,roughness:0.42,side:THREE.DoubleSide});
+  const wx=x=>(x-NX/2)*K, wy=y=>(y-geo.NY/2)*K;
+  let gm;
+  if(geo.body==="cylinder"){gm=new THREE.CylinderGeometry(geo.R*K,geo.R*K,SPAN,64,1);gm.rotateX(Math.PI/2);gm.translate(wx(geo.cx),wy(geo.cy),0);}
+  else if(geo.body==="sphere"){gm=new THREE.SphereGeometry(geo.R*K,64,40);gm.translate(wx(geo.cx),0,0);}
+  else if(geo.body==="pear"){const pts=geo.prof.map(p=>new THREE.Vector2(Math.max(p[1]*K,0),wx(p[0])));
+    gm=new THREE.LatheGeometry(pts,72);gm.rotateZ(-Math.PI/2);}
+  else{const sh=new THREE.Shape();geo.poly.forEach((p,i)=>{const X=wx(p[0]),Y=wy(p[1]);if(i===0)sh.moveTo(X,Y);else sh.lineTo(X,Y);});
+    gm=new THREE.ExtrudeGeometry(sh,{depth:SPAN,bevelEnabled:false,curveSegments:1});gm.translate(0,0,-SPAN/2);}
+  gm.computeVertexNormals();
+  bodyMesh=new THREE.Mesh(gm,mat);scene.add(bodyMesh);
+  // tunnel outline
+  const lm=new THREE.LineBasicMaterial({color:0x2c3946,transparent:true,opacity:0.9});const L2=NX*K/2;let lg;
+  if(!geo.axi){const h=H*K/2,s=SPAN/2,v=[];const c=[[-L2,-h],[L2,-h],[L2,h],[-L2,h]];
+    for(let i=0;i<4;i++){const a=c[i],b=c[(i+1)%4];v.push(a[0],a[1],-s,b[0],b[1],-s,a[0],a[1],s,b[0],b[1],s,a[0],a[1],-s,a[0],a[1],s);}
+    lg=new THREE.BufferGeometry();lg.setAttribute("position",new THREE.Float32BufferAttribute(v,3));}
+  else{const r=geo.NY*K,v=[];for(const X of [-L2,-L2/3,L2/3,L2])for(let i=0;i<64;i++){const a=2*Math.PI*i/64,b=2*Math.PI*(i+1)/64;v.push(X,r*Math.cos(a),r*Math.sin(a),X,r*Math.cos(b),r*Math.sin(b));}
+    for(let i=0;i<4;i++){const a=Math.PI/4+i*Math.PI/2;v.push(-L2,r*Math.cos(a),r*Math.sin(a),L2,r*Math.cos(a),r*Math.sin(a));}
+    lg=new THREE.BufferGeometry();lg.setAttribute("position",new THREE.Float32BufferAttribute(v,3));}
+  tunnel=new THREE.LineSegments(lg,lm);scene.add(tunnel);
+}
+
+/* ---------- field painting ---------- */
+function paintField(){
+  if(!geo||!fimg)return;
+  const NY=geo.NY,H=geo.H,axi=geo.axi,mode=state.mode,map=MAPS[mode],data=fimg.data,solid=geo.solid;
+  const half=new Float32Array(NX*NY);const line=mode==="ideal"&&ideal?ideal.line:null;
+  if(mode==="ideal"){if(!ideal)ideal=computeIdeal(geo);for(let i=0;i<NX*NY;i++)half[i]=ideal.inside[i]?0:Math.min(1,ideal.spd[i]/1.9);}
+  else{ if(!sim)return; const ux=sim.ux,uy=sim.uy,rh=sim.rho,U=sim.U,Lc=geo.L;
+    for(let y=0;y<NY;y++)for(let x=0;x<NX;x++){const i=y*NX+x;if(solid[i])continue;
+      if(mode==="vort"){const xl=x>0?i-1:i,xr=x<NX-1?i+1:i;let dudy;
+        if(y===0)dudy=axi?(ux[i+NX]-ux[i])/2:(ux[i+NX]-ux[i]);else if(y===NY-1)dudy=(ux[i]-ux[i-NX]);else dudy=(ux[i+NX]-ux[i-NX])/2;
+        const w=(uy[xr]-uy[xl])/((xr-xl)||1)-dudy;half[i]=Math.tanh(w*Lc/U/6);}
+      else if(mode==="speed"){half[i]=Math.min(1,Math.hypot(ux[i],uy[i])/U/1.7);}
+      else{const cp=(rh[i]-1)/3/(0.5*U*U);half[i]=Math.tanh(cp/1.2);}}}
+  const diverging=(mode==="vort"||mode==="press");
+  for(let row=0;row<H;row++){let gy,sgn=1;
+    if(!axi)gy=NY-1-row;else if(row<NY)gy=NY-1-row;else{gy=row-NY;sgn=-1;}
+    for(let x=0;x<NX;x++){const i=gy*NX+x,o=(row*NX+x)*4;let r,g,b,v=0;
+      const isSolid=mode==="ideal"&&ideal?ideal.inside[i]:solid[i];
+      if(isSolid){r=BODYRGB[0];g=BODYRGB[1];b=BODYRGB[2];}
+      else{v=half[i]*(diverging&&mode==="vort"?sgn:1);const t=diverging?(v+1)/2:v;const k=Math.max(0,Math.min(255,Math.round(t*255)))*3;
+        r=map[k];g=map[k+1];b=map[k+2];
+        if(line){const a=line[i]*0.85;r+=(245-r)*a;g+=(250-g)*a;b+=(252-b)*a;}}
+      data[o]=r;data[o+1]=g;data[o+2]=b;data[o+3]=255;
+      reliefVal[row*NX+x]=isSolid?0:(diverging?v:v-0.5);}}
+  fctx.putImageData(fimg,0,0);tex.needsUpdate=true;
+  if(plane){const pos=plane.geometry.attributes.position,amp=state.relief?0.42:0;
+    for(let iy=0;iy<=SEGY;iy++){const row=Math.min(H-1,Math.round(iy/SEGY*(H-1)));
+      for(let ix=0;ix<=SEGX;ix++){const col=Math.min(NX-1,Math.round(ix/SEGX*(NX-1)));pos.setZ(iy*(SEGX+1)+ix,amp*reliefVal[row*NX+col]);}}
+    pos.needsUpdate=true;plane.geometry.computeVertexNormals();}
+}
+
+/* ---------- particles ---------- */
+const NP=window.innerWidth<700?900:1600;
+const px=new Float32Array(NP),py=new Float32Array(NP),pz=new Float32Array(NP),age=new Float32Array(NP),life=new Float32Array(NP),pvx=new Float32Array(NP),pvy=new Float32Array(NP),pvz=new Float32Array(NP);
+const sPos=new Float32Array(NP*6),sCol=new Float32Array(NP*6);
+{const gsk=new THREE.BufferGeometry();gsk.setAttribute("position",new THREE.BufferAttribute(sPos,3));gsk.setAttribute("color",new THREE.BufferAttribute(sCol,3));
+ streaks=new THREE.LineSegments(gsk,new THREE.LineBasicMaterial({vertexColors:true,transparent:true,opacity:0.95,blending:THREE.AdditiveBlending,depthWrite:false}));scene.add(streaks);}
+function isSolidAt(x,y,z){if(x<0||x>=NX-1)return false;const xi=Math.round(x);
+  if(!geo.axi){const yi=Math.round(y);if(yi<0||yi>=geo.NY)return false;return geo.solid[yi*NX+xi]===1;}
+  const r=Math.hypot(y,z),yi=Math.floor(r);if(yi>=geo.NY)return false;return geo.solid[yi*NX+xi]===1;}
+function spawn(i,anywhere){
+  for(let t=0;t<20;t++){
+    px[i]=anywhere?Math.random()*(NX-4):Math.random()*2;
+    if(!geo.axi){py[i]=1+Math.random()*(geo.NY-2);pz[i]=(Math.random()-0.5)*SPAN/K;}
+    else{const r=(geo.NY-3)*Math.pow(Math.random(),0.85),a=Math.random()*2*Math.PI;py[i]=r*Math.cos(a);pz[i]=r*Math.sin(a);}
+    if(!isSolidAt(px[i],py[i],pz[i]))break;}
+  age[i]=0;life[i]=300+Math.random()*700;
+}
+function seedParticles(){for(let i=0;i<NP;i++)spawn(i,true);}
+function samp(A,x,y,ny){if(x<0)x=0;if(x>NX-1.001)x=NX-1.001;if(y<0)y=0;if(y>ny-1.001)y=ny-1.001;
+  const i=x|0,j=y|0,fx=x-i,fy=y-j,k=j*NX+i;return (A[k]*(1-fx)+A[k+1]*fx)*(1-fy)+(A[k+NX]*(1-fx)+A[k+NX+1]*fx)*fy;}
+const V=[0,0,0];
+function vel(VX,VY,x,y,z){const ny=geo.NY;
+  if(!geo.axi){V[0]=samp(VX,x,y,ny);V[1]=samp(VY,x,y,ny);V[2]=0;return;}
+  const r=Math.hypot(y,z),u=samp(VX,x,r-0.5,ny),ur=samp(VY,x,r-0.5,ny);V[0]=u;
+  if(r>1e-6){V[1]=ur*y/r;V[2]=ur*z/r;}else{V[1]=V[2]=0;}}
+function stepParticles(){
+  const useIdeal=state.mode==="ideal";
+  if(!sim)return;
+  if(useIdeal&&!ideal)ideal=computeIdeal(geo);
+  const VX=useIdeal?ideal.vx:sim.ux,VY=useIdeal?ideal.vy:sim.uy,U=sim.U;
+  let dt;
+  const vs=useIdeal?U:1,um=useIdeal?1:U;
+  if(state.paused)dt=0;else if(useIdeal)dt=0.9;else dt=Math.min(70,pendingSteps*Math.max(1,0.045/U));
+  pendingSteps=0;
+  const sub=Math.max(1,Math.ceil(um*1.8*dt/1.2)),h=dt/sub,ny=geo.NY;
+  for(let i=0;i<NP;i++){
+    if(dt>0){
+      for(let s=0;s<sub;s++){vel(VX,VY,px[i],py[i],pz[i]);const ax=V[0],ay=V[1],az=V[2];
+        vel(VX,VY,px[i]+ax*h/2,py[i]+ay*h/2,pz[i]+az*h/2);px[i]+=V[0]*h;py[i]+=V[1]*h;pz[i]+=V[2]*h;}
+      age[i]++;
+      const out=px[i]>NX-2||px[i]<0||(!geo.axi&&(py[i]<0.3||py[i]>ny-1.3))||(geo.axi&&Math.hypot(py[i],pz[i])>ny-1);
+      if(out||age[i]>life[i]||isSolidAt(px[i],py[i],pz[i]))spawn(i,!out&&Math.random()<0.35);
+    }
+    vel(VX,VY,px[i],py[i],pz[i]);pvx[i]=V[0]*vs;pvy[i]=V[1]*vs;pvz[i]=V[2]*vs;
+  }
+}
+function writeStreaks(){
+  if(!geo)return;const U=sim?sim.U:0.1,map=MAPS.speed,show=state.particles;
+  const oy=geo.axi?0:geo.NY/2;
+  for(let i=0;i<NP;i++){const o=i*6;
+    if(!show){for(let k=0;k<6;k++){sPos[o+k]=0;sCol[o+k]=0;}continue;}
+    const X=(px[i]-NX/2)*K,Y=(py[i]-oy)*K,Z=pz[i]*K;const sp=Math.hypot(pvx[i],pvy[i],pvz[i])/U;
+    const len=3.2*K/Math.max(0.15,1);const tx=X-pvx[i]/U*len*1.0,ty=Y-pvy[i]/U*len,tz=Z-pvz[i]/U*len;
+    sPos[o]=X;sPos[o+1]=Y;sPos[o+2]=Z+0.0;sPos[o+3]=tx;sPos[o+4]=ty;sPos[o+5]=tz;
+    const fade=Math.min(1,age[i]/25)*Math.min(1,(life[i]-age[i])/40);const k=Math.max(0,Math.min(255,Math.round(Math.min(1,0.35+sp*0.45)*255)))*3;
+    sCol[o]=(map[k]/255)*fade;sCol[o+1]=(map[k+1]/255)*fade;sCol[o+2]=(map[k+2]/255)*fade;sCol[o+3]=sCol[o]*0.08;sCol[o+4]=sCol[o+1]*0.08;sCol[o+5]=sCol[o+2]*0.08;}
+  streaks.geometry.attributes.position.needsUpdate=true;streaks.geometry.attributes.color.needsUpdate=true;
+}
+
+/* ---------- camera ---------- */
+const cam={th:-0.62,ph:0.38,d:10.8,tx:0.6,ty:0,tz:0};let camGoal=null;
+const VIEWS={side:{th:0,ph:0,d:10.2},oblique:{th:-0.62,ph:0.38,d:10.8},top:{th:-1.25,ph:0.2,d:10.5}};
+function applyCam(){if(camGoal){const k=0.12;let done=true;for(const p of ["th","ph","d"]){cam[p]+=(camGoal[p]-cam[p])*k;if(Math.abs(camGoal[p]-cam[p])>1e-3)done=false;}if(done)camGoal=null;}
+  const c=Math.cos(cam.ph);camera.position.set(cam.tx+cam.d*c*Math.sin(cam.th),cam.ty+cam.d*Math.sin(cam.ph),cam.tz+cam.d*c*Math.cos(cam.th));camera.lookAt(cam.tx,cam.ty,cam.tz);}
+const ptrs=new Map();let pinch0=0,d0=0;
+cv.addEventListener("pointerdown",e=>{cv.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,[e.clientX,e.clientY]);camGoal=null;
+  if(ptrs.size===2){const a=[...ptrs.values()];pinch0=Math.hypot(a[0][0]-a[1][0],a[0][1]-a[1][1]);d0=cam.d;}});
+cv.addEventListener("pointermove",e=>{if(!ptrs.has(e.pointerId))return;const p=ptrs.get(e.pointerId);const dx=e.clientX-p[0],dy=e.clientY-p[1];ptrs.set(e.pointerId,[e.clientX,e.clientY]);
+  if(ptrs.size===1){cam.th-=dx*0.006;cam.ph=Math.max(-1.45,Math.min(1.45,cam.ph+dy*0.006));}
+  else if(ptrs.size===2){const a=[...ptrs.values()];const pd=Math.hypot(a[0][0]-a[1][0],a[0][1]-a[1][1]);if(pinch0>0)cam.d=Math.max(3,Math.min(24,d0*pinch0/pd));}});
+const endP=e=>{ptrs.delete(e.pointerId);pinch0=0;};
+cv.addEventListener("pointerup",endP);cv.addEventListener("pointercancel",endP);
+cv.addEventListener("wheel",e=>{e.preventDefault();cam.d=Math.max(3,Math.min(24,cam.d*Math.exp(e.deltaY*0.001)));camGoal=null;},{passive:false});
+$("#vSide").onclick=()=>camGoal={...VIEWS.side};$("#vOblique").onclick=()=>camGoal={...VIEWS.oblique};$("#vTop").onclick=()=>camGoal={...VIEWS.top};
+
+function resize(){const w=vp.clientWidth,h=vp.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
+new ResizeObserver(resize).observe(vp);
+
+/* ---------- readouts, chart, regime ---------- */
+function reStr(r){return r<10?fmt(r,1):r<1000?String(Math.round(r)):String(Math.round(r/10)*10);}
+const REG={
+  cylinder:[[5,"Krybende strømning","Viskositeten dominerer. Strømlinjerne lukker sig om cylinderen bagved, og grænselaget skiller ikke af. Modstanden er næsten ren friktion og trykmodstand fra viskøse spændinger."],
+    [47,"Stationært hvirvelpar","Grænselaget skiller af, og to modsat roterende hvirvler ligger stille bag cylinderen. Hvirvelboblen bliver længere, jo højere Re er."],
+    [190,"Kármán-hvirvelgade","Hvirvelparret er blevet ustabilt (en Hopf-bifurkation ved Re ≈ 47) og afgives nu skiftevis fra over- og underside. Opdriften svinger med Strouhal-frekvensen, mens modstanden svinger med den dobbelte."],
+    [1000,"Overgang i kølvandet","I virkeligheden bliver kølvandet nu tredimensionalt (mode A og B ved Re ≈ 190 og 260). En 2D-model kan ikke vise det og holder hvirvelgaden for regelmæssig."],
+    [1e9,"Turbulent kølvand","Grænselaget på forsiden er stadig laminart, men kølvandet er turbulent. Her er de mindste hvirvler modelleret med Smagorinsky-LES i 2D; billedet er kvalitativt."]],
+  sphere:[[20,"Vedhængende strømning","Grænselaget følger hele kuglen. Strømningen er næsten symmetrisk for og bag, som Stokes' løsning med C_D ≈ 24/Re forudsiger ved meget lav Re."],
+    [210,"Stationær hvirvelring","Grænselaget skiller af bag kuglen, og en toroidal hvirvelring ligger stille i kølvandet. Ringen vokser med Re. Sporpartiklerne viser den som en lukket recirkulation hele vejen rundt om aksen."],
+    [800,"Symmetribrud (vises ikke)","Over Re ≈ 210 bryder den virkelige kugle aksesymmetrien: først to stationære hvirveltråde, over Re ≈ 270 periodisk afgivelse af hårnålehvirvler. Denne model er tvunget aksesymmetrisk og viser i stedet en ring, der svinger."],
+    [1e9,"Turbulent kølvand","Det virkelige kølvand er turbulent og tredimensionalt. I den aksesymmetriske model afgives ringhvirvler; billedet er kvalitativt."]],
+  pear:[[15,"Vedhængende strømning","Grænselaget følger hele pæren. Ved lav Re betyder formen mindre: modstanden er domineret af viskøse spændinger over hele overfladen."],
+    [180,"Stationær hvirvelring","Strømningen skiller af, hvor overfladen krummer bort fra strømmen, og en stationær hvirvelring ligger i kølvandet. Vend pæren og sammenlign: en butet bagende giver en større ring og højere C_D."],
+    [1e9,"Ustabilt kølvand","Ved højere Re bliver kølvandet ustabilt. Som for kuglen ville den virkelige strømning bryde aksesymmetrien, hvad denne model ikke kan vise. Grænserne er omtrentlige."]],
+  wing:[[100,"Viskøs strømning","Re er her baseret på korden. Grænselagene er tykke, og opdriften er langt under den ideelle værdi 2π(α+β), fordi viskositeten ikke tvinger strømningen af ved bagkanten så skarpt som Kutta-betingelsen."],
+    [1000,"Laminar vingestrømning","Strømningen forlader bagkanten glat ved små vinkler, og C_L nærmer sig Kutta–Joukowski-værdien. Ved store vinkler skiller det laminare grænselag af fra oversiden, og vingen staller."],
+    [1e9,"Lav-Re aerodynamik","Dette område svarer til insekter og små droner (Re ≈ 10³–10⁵). Ved stor α afgiver vingen hvirvler skiftevis fra for- og bagkant. Rigtige fly flyver ved Re ≈ 10⁶–10⁸."]]
+};
+function updateRegime(){const list=REG[state.body];const r=list.find(e=>state.Re<e[0])||list[list.length-1];$("#regName").textContent=r[1];$("#regText").innerHTML=r[2].replace(/C_D/g,"C<sub>D</sub>").replace(/C_L/g,"C<sub>L</sub>");}
+const BNAME={cylinder:"Cylinder",sphere:"Kugle",pear:"Pære",wing:"Joukowski-vinge"};
+function updateLabels(){
+  $("#ovBody").textContent=BNAME[state.body];$("#ovRe").textContent="Re = "+reStr(state.Re)+(state.body==="wing"?" · α = "+state.alpha+"°":"");
+  $("#reOut").textContent=reStr(state.Re);
+  const t={vort:"Hvirvelstyrke ωL/U",speed:"Fart |u|/U",press:"Trykkoefficient Cₚ",ideal:"Ideal strømning: fart og strømlinjer"}[state.mode];
+  $("#cbTitle").textContent=t;
+  const lbl={vort:["−","0","+"],speed:["0","0,85","1,7"],press:["−","0","+"],ideal:["0","0,95","1,9"]}[state.mode];
+  $("#cbMin").textContent=lbl[0];$("#cbMid").textContent=lbl[1];$("#cbMax").textContent=lbl[2];
+  const cb=$("#cbar").getContext("2d"),m=MAPS[state.mode];for(let x=0;x<170;x++){const k=Math.round(x/169*255)*3;cb.fillStyle="rgb("+m[k]+","+m[k+1]+","+m[k+2]+")";cb.fillRect(x,0,1,8);}
+  $("#rGrid").textContent=NX+"×"+(geo?geo.NY:128);
+  $("#rL").textContent=geo?(geo.axi?"D = "+geo.L+" celler, aksesym.":(state.body==="wing"?"korde = ":"D = ")+geo.L+" celler"):"";
+  const idealOK=state.body!=="pear";const ib=document.querySelector('#modeSeg [data-v="ideal"]');ib.disabled=!idealOK;
+  document.querySelectorAll("#reChips .chip").forEach(c=>c.setAttribute("aria-pressed",String(Math.abs(+c.dataset.v-state.Re)/state.Re<0.02)));
+}
+function idealCL(){if(state.body!=="wing"||!geo)return 0;const J=geo.J;return state.kutta?8*Math.PI*J.R*Math.sin(geo.al+J.beta)/J.chord:0;}
+function strouhal(){
+  if(geo.axi||hist.length<80)return null;const n=hist.length,st=Math.floor(n*0.35);if(hist[st][0]<8)return null;
+  let m=0;for(let i=st;i<n;i++)m+=hist[i][2];m/=(n-st);let mn=1e9,mx=-1e9;for(let i=st;i<n;i++){mn=Math.min(mn,hist[i][2]);mx=Math.max(mx,hist[i][2]);}
+  if(mx-mn<0.03)return null;const cr=[];
+  for(let i=st+1;i<n;i++){const a=hist[i-1][2]-m,b=hist[i][2]-m;if(a<0&&b>=0)cr.push(hist[i-1][0]+(hist[i][0]-hist[i-1][0])*(-a)/(b-a));}
+  if(cr.length<3)return null;return (cr.length-1)/(cr[cr.length-1]-cr[0]);
+}
+function updateReadouts(){
+  if(!sim){return;}
+  const ide=state.mode==="ideal";
+  let n=0,cd=0;for(let i=hist.length-1;i>=0&&hist[hist.length-1][0]-hist[i][0]<4;i--){cd+=hist[i][1];n++;}cd=n?cd/n:sim.cd;
+  if(ide){$("#rCd").textContent="0";$("#rCdS").textContent="d'Alemberts paradoks";
+    $("#rCl").textContent=state.body==="wing"?fmt(idealCL(),3):"0";$("#rClS").textContent=state.body==="wing"?"Kutta–Joukowski":"ideal";}
+  else{$("#rCd").textContent=sim.tstar<1?"…":fmt(cd,3);$("#rCdS").textContent="gennemsnit over t·U/L = 4";
+    if(geo.axi){$("#rCl").textContent="—";$("#rClS").textContent="0 af symmetri";}
+    else{$("#rCl").textContent=sim.tstar<1?"…":fmt(sim.cl,3);$("#rClS").textContent=state.body==="wing"?"ideal "+fmt(idealCL(),2):"øjebliksværdi";}}
+  const st=strouhal();$("#rSt").textContent=st?fmt(st,3):"—";
+  $("#rT").textContent=fmt(sim.tstar,1);
+  $("#rTau").textContent=fmt(sim.tau,3);$("#rMa").textContent="Ma = "+fmt(sim.U*Math.sqrt(3),3);
+  $("#ovPerf").textContent=Math.round(perf.sps)+" tidsskridt/s";
+}
+const chart=$("#chart"),cctx=chart.getContext("2d");
+function drawChart(){
+  const dpr=Math.min(2,window.devicePixelRatio||1),w=chart.clientWidth,h=chart.clientHeight;
+  if(chart.width!==Math.round(w*dpr)){chart.width=Math.round(w*dpr);chart.height=Math.round(h*dpr);}
+  cctx.setTransform(dpr,0,0,dpr,0,0);cctx.clearRect(0,0,w,h);
+  const cs=getComputedStyle(document.documentElement);const ink=cs.getPropertyValue("--muted").trim(),lineC=cs.getPropertyValue("--line").trim(),warm=cs.getPropertyValue("--warm").trim(),acc=cs.getPropertyValue("--accent").trim();
+  cctx.font="10.5px "+cs.getPropertyValue("--mono");
+  const pts=hist.filter(p=>p[0]>1.5);if(pts.length<2){cctx.fillStyle=ink;cctx.fillText("Venter på, at startforløbet dør ud …",8,h/2);return;}
+  const t1=pts[pts.length-1][0],t0=Math.max(pts[0][0],t1-40);const vis=pts.filter(p=>p[0]>=t0);
+  let mn=0,mx=0;for(const p of vis){mn=Math.min(mn,p[1],p[2]);mx=Math.max(mx,p[1],p[2]);}const pad=(mx-mn)*0.08||0.1;mn-=pad;mx+=pad;
+  const L=36,R=8,T=6,B=18;const X=t=>L+(t-t0)/(t1-t0||1)*(w-L-R),Y=v=>T+(1-(v-mn)/(mx-mn))*(h-T-B);
+  const step=niceStep((mx-mn)/4);cctx.strokeStyle=lineC;cctx.lineWidth=1;cctx.fillStyle=ink;cctx.textAlign="right";
+  for(let v=Math.ceil(mn/step)*step;v<=mx;v+=step){const y=Math.round(Y(v))+0.5;cctx.beginPath();cctx.moveTo(L,y);cctx.lineTo(w-R,y);cctx.stroke();cctx.fillText(fmt(v,Math.max(0,-Math.floor(Math.log10(step)))),L-4,y+3);}
+  cctx.textAlign="left";cctx.fillText("t·U/L = "+fmt(t0,0),L,h-4);cctx.textAlign="right";cctx.fillText(fmt(t1,0),w-R,h-4);
+  for(const [k,c] of [[1,warm],[2,acc]]){if(k===2&&geo.axi)continue;cctx.strokeStyle=c;cctx.lineWidth=1.6;cctx.beginPath();vis.forEach((p,i)=>{const x=X(p[0]),y=Y(p[k]);i?cctx.lineTo(x,y):cctx.moveTo(x,y);});cctx.stroke();}
+}
+function niceStep(r){const p=Math.pow(10,Math.floor(Math.log10(r||1)));const f=r/p;return (f<1.5?1:f<3?2:f<7?5:10)*p;}
+
+/* ---------- Joukowski inset ---------- */
+const jcv=$("#jcv"),jctx=jcv.getContext("2d");
+function drawJ(){
+  const dpr=Math.min(2,window.devicePixelRatio||1),w=jcv.clientWidth,h=jcv.clientHeight;if(!w)return;
+  jcv.width=Math.round(w*dpr);jcv.height=Math.round(h*dpr);jctx.setTransform(dpr,0,0,dpr,0,0);jctx.clearRect(0,0,w,h);
+  const cs=getComputedStyle(document.documentElement),ink=cs.getPropertyValue("--ink").trim(),mut=cs.getPropertyValue("--muted").trim(),lc=cs.getPropertyValue("--line").trim(),acc=cs.getPropertyValue("--accent").trim(),warm=cs.getPropertyValue("--warm").trim();
+  const J=joukowski(state.eps,state.camber),al=state.alpha*Math.PI/180;
+  const pw=w/2-6,sz=Math.min(pw/5.4,h/4.6);
+  const LZ={cx:pw/2,cy:h*0.54,s:pw/5.6},RZ={cx:w/2+6+pw/2,cy:h*0.54,s:pw/5.6};
+  const P=(Z,x,y)=>[Z.cx+x*Z.s,Z.cy-y*Z.s];
+  const curve=(Z,arr,col,lw,dash)=>{jctx.strokeStyle=col;jctx.lineWidth=lw;jctx.setLineDash(dash||[]);jctx.beginPath();arr.forEach((p,i)=>{const q=P(Z,p[0],p[1]);i?jctx.lineTo(q[0],q[1]):jctx.moveTo(q[0],q[1]);});jctx.stroke();jctx.setLineDash([]);};
+  const jm=(a,b)=>{const d=a*a+b*b;return [a+a/d,b-b/d];};
+  jctx.save();jctx.beginPath();jctx.rect(0,0,w/2-3,h);jctx.clip();
+  curve(LZ,[[-2.6,0],[2.6,0]],lc,1);curve(LZ,[[0,-2.2],[0,2.2]],lc,1);
+  jctx.restore();jctx.save();jctx.beginPath();jctx.rect(w/2+3,0,w/2,h);jctx.clip();
+  curve(RZ,[[-2.8,0],[2.8,0]],lc,1);curve(RZ,[[0,-2.2],[0,2.2]],lc,1);
+  jctx.restore();
+  // mapped grid: circles around μ and rays
+  for(const f of [1.25,1.6,2.1]){const c=[],m=[];for(let k=0;k<=200;k++){const t=2*Math.PI*k/200,a=J.mx+f*J.R*Math.cos(t),b=J.my+f*J.R*Math.sin(t);c.push([a,b]);m.push(jm(a,b));}
+    jctx.save();jctx.beginPath();jctx.rect(0,0,w/2-3,h);jctx.clip();curve(LZ,c,lc,1);jctx.restore();
+    jctx.save();jctx.beginPath();jctx.rect(w/2+3,0,w/2,h);jctx.clip();curve(RZ,m,lc,1);jctx.restore();}
+  for(let k=0;k<16;k++){const t=2*Math.PI*k/16,c=[],m=[];for(let s=0;s<=40;s++){const f=1+1.4*s/40,a=J.mx+f*J.R*Math.cos(t),b=J.my+f*J.R*Math.sin(t);c.push([a,b]);m.push(jm(a,b));}
+    jctx.save();jctx.beginPath();jctx.rect(0,0,w/2-3,h);jctx.clip();curve(LZ,c,lc,1);jctx.restore();
+    jctx.save();jctx.beginPath();jctx.rect(w/2+3,0,w/2,h);jctx.clip();curve(RZ,m,lc,1);jctx.restore();}
+  // unit circle & generating circle
+  const uc=[];for(let k=0;k<=120;k++){const t=2*Math.PI*k/120;uc.push([Math.cos(t),Math.sin(t)]);}curve(LZ,uc,mut,1,[3,3]);
+  const gc=[];for(let k=0;k<=200;k++){const t=2*Math.PI*k/200;gc.push([J.mx+J.R*Math.cos(t),J.my+J.R*Math.sin(t)]);}
+  jctx.fillStyle=acc;jctx.globalAlpha=0.18;jctx.beginPath();gc.forEach((p,i)=>{const q=P(LZ,p[0],p[1]);i?jctx.lineTo(q[0],q[1]):jctx.moveTo(q[0],q[1]);});jctx.fill();jctx.globalAlpha=1;curve(LZ,gc,acc,2);
+  jctx.fillStyle=acc;jctx.globalAlpha=0.25;jctx.beginPath();J.pts.forEach((p,i)=>{const q=P(RZ,p[0],p[1]);i?jctx.lineTo(q[0],q[1]):jctx.moveTo(q[0],q[1]);});jctx.closePath();jctx.fill();jctx.globalAlpha=1;
+  curve(RZ,J.pts.concat([J.pts[0]]),acc,2);
+  // points
+  const dot=(Z,x,y,c)=>{const q=P(Z,x,y);jctx.fillStyle=c;jctx.beginPath();jctx.arc(q[0],q[1],3.2,0,7);jctx.fill();};
+  dot(LZ,J.mx,J.my,ink);dot(LZ,1,0,warm);dot(RZ,2,0,warm);
+  // freestream arrow in z-plane at angle α
+  const ax0=-2.7,ay0=1.55,al2=0.9;const a0=P(RZ,ax0,ay0),a1=P(RZ,ax0+al2*Math.cos(al),ay0+al2*Math.sin(al));
+  jctx.strokeStyle=mut;jctx.lineWidth=1.3;jctx.beginPath();jctx.moveTo(a0[0],a0[1]);jctx.lineTo(a1[0],a1[1]);jctx.stroke();
+  const ang=Math.atan2(a1[1]-a0[1],a1[0]-a0[0]);jctx.beginPath();jctx.moveTo(a1[0],a1[1]);jctx.lineTo(a1[0]-7*Math.cos(ang-0.4),a1[1]-7*Math.sin(ang-0.4));jctx.lineTo(a1[0]-7*Math.cos(ang+0.4),a1[1]-7*Math.sin(ang+0.4));jctx.closePath();jctx.fillStyle=mut;jctx.fill();
+  jctx.font="italic 15px "+cs.getPropertyValue("--display");jctx.fillStyle=ink;jctx.textAlign="left";
+  jctx.fillText("ζ-planet",8,18);jctx.fillText("z-planet",w/2+10,18);
+  jctx.font="11px "+cs.getPropertyValue("--mono");jctx.fillStyle=mut;
+  const q1=P(LZ,J.mx,J.my);jctx.fillText("μ",q1[0]+5,q1[1]-5);const q2=P(LZ,1,0);jctx.fillText("ζ=1",q2[0]+5,q2[1]+13);const q3=P(RZ,2,0);jctx.fillText("bagkant",q3[0]-20,q3[1]+16);
+  jctx.fillText("U, α",a1[0]+6,a1[1]+4);
+  jctx.textAlign="center";jctx.fillText("z = ζ + 1/ζ  →",w/2,h-8);
+  const cl=8*Math.PI*J.R*Math.sin(al+J.beta)/J.chord;
+  $("#jstats").innerHTML="<span>t/c <b>"+fmt(J.tc*100,1)+" %</b></span><span>krumning <b>"+fmt(J.fc*100,1)+" %</b></span><span>R <b>"+fmt(J.R,3)+"</b></span><span>β <b>"+fmt(J.beta*180/Math.PI,1)+"°</b></span><span>C<sub>L</sub> ved α = "+state.alpha+"° <b>"+fmt(cl,2)+"</b></span>";
+}
+new ResizeObserver(()=>drawJ()).observe(jcv);
+if(window.matchMedia)window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change",()=>{drawJ();drawChart();});
+new MutationObserver(()=>{drawJ();drawChart();}).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+
+/* ---------- controls ---------- */
+const PRE=[1,20,60,100,200,1000,3000];
+$("#reChips").innerHTML=PRE.map(v=>'<button class="chip" type="button" data-v="'+v+'">'+v+"</button>").join("");
+function setRe(r,fromSlider){state.Re=r;if(!fromSlider)$("#reSl").value=Math.log10(r);worker.postMessage({type:"re",Re:r});ideal=null;updateRegime();updateLabels();}
+$("#reSl").addEventListener("input",e=>{const v=Math.pow(10,+e.target.value);setRe(v<10?Math.round(v*10)/10:v<1000?Math.round(v):Math.round(v/10)*10,true);});
+$("#reChips").addEventListener("click",e=>{const b=e.target.closest(".chip");if(b)setRe(+b.dataset.v);});
+function seg(id,key,after){const el=$(id);el.addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.disabled)return;state[key]=b.dataset.v;
+  el.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));after&&after();});}
+seg("#bodySeg","body",()=>{
+  $("#wingGrp").hidden=state.body!=="wing";$("#pearGrp").hidden=state.body!=="pear";
+  if(state.body==="pear"&&state.mode==="ideal"){state.mode="vort";document.querySelectorAll("#modeSeg button").forEach(x=>x.setAttribute("aria-pressed",String(x.dataset.v==="vort")));}
+  reset();});
+seg("#modeSeg","mode",()=>{updateLabels();frameDirty=true;});
+$("#tPart").onchange=e=>{state.particles=e.target.checked;};
+$("#tRelief").onchange=e=>{state.relief=e.target.checked;frameDirty=true;};
+let wingT=0;const wingChange=()=>{clearTimeout(wingT);drawJ();updateLabels();wingT=setTimeout(reset,250);};
+$("#aSl").addEventListener("input",e=>{state.alpha=+e.target.value;$("#aOut").textContent=state.alpha+"°";wingChange();});
+$("#eSl").addEventListener("input",e=>{state.eps=+e.target.value;$("#eOut").textContent=fmt(state.eps,2);wingChange();});
+$("#mSl").addEventListener("input",e=>{state.camber=+e.target.value;$("#mOut").textContent=fmt(state.camber,2);wingChange();});
+$("#tKutta").onchange=e=>{state.kutta=e.target.checked;ideal=null;frameDirty=true;};
+$("#tFlip").onchange=e=>{state.flip=e.target.checked;reset();};
+$("#bPause").onclick=()=>{state.paused=!state.paused;$("#bPause").textContent=state.paused?"Fortsæt":"Pause";worker.postMessage({type:"run",on:!state.paused});};
+$("#bReset").onclick=reset;$("#blownReset").onclick=()=>{if(state.Re>1500)setRe(1000);reset();};
+
+/* ---------- main loop ---------- */
+const reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+let lastUI=0,lastChart=0;
+function frame(now){
+  if(frameDirty){paintField();frameDirty=false;}
+  stepParticles();writeStreaks();applyCam();renderer.render(scene,camera);
+  if(now-lastUI>250){updateReadouts();lastUI=now;}
+  if(now-lastChart>400){drawChart();lastChart=now;}
+  requestAnimationFrame(frame);
+}
+if(reduce){cam.th=VIEWS.oblique.th;}
+$("#reSl").value=Math.log10(state.Re);
+reset();resize();requestAnimationFrame(frame);
+})();
+</script>
+
+</body>
+</html>
