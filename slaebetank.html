@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Slæbetanken</title>
+<meta name="description" content="En slæbetank i browseren: træk et skibsskrog gennem vandet, se Kelvins bølgemønster, og find skrogfarten og bølgemodstandens toppe med Michells integral.">
+<link rel="canonical" href="https://mhgfysik.dk/slaebetank.html">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body { margin: 0; }
+img { max-width: 100%; }
+/* Layout: et modelbassin — slæbetanken som hovedperson, vognens instrumentpanel under, målekurver og forklaring nederst */
+:root {
+  --void: #0b1013;
+  --panel: #131b1f;
+  --raise: #1c272c;
+  --line: #2a383e;
+  --ink: #e7ece9;
+  --muted: #8fa2a5;
+  --sea: #4fc1c8;
+  --crest: #e9f4ef;
+  --hump: #f0a35e;
+  --fric: #9db3ff;
+  --focus: #c9e4ff;
+  --f-display: "Spectral", Georgia, "Times New Roman", serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { background: var(--void); color: var(--ink); }
+body { font-family: var(--f-body); font-size: 15px; line-height: 1.55; }
+a { color: var(--sea); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 56px; display: grid; gap: 18px; }
+header { display: grid; gap: 6px; }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.eyebrow a { color: inherit; }
+h1 { font-family: var(--f-display); font-weight: 400; font-size: clamp(30px, 5vw, 48px); line-height: 1.08; margin: 0; text-wrap: balance; }
+h1 em { font-style: italic; color: var(--sea); }
+.lede { margin: 4px 0 0; max-width: 68ch; color: var(--muted); }
+.stage { position: relative; height: clamp(360px, 60vh, 680px); background: #0e1a1f; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.stage canvas:active { cursor: grabbing; }
+.hud { position: absolute; pointer-events: none; text-shadow: 0 1px 8px rgba(0,0,0,.75); }
+.hud.tl { top: 14px; left: 16px; right: 16px; display: grid; gap: 2px; max-width: 46ch; }
+.hull-name { font-family: var(--f-display); font-size: clamp(22px, 3vw, 30px); }
+.hull-note { color: #c8d4d4; font-size: 13.5px; }
+.speedbig { font-family: var(--f-mono); font-size: clamp(18px, 2.4vw, 24px); font-variant-numeric: tabular-nums; margin-top: 4px; }
+.speedbig small { color: var(--muted); font-size: 13px; }
+.hud.br { bottom: 12px; right: 16px; text-align: right; font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
+.camtabs { position: absolute; top: 12px; right: 12px; display: flex; gap: 4px; }
+.camtabs button { font: 500 11px/1 var(--f-mono); color: var(--ink); background: rgba(19,27,31,.78); border: 1px solid var(--line); border-radius: 999px; padding: 6px 10px; cursor: pointer; }
+.camtabs button[aria-pressed="true"] { background: var(--raise); border-color: #46616a; }
+.busy { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); font: 500 12px var(--f-mono); color: var(--muted); background: rgba(19,27,31,.85); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; }
+.controls { display: grid; gap: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
+.play { height: 44px; min-width: 112px; padding: 0 18px 0 14px; border-radius: 999px; border: 1px solid #47636b; background: #18262b; color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 600 15px/1 var(--f-body); }
+.play svg { width: 16px; height: 16px; fill: currentColor; }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
+.seg button { font: 500 13px/1 var(--f-body); color: var(--muted); background: transparent; border: 0; padding: 9px 12px; cursor: pointer; border-right: 1px solid var(--line); }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { color: var(--ink); background: var(--raise); }
+.speedctl { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.speedctl button { width: 40px; height: 36px; border: 0; background: transparent; color: var(--ink); font: 500 20px/1 var(--f-body); cursor: pointer; }
+.speedctl button:disabled { color: #4a5a60; cursor: default; }
+.speedctl output { min-width: 5em; text-align: center; font: 500 13px/1 var(--f-mono); border-inline: 1px solid var(--line); padding: 11px 8px; }
+.ctl-label { font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.group { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sliders { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px 22px; }
+.sl { display: grid; gap: 2px; font-size: 13px; color: var(--muted); }
+.sl .top { display: flex; justify-content: space-between; gap: 8px; }
+.sl output { font: 500 13px var(--f-mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+.sl input { width: 100%; accent-color: var(--sea); }
+.sl.big input { accent-color: var(--hump); }
+.chk { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); cursor: pointer; }
+.chk input { accent-color: var(--sea); width: 15px; height: 15px; }
+.hint { font-size: 12px; color: var(--muted); margin: 0; }
+.keys { margin-left: auto; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.readouts { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.ro { background: var(--panel); padding: 8px 12px; display: grid; gap: 1px; min-width: 0; }
+.ro .k { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+.ro .v { font-family: var(--f-mono); font-size: 17px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ro .s { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 760px) { .readouts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.charts { display: grid; grid-template-columns: 1.25fr 1fr; gap: 14px; }
+@media (max-width: 860px) { .charts { grid-template-columns: 1fr; } }
+.chart { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; display: grid; gap: 6px; min-width: 0; }
+.chart .hd { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px 12px; font: 500 11px var(--f-mono); color: var(--muted); letter-spacing: .04em; }
+.chart canvas { width: 100%; height: 230px; display: block; }
+.chart.side canvas { height: 150px; }
+.key { display: inline-flex; align-items: center; gap: 5px; } .key i { width: 14px; height: 2px; display: inline-block; }
+.notes { display: grid; grid-template-columns: 1.3fr 1fr; gap: 28px 36px; padding-top: 8px; }
+.notes > section { min-width: 0; }
+.notes h2 { font-family: var(--f-display); font-weight: 400; font-size: 25px; margin: 0 0 8px; text-wrap: balance; }
+.notes h3 { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 500; margin: 0 0 8px; }
+.notes p { margin: 0 0 10px; max-width: 66ch; }
+.eq { font-family: var(--f-display); font-style: italic; font-size: 18px; padding: 6px 0 10px; overflow-x: auto; white-space: nowrap; }
+.side-notes { border-left: 1px solid var(--line); padding-left: 24px; color: #c6d1d1; font-size: 14px; }
+ul.refs { margin: 0; padding-left: 18px; font-size: 13.5px; } ul.refs li { margin-bottom: 5px; }
+@media (max-width: 760px) {
+  .notes { grid-template-columns: 1fr; }
+  .side-notes { border-left: 0; border-top: 1px solid var(--line); padding-left: 0; padding-top: 16px; }
+}
+@media (max-width: 640px) { .keys { display: none; } .camtabs { top: auto; bottom: 12px; left: 12px; right: auto; } .hud.br { display: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow"><a href="index.html">← Forsiden</a> · Mekanik og hverdagsfysik · skibsbølger i 3D</div>
+    <h1>Slæbetanken: hvorfor et skib <em>ikke kan sejle fra sin egen bølge</em></h1>
+    <p class="lede">Et skib, der sejler, laver bølger, og bølgerne koster energi. Her trækkes skroget gennem en slæbetank som i et skibsbygningslaboratorium. Byg dit eget skrog, skru op for farten, og se bølgemønsteret og modstanden ændre sig. Ved skrogfarten bliver bølgen lige så lang som skibet. Træk i billedet for at dreje, rul eller knib for at zoome.</p>
+  </header>
+
+  <div class="stage" id="stage">
+    <canvas id="cv" aria-label="3D-animation af et skibsskrog i en slæbetank med bølgemønster. Træk for at dreje."></canvas>
+    <div class="hud tl">
+      <div class="hull-name" id="hullName">Sejlbåd</div>
+      <div class="hull-note" id="hullNote"></div>
+      <div class="speedbig" id="speedBig"></div>
+    </div>
+    <div class="camtabs" id="cams">
+      <button type="button" data-cam="oblique" aria-pressed="true">Skråt</button>
+      <button type="button" data-cam="top" aria-pressed="false">Ovenfra</button>
+      <button type="button" data-cam="side" aria-pressed="false">Fra siden</button>
+      <button type="button" data-cam="low" aria-pressed="false">Under vandet</button>
+    </div>
+    <div class="hud br" id="exagTxt"></div>
+    <div class="busy" id="busy" hidden>Regner bølger …</div>
+  </div>
+
+  <div class="readouts">
+    <div class="ro"><span class="k">Froude-tal Fn</span><span class="v" id="rFn">—</span><span class="s" id="rLam">bølgelængde</span></div>
+    <div class="ro"><span class="k">Bølgemodstand</span><span class="v" id="rRw">—</span><span class="s" id="rCw">C<sub>W</sub></span></div>
+    <div class="ro"><span class="k">Friktion</span><span class="v" id="rRf">—</span><span class="s" id="rCf">C<sub>F</sub></span></div>
+    <div class="ro"><span class="k">Effekt</span><span class="v" id="rP">—</span><span class="s" id="rShare">bølgernes andel</span></div>
+    <div class="ro"><span class="k">Skrogfart</span><span class="v" id="rHull">—</span><span class="s" id="rDisp">deplacement</span></div>
+  </div>
+
+  <div class="controls">
+    <div class="row">
+      <button class="play" id="play" type="button"><svg viewBox="0 0 20 20" id="playIcon" aria-hidden="true"><path d="M4 4h12v12H4z"/></svg><span id="playTxt">Stop</span></button>
+      <div class="speedctl" role="group" aria-label="Tempo">
+        <button type="button" id="slower" aria-label="Langsommere">−</button>
+        <output id="tempoOut">1×</output>
+        <button type="button" id="faster" aria-label="Hurtigere">+</button>
+      </div>
+      <div class="group"><span class="ctl-label">Skrog</span><div class="seg" id="presets"></div></div>
+      <p class="hint keys">Mellemrum: start/stop · ← →: fart</p>
+    </div>
+    <div class="sliders">
+      <label class="sl big"><span class="top"><span>Fart</span><output id="vOut">—</output></span><input type="range" id="fn" min="0.08" max="0.70" step="0.005" value="0.30"></label>
+      <label class="sl"><span class="top"><span>Længde i vandlinjen L</span><output id="LOut">—</output></span><input type="range" id="L" min="0" max="1" step="0.001"></label>
+      <label class="sl"><span class="top"><span>Bredde B/L</span><output id="BOut">—</output></span><input type="range" id="B" min="0.04" max="0.40" step="0.005"></label>
+      <label class="sl"><span class="top"><span>Dybgang T/L</span><output id="TOut">—</output></span><input type="range" id="T" min="0.01" max="0.12" step="0.002"></label>
+      <label class="sl"><span class="top"><span>Fyldighed for og agter</span><output id="pOut">—</output></span><input type="range" id="p" min="2" max="6" step="0.1"></label>
+      <label class="sl"><span class="top"><span>Bundform (rund → flad)</span><output id="qOut">—</output></span><input type="range" id="q" min="2" max="10" step="0.1"></label>
+      <label class="sl"><span class="top"><span>Bulb i stævnen</span><output id="bOut">—</output></span><input type="range" id="bulb" min="0" max="1" step="0.02"></label>
+      <label class="sl"><span class="top"><span>Bølgehøjde vist</span><output id="xOut">auto</output></span><input type="range" id="exag" min="0" max="20" step="1" value="0"></label>
+    </div>
+    <div class="row">
+      <label class="chk"><input type="checkbox" id="tKelvin" checked> Kelvins kile (19,47°)</label>
+      <label class="chk"><input type="checkbox" id="tFoam" checked> Skum der flyder forbi</label>
+    </div>
+  </div>
+
+  <div class="charts">
+    <div class="chart">
+      <div class="hd"><span>Modstandskoefficienter mod Froude-tal</span><span><span class="key"><i style="background:var(--hump)"></i>bølger C<sub>W</sub></span> &nbsp;<span class="key"><i style="background:var(--fric)"></i>friktion C<sub>F</sub>(1+k)</span> &nbsp;<span class="key"><i style="background:var(--crest)"></i>i alt</span></span></div>
+      <canvas id="chartC"></canvas>
+    </div>
+    <div class="chart">
+      <div class="hd"><span>Nødvendig effekt mod fart</span><span id="powUnit"></span></div>
+      <canvas id="chartP"></canvas>
+    </div>
+    <div class="chart side" style="grid-column:1/-1">
+      <div class="hd"><span>Skibet set fra siden med sin egen bølge (λ = 2πU²/g)</span><span id="sideTxt"></span></div>
+      <canvas id="chartS"></canvas>
+    </div>
+  </div>
+
+  <div class="notes">
+    <section>
+      <h2>Bølgen følger med skibet</h2>
+      <p>Et skib skubber vand til side ved stævnen og lader det løbe sammen igen ved agterstavnen. Det sætter overfladen i bevægelse, og bølgerne fører energi væk. Den energi skal maskinen betale for: det er bølgemodstanden.</p>
+      <p>Bølgerne lige bag skibet bevæger sig med skibets fart U. En dybvandsbølge med bølgelængden λ har farten c = √(gλ/2π), så skibets egne bølger får bølgelængden</p>
+      <div class="eq">λ = 2πU²/g</div>
+      <p>Den vokser med kvadratet på farten. Ved lav fart passer der mange korte bølger langs skroget. Når farten stiger, bliver bølgen længere, og når λ er lige så lang som skibet, ligger stævnbølgens top ved stævnen og den næste top ved agterstavnen. Det sker ved Froude-tallet</p>
+      <div class="eq">Fn = U/√(gL) = 1/√(2π) ≈ 0,40</div>
+      <p>Det er <em>skrogfarten</em>, som sejlere kender som 1,34·√(L i fod) knob. Skal skibet sejle hurtigere, bliver bølgen længere end skroget. Agterstavnen synker ned i bølgedalen, stævnen rejser sig, og skibet sejler op ad sin egen stævnbølge. Modstanden vokser voldsomt, og et deplacementsskib kan i praksis ikke komme meget hurtigere.</p>
+      <h2>Toppe og dale i modstanden</h2>
+      <p>Stævnen og agterstavnen laver hver sit bølgesystem. Ligger toppene oven i hinanden, bliver bølgerne bag skibet høje, og modstanden stor. Ligger en top oven i en dal, ophæver de delvis hinanden. Derfor har kurven for C<sub>W</sub> toppe og dale, og den sidste og største top kommer omkring Fn ≈ 0,5. Skibsbyggere vælger skrogets længde, så skibet ved sin normale fart ligger i en dal.</p>
+      <h2>Bulben</h2>
+      <p>Den runde bulb under vandlinjen foran på store skibe laver sit eget bølgesystem, der er forskudt en halv bølgelængde i forhold til stævnbølgen. Ved den rigtige fart udsletter de to bølger delvis hinanden. Prøv containerskibet med og uden bulb, og se C<sub>W</sub> falde ved Fn ≈ 0,2. Gør bulben for stor, og den laver i stedet sin egen store bølge.</p>
+      <h2>Kelvins kile</h2>
+      <p>Bølgerne bag et skib ligger inden for en kile med halvvinklen 19,47°, uanset farten og skibets størrelse. Lord Kelvin viste det i 1887 ud fra dybvandsbølgernes dispersion, og det gælder lige fra ænder til hangarskibe. Inde i kilen ses tværbølgerne, der står vinkelret på kursen, og langs kanten de skrå divergerende bølger.</p>
+    </section>
+    <section class="side-notes">
+      <h3>Froudes slæbetank</h3>
+      <p>William Froude byggede i 1871 en slæbetank i Torquay i England. Han trak skibsmodeller gennem vandet og viste, at modellens og skibets bølger er ens, når de har samme Froude-tal. Friktionen skalerer derimod med Reynolds-tallet, så de to dele skal regnes hver for sig. Sådan arbejder skibsbyggere stadig.</p>
+      <h3>Hvad siden regner</h3>
+      <p>Skroget beskrives ved sin halve bredde f(x,z) = ½B·(1 − |2x/L|<sup>p</sup>)·(1 − |z/T|<sup>q</sup>) plus en bulb. Bølgemodstanden findes med Michells integral fra 1898, tyndskibsteorien:</p>
+      <div class="eq" style="font-size:16px">R<sub>W</sub> = (4ρg²/πU²) ∫<sub>1</sub><sup>∞</sup> |H(λ)|² λ²/√(λ²−1) dλ</div>
+      <p>hvor H(λ) = ∬ ∂f/∂x · e<sup>λ²k₀z</sup> e<sup>−iλk₀x</sup> dx dz og k₀ = g/U². Det samme H giver bølgemønsteret bag skibet ved at lægge bølger sammen i alle retninger.</p>
+      <p>Friktionen regnes med ITTC-1957-linjen C<sub>F</sub> = 0,075/(log₁₀Re − 2)² og en formfaktor 1 + k = 1,1 på det våde areal.</p>
+      <h3>Begrænsninger</h3>
+      <p>Tyndskibsteorien er lineær og forudsætter et slankt skrog. Den overvurderer bølgemodstanden for brede og fyldige skrog, giver ikke sænkning og trim, og gælder ikke for planende både, der løfter sig op over bølgen ved høj fart. Bølgerne lige ved skroget er tilnærmede. Brug tallene til at sammenligne skrog og farter.</p>
+      <h3>Kilder</h3>
+      <ul class="refs">
+        <li>J. H. Michell, <i>Philosophical Magazine</i> 45 (1898): The wave-resistance of a ship.</li>
+        <li>W. Thomson (Lord Kelvin), <i>Proc. Inst. Mech. Eng.</i> (1887): On ship waves.</li>
+        <li>ITTC 1957: modelskib–skib-korrelationslinjen for friktion.</li>
+      </ul>
+    </section>
+  </div>
+</div>
+<script id="hull-src">
+// ---- thin-ship (Michell) wave resistance and Kelvin wave field ----
+const G=9.81,RHO=1025,NU=1.19e-6;
+const HULLS={
+  kajak:{name:"Kajak",L:5.2,B:0.55,T:0.16,p:2,q:2,fn:0.38,bulb:0,note:"Smal og let: når langt op i Froude-tal på ren muskelkraft."},
+  wigley:{name:"Wigley-modellen",L:4,B:0.4,T:0.25,p:2,q:2,fn:0.3,bulb:0,note:"Det matematiske standardskrog, som forskere sammenligner teori og forsøg med."},
+  sejlbaad:{name:"Sejlbåd",L:9,B:2.9,T:0.55,p:2,q:2.6,fn:0.32,bulb:0,note:"Kort og bred deplacementsbåd. Skrogfarten sætter en hård grænse."},
+  slaebebaad:{name:"Slæbebåd",L:28,B:9,T:3.5,p:2.5,q:3,fn:0.28,bulb:0,note:"Fyldig og kraftig. Bygget til trækkraft, ikke fart."},
+  fragtskib:{name:"Containerskib",L:200,B:32,T:11,p:3,q:6,fn:0.2,bulb:0.6,note:"Fyldigt skrog med bulb. Sejler ved lavt Froude-tal for at spare brændstof."}
+};
+function makeHull(h){
+  const L=h.L,B=h.B,T=h.T,p=h.p,q=h.q;
+  // half-breadth f(x,z)=B/2*X(x)*Z(z) + bulb term; x∈[-L/2,L/2] (bow at +L/2), z∈[-T,0]
+  const NXs=160,NZs=30;
+  const xs=new Float64Array(NXs+1),Xp=new Float64Array(NXs+1),Xv=new Float64Array(NXs+1);
+  for(let i=0;i<=NXs;i++){const x=-L/2+L*i/NXs,u=Math.abs(2*x/L);xs[i]=x;Xv[i]=1-Math.pow(u,p);Xp[i]=-(p*Math.pow(u,p-1))*(2/L)*Math.sign(x);}
+  const zs=new Float64Array(NZs+1),Zv=new Float64Array(NZs+1);
+  for(let j=0;j<=NZs;j++){const z=-T*j/NZs;zs[j]=z;Zv[j]=1-Math.pow(Math.abs(z/T),q);}
+  // bulb: rb*Gauss in x and z, centred ahead of bow at depth
+  const rb=h.bulb*0.5*T, xb=L/2+0.2*rb, zb=-0.55*T, sx=1.6*rb, sz=rb;
+  const NB=80,bx=new Float64Array(NB+1),bXp=new Float64Array(NB+1),bXv=new Float64Array(NB+1),bz=new Float64Array(NB+1),bZv=new Float64Array(NB+1);
+  if(rb>0){for(let i=0;i<=NB;i++){const x=xb-4*sx+8*sx*i/NB;bx[i]=x;const e=Math.exp(-Math.pow((x-xb)/sx,2));bXv[i]=e;bXp[i]=-2*(x-xb)/(sx*sx)*e;}
+    for(let j=0;j<=NB;j++){const z=Math.min(0,zb-3*sz+6*sz*j/NB);bz[j]=z;bZv[j]=Math.exp(-Math.pow((z-zb)/sz,2));}}
+  // geometry integrals
+  const dx=L/NXs,dz=T/NZs;let V=0,S=0;
+  for(let i=0;i<=NXs;i++)for(let j=0;j<=NZs;j++){const w=(i===0||i===NXs?0.5:1)*(j===0||j===NZs?0.5:1);const f=B/2*Xv[i]*Zv[j];V+=2*f*dx*dz*w;
+    const fx=B/2*Xp[i]*Zv[j],fz=B/2*Xv[i]*(j?(Zv[j]-Zv[j-1])/dz:0);S+=2*Math.sqrt(1+fx*fx+fz*fz)*dx*dz*w;}
+  if(rb>0){const ddx=8*sx/NB,ddz=6*sz/NB;let vb=0;for(let i=0;i<=NB;i++)for(let j=0;j<=NB;j++)vb+=2*rb*bXv[i]*bZv[j]*ddx*ddz;V+=vb;S+=0.6*Math.PI*rb*rb*2;}
+  return {h,L,B,T,p,q,rb,xb,zb,sx,sz,xs,Xp,Xv,zs,Zv,bx,bXp,bXv,bz,bZv,V,S,dx,dz};
+}
+// Kochin function H(λ) = ∫∫ f_x e^{λ²k0 z} e^{-iλk0 x} dx dz  (separable sums)
+function kochin(H,lam,k0,out){
+  const a=lam*k0,b=lam*lam*k0;let gr=0,gi=0;
+  for(let i=0;i<H.xs.length;i++){const w=(i===0||i===H.xs.length-1?0.5:1)*H.dx*H.Xp[i];gr+=w*Math.cos(a*H.xs[i]);gi-=w*Math.sin(a*H.xs[i]);}
+  let gz=0;const del=0.015*H.T;
+  for(let j=0;j<H.zs.length;j++){const w=(j===0||j===H.zs.length-1?0.5:1)*H.dz*H.Zv[j];gz+=w*Math.exp(b*(H.zs[j]-del));}
+  let hr=H.B/2*gr*gz,hi=H.B/2*gi*gz;
+  if(H.rb>0){const n=H.bx.length,ddx=8*H.sx/(n-1),ddz=6*H.sz/(n-1);let br=0,bi=0,bz=0;
+    for(let i=0;i<n;i++){const w=ddx*H.bXp[i];br+=w*Math.cos(a*H.bx[i]);bi-=w*Math.sin(a*H.bx[i]);}
+    for(let j=0;j<n;j++)bz+=ddz*H.bZv[j]*Math.exp(b*(H.bz[j]-del));
+    hr+=H.rb*br*bz;hi+=H.rb*bi*bz;}
+  out[0]=hr;out[1]=hi;return out;
+}
+const NT=200,TMAX=7;
+function waveResistance(H,U){ // Michell: R = 4ρg²/(πU²) ∫_1^∞ |H|² λ²/√(λ²-1) dλ, λ=1+t²
+  const k0=G/(U*U),o=[0,0];let s=0;const dt=TMAX/NT;
+  for(let k=0;k<=NT;k++){const t=k*dt,lam=1+t*t;kochin(H,lam,k0,o);const w=(k===0||k===NT?0.5:1)*dt;s+=w*(o[0]*o[0]+o[1]*o[1])*2*lam*lam/Math.sqrt(lam+1);}
+  return 4*RHO*G*G/(Math.PI*U*U)*s;
+}
+function frictionCoef(U,L){const Re=U*L/NU;return 0.075/Math.pow(Math.log10(Re)-2,2);}
+function curves(H){ // resistance vs Froude number
+  const out=[];for(let k=0;k<=80;k++){const Fn=0.08+0.62*k/80,U=Fn*Math.sqrt(G*H.L),q=0.5*RHO*U*U*H.S;
+    const Rw=waveResistance(H,U),Cf=frictionCoef(U,H.L),Rf=1.1*Cf*q;out.push({Fn,U,Cw:Rw/q,Cf:1.1*Cf,Rw,Rf,R:Rw+Rf,P:(Rw+Rf)*U});}
+  return out;
+}
+// Kelvin wave field on a grid in ship frame (x forward from midship, y to port), units of L
+function waveField(H,U,nx,ny,x0,x1,y1){
+  const k0=G/(U*U),L=H.L,NTH=160,th=[],hr=[],hi=[],o=[0,0];
+  for(let k=0;k<NTH;k++){const s=(k+0.5)/NTH*2-1,t=s*Math.PI/2*0.985;th.push(t);const lam=1/Math.cos(t);kochin(H,lam,k0,o);
+    const wgt=(Math.PI*0.985/NTH)*Math.pow(lam,3)*2*k0/Math.PI;hr.push(o[0]*wgt);hi.push(o[1]*wgt);}
+  const Z=new Float32Array(nx*ny);let mx=0;
+  for(let j=0;j<ny;j++){const y=(j/(ny-1)*2-1)*y1*L;
+    for(let i=0;i<nx;i++){const x=(x0+(x1-x0)*i/(nx-1))*L;let z=0;
+      if(x<0.5*L+0.04*L){for(let k=0;k<NTH;k++){const lam=1/Math.cos(th[k]);const ph=k0*lam*lam*(x*Math.cos(th[k])+y*Math.sin(th[k]));z+=hr[k]*Math.cos(ph)-hi[k]*Math.sin(ph);}
+        const tap=Math.min(1,Math.max(0,(0.54*L-x)/(0.08*L)));z*=tap;}
+      Z[j*nx+i]=z;mx=Math.max(mx,Math.abs(z));}}
+  return {Z,nx,ny,x0,x1,y1,max:mx};
+}
+</script>
+<script type="text/plain" id="worker-src">
+let H=null;
+onmessage=e=>{const m=e.data;
+  if(m.type==="hull"){H=makeHull(m.h);const c=curves(H);postMessage({type:"curves",id:m.id,c,V:H.V,S:H.S});}
+  if(m.type==="field"&&H){const f=waveField(H,m.U,m.nx,m.ny,m.x0,m.x1,m.y1);postMessage({type:"field",id:m.id,U:m.U,Z:f.Z,max:f.max},[f.Z.buffer]);}
+};
+</script>
+<script>
+window.TXT={dec:",",loc:"da-DK",none:"ingen",auto:"auto",kn:"knob",kmh:"km/t",modified:"(ændret)",ownHull:"Dit eget skrog. Sammenlign kurverne med det oprindelige.",exag:"bølgehøjde vist",maxH:"største bølge",computing:"Regner …",hullSpeed:"skrogfart",effAxis:"effektiv effekt",wavePart:"bølger",total:"i alt",sideShort:"flere bølger langs skroget",sideHull:"skrogfart: bølgen er lige så lang som skibet",sideLong:"bølgen er længere end skibet: agterstavnen synker, stævnen rejser sig",wavesShare:"bølgernes andel",disp:"deplacement",stop:"Stop",start:"Start",cb:"blokkoefficient"};
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+"use strict";
+const $=s=>document.querySelector(s);
+const T=window.TXT;
+const fmt=(v,d)=>(v<0?"−":"")+Math.abs(v).toFixed(d).replace(".",T.dec);
+const KN=0.514444;
+const PRE=["kajak","wigley","sejlbaad","slaebebaad","fragtskib"];
+const COL={kajak:0xd9a23a,wigley:0xe8e4da,sejlbaad:0xf0eee8,slaebebaad:0x2f3a46,fragtskib:0x23324a};
+const st={preset:"sejlbaad",L:9,B:0.32,T:0.06,p:2,q:2.6,bulb:0,Fn:0.3,exag:0,running:true,tempoIx:2,kelvin:true,foam:true,cam:"oblique"};
+const TEMPI=[0.25,0.5,1,2,4];
+function applyPreset(k){const h=HULLS[k];st.preset=k;st.Fn=h.fn;st.L=h.L;st.B=h.B/h.L;st.T=h.T/h.L;st.p=h.p;st.q=h.q;st.bulb=h.bulb;syncSliders();}
+function hullObj(){return {name:HULLS[st.preset].name,L:st.L,B:st.B*st.L,T:st.T*st.L,p:st.p,q:st.q,bulb:st.bulb};}
+const Lmap=v=>2*Math.pow(150,v),Linv=L=>Math.log(L/2)/Math.log(150);
+function syncSliders(){$("#L").value=Linv(st.L);$("#B").value=st.B;$("#T").value=st.T;$("#p").value=st.p;$("#q").value=st.q;$("#bulb").value=st.bulb;$("#fn").value=st.Fn;labels();}
+function Cb(){return (1-1/(st.p+1))*(1-1/(st.q+1));}
+function labels(){
+  $("#LOut").textContent=(st.L<20?fmt(st.L,1):Math.round(st.L))+" m";
+  $("#BOut").textContent=fmt(st.B,3)+" · "+fmt(st.B*st.L,st.L<20?2:1)+" m";
+  $("#TOut").textContent=fmt(st.T,3)+" · "+fmt(st.T*st.L,st.L<20?2:1)+" m";
+  $("#pOut").textContent=T.cb+" "+fmt(Cb(),2);
+  $("#qOut").textContent=fmt(st.q,1);
+  $("#bOut").textContent=st.bulb?fmt(st.bulb,2):T.none;
+  $("#xOut").textContent=st.exag?"×"+st.exag:T.auto;
+  const U=st.Fn*Math.sqrt(9.81*st.L);
+  $("#vOut").textContent=fmt(U/KN,1)+" "+T.kn+" · Fn "+fmt(st.Fn,2);
+  $("#hullName").textContent=HULLS[st.preset].name+(dirty()?" "+T.modified:"");
+  $("#hullNote").textContent=dirty()?T.ownHull:HULLS[st.preset].note;
+  $("#speedBig").innerHTML=fmt(U/KN,1)+" "+T.kn+" <small>("+fmt(U*3.6,1)+" "+T.kmh+" · Fn = "+fmt(st.Fn,2)+")</small>";
+}
+function dirty(){const h=HULLS[st.preset];return Math.abs(h.L-st.L)>0.01*h.L||Math.abs(h.B/h.L-st.B)>0.003||Math.abs(h.T/h.L-st.T)>0.002||Math.abs(h.p-st.p)>0.05||Math.abs(h.q-st.q)>0.05||Math.abs(h.bulb-st.bulb)>0.01;}
+
+/* ---------- worker ---------- */
+const wk=new Worker(URL.createObjectURL(new Blob([$("#hull-src").textContent+"\n"+$("#worker-src").textContent],{type:"text/javascript"})));
+let curves=null,field=null,hullId=0,fieldId=0,geom={V:0,S:0};
+const NXF=150,NYF=72,X0=-2.6,X1=1.2,Y1=1.25;
+wk.onmessage=e=>{const m=e.data;
+  if(m.type==="curves"&&m.id===hullId){curves=m.c;geom={V:m.V,S:m.S};drawCharts();updateReadouts();}
+  if(m.type==="field"&&m.id===fieldId){field=m;$("#busy").hidden=true;applyField();}
+};
+let hT=0,fT=0;
+function requestHull(){clearTimeout(hT);hT=setTimeout(()=>{hullId++;fieldId++;curves=null;$("#busy").hidden=false;wk.postMessage({type:"hull",id:hullId,h:hullObj()});requestFieldNow();buildShip();},150);}
+function requestField(){clearTimeout(fT);fT=setTimeout(requestFieldNow,90);}
+function requestFieldNow(){fieldId++;$("#busy").hidden=false;wk.postMessage({type:"field",id:fieldId,U:st.Fn*Math.sqrt(9.81*st.L),nx:NXF,ny:NYF,x0:X0,x1:X1,y1:Y1});}
+
+/* ---------- three.js ---------- */
+const cv=$("#cv"),stage=$("#stage");
+const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true});renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x0e1a1f);scene.fog=new THREE.Fog(0x0e1a1f,40,110);
+const camera=new THREE.PerspectiveCamera(42,1,0.05,400);
+scene.add(new THREE.HemisphereLight(0xe8f4ff,0x0d1c22,0.85));
+const sun=new THREE.DirectionalLight(0xffffff,0.85);sun.position.set(-12,22,10);scene.add(sun);
+const S=10; // world units per ship length
+// water
+const wGeo=new THREE.PlaneGeometry((X1-X0)*S,2*Y1*S,NXF-1,NYF-1);wGeo.rotateX(-Math.PI/2);wGeo.translate((X0+X1)/2*S,0,0);
+const wCol=new Float32Array(NXF*NYF*3);wGeo.setAttribute("color",new THREE.BufferAttribute(wCol,3));
+const water=new THREE.Mesh(wGeo,new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.35,metalness:0.05,transparent:true,opacity:0.88,side:THREE.DoubleSide}));scene.add(water);
+const baseH=new Float32Array(NXF*NYF);
+// tank walls with moving stripes
+const stripeTex=(()=>{const c=document.createElement("canvas");c.width=128;c.height=16;const g=c.getContext("2d");g.fillStyle="#26363c";g.fillRect(0,0,128,16);g.fillStyle="#c9d6d4";g.fillRect(0,0,10,16);g.fillStyle="#3c5058";g.fillRect(64,0,4,16);const t=new THREE.CanvasTexture(c);t.wrapS=THREE.RepeatWrapping;t.repeat.set(10,1);return t;})();
+const walls=new THREE.Group();scene.add(walls);
+for(const s of [-1,1]){const m=new THREE.Mesh(new THREE.PlaneGeometry((X1-X0)*S*1.4,3.2),new THREE.MeshStandardMaterial({map:stripeTex,roughness:0.9,side:THREE.DoubleSide}));m.position.set((X0+X1)/2*S,-0.6,s*Y1*S);walls.add(m);}
+const floor=new THREE.Mesh(new THREE.PlaneGeometry((X1-X0)*S*1.4,2*Y1*S),new THREE.MeshStandardMaterial({color:0x13262c,roughness:1}));floor.rotation.x=-Math.PI/2;floor.position.set((X0+X1)/2*S,-2.2,0);scene.add(floor);
+for(const s of [-1,1]){const r=new THREE.Mesh(new THREE.BoxGeometry((X1-X0)*S*1.4,0.12,0.25),new THREE.MeshStandardMaterial({color:0x6e7f86,metalness:0.6,roughness:0.4}));r.position.set((X0+X1)/2*S,1.0,s*(Y1*S+0.15));walls.add(r);}
+// towing carriage
+const carriage=new THREE.Group();scene.add(carriage);
+{const mm=new THREE.MeshStandardMaterial({color:0xd8a447,metalness:0.4,roughness:0.5});const beam=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.35,2*Y1*S+0.6),mm);beam.position.set(0,2.6,0);carriage.add(beam);
+ for(const s of [-1,1]){const leg=new THREE.Mesh(new THREE.BoxGeometry(0.4,1.6,0.3),mm);leg.position.set(0,1.9,s*(Y1*S+0.15));carriage.add(leg);}}
+let towPost=null;
+// Kelvin lines
+const kel=new THREE.LineSegments(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({color:0xf0a35e,transparent:true,opacity:0.8}));scene.add(kel);
+{const a=Math.asin(1/3),x0=0.5*S,len=(0.5-X0)*S,v=[];for(const s of [-1,1])v.push(x0,0.05,0,x0-len,0.05,-s*len*Math.tan(a));
+ kel.geometry.setAttribute("position",new THREE.Float32BufferAttribute(v,3));}
+// foam
+const NFOAM=700,fx=new Float32Array(NFOAM),fy=new Float32Array(NFOAM),fPos=new Float32Array(NFOAM*3);
+const foam=new THREE.Points(new THREE.BufferGeometry(),new THREE.PointsMaterial({color:0xeaf6f2,size:0.07,transparent:true,opacity:0.85}));foam.geometry.setAttribute("position",new THREE.BufferAttribute(fPos,3));scene.add(foam);
+for(let i=0;i<NFOAM;i++){fx[i]=X0+Math.random()*(X1-X0);fy[i]=(Math.random()*2-1)*Y1;}
+// ship
+let ship=null;
+function halfB(x,z,h){const u=Math.abs(2*x/h.L);if(u>1)return 0;const zz=Math.min(0,Math.max(-h.T,z));return h.B/2*(1-Math.pow(u,h.p))*(1-Math.pow(Math.abs(zz/h.T),h.q));}
+function buildShip(){
+  if(ship){scene.remove(ship);ship.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material)o.material.dispose();});}
+  if(towPost){carriage.remove(towPost);towPost=null;}
+  const h=hullObj(),sc=S/h.L,fb=Math.max(0.55*h.T,0.035*h.L),NXs=72,NZs=16;ship=new THREE.Group();
+  const top=new THREE.Color(COL[st.preset]),red=new THREE.Color(0x8a2c25),stripe=new THREE.Color(0xe9e4d6);
+  for(const side of [1,-1]){const pos=[],col=[],idx=[];
+    for(let i=0;i<=NXs;i++){const x=-h.L/2*Math.cos(Math.PI*i/NXs);
+      for(let j=0;j<=NZs;j++){const z=fb-(fb+h.T)*j/NZs;const f=halfB(x,z,h);pos.push(x*sc,z*sc,-side*f*sc);const c=z<-0.0?red:(z<0.08*fb?stripe:top);col.push(c.r,c.g,c.b);}}
+    for(let i=0;i<NXs;i++)for(let j=0;j<NZs;j++){const a=i*(NZs+1)+j,b=a+NZs+1;if(side>0)idx.push(a,b,a+1,b,b+1,a+1);else idx.push(a,a+1,b,b,a+1,b+1);}
+    const g=new THREE.BufferGeometry();g.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));g.setAttribute("color",new THREE.Float32BufferAttribute(col,3));g.setIndex(idx);g.computeVertexNormals();
+    ship.add(new THREE.Mesh(g,new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.55,metalness:0.1,side:THREE.DoubleSide})));}
+  // deck
+  {const pos=[],idx=[];for(let i=0;i<=NXs;i++){const x=-h.L/2*Math.cos(Math.PI*i/NXs),f=halfB(x,0,h);pos.push(x*sc,fb*sc,f*sc,x*sc,fb*sc,-f*sc);}
+   for(let i=0;i<NXs;i++){const a=2*i;idx.push(a,a+2,a+1,a+1,a+2,a+3);}
+   const g=new THREE.BufferGeometry();g.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));g.setIndex(idx);g.computeVertexNormals();
+   ship.add(new THREE.Mesh(g,new THREE.MeshStandardMaterial({color:st.preset==="kajak"?0xd9a23a:0x9a8a72,roughness:0.8,side:THREE.DoubleSide})));}
+  // bulb
+  if(h.bulb>0){const rb=h.bulb*0.5*h.T,sx=1.6*rb,g=new THREE.SphereGeometry(1,24,16);g.scale(sx*0.95*sc,rb*0.95*sc,rb*sc);g.translate((h.L/2+0.2*rb-0.6*sx)*sc,-0.55*h.T*sc,0);ship.add(new THREE.Mesh(g,new THREE.MeshStandardMaterial({color:0x8a2c25,roughness:0.55})));}
+  // superstructure
+  const mk=(w,hh,d,x,y,c)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w*sc,hh*sc,d*sc),new THREE.MeshStandardMaterial({color:c,roughness:0.6}));m.position.set(x*sc,(fb+y+hh/2)*sc,0);ship.add(m);};
+  if(st.preset==="fragtskib"){mk(0.06*h.L,0.11*h.L,0.8*h.B,-0.38*h.L,0,0xe9e6dd);const cs=[0xb5452f,0x2f6f8f,0x6f7f3a,0xc89a3a,0x5a5f66];for(let k=0;k<9;k++)mk(0.075*h.L,0.05*h.L,0.85*h.B,(0.34-0.077*k)*h.L,0,cs[k%5]);}
+  if(st.preset==="slaebebaad"){mk(0.22*h.L,0.12*h.L,0.55*h.B,0.12*h.L,0,0xe9e6dd);mk(0.06*h.L,0.12*h.L,0.12*h.B,0.02*h.L,0.12*h.L,0x2a2a2a);}
+  if(st.preset==="sejlbaad"){const m=new THREE.Mesh(new THREE.CylinderGeometry(0.004*h.L*sc,0.006*h.L*sc,1.3*h.L*sc,8),new THREE.MeshStandardMaterial({color:0xcfd4d6,metalness:0.6}));m.position.set(0.1*h.L*sc,(fb+0.65*h.L)*sc,0);ship.add(m);mk(0.25*h.L,0.06*h.L,0.5*h.B,-0.05*h.L,0,0xf0eee8);}
+  if(st.preset==="kajak"){const m=new THREE.Mesh(new THREE.TorusGeometry(0.06*h.L*sc,0.006*h.L*sc,8,24),new THREE.MeshStandardMaterial({color:0x222222}));m.rotation.x=Math.PI/2;m.position.set(-0.02*h.L*sc,fb*sc,0);ship.add(m);}
+  scene.add(ship);
+  // tow post from carriage to deck
+  towPost=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,2.6-fb*sc,8),new THREE.MeshStandardMaterial({color:0x6e7f86,metalness:0.6}));towPost.position.set(0,(2.6+fb*sc)/2,0);carriage.add(towPost);
+}
+function applyField(){
+  if(!field)return;const h=hullObj(),sc=S/h.L;const max=field.max*sc||1e-6;
+  const ex=st.exag||Math.max(1,Math.min(25,Math.round(0.35/max)));
+  $("#exagTxt").textContent=T.exag+" ×"+ex+" · "+T.maxH+" "+(field.max<1?fmt(field.max*100,1)+" cm":fmt(field.max,2)+" m");
+  if(!st.exag)$("#xOut").textContent=T.auto+" ×"+ex;
+  const pos=wGeo.attributes.position;
+  for(let r=0;r<NYF;r++){const j=NYF-1-r;for(let i=0;i<NXF;i++){const v=r*NXF+i;let z=field.Z[j*NXF+i]*sc*ex;
+      const xm=(X0+(X1-X0)*i/(NXF-1))*h.L,ym=(j/(NYF-1)*2-1)*Y1*h.L;if(Math.abs(ym)<halfB(xm,0,h)*0.98)z=0;
+      baseH[v]=z;pos.setY(v,z);
+      const t=Math.max(-1,Math.min(1,z/(0.6*max*ex)));const a=t<0?[0.05,0.2,0.25]:[0.85,0.95,0.92],b=[0.11,0.4,0.45],u=Math.abs(t);
+      wCol[3*v]=b[0]+(a[0]-b[0])*u;wCol[3*v+1]=b[1]+(a[1]-b[1])*u;wCol[3*v+2]=b[2]+(a[2]-b[2])*u;}}
+  pos.needsUpdate=true;wGeo.attributes.color.needsUpdate=true;wGeo.computeVertexNormals();
+}
+function heightAt(x,y){const i=(x-X0)/(X1-X0)*(NXF-1),j=(y/Y1+1)/2*(NYF-1),r=NYF-1-Math.round(j),c=Math.round(i);if(c<0||c>=NXF||r<0||r>=NYF)return 0;return baseH[r*NXF+c];}
+
+/* ---------- charts ---------- */
+const css=k=>getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+function prep(cv){const dpr=Math.min(2,window.devicePixelRatio||1),w=cv.clientWidth,h=cv.clientHeight;cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);const g=cv.getContext("2d");g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,w,h);g.font="11px "+css("--f-mono");return [g,w,h];}
+function niceStep(r){const p=Math.pow(10,Math.floor(Math.log10(r||1)));const f=r/p;return (f<1.5?1:f<3?2:f<7?5:10)*p;}
+function interp(Fn){if(!curves)return null;const c=curves;if(Fn<=c[0].Fn)return c[0];for(let k=1;k<c.length;k++)if(c[k].Fn>=Fn){const a=c[k-1],b=c[k],t=(Fn-a.Fn)/(b.Fn-a.Fn),o={};for(const key in a)o[key]=a[key]+(b[key]-a[key])*t;return o;}return c[c.length-1];}
+function fmtF(N){return N<1000?fmt(N,N<10?2:0)+" N":N<1e6?fmt(N/1000,N<1e4?2:1)+" kN":fmt(N/1e6,2)+" MN";}
+function fmtP(W){return W<1000?fmt(W,W<10?2:0)+" W":W<1e6?fmt(W/1000,W<1e4?2:1)+" kW":fmt(W/1e6,W<1e7?2:1)+" MW";}
+function drawCharts(){
+  const ink=css("--muted"),line=css("--line"),hump=css("--hump"),fric=css("--fric"),crest=css("--crest"),sea=css("--sea");
+  {const [g,w,h]=prep($("#chartC"));if(!curves){g.fillStyle=ink;g.fillText(T.computing,8,h/2);}else{
+    const L=40,R=10,Tp=8,B=24;let mx=0;for(const c of curves)mx=Math.max(mx,c.Cw+c.Cf);mx*=1.08;
+    const X=f=>L+(f-0.08)/(0.62)*(w-L-R),Y=v=>Tp+(1-v/mx)*(h-Tp-B);const stp=niceStep(mx/4);
+    g.strokeStyle=line;g.fillStyle=ink;g.textAlign="right";for(let v=0;v<=mx;v+=stp){const y=Math.round(Y(v))+0.5;g.beginPath();g.moveTo(L,y);g.lineTo(w-R,y);g.stroke();g.fillText(fmt(v*1000,stp*1000<1?1:0),L-5,y+4);}
+    g.textAlign="center";for(const f of [0.1,0.2,0.3,0.4,0.5,0.6,0.7])g.fillText(fmt(f,1),X(f),h-8);
+    g.save();g.translate(11,Tp+(h-Tp-B)/2);g.rotate(-Math.PI/2);g.fillText("C · 10³",0,0);g.restore();
+    g.setLineDash([4,4]);g.strokeStyle=sea;g.beginPath();g.moveTo(X(0.4),Tp);g.lineTo(X(0.4),h-B);g.stroke();g.setLineDash([]);g.fillStyle=sea;g.textAlign="left";g.fillText(T.hullSpeed,X(0.4)+4,Tp+10);
+    for(const [k,c,lw] of [["Cf",fric,1.6],["Cw",hump,2],["tot",crest,1.4]]){g.strokeStyle=c;g.lineWidth=lw;g.beginPath();curves.forEach((p,i)=>{const v=k==="tot"?p.Cw+p.Cf:p[k];const x=X(p.Fn),y=Y(v);i?g.lineTo(x,y):g.moveTo(x,y);});g.stroke();}
+    g.lineWidth=1;const cur=interp(st.Fn);g.fillStyle=hump;g.beginPath();g.arc(X(st.Fn),Y(cur.Cw),4.5,0,7);g.fill();g.fillStyle=crest;g.beginPath();g.arc(X(st.Fn),Y(cur.Cw+cur.Cf),3.5,0,7);g.fill();}}
+  {const [g,w,h]=prep($("#chartP"));if(curves){
+    const L=48,R=10,Tp=8,B=24;const vk=curves.map(c=>c.U/KN);const vmax=vk[vk.length-1];let pmax=0;for(const c of curves)pmax=Math.max(pmax,c.P);
+    const unit=pmax<2e3?[1,"W"]:pmax<2e6?[1e3,"kW"]:[1e6,"MW"];$("#powUnit").textContent=T.effAxis+" ("+unit[1]+")";
+    const X=v=>L+v/vmax*(w-L-R),Y=p=>Tp+(1-p/pmax)*(h-Tp-B),stp=niceStep(pmax/unit[0]/4);
+    g.strokeStyle=line;g.fillStyle=ink;g.textAlign="right";for(let v=0;v<=pmax/unit[0];v+=stp){const y=Math.round(Y(v*unit[0]))+0.5;g.beginPath();g.moveTo(L,y);g.lineTo(w-R,y);g.stroke();g.fillText(fmt(v,stp<1?1:0),L-5,y+4);}
+    g.textAlign="center";const vs=niceStep(vmax/5);for(let v=0;v<=vmax;v+=vs)g.fillText(fmt(v,vs<1?1:0),X(v),h-8);g.textAlign="right";g.fillText(T.kn,w-R,h-8);
+    const vh=0.4*Math.sqrt(9.81*st.L)/KN;g.setLineDash([4,4]);g.strokeStyle=sea;g.beginPath();g.moveTo(X(vh),Tp);g.lineTo(X(vh),h-B);g.stroke();g.setLineDash([]);
+    for(const [k,c] of [["Rw",hump],["P",crest]]){g.strokeStyle=c;g.lineWidth=k==="P"?2:1.4;g.beginPath();curves.forEach((p,i)=>{const val=k==="P"?p.P:p.Rw*p.U;const x=X(p.U/KN),y=Y(val);i?g.lineTo(x,y):g.moveTo(x,y);});g.stroke();}
+    g.lineWidth=1;const cur=interp(st.Fn);g.fillStyle=crest;g.beginPath();g.arc(X(cur.U/KN),Y(cur.P),4,0,7);g.fill();
+    g.fillStyle=hump;g.textAlign="left";g.fillText(T.wavePart,L+6,Tp+12);g.fillStyle=crest;g.fillText(T.total,L+6,Tp+26);}}
+  drawSide();
+}
+function drawSide(){
+  const [g,w,h]=prep($("#chartS"));const ink=css("--muted"),sea=css("--sea"),crest=css("--crest"),hump=css("--hump");
+  const U=st.Fn*Math.sqrt(9.81*st.L),lam=2*Math.PI*U*U/9.81,r=lam/st.L;
+  const Lpx=Math.min(w*0.34,260),bowX=w*0.62,sternX=bowX-Lpx,mid=h*0.55,amp=Math.min(16,h*0.12);
+  // wave: crest slightly behind bow, travelling with ship
+  g.strokeStyle=sea;g.lineWidth=2;g.beginPath();for(let x=8;x<=w-8;x++){const d=bowX-x-0.08*Lpx;const y=x>bowX+0.03*Lpx?mid:mid-amp*Math.cos(2*Math.PI*d/(r*Lpx))*Math.exp(-Math.max(0,d)/(6*r*Lpx+1e-6)*0.15);x===8?g.moveTo(x,y):g.lineTo(x,y);}g.stroke();
+  // hull silhouette
+  const th=Math.max(10,h*0.16);g.fillStyle=crest;g.globalAlpha=0.9;g.beginPath();g.moveTo(sternX,mid-th*0.55);g.lineTo(bowX+0.03*Lpx,mid-th*0.6);g.quadraticCurveTo(bowX+0.02*Lpx,mid+th*0.3,bowX-0.1*Lpx,mid+th*0.45);g.lineTo(sternX+0.06*Lpx,mid+th*0.45);g.quadraticCurveTo(sternX,mid+th*0.2,sternX,mid-th*0.55);g.fill();g.globalAlpha=1;
+  // λ bracket
+  const c1=bowX-0.08*Lpx,c2=c1-r*Lpx;g.strokeStyle=hump;g.fillStyle=hump;g.lineWidth=1.2;const yb=mid-amp-14;
+  if(c2>8){g.beginPath();g.moveTo(c1,yb);g.lineTo(c2,yb);g.moveTo(c1,yb-5);g.lineTo(c1,yb+5);g.moveTo(c2,yb-5);g.lineTo(c2,yb+5);g.stroke();g.textAlign="center";g.fillText("λ = "+fmt(lam,lam<10?2:0)+" m",(c1+c2)/2,yb-6);}
+  g.fillStyle=ink;g.textAlign="center";g.fillText("L = "+fmt(st.L,st.L<20?1:0)+" m",(sternX+bowX)/2,mid+th*0.45+16);
+  $("#sideTxt").textContent="λ/L = "+fmt(r,2)+" · "+(r<0.85?T.sideShort:r<1.15?T.sideHull:T.sideLong);
+}
+
+/* ---------- readouts ---------- */
+function updateReadouts(){
+  const U=st.Fn*Math.sqrt(9.81*st.L),lam=2*Math.PI*U*U/9.81;
+  $("#rFn").textContent=fmt(st.Fn,3);$("#rLam").textContent="λ = "+fmt(lam,lam<10?2:1)+" m = "+fmt(lam/st.L,2)+" L";
+  const vh=0.4*Math.sqrt(9.81*st.L);$("#rHull").textContent=fmt(vh/KN,1)+" "+T.kn;
+  const c=interp(st.Fn);if(!c)return;
+  $("#rRw").textContent=fmtF(c.Rw);$("#rCw").innerHTML="C<sub>W</sub> = "+fmt(c.Cw*1000,2)+"·10⁻³";
+  $("#rRf").textContent=fmtF(c.Rf);$("#rCf").innerHTML="C<sub>F</sub>(1+k) = "+fmt(c.Cf*1000,2)+"·10⁻³";
+  $("#rP").textContent=fmtP(c.P);$("#rShare").textContent=T.wavesShare+" "+Math.round(100*c.Rw/c.R)+" %";
+  const t=geom.V*1.025;$("#rDisp").textContent=T.disp+" "+(t<1?fmt(t*1000,0)+" kg":t<100?fmt(t,1)+" t":Math.round(t).toLocaleString(T.loc)+" t");
+}
+
+/* ---------- camera ---------- */
+const cam={th:2.35,ph:0.42,d:21};const CAMS={oblique:{th:2.35,ph:0.42,d:21},top:{th:1.5708,ph:1.45,d:30},side:{th:1.5708,ph:0.08,d:19},low:{th:2.0,ph:-0.28,d:15}};let camGoal=null;
+function applyCam(){if(camGoal){let done=true;for(const k of ["th","ph","d"]){cam[k]+=(camGoal[k]-cam[k])*0.08;if(Math.abs(camGoal[k]-cam[k])>1e-3)done=false;}if(done)camGoal=null;}
+  const c=Math.cos(cam.ph),tx=-3;camera.position.set(tx+cam.d*c*Math.cos(cam.th),cam.d*Math.sin(cam.ph),cam.d*c*Math.sin(cam.th));camera.lookAt(tx,0,0);}
+const ptrs=new Map();let pinch0=0,d0=0;
+cv.addEventListener("pointerdown",e=>{cv.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,[e.clientX,e.clientY]);camGoal=null;if(ptrs.size===2){const a=[...ptrs.values()];pinch0=Math.hypot(a[0][0]-a[1][0],a[0][1]-a[1][1]);d0=cam.d;}});
+cv.addEventListener("pointermove",e=>{if(!ptrs.has(e.pointerId))return;const p=ptrs.get(e.pointerId),dx=e.clientX-p[0],dy=e.clientY-p[1];ptrs.set(e.pointerId,[e.clientX,e.clientY]);
+  if(ptrs.size===1){cam.th+=dx*0.006;cam.ph=Math.max(-0.6,Math.min(1.5,cam.ph+dy*0.006));setCam(null);}else if(ptrs.size===2&&pinch0>0){const a=[...ptrs.values()];cam.d=Math.max(6,Math.min(60,d0*pinch0/Math.hypot(a[0][0]-a[1][0],a[0][1]-a[1][1])));}});
+const endP=e=>{ptrs.delete(e.pointerId);pinch0=0;};cv.addEventListener("pointerup",endP);cv.addEventListener("pointercancel",endP);
+cv.addEventListener("wheel",e=>{e.preventDefault();cam.d=Math.max(6,Math.min(60,cam.d*Math.exp(e.deltaY*0.001)));},{passive:false});
+function setCam(k){document.querySelectorAll("#cams button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.cam===k)));}
+$("#cams").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;camGoal={...CAMS[b.dataset.cam]};setCam(b.dataset.cam);});
+function resize(){const w=stage.clientWidth,h=stage.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();drawCharts();}
+new ResizeObserver(resize).observe(stage);
+
+/* ---------- controls ---------- */
+$("#presets").innerHTML=PRE.map(k=>'<button type="button" data-k="'+k+'" aria-pressed="'+(k===st.preset)+'">'+HULLS[k].name+"</button>").join("");
+$("#presets").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;document.querySelectorAll("#presets button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));applyPreset(b.dataset.k);requestHull();});
+const bind=(id,key,map)=>$(id).addEventListener("input",e=>{st[key]=map?map(+e.target.value):+e.target.value;labels();requestHull();});
+bind("#L","L",Lmap);bind("#B","B");bind("#T","T");bind("#p","p");bind("#q","q");bind("#bulb","bulb");
+$("#fn").addEventListener("input",e=>{st.Fn=+e.target.value;labels();updateReadouts();drawCharts();requestField();});
+$("#exag").addEventListener("input",e=>{st.exag=+e.target.value;labels();applyField();});
+$("#tKelvin").onchange=e=>st.kelvin=e.target.checked;$("#tFoam").onchange=e=>st.foam=e.target.checked;
+function setRun(r){st.running=r;$("#playTxt").textContent=r?T.stop:T.start;$("#playIcon").innerHTML=r?'<path d="M4 4h12v12H4z"/>':'<path d="M5 3l12 7-12 7z"/>';}
+$("#play").onclick=()=>setRun(!st.running);
+function setTempo(i){st.tempoIx=Math.max(0,Math.min(TEMPI.length-1,i));const v=TEMPI[st.tempoIx];$("#tempoOut").textContent=(v===0.25?"¼":v===0.5?"½":v)+"×";$("#slower").disabled=st.tempoIx===0;$("#faster").disabled=st.tempoIx===TEMPI.length-1;}
+$("#slower").onclick=()=>setTempo(st.tempoIx-1);$("#faster").onclick=()=>setTempo(st.tempoIx+1);
+window.addEventListener("keydown",e=>{if(e.target.tagName==="INPUT"&&e.target.type==="range")return;
+  if(e.key===" "){e.preventDefault();setRun(!st.running);}else if(e.key==="ArrowRight"||e.key==="ArrowLeft"){const v=Math.max(0.08,Math.min(0.7,st.Fn+(e.key==="ArrowRight"?0.01:-0.01)));$("#fn").value=v;$("#fn").dispatchEvent(new Event("input"));}});
+
+/* ---------- loop ---------- */
+let last=performance.now(),stripeOff=0;
+function frame(now){const dt=Math.min(0.1,(now-last)/1000);last=now;
+  const h=hullObj(),U=st.Fn*Math.sqrt(9.81*h.L),vis=U*S/h.L*(st.running?TEMPI[st.tempoIx]:0); // world units / s
+  stripeOff+=vis*dt/((X1-X0)*S*1.4/10);stripeTex.offset.x=stripeOff%1;
+  foam.visible=st.foam;
+  if(st.foam){for(let i=0;i<NFOAM;i++){fx[i]-=vis*dt/S;if(fx[i]<X0){fx[i]=X1-Math.random()*0.05;fy[i]=(Math.random()*2-1)*Y1;}
+    if(Math.abs(fy[i])*h.L<halfB(fx[i]*h.L,0,h)*1.05){fx[i]=X0-1;}
+    fPos[3*i]=fx[i]*S;fPos[3*i+1]=heightAt(fx[i],fy[i])+0.02;fPos[3*i+2]=-fy[i]*S;}foam.geometry.attributes.position.needsUpdate=true;}
+  kel.visible=st.kelvin;
+  applyCam();renderer.render(scene,camera);requestAnimationFrame(frame);
+}
+applyPreset(st.preset);setTempo(2);requestHull();resize();requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
