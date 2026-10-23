@@ -80,12 +80,13 @@ h1 em { font-style: italic; color: var(--sea); }
 .hint { font-size: 12px; color: var(--muted); margin: 0; }
 .keys { margin-left: auto; }
 button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-.readouts { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.readouts { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
 .ro { background: var(--panel); padding: 8px 12px; display: grid; gap: 1px; min-width: 0; }
 .ro .k { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
 .ro .v { font-family: var(--f-mono); font-size: 17px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ro .s { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-@media (max-width: 760px) { .readouts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 960px) { .readouts { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .readouts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .charts { display: grid; grid-template-columns: 1.25fr 1fr; gap: 14px; }
 @media (max-width: 860px) { .charts { grid-template-columns: 1fr; } }
 .chart { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; display: grid; gap: 6px; min-width: 0; }
@@ -139,6 +140,7 @@ ul.refs { margin: 0; padding-left: 18px; font-size: 13.5px; } ul.refs li { margi
     <div class="ro"><span class="k">Friction</span><span class="v" id="rRf">—</span><span class="s" id="rCf">C<sub>F</sub></span></div>
     <div class="ro"><span class="k">Power</span><span class="v" id="rP">—</span><span class="s" id="rShare">waves' share</span></div>
     <div class="ro"><span class="k">Hull speed</span><span class="v" id="rHull">—</span><span class="s" id="rDisp">displacement</span></div>
+    <div class="ro"><span class="k">Trim</span><span class="v" id="rTrim">—</span><span class="s" id="rSink">sinkage</span></div>
   </div>
 
   <div class="controls">
@@ -192,6 +194,7 @@ ul.refs { margin: 0; padding-left: 18px; font-size: 13.5px; } ul.refs li { margi
       <p>It grows with the square of the speed. At low speed many short waves fit along the hull. As the speed rises the wave grows longer, and when λ is as long as the ship, the crest of the bow wave is at the bow and the next crest at the stern. That happens at the Froude number</p>
       <div class="eq">Fn = U/√(gL) = 1/√(2π) ≈ 0.40</div>
       <p>This is <em>hull speed</em>, which sailors know as 1.34·√(L in feet) knots. To go faster, the wave must become longer than the hull. The stern sinks into the trough, the bow rises, and the ship climbs its own bow wave. The resistance grows steeply, and in practice a displacement ship cannot go much faster.</p>
+      <p>The page sets the ship into the computed water surface along the hull. At low speed it sinks a little, because the water flows faster past the middle of the hull and the pressure drops. This is called squat. Above hull speed the bow rises on the bow wave, and the stern sinks into the trough behind it. Spray is thrown up at the bow. Trim and sinkage are estimated with a simple formula based on model tests, not computed.</p>
       <h2>Humps and hollows in the resistance</h2>
       <p>The bow and the stern each make their own wave system. When the crests fall on top of each other, the waves behind the ship are high and the resistance large. When a crest falls on a trough, they partly cancel. That is why the curve of C<sub>W</sub> has humps and hollows, with the last and largest hump around Fn ≈ 0.5. Naval architects choose the length of the hull so that the ship lies in a hollow at its normal speed.</p>
       <h2>The bulbous bow</h2>
@@ -295,7 +298,7 @@ onmessage=e=>{const m=e.data;
 };
 </script>
 <script>
-window.TXT={dec:".",loc:"en-GB",none:"none",auto:"auto",kn:"knots",kmh:"km/h",modified:"(modified)",ownHull:"Your own hull. Compare the curves with the original.",exag:"wave height shown",maxH:"highest wave",computing:"Computing …",hullSpeed:"hull speed",effAxis:"effective power",wavePart:"waves",total:"total",sideShort:"several waves along the hull",sideHull:"hull speed: the wave is as long as the ship",sideLong:"the wave is longer than the ship: the stern sinks and the bow rises",wavesShare:"waves' share",disp:"displacement",stop:"Stop",start:"Start",cb:"block coefficient"};
+window.TXT={dec:".",loc:"en-GB",none:"none",auto:"auto",kn:"knots",kmh:"km/h",modified:"(modified)",ownHull:"Your own hull. Compare the curves with the original.",exag:"wave height shown",maxH:"highest wave",computing:"Computing …",hullSpeed:"hull speed",effAxis:"effective power",wavePart:"waves",total:"total",sideShort:"several waves along the hull",sideHull:"hull speed: the wave is as long as the ship",sideLong:"the wave is longer than the ship: the stern sinks and the bow rises",wavesShare:"waves' share",disp:"displacement",stop:"Stop",start:"Start",cb:"block coefficient",sinkL:"sinkage",bowUp:"bow up",bowDown:"bow down"};
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -354,7 +357,10 @@ const S=10; // world units per ship length
 // water
 const wGeo=new THREE.PlaneGeometry((X1-X0)*S,2*Y1*S,NXF-1,NYF-1);wGeo.rotateX(-Math.PI/2);wGeo.translate((X0+X1)/2*S,0,0);
 const wCol=new Float32Array(NXF*NYF*3);wGeo.setAttribute("color",new THREE.BufferAttribute(wCol,3));
-const water=new THREE.Mesh(wGeo,new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.35,metalness:0.05,transparent:true,opacity:0.88,side:THREE.DoubleSide}));scene.add(water);
+const skyEq=(()=>{const c=document.createElement("canvas");c.width=256;c.height=128;const g=c.getContext("2d");const gr=g.createLinearGradient(0,0,0,128);gr.addColorStop(0,"#1a2328");gr.addColorStop(0.42,"#5d6f75");gr.addColorStop(0.5,"#aab6b5");gr.addColorStop(0.56,"#243034");gr.addColorStop(1,"#0b1214");g.fillStyle=gr;g.fillRect(0,0,256,128);
+  g.fillStyle="rgba(255,255,240,.85)";for(let k=0;k<6;k++){g.fillRect(20+k*40,44,22,6);}const t=new THREE.CanvasTexture(c);t.mapping=THREE.EquirectangularReflectionMapping;return t;})();
+let envTex=null;try{const pm=new THREE.PMREMGenerator(renderer);envTex=pm.fromEquirectangular(skyEq).texture;pm.dispose();}catch(e){envTex=null;}
+const water=new THREE.Mesh(wGeo,new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.3,metalness:0.0,envMap:envTex,envMapIntensity:0.45,transparent:true,opacity:0.9,side:THREE.DoubleSide}));scene.add(water);
 const baseH=new Float32Array(NXF*NYF);
 // tank walls with moving stripes
 const stripeTex=(()=>{const c=document.createElement("canvas");c.width=128;c.height=16;const g=c.getContext("2d");g.fillStyle="#26363c";g.fillRect(0,0,128,16);g.fillStyle="#c9d6d4";g.fillRect(0,0,10,16);g.fillStyle="#3c5058";g.fillRect(64,0,4,16);const t=new THREE.CanvasTexture(c);t.wrapS=THREE.RepeatWrapping;t.repeat.set(10,1);return t;})();
@@ -374,6 +380,9 @@ const kel=new THREE.LineSegments(new THREE.BufferGeometry(),new THREE.LineBasicM
 // foam
 const NFOAM=700,fx=new Float32Array(NFOAM),fy=new Float32Array(NFOAM),fPos=new Float32Array(NFOAM*3);
 const foam=new THREE.Points(new THREE.BufferGeometry(),new THREE.PointsMaterial({color:0xeaf6f2,size:0.07,transparent:true,opacity:0.85}));foam.geometry.setAttribute("position",new THREE.BufferAttribute(fPos,3));scene.add(foam);
+const NSP=600,sx_=new Float32Array(NSP),sy_=new Float32Array(NSP),sz_=new Float32Array(NSP),svx=new Float32Array(NSP),svy=new Float32Array(NSP),svz=new Float32Array(NSP),sage=new Float32Array(NSP).fill(9),sPos=new Float32Array(NSP*3);
+const spray=new THREE.Points(new THREE.BufferGeometry(),new THREE.PointsMaterial({color:0xf4fbff,size:0.12,transparent:true,opacity:0.9,depthWrite:false}));spray.geometry.setAttribute("position",new THREE.BufferAttribute(sPos,3));scene.add(spray);
+let pose={sink:0,trim:0,ex:1,bowH:0},spAcc=0;
 for(let i=0;i<NFOAM;i++){fx[i]=X0+Math.random()*(X1-X0);fy[i]=(Math.random()*2-1)*Y1;}
 // ship
 let ship=null;
@@ -402,7 +411,7 @@ function buildShip(){
   if(st.preset==="slaebebaad"){mk(0.22*h.L,0.12*h.L,0.55*h.B,0.12*h.L,0,0xe9e6dd);mk(0.06*h.L,0.12*h.L,0.12*h.B,0.02*h.L,0.12*h.L,0x2a2a2a);}
   if(st.preset==="sejlbaad"){const m=new THREE.Mesh(new THREE.CylinderGeometry(0.004*h.L*sc,0.006*h.L*sc,1.3*h.L*sc,8),new THREE.MeshStandardMaterial({color:0xcfd4d6,metalness:0.6}));m.position.set(0.1*h.L*sc,(fb+0.65*h.L)*sc,0);ship.add(m);mk(0.25*h.L,0.06*h.L,0.5*h.B,-0.05*h.L,0,0xf0eee8);}
   if(st.preset==="kajak"){const m=new THREE.Mesh(new THREE.TorusGeometry(0.06*h.L*sc,0.006*h.L*sc,8,24),new THREE.MeshStandardMaterial({color:0x222222}));m.rotation.x=Math.PI/2;m.position.set(-0.02*h.L*sc,fb*sc,0);ship.add(m);}
-  scene.add(ship);
+  scene.add(ship);placeShip();
   // tow post from carriage to deck
   towPost=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,2.6-fb*sc,8),new THREE.MeshStandardMaterial({color:0x6e7f86,metalness:0.6}));towPost.position.set(0,(2.6+fb*sc)/2,0);carriage.add(towPost);
 }
@@ -418,7 +427,15 @@ function applyField(){
       const t=Math.max(-1,Math.min(1,z/(0.6*max*ex)));const a=t<0?[0.05,0.2,0.25]:[0.85,0.95,0.92],b=[0.11,0.4,0.45],u=Math.abs(t);
       wCol[3*v]=b[0]+(a[0]-b[0])*u;wCol[3*v+1]=b[1]+(a[1]-b[1])*u;wCol[3*v+2]=b[2]+(a[2]-b[2])*u;}}
   pos.needsUpdate=true;wGeo.attributes.color.needsUpdate=true;wGeo.computeVertexNormals();
+  // trim and sinkage: simple estimate after model tests (not computed by thin-ship theory)
+  {const Fn=st.Fn,sm=t=>t<=0?0:t>=1?1:t*t*(3-2*t);const Tl=h.T/h.L,Bl=h.B/h.L;
+   const trimDeg=(2.2+12*Tl)*sm((Fn-0.28)/0.27)-0.25*sm(Fn/0.3);
+   const sink=-h.L*0.6*Math.min(Fn,0.5)**2*Math.sqrt(Bl*Tl)*(1-0.4*sm((Fn-0.5)/0.15));
+   pose.sink=sink;pose.trim=Math.tan(trimDeg*Math.PI/180);pose.ex=ex;}
+  {let bh=0;for(let i=0;i<NXF;i++){const xr=X0+(X1-X0)*i/(NXF-1);if(xr<0.35||xr>0.62)continue;for(let jj=0;jj<NYF;jj++){const v=field.Z[jj*NXF+i];if(v>bh)bh=v;}}pose.bowH=bh;}
+  placeShip();updateReadouts();
 }
+function placeShip(){if(!ship)return;const h=hullObj(),sc=S/h.L;ship.position.y=pose.sink*sc*pose.ex;ship.rotation.z=Math.atan(pose.trim*pose.ex);}
 function heightAt(x,y){const i=(x-X0)/(X1-X0)*(NXF-1),j=(y/Y1+1)/2*(NYF-1),r=NYF-1-Math.round(j),c=Math.round(i);if(c<0||c>=NXF||r<0||r>=NYF)return 0;return baseH[r*NXF+c];}
 
 /* ---------- charts ---------- */
@@ -475,6 +492,7 @@ function updateReadouts(){
   $("#rRw").textContent=fmtF(c.Rw);$("#rCw").innerHTML="C<sub>W</sub> = "+fmt(c.Cw*1000,2)+"·10⁻³";
   $("#rRf").textContent=fmtF(c.Rf);$("#rCf").innerHTML="C<sub>F</sub>(1+k) = "+fmt(c.Cf*1000,2)+"·10⁻³";
   $("#rP").textContent=fmtP(c.P);$("#rShare").textContent=T.wavesShare+" "+Math.round(100*c.Rw/c.R)+" %";
+  if(field){$("#rTrim").textContent=fmt(Math.atan(pose.trim)*180/Math.PI,2)+"°";const s=-pose.sink;$("#rSink").textContent=T.sinkL+" "+(Math.abs(s)<1?fmt(s*100,1)+" cm":fmt(s,2)+" m")+(Math.abs(Math.atan(pose.trim))>0.0005?(pose.trim>0?" · "+T.bowUp:" · "+T.bowDown):"");}
   const t=geom.V*1.025;$("#rDisp").textContent=T.disp+" "+(t<1?fmt(t*1000,0)+" kg":t<100?fmt(t,1)+" t":Math.round(t).toLocaleString(T.loc)+" t");
 }
 
@@ -518,6 +536,15 @@ function frame(now){const dt=Math.min(0.1,(now-last)/1000);last=now;
     if(Math.abs(fy[i])*h.L<halfB(fx[i]*h.L,0,h)*1.05){fx[i]=X0-1;}
     fPos[3*i]=fx[i]*S;fPos[3*i+1]=heightAt(fx[i],fy[i])+0.02;fPos[3*i+2]=-fy[i]*S;}foam.geometry.attributes.position.needsUpdate=true;}
   kel.visible=st.kelvin;
+  {// bow spray: more when the bow wave is high and the ship is fast
+    const sc=S/h.L,ex=pose.ex,g=9.81*sc*ex,run=st.running?TEMPI[st.tempoIx]:0;const rate=run*Math.max(0,st.Fn-0.18)*900*Math.min(1,pose.bowH/(0.02*h.L)+0.3);spAcc+=rate*dt;
+    const bowX=0.5*S*Math.cos(ship?ship.rotation.z:0),bowY=(pose.sink*sc*ex)+Math.sin(ship?ship.rotation.z:0)*0.5*S+pose.bowH*sc*ex*0.6;
+    for(let i=0;i<NSP&&spAcc>=1;i++){if(sage[i]<1)continue;spAcc-=1;const side=Math.random()<0.5?-1:1;sx_[i]=bowX-Math.random()*0.04*S;sy_[i]=bowY;sz_[i]=side*(0.02+Math.random()*0.03)*S;
+      const v0=Math.sqrt(g*Math.max(0.002*h.L,pose.bowH*1.6)*sc)*(0.6+0.8*Math.random());svx[i]=-vis*(0.2+0.4*Math.random());svy[i]=v0;svz[i]=side*v0*(0.5+0.6*Math.random());sage[i]=0;}
+    spAcc=Math.min(spAcc,20);
+    for(let i=0;i<NSP;i++){if(sage[i]>=1){sPos[3*i]=0;sPos[3*i+1]=-50;sPos[3*i+2]=0;continue;}const dts=dt*run;sage[i]+=dts*1.4;svy[i]-=g*dts/sc*0.25;sx_[i]+=(svx[i]-vis*0.5)*dts;sy_[i]+=svy[i]*dts;sz_[i]+=svz[i]*dts;
+      if(sy_[i]<-0.2)sage[i]=1;sPos[3*i]=sx_[i];sPos[3*i+1]=sy_[i];sPos[3*i+2]=sz_[i];}
+    spray.geometry.attributes.position.needsUpdate=true;spray.visible=st.foam;}
   applyCam();renderer.render(scene,camera);requestAnimationFrame(frame);
 }
 applyPreset(st.preset);setTempo(2);requestHull();resize();requestAnimationFrame(frame);

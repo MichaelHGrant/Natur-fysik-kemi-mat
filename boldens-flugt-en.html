@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Flight of the Ball</title>
+<meta name="description" content="Golf balls and footballs in the air: the drag crisis, the golf ball's dimples, the Magnus effect and the unpredictable knuckleball, computed and shown in 3D.">
+<link rel="canonical" href="https://mhgfysik.dk/boldens-flugt-en.html">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body { margin: 0; }
+img { max-width: 100%; }
+/* Layout: the field as hero, the shot controlled from a panel below, measurements and notes at the bottom */
+:root {
+  --void: #0b1110;
+  --panel: #131b19;
+  --raise: #1c2724;
+  --line: #2a3a35;
+  --ink: #ebefe8;
+  --muted: #93a39c;
+  --turf: #7fcf6a;
+  --b1: #ffffff;
+  --b2: #8fc8ff;
+  --b3: #ffb357;
+  --b4: #ff7a6b;
+  --focus: #cfe8ff;
+  --f-display: "Spectral", Georgia, "Times New Roman", serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { background: var(--void); color: var(--ink); }
+body { font-family: var(--f-body); font-size: 15px; line-height: 1.55; }
+a { color: var(--turf); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 56px; display: grid; gap: 18px; }
+header { display: grid; gap: 6px; }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.eyebrow a { color: inherit; }
+h1 { font-family: var(--f-display); font-weight: 400; font-size: clamp(30px, 5vw, 48px); line-height: 1.08; margin: 0; text-wrap: balance; }
+h1 em { font-style: italic; color: var(--turf); }
+.lede { margin: 4px 0 0; max-width: 68ch; color: var(--muted); }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.tab { font: 500 14px/1.2 var(--f-body); color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 9px 16px; cursor: pointer; }
+.tab[aria-selected="true"] { color: var(--ink); background: var(--raise); border-color: #44605a; }
+.stage { position: relative; height: clamp(360px, 60vh, 660px); background: #9cc0d8; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.hud { position: absolute; pointer-events: none; text-shadow: 0 1px 6px rgba(0,0,0,.65); color: #fff; }
+.hud.tl { top: 12px; left: 14px; display: grid; gap: 4px; font-family: var(--f-mono); font-size: 12.5px; }
+.hud.tl .row { display: flex; gap: 8px; align-items: center; }
+.hud.tl i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; border: 1px solid rgba(0,0,0,.4); }
+.hud.bl { bottom: 12px; left: 14px; font-family: var(--f-mono); font-size: 12px; }
+.camtabs { position: absolute; top: 10px; right: 10px; display: flex; gap: 4px; }
+.camtabs button { font: 500 11px/1 var(--f-mono); color: #fff; background: rgba(12,18,16,.65); border: 1px solid rgba(255,255,255,.2); border-radius: 999px; padding: 6px 10px; cursor: pointer; }
+.camtabs button[aria-pressed="true"] { background: rgba(12,18,16,.92); border-color: rgba(255,255,255,.5); }
+.controls { display: grid; gap: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.go { height: 44px; padding: 0 20px; border-radius: 999px; border: 0; background: var(--turf); color: #0c1a0c; font: 600 15px/1 var(--f-body); cursor: pointer; }
+.ghost { font: 500 14px/1 var(--f-body); color: var(--ink); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 10px 15px; cursor: pointer; }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
+.seg button { font: 500 13px/1 var(--f-body); color: var(--muted); background: transparent; border: 0; padding: 9px 12px; cursor: pointer; border-right: 1px solid var(--line); }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { color: var(--ink); background: var(--raise); }
+.ctl-label { font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.group { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.balls { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.chk { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--ink); cursor: pointer; }
+.chk input { width: 15px; height: 15px; accent-color: var(--turf); }
+.chk i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.sliders { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px 22px; }
+.sl { display: grid; gap: 2px; font-size: 13px; color: var(--muted); }
+.sl .top { display: flex; justify-content: space-between; gap: 8px; }
+.sl output { font: 500 13px var(--f-mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+.sl input { width: 100%; accent-color: var(--turf); }
+.hint { font-size: 12px; color: var(--muted); margin: 0; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.res { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; min-width: 560px; }
+th, td { text-align: left; padding: 7px 10px 7px 0; border-bottom: 1px solid var(--line); }
+th { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+td.n { font-family: var(--f-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+td i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 6px; vertical-align: -1px; }
+.charts { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 860px) { .charts { grid-template-columns: 1fr; } }
+.chart { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; display: grid; gap: 6px; min-width: 0; }
+.chart .hd { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px 12px; font: 500 11px var(--f-mono); color: var(--muted); }
+.chart canvas { width: 100%; height: 240px; display: block; }
+.notes { display: grid; grid-template-columns: 1.3fr 1fr; gap: 28px 36px; padding-top: 8px; }
+.notes > section { min-width: 0; }
+.notes h2 { font-family: var(--f-display); font-weight: 400; font-size: 25px; margin: 0 0 8px; text-wrap: balance; }
+.notes h3 { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 500; margin: 0 0 8px; }
+.notes p { margin: 0 0 10px; max-width: 66ch; }
+.eq { font-family: var(--f-display); font-style: italic; font-size: 18px; padding: 6px 0 10px; overflow-x: auto; white-space: nowrap; }
+.side { border-left: 1px solid var(--line); padding-left: 24px; color: #c8d1cd; font-size: 14px; }
+figure { margin: 6px 0 14px; } figure svg { width: 100%; height: auto; display: block; }
+figcaption { font-size: 12.5px; color: var(--muted); margin-top: 4px; max-width: 70ch; }
+ul.refs { margin: 0; padding-left: 18px; font-size: 13.5px; } ul.refs li { margin-bottom: 5px; }
+@media (max-width: 760px) { .notes { grid-template-columns: 1fr; } .side { border-left: 0; border-top: 1px solid var(--line); padding-left: 0; padding-top: 16px; } }
+@media (max-width: 640px) { .camtabs { top: auto; bottom: 10px; right: 10px; } .hud.bl { display: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow"><a href="index-en.html#mekanik">← Home</a> · Mechanics and everyday physics · balls in 3D</div>
+    <h1>The flight of the ball: why a golf ball has <em>dimples</em></h1>
+    <p class="lede">A smooth golf ball flies only about half as far as a dimpled one. A football struck with spin curls round the wall, and one without spin can wobble unpredictably in the air. All of this comes from the boundary layer on the surface of the ball. Here the paths are computed with measured drag curves and shown in 3D. Drag the picture to rotate it.</p>
+  </header>
+
+  <div class="tabs" role="tablist" id="scen">
+    <button class="tab" role="tab" type="button" data-s="golf" aria-selected="true">Golf drive</button>
+    <button class="tab" role="tab" type="button" data-s="kick" aria-selected="false">Free kick</button>
+    <button class="tab" role="tab" type="button" data-s="pong" aria-selected="false">Table tennis</button>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="cv" aria-label="3D animation of the paths of the balls. Drag to rotate."></canvas>
+    <div class="hud tl" id="hud"></div>
+    <div class="camtabs" id="cams">
+      <button type="button" data-cam="behind" aria-pressed="true">Behind</button>
+      <button type="button" data-cam="side" aria-pressed="false">Side</button>
+      <button type="button" data-cam="top" aria-pressed="false">Above</button>
+      <button type="button" data-cam="follow" aria-pressed="false">Follow the ball</button>
+    </div>
+    <div class="hud bl" id="clock"></div>
+  </div>
+
+  <div class="controls">
+    <div class="row">
+      <button class="go" id="go" type="button">Hit</button>
+      <button class="ghost" id="again" type="button">Again with new air</button>
+      <div class="group"><span class="ctl-label">Tempo</span>
+        <div class="seg" id="tempo"><button type="button" data-v="0.25">¼×</button><button type="button" data-v="0.5">½×</button><button type="button" data-v="1" aria-pressed="true">1×</button></div>
+      </div>
+    </div>
+    <div class="row"><span class="ctl-label">Balls</span><div class="balls" id="balls"></div></div>
+    <div class="sliders" id="sliders"></div>
+    <p class="hint" id="hint"></p>
+  </div>
+
+  <div class="res"><table id="res"><thead><tr><th>Ball</th><th>Distance</th><th>Highest point</th><th>To the right</th><th>Flight time</th><th>Re at launch</th><th>C<sub>D</sub> at launch</th></tr></thead><tbody></tbody></table></div>
+
+  <div class="charts">
+    <div class="chart">
+      <div class="hd"><span>Drag coefficient against Reynolds number (without spin)</span><span>dots: the ball's path during the flight</span></div>
+      <canvas id="chCd"></canvas>
+    </div>
+    <div class="chart">
+      <div class="hd"><span id="pathTitle">The path seen from the side</span><span id="pathUnit">m</span></div>
+      <canvas id="chPath"></canvas>
+    </div>
+  </div>
+
+  <div class="notes">
+    <section>
+      <h2>The drag crisis</h2>
+      <p>The air nearest the surface of the ball forms a thin boundary layer. On the front it follows the surface, but on the back, where the pressure rises again, it loses speed and leaves the ball. Behind the separation point lies a wide wake of low pressure, and it pulls the ball back. That is almost all of the drag.</p>
+      <p>If the boundary layer is laminar, it separates early, at about 80° from the front, and the wake is wide. C<sub>D</sub> ≈ 0.5. If it becomes turbulent, it mixes fast air from outside in towards the surface, holds on longer, to about 120°, and the wake becomes narrow. C<sub>D</sub> suddenly falls to 0.1–0.2. This is called the drag crisis, and for a smooth sphere it happens at Re ≈ 3·10⁵.</p>
+      <figure>
+        <svg viewBox="0 0 560 170" role="img" aria-label="Two spheres in a flow from the left. The smooth one has a laminar boundary layer that separates at about 80 degrees and gives a wide wake. The golf ball has a turbulent boundary layer that separates at about 120 degrees and gives a narrow wake.">
+          <g fill="none" stroke="#93a39c" stroke-width="1.2" opacity=".7">
+            <path d="M10 30h120"/><path d="M10 60h110"/><path d="M10 110h110"/><path d="M10 140h120"/>
+            <path d="M290 30h120"/><path d="M290 60h110"/><path d="M290 110h110"/><path d="M290 140h120"/>
+          </g>
+          <path d="M150 52 C 200 40, 250 34, 270 40 L 270 130 C 250 136, 200 130, 150 118 Z" fill="#ff7a6b" opacity=".18"/>
+          <path d="M150 52 C 190 46, 230 42, 270 46 M150 118 C 190 124, 230 128, 270 124" fill="none" stroke="#ff7a6b" stroke-width="1.6" stroke-dasharray="4 3"/>
+          <circle cx="140" cy="85" r="34" fill="#d9e6f2"/>
+          <path d="M440 70 C 480 72, 520 74, 550 76 L 550 94 C 520 96, 480 98, 440 100 Z" fill="#ff7a6b" opacity=".18"/>
+          <path d="M440 70 C 480 72, 520 74, 550 76 M440 100 C 480 98, 520 96, 550 94" fill="none" stroke="#ff7a6b" stroke-width="1.6" stroke-dasharray="4 3"/>
+          <circle cx="420" cy="85" r="34" fill="#f4f4f0"/>
+          <g fill="#c9cfc9">
+            <circle cx="404" cy="70" r="3.4"/><circle cx="418" cy="64" r="3.4"/><circle cx="432" cy="70" r="3.4"/><circle cx="410" cy="84" r="3.4"/><circle cx="426" cy="84" r="3.4"/><circle cx="404" cy="98" r="3.4"/><circle cx="418" cy="104" r="3.4"/><circle cx="432" cy="98" r="3.4"/><circle cx="440" cy="84" r="3.4"/><circle cx="396" cy="84" r="3.4"/>
+          </g>
+          <circle cx="150" cy="53" r="3.5" fill="#ffb357"/><circle cx="150" cy="117" r="3.5" fill="#ffb357"/>
+          <circle cx="440" cy="68" r="3.5" fill="#ffb357"/><circle cx="440" cy="102" r="3.5" fill="#ffb357"/>
+          <text x="140" y="160" fill="#93a39c" font-size="12" text-anchor="middle" font-family="IBM Plex Mono, monospace">smooth: separates at ≈ 80°</text>
+          <text x="420" y="160" fill="#93a39c" font-size="12" text-anchor="middle" font-family="IBM Plex Mono, monospace">dimples: ≈ 120°</text>
+          <text x="215" y="22" fill="#ff7a6b" font-size="12" text-anchor="middle" font-family="IBM Plex Mono, monospace">wide wake</text>
+          <text x="495" y="60" fill="#ff7a6b" font-size="12" text-anchor="middle" font-family="IBM Plex Mono, monospace">narrow wake</text>
+        </svg>
+        <figcaption>The air comes from the left. The yellow dots are the separation points. The dimples make the boundary layer turbulent, so it holds on longer and the wake becomes narrow.</figcaption>
+      </figure>
+      <h2>The dimples move the crisis</h2>
+      <p>A golf ball is 42.7 mm across and leaves the club at about 70 m/s. That gives Re ≈ 2·10⁵, just below the drag crisis for a smooth sphere. The dimples disturb the boundary layer so that it turns turbulent already at Re ≈ 4·10⁴. The golf ball therefore has low drag throughout its flight, while the smooth ball has twice as much. See the two curves in the chart: the dots show where on the curve the balls are during the flight.</p>
+      <h2>The Magnus effect: backspin and curl</h2>
+      <p>A golf ball has strong backspin, around 2500–3000 rpm after a drive. The surface drags the air with it, the air is turned downwards behind the ball, and the ball gets lift. That keeps it in the air for a long time. Without spin a golf ball comes down after half the distance. The spin parameter S = ωr/v decides how large the lift is.</p>
+      <div class="eq">m d<b>v</b>/dt = −½ρA·C<sub>D</sub>|<b>v</b>|<b>v</b> + ½ρA·C<sub>L</sub>|<b>v</b>|²·(ω̂ × v̂) + m<b>g</b></div>
+      <p>A football kicked with curl spins about a vertical axis. The Magnus force then points sideways, and the ball bends. Because drag slows the ball down, and the force grows with v², the path curves most towards the end, and the ball can go round the wall and still hit the goal.</p>
+      <h2>The knuckleball: a ball without spin</h2>
+      <p>If a football is kicked hard with almost no spin, Re is right around the drag crisis. The boundary layer can then be turbulent on one side and laminar on the other, and this changes at random with the seams and panels. That gives sideways forces that swing back and forth, and the ball wobbles. Balls with few, smooth panels reach the crisis at a higher speed and can wobble more. Press “Again with new air” and watch the path change from kick to kick.</p>
+      <p>The spinning cylinder in the <a href="navier-stokes-vindtunnel-en.html#magnus">Navier–Stokes wind tunnel</a> shows the Magnus effect in a real flow computation, and the section on <a href="navier-stokes-vindtunnel-en.html#blasius">the Blasius boundary layer</a> shows how the boundary layer grows on a flat plate.</p>
+    </section>
+    <section class="side">
+      <h3>The balls</h3>
+      <dl id="ballFacts" style="display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0 0 16px"></dl>
+      <h3>The model</h3>
+      <p>The path is computed with Newton's second law in time steps of 4 ms. C<sub>D</sub> depends on the Reynolds number Re = vD/ν and on the spin, C<sub>L</sub> on the spin parameter S. The curves are fitted to wind-tunnel measurements for smooth spheres, golf balls and footballs and are approximate. The spin decays slowly during the flight. The air is at 20 °C at sea level, with no wind.</p>
+      <p>The knuckle forces are a random sideways force that is largest close to the drag crisis and vanishes when the ball spins. It imitates the measured, fluctuating side forces, but does not predict the individual kick.</p>
+      <h3>Sources</h3>
+      <ul class="refs">
+        <li>E. Achenbach, <i>J. Fluid Mech.</i> 54 (1972) and 65 (1974): drag on smooth and rough spheres.</li>
+        <li>P. W. Bearman &amp; J. K. Harvey, <i>Aeronautical Quarterly</i> 27 (1976): golf ball aerodynamics.</li>
+        <li>T. Asai et al., <i>Sports Engineering</i> 10 (2007): football aerodynamics and the knuckle effect.</li>
+        <li>J. E. Goff &amp; M. J. Carré, <i>Am. J. Phys.</i> 77 (2009): football trajectories with spin.</li>
+      </ul>
+    </section>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+window.T_BALL={golf:"Golf ball",glat:"Smooth golf ball",fodbold:"Football",glatfod:"Football with few panels",bordtennis:"Table-tennis ball"};
+window.TXB={dec:".",loc:"en-GB",kmh:"km/h",rpm:"rpm",rps:"rev/s",slice:"(slice, curves right)",hook:"(hook, curves left)",toLeft:"curls left",toRight:"curls right",
+goGolf:"Hit",goKick:"Kick",goPong:"Hit",noSpin:"without spin",knuckle:"without spin (knuckleball)",topspin:"with topspin",backspin:"with backspin",
+slSpeed:"Speed",slLaunch:"Launch angle",slBack:"Backspin",slSide:"Sidespin",slElev:"Angle upwards",slAim:"Aim to the right",slCurl:"Curl",slTop:"Topspin",
+hintGolf:"A typical drive: 70 m/s, 11° and 2700 rpm backspin. Try the smooth ball, and hit without spin.",hintKick:"A free kick from 25 m with the wall 9.15 m from the ball. The ball is aimed past the wall and curls into the goal. The knuckleball without spin wobbles; press “Again with new air”.",hintPong:"Topspin pushes the ball down onto the table, so it can be hit harder without flying past the end of the table.",
+pathSide:"The path seen from the side (height against distance)",pathTop:"The path seen from above (to the right against distance)",goalLbl:"goal",wallLbl:"wall",goal:"goal",miss:"miss",wall:"hits the wall"};
+
+// ---- ball flight with Re-dependent drag (drag crisis), Magnus lift and knuckle forces ----
+const RHO=1.204,NU=1.51e-5,G=9.81;
+const BALLS={
+  golf:{name:T_BALL.golf,m:0.0459,D:0.04267,col:0xf4f4f0,dimples:true,
+    cd:(Re,S)=>{const sub=0.50,sup=0.235,Rc=4.5e4,w=0.35;const t=1/(1+Math.exp(-(Math.log(Re/Rc))/(w*0.5)));return sub+(sup-sub)*t+0.18*Math.min(S,0.4)*t;},
+    cl:(Re,S)=>Math.min(0.42,0.54*Math.pow(Math.max(S,0),0.4))*(Re>3e4?1:Re/3e4),decay:22,knuckle:0},
+  glat:{name:T_BALL.glat,m:0.0459,D:0.04267,col:0xd9e6f2,
+    cd:(Re,S)=>{const sub=0.48,sup=0.1,Rc=3.6e5,w=0.12;const t=1/(1+Math.exp(-(Math.log(Re/Rc))/w));return sub+(sup-sub)*t+0.1*Math.min(S,0.4);},
+    cl:(Re,S)=>0.6*Math.min(S,0.3)*(Re<3e5?0.6:1),decay:22,knuckle:0},
+  fodbold:{name:T_BALL.fodbold,m:0.43,D:0.22,col:0xffffff,
+    cd:(Re,S)=>{const sub=0.47,sup=0.17,Rc=2.4e5,w=0.12;const t=1/(1+Math.exp(-(Math.log(Re/Rc))/w));return sub+(sup-sub)*t+0.25*Math.min(S,0.4);},
+    cl:(Re,S)=>0.45*S/(S+0.2),decay:9,knuckle:1},
+  glatfod:{name:T_BALL.glatfod,m:0.43,D:0.22,col:0xf1e6c8,
+    cd:(Re,S)=>{const sub=0.47,sup=0.15,Rc=3.3e5,w=0.1;const t=1/(1+Math.exp(-(Math.log(Re/Rc))/w));return sub+(sup-sub)*t+0.25*Math.min(S,0.4);},
+    cl:(Re,S)=>0.45*S/(S+0.2),decay:9,knuckle:1.6},
+  bordtennis:{name:T_BALL.bordtennis,m:0.0027,D:0.04,col:0xff9a3c,
+    cd:(Re,S)=>0.5+0.2*Math.min(S,0.5),cl:(Re,S)=>Math.min(0.4,0.8*S),decay:3,knuckle:0}
+};
+// knuckle: random lateral force strongest near the drag crisis when spin is low
+function knuckleAmp(b,Re,S){if(!b.knuckle)return 0;const Rc=b===BALLS.glatfod?3.3e5:2.4e5;const x=Math.log(Re/Rc);return b.knuckle*0.12*Math.exp(-x*x/0.18)*Math.max(0,1-S/0.08);}
+function fly(b,o,seed){ // o: {v,elev,azim,spinBack,spinSide (rev/s), x0,y0,z0, wind}
+  let rnd=seed||1;const rand=()=>{rnd=(rnd*16807)%2147483647;return rnd/2147483647-0.5;};
+  const A=Math.PI*b.D*b.D/4,r=b.D/2;
+  const el=o.elev*Math.PI/180,az=(o.azim||0)*Math.PI/180;
+  let p=[o.x0||0,o.y0||0,o.z0||0];
+  let v=[o.v*Math.cos(el)*Math.cos(az),o.v*Math.sin(el),o.v*Math.cos(el)*Math.sin(az)];
+  // spin vector: backspin about horizontal axis perpendicular to flight (z for flight along +x), sidespin about vertical (y)
+  const fwd=[Math.cos(az),0,Math.sin(az)],side=[-Math.sin(az),0,Math.cos(az)];
+  let w=[0,0,0];const wb=2*Math.PI*(o.spinBack||0),ws=2*Math.PI*(o.spinSide||0);
+  // backspin: ω along -side?  For flight +x, backspin = ω along +z gives lift: ω×v = z×x = y (up). side=[0,0,1] for az=0.
+  for(let k=0;k<3;k++)w[k]=wb*side[k]+ws*(k===1?1:0);
+  const out=[];let t=0;const dt=0.004;let kx=0,ky=0;
+  for(let n=0;n<40000;n++){
+    const vr=[v[0]-(o.wind||0),v[1],v[2]];const s=Math.hypot(vr[0],vr[1],vr[2]);const Re=s*b.D/NU;const wm=Math.hypot(w[0],w[1],w[2]);const S=wm*r/Math.max(s,1e-6);
+    const cd=b.cd(Re,S),cl=b.cl(Re,S);const q=0.5*RHO*A*s;
+    let a=[-q*cd*vr[0]/b.m,-q*cd*vr[1]/b.m-G,-q*cd*vr[2]/b.m];
+    if(wm>1e-6){const c=[w[1]*vr[2]-w[2]*vr[1],w[2]*vr[0]-w[0]*vr[2],w[0]*vr[1]-w[1]*vr[0]];const cm=Math.hypot(c[0],c[1],c[2])||1;for(let k=0;k<3;k++)a[k]+=q*s*cl*c[k]/cm/b.m;}
+    const ka=knuckleAmp(b,Re,S);
+    if(ka>0){kx+=(-kx*dt/0.25)+Math.sqrt(dt)*rand()*3.4;ky+=(-ky*dt/0.25)+Math.sqrt(dt)*rand()*3.4;
+      // lateral directions perpendicular to v
+      const u=[vr[0]/s,vr[1]/s,vr[2]/s];let e1=[-u[2],0,u[0]];const n1=Math.hypot(e1[0],e1[2])||1;e1=[e1[0]/n1,0,e1[2]/n1];const e2=[u[1]*e1[2]-u[2]*e1[1],u[2]*e1[0]-u[0]*e1[2],u[0]*e1[1]-u[1]*e1[0]];
+      for(let k=0;k<3;k++)a[k]+=q*s*ka*(kx*e1[k]+ky*e2[k])/b.m;}
+    if(n%5===0)out.push({t,x:p[0],y:p[1],z:p[2],v:s,Re,cd,cl,S});
+    for(let k=0;k<3;k++){v[k]+=a[k]*dt;p[k]+=v[k]*dt;}
+    const f=Math.exp(-dt/b.decay);for(let k=0;k<3;k++)w[k]*=f;
+    t+=dt;if(p[1]<0&&v[1]<0){const fr=p[1]/(p[1]-(p[1]-v[1]*dt));out.push({t,x:p[0],y:0,z:p[2],v:s,Re,cd,cl,S});break;}
+    if(o.stopX&&p[0]>o.stopX){out.push({t,x:p[0],y:p[1],z:p[2],v:s,Re,cd,cl,S});break;}
+  }
+  return out;
+}
+</script>
+<script>
+(function(){
+"use strict";
+const $=s=>document.querySelector(s);
+const T=window.TXB;
+const fmt=(v,d)=>(v<0?"−":"")+Math.abs(v).toFixed(d).replace(".",T.dec);
+const COLS=["#ffffff","#8fc8ff","#ffb357","#ff7a6b"];
+const SCEN={
+  golf:{go:T.goGolf,balls:[{b:"golf",on:true},{b:"glat",on:true},{b:"golf",label:T.noSpin,spin:0,on:false}],
+    sl:[{k:"v",lab:T.slSpeed,min:30,max:80,step:1,val:70,u:"m/s"},{k:"elev",lab:T.slLaunch,min:4,max:25,step:0.5,val:11,u:"°"},{k:"back",lab:T.slBack,min:0,max:80,step:1,val:45,u:"rpm"},{k:"side",lab:T.slSide,min:-15,max:15,step:0.5,val:0,u:"rpm"}],
+    hint:T.hintGolf,view:"side"},
+  kick:{go:T.goKick,balls:[{b:"fodbold",on:true},{b:"glatfod",on:false},{b:"fodbold",label:T.knuckle,spin:0,on:true}],
+    sl:[{k:"v",lab:T.slSpeed,min:15,max:35,step:0.5,val:27,u:"m/s"},{k:"elev",lab:T.slElev,min:5,max:30,step:0.5,val:15,u:"°"},{k:"azim",lab:T.slAim,min:-15,max:20,step:0.5,val:8,u:"°"},{k:"side",lab:T.slCurl,min:-12,max:12,step:0.5,val:6,u:"rps"}],
+    hint:T.hintKick,view:"top"},
+  pong:{go:T.goPong,balls:[{b:"bordtennis",label:T.topspin,on:true},{b:"bordtennis",label:T.noSpin,spin:0,on:true},{b:"bordtennis",label:T.backspin,spin:-1,on:false}],
+    sl:[{k:"v",lab:T.slSpeed,min:4,max:30,step:0.5,val:13,u:"m/s"},{k:"elev",lab:T.slElev,min:-5,max:20,step:0.5,val:7,u:"°"},{k:"top",lab:T.slTop,min:0,max:150,step:1,val:80,u:"rps"}],
+    hint:T.hintPong,view:"side"}
+};
+const st={scen:"golf",vals:{},tempo:1,cam:"behind"};
+for(const k in SCEN){st.vals[k]={};for(const s of SCEN[k].sl)st.vals[k][s.k]=s.val;SCEN[k].balls.forEach(b=>b.onNow=b.on);}
+let seed=7,runs=[],t0=0,playing=false,simT=0;
+
+/* ---------- physics runs ---------- */
+function launch(){
+  const S=SCEN[st.scen],v=st.vals[st.scen];runs=[];
+  S.balls.forEach((bd,i)=>{if(!bd.onNow)return;const b=BALLS[bd.b];let o;
+    if(st.scen==="golf")o={v:v.v,elev:v.elev,spinBack:v.back/60*(bd.spin===0?0:1),spinSide:v.side/60*(bd.spin===0?0:1)*-1};
+    else if(st.scen==="kick")o={v:v.v,elev:v.elev,azim:v.azim,spinSide:bd.spin===0?0:v.side,stopX:27};
+    else{const s=bd.spin===0?0:bd.spin===-1?-v.top:v.top;o={v:v.v,elev:v.elev,spinBack:-s,x0:-0.3,y0:1.02,table:true};}
+    let tr=fly(b,o,seed+i*101);
+    if(st.scen==="pong"){const k=tr.findIndex(p=>p.x>0&&p.x<2.74&&p.y<=0.76+0.02&&p.t>0.02);if(k>0)tr=tr.slice(0,k+1);}
+    runs.push({bd,b,tr,col:COLS[i],name:bd.label?b.name+" "+bd.label:b.name});});
+  buildBalls();t0=performance.now();simT=0;playing=true;table();drawCharts();
+}
+
+/* ---------- three.js ---------- */
+const cv=$("#cv"),stage=$("#stage");
+const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true});renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+const scene=new THREE.Scene();
+{const c=document.createElement("canvas");c.width=4;c.height=256;const g=c.getContext("2d");const gr=g.createLinearGradient(0,0,0,256);gr.addColorStop(0,"#5d8fc4");gr.addColorStop(0.6,"#a8cbe4");gr.addColorStop(1,"#e4eef2");g.fillStyle=gr;g.fillRect(0,0,4,256);scene.background=new THREE.CanvasTexture(c);}
+const camera=new THREE.PerspectiveCamera(45,1,0.05,2000);
+scene.add(new THREE.HemisphereLight(0xe8f0ff,0x3a5530,0.55));
+const sun=new THREE.DirectionalLight(0xfff1dc,0.62);sun.position.set(-60,120,80);scene.add(sun);
+let world=new THREE.Group();scene.add(world);
+function grassTex(rep,stripe){const c=document.createElement("canvas");c.width=256;c.height=256;const g=c.getContext("2d");
+  for(let i=0;i<8;i++){g.fillStyle=i%2?"#4f8f3c":"#5a9d44";if(stripe)g.fillRect(i*32,0,32,256);else g.fillRect(0,i*32,256,32);}
+  for(let k=0;k<2500;k++){g.fillStyle="rgba(20,50,10,"+(Math.random()*0.12)+")";g.fillRect(Math.random()*256,Math.random()*256,1,2);}
+  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(rep[0],rep[1]);return t;}
+function label(text,size){const c=document.createElement("canvas");c.width=256;c.height=96;const g=c.getContext("2d");g.font="600 54px IBM Plex Sans, sans-serif";g.fillStyle="#ffffff";g.strokeStyle="rgba(0,0,0,.6)";g.lineWidth=6;g.textAlign="center";g.strokeText(text,128,66);g.fillText(text,128,66);
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false}));s.scale.set(size*2.67,size,1);return s;}
+const mat=c=>new THREE.MeshStandardMaterial({color:c,roughness:0.6});
+function buildWorld(){
+  scene.remove(world);world.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material){if(o.material.map)o.material.map.dispose();o.material.dispose();}});world=new THREE.Group();scene.add(world);
+  if(st.scen==="golf"){
+    const g=new THREE.Mesh(new THREE.PlaneGeometry(900,400),new THREE.MeshStandardMaterial({map:grassTex([14,6],true),roughness:1}));g.rotation.x=-Math.PI/2;g.position.set(250,0,0);world.add(g);
+    const fw=new THREE.Mesh(new THREE.PlaneGeometry(340,44),new THREE.MeshStandardMaterial({color:0x4f9a3e,roughness:1}));fw.rotation.x=-Math.PI/2;fw.position.set(160,0.02,0);world.add(fw);
+    for(let d=50;d<=300;d+=50){const p=new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.15,3,8),mat(0xffffff));p.position.set(d,1.5,-24);world.add(p);const l=label(d+" m",3);l.position.set(d,4.4,-24);world.add(l);
+      const line=new THREE.Mesh(new THREE.PlaneGeometry(0.4,44),new THREE.MeshBasicMaterial({color:0xe9f2e0,transparent:true,opacity:0.35}));line.rotation.x=-Math.PI/2;line.position.set(d,0.03,0);world.add(line);}
+    const tee=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.01,0.05,8),mat(0xffd34d));tee.position.set(0,0.025,0);world.add(tee);
+  }else if(st.scen==="kick"){
+    const g=new THREE.Mesh(new THREE.PlaneGeometry(120,90),new THREE.MeshStandardMaterial({map:grassTex([10,8],false),roughness:1}));g.rotation.x=-Math.PI/2;g.position.set(20,0,-2);world.add(g);
+    const wm=new THREE.MeshBasicMaterial({color:0xf3f6ef});
+    const line=(x0,z0,x1,z1)=>{const L=Math.hypot(x1-x0,z1-z0),m=new THREE.Mesh(new THREE.PlaneGeometry(L,0.12),wm);m.rotation.x=-Math.PI/2;m.rotation.z=-Math.atan2(z1-z0,x1-x0);m.position.set((x0+x1)/2,0.02,(z0+z1)/2);world.add(m);};
+    const gx=25,gz=-2;line(gx,gz-30,gx,gz+30);line(gx-16.5,gz-20.16,gx-16.5,gz+20.16);line(gx-16.5,gz-20.16,gx,gz-20.16);line(gx-16.5,gz+20.16,gx,gz+20.16);
+    line(gx-5.5,gz-9.16,gx-5.5,gz+9.16);line(gx-5.5,gz-9.16,gx,gz-9.16);line(gx-5.5,gz+9.16,gx,gz+9.16);
+    const pm=mat(0xffffff);for(const z of [gz-3.66,gz+3.66]){const p=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,2.44,12),pm);p.position.set(gx,1.22,z);world.add(p);}
+    const bar=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,7.32,12),pm);bar.rotation.x=Math.PI/2;bar.position.set(gx,2.44,gz);world.add(bar);
+    const nv=[];for(let k=0;k<=24;k++){const z=gz-3.66+7.32*k/24;nv.push(gx,2.44,z,gx+1.8,0,z);}for(let k=0;k<=8;k++){const y=2.44*k/8,x=gx+1.8*(1-k/8);nv.push(x,y,gz-3.66,x,y,gz+3.66);}
+    const ng=new THREE.BufferGeometry();ng.setAttribute("position",new THREE.Float32BufferAttribute(nv,3));world.add(new THREE.LineSegments(ng,new THREE.LineBasicMaterial({color:0xdde4dc,transparent:true,opacity:0.6})));
+    const shirt=mat(0xc23b2a),skin=mat(0xe2b897),shorts=mat(0x1d2433);
+    for(const z of [-2.35,-1.75,-1.15,-0.55]){const b=new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.2,0.75,12),shirt);b.position.set(9.15,1.25,z);world.add(b);
+      const l=new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.14,0.85,10),shorts);l.position.set(9.15,0.43,z);world.add(l);const h=new THREE.Mesh(new THREE.SphereGeometry(0.13,14,10),skin);h.position.set(9.15,1.78,z);world.add(h);}
+    const lb=label("9,15 m".replace(",",T.dec),0.9);lb.position.set(9.15,2.5,-3.4);world.add(lb);const lg=label("25 m",0.9);lg.position.set(25,3.2,gz+4.8);world.add(lg);
+  }else{
+    const fl=new THREE.Mesh(new THREE.PlaneGeometry(14,10),new THREE.MeshStandardMaterial({color:0x8a5a3c,roughness:0.9}));fl.rotation.x=-Math.PI/2;fl.position.set(1.37,0,0);world.add(fl);
+    const top=new THREE.Mesh(new THREE.BoxGeometry(2.74,0.03,1.525),new THREE.MeshStandardMaterial({color:0x1e4f8c,roughness:0.5}));top.position.set(1.37,0.745,0);world.add(top);
+    const wm=new THREE.MeshBasicMaterial({color:0xffffff});for(const z of [-0.752,0.752]){const e=new THREE.Mesh(new THREE.BoxGeometry(2.74,0.032,0.02),wm);e.position.set(1.37,0.746,z);world.add(e);}
+    for(const x of [0.01,2.73]){const e=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.032,1.525),wm);e.position.set(x,0.746,0);world.add(e);}
+    const c=new THREE.Mesh(new THREE.BoxGeometry(2.74,0.032,0.006),wm);c.position.set(1.37,0.747,0);world.add(c);
+    const net=new THREE.Mesh(new THREE.PlaneGeometry(1.83,0.1525),new THREE.MeshStandardMaterial({color:0x111111,transparent:true,opacity:0.55,side:THREE.DoubleSide}));net.rotation.y=Math.PI/2;net.position.set(1.37,0.76+0.076,0);world.add(net);
+    for(const z of [-0.79,0.79]){const leg=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.73,0.06),mat(0x222222));leg.position.set(0.3,0.365,z*0.85);world.add(leg);const l2=leg.clone();l2.position.x=2.44;world.add(l2);}
+  }
+}
+function ballTex(kind){const c=document.createElement("canvas");c.width=256;c.height=128;const g=c.getContext("2d");
+  if(kind==="golf"){g.fillStyle="#f6f6f2";g.fillRect(0,0,256,128);g.fillStyle="#d4d6cf";for(let y=4;y<128;y+=9)for(let x=(y/9|0)%2*4.5;x<256;x+=9){g.beginPath();g.arc(x,y,3,0,7);g.fill();}}
+  else if(kind==="glat"){g.fillStyle="#e6eef6";g.fillRect(0,0,256,128);g.fillStyle="#b9c9d8";g.fillRect(0,60,256,8);}
+  else if(kind==="fodbold"){g.fillStyle="#fbfbf8";g.fillRect(0,0,256,128);g.fillStyle="#1c1c1c";for(const [x,y] of [[20,20],[84,20],[148,20],[212,20],[52,64],[116,64],[180,64],[244,64],[20,108],[84,108],[148,108],[212,108]]){g.beginPath();for(let k=0;k<5;k++){const a=k*2*Math.PI/5-Math.PI/2;g.lineTo(x+12*Math.cos(a),y+12*Math.sin(a));}g.closePath();g.fill();}}
+  else if(kind==="glatfod"){g.fillStyle="#f6eccd";g.fillRect(0,0,256,128);g.strokeStyle="#c0392b";g.lineWidth=7;for(let k=0;k<4;k++){g.beginPath();for(let x=0;x<=256;x+=4)g.lineTo(x,64+40*Math.sin((x/256)*2*Math.PI*2+k*Math.PI/2));g.stroke();}}
+  else{g.fillStyle="#ff9a3c";g.fillRect(0,0,256,128);g.fillStyle="#e8812a";g.fillRect(0,58,256,12);}
+  return new THREE.CanvasTexture(c);}
+let ballObjs=[];
+function buildBalls(){
+  for(const o of ballObjs){world.remove(o.mesh);world.remove(o.trail);o.mesh.geometry.dispose();o.mesh.material.dispose();o.trail.geometry.dispose();}
+  ballObjs=[];const vis=st.scen==="golf"?8:st.scen==="kick"?1.6:2.5;
+  for(const r of runs){const m=new THREE.Mesh(new THREE.SphereGeometry(r.b.D/2*vis,32,20),new THREE.MeshStandardMaterial({map:ballTex(r.bd.b),roughness:0.45}));world.add(m);
+    const n=r.tr.length,pos=new Float32Array(n*3);const g=new THREE.BufferGeometry();g.setAttribute("position",new THREE.BufferAttribute(pos,3));g.setDrawRange(0,0);
+    const tl=new THREE.Line(g,new THREE.LineBasicMaterial({color:new THREE.Color(r.col),transparent:true,opacity:0.95}));world.add(tl);
+    const pts=new THREE.Points(g,new THREE.PointsMaterial({color:new THREE.Color(r.col),size:3,sizeAttenuation:false}));tl.add(pts);
+    for(let k=0;k<n;k++){pos[3*k]=r.tr[k].x;pos[3*k+1]=Math.max(0.01,r.tr[k].y);pos[3*k+2]=r.tr[k].z;}
+    ballObjs.push({mesh:m,trail:tl,run:r,vis});}
+}
+function posAt(tr,t){if(t<=tr[0].t)return Object.assign({i:0},tr[0]);if(t>=tr[tr.length-1].t)return Object.assign({i:tr.length-1},tr[tr.length-1]);let lo=0,hi=tr.length-1;while(hi-lo>1){const m=(lo+hi)>>1;if(tr[m].t<t)lo=m;else hi=m;}const a=tr[lo],b=tr[hi],f=(t-a.t)/(b.t-a.t||1);return {t,x:a.x+(b.x-a.x)*f,y:a.y+(b.y-a.y)*f,z:a.z+(b.z-a.z)*f,v:a.v,Re:a.Re,cd:a.cd,i:lo};}
+
+/* ---------- camera ---------- */
+const cam={th:0,ph:0.2,d:30,tx:0,ty:0,tz:0};let drag=null,camManual=false;
+function camFor(){const sc=st.scen,c=st.cam;let lead=null,maxT=0;for(const o of ballObjs){const p=posAt(o.run.tr,simT);if(!lead||p.x>lead.x)lead=p;}
+  if(sc==="golf"){if(c==="behind")return {pos:[-34,16,22],look:[120,12,-4]};if(c==="side")return {pos:[130,40,-230],look:[130,10,0]};if(c==="top")return {pos:[140,330,0.1],look:[140,0,0]};const p=lead||{x:0,y:0,z:0};return {pos:[p.x-18,p.y+5,p.z+6],look:[p.x+10,p.y,p.z]};}
+  if(sc==="kick"){if(c==="behind")return {pos:[-7,3.6,3.2],look:[25,1,-2]};if(c==="side")return {pos:[13,6,24],look:[13,1,-1]};if(c==="top")return {pos:[13,42,-1.9],look:[13,0,-2]};const p=lead||{x:0,y:0,z:0};return {pos:[p.x-4.5,p.y+1.4,p.z+1.2],look:[p.x+6,p.y,p.z-0.5]};}
+  if(c==="behind")return {pos:[-2.6,1.75,0.4],look:[2.2,0.8,0]};if(c==="side")return {pos:[1.3,1.3,3.6],look:[1.3,0.85,0]};if(c==="top")return {pos:[1.37,5.5,0.01],look:[1.37,0.76,0]};const p=lead||{x:0,y:1,z:0};return {pos:[p.x-1.2,p.y+0.35,p.z+0.35],look:[p.x+1.5,p.y-0.1,p.z]};}
+let camPos=null,camLook=null;
+function applyCam(){const f=camFor();if(!camPos){camPos=new THREE.Vector3(...f.pos);camLook=new THREE.Vector3(...f.look);}
+  const k=st.cam==="follow"?0.25:0.08;camPos.lerp(new THREE.Vector3(...f.pos),k);camLook.lerp(new THREE.Vector3(...f.look),k);
+  if(camManual){const off=camPos.clone().sub(camLook);const r=off.length();const sph=new THREE.Spherical().setFromVector3(off);sph.theta+=cam.th;sph.phi=Math.max(0.1,Math.min(1.5,sph.phi-cam.ph));camera.position.copy(camLook).add(new THREE.Vector3().setFromSpherical(sph).multiplyScalar(cam.zoom||1));}
+  else camera.position.copy(camPos);
+  if(st.cam==="top"&&!camManual)camera.up.set(0,0,-1);else camera.up.set(0,1,0);
+  camera.lookAt(camLook);}
+cv.addEventListener("pointerdown",e=>{cv.setPointerCapture(e.pointerId);drag=[e.clientX,e.clientY];camManual=true;});
+cv.addEventListener("pointermove",e=>{if(!drag)return;cam.th-=(e.clientX-drag[0])*0.006;cam.ph+=(e.clientY-drag[1])*0.006;drag=[e.clientX,e.clientY];});
+cv.addEventListener("pointerup",()=>drag=null);cv.addEventListener("pointercancel",()=>drag=null);
+cv.addEventListener("wheel",e=>{e.preventDefault();camManual=true;cam.zoom=Math.max(0.2,Math.min(4,(cam.zoom||1)*Math.exp(e.deltaY*0.001)));},{passive:false});
+function setCam(k){st.cam=k;cam.th=0;cam.ph=0;cam.zoom=1;camManual=false;document.querySelectorAll("#cams button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.cam===k)));}
+$("#cams").addEventListener("click",e=>{const b=e.target.closest("button");if(b)setCam(b.dataset.cam);});
+function resize(){const w=stage.clientWidth,h=stage.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();drawCharts();}
+new ResizeObserver(resize).observe(stage);
+
+/* ---------- UI ---------- */
+function buildUI(){
+  const S=SCEN[st.scen];$("#go").textContent=S.go;$("#hint").textContent=S.hint;
+  $("#balls").innerHTML=S.balls.map((bd,i)=>'<label class="chk"><input type="checkbox" data-i="'+i+'"'+(bd.onNow?" checked":"")+'><i style="background:'+COLS[i]+'"></i>'+BALLS[bd.b].name+(bd.label?" "+bd.label:"")+"</label>").join("");
+  $("#sliders").innerHTML=S.sl.map(s=>'<label class="sl"><span class="top"><span>'+s.lab+'</span><output id="o_'+s.k+'"></output></span><input type="range" id="s_'+s.k+'" min="'+s.min+'" max="'+s.max+'" step="'+s.step+'" value="'+st.vals[st.scen][s.k]+'"></label>').join("");
+  S.sl.forEach(s=>{const el=$("#s_"+s.k);const upd=()=>{st.vals[st.scen][s.k]=+el.value;outLabel(s);};el.addEventListener("input",upd);el.addEventListener("change",launch);outLabel(s);});
+  $("#balls").querySelectorAll("input").forEach(c=>c.addEventListener("change",()=>{S.balls[+c.dataset.i].onNow=c.checked;launch();}));
+  const f=[];for(const k of new Set(S.balls.map(b=>b.b))){const b=BALLS[k];f.push("<dt style='font-family:var(--f-mono);font-size:12px;color:var(--muted)'>"+b.name+"</dt><dd style='margin:0'>"+fmt(b.D*1000,b.D<0.1?1:0)+" mm · "+(b.m<0.01?fmt(b.m*1000,1)+" g":fmt(b.m*1000,0)+" g")+"</dd>");}$("#ballFacts").innerHTML=f.join("");
+}
+function outLabel(s){const v=st.vals[st.scen][s.k];let t;
+  if(s.u==="rpm")t=Math.round(v*60).toLocaleString(T.loc)+" "+T.rpm+(s.k==="side"&&v?(v>0?" "+T.slice:" "+T.hook):"");
+  else if(s.u==="rps")t=fmt(v,1)+" "+T.rps+(s.k==="side"&&v?(v>0?" "+T.toLeft:" "+T.toRight):"");
+  else if(s.u==="m/s")t=fmt(v,1)+" m/s · "+Math.round(v*3.6)+" "+T.kmh;
+  else t=fmt(v,1)+"°";
+  $("#o_"+s.k).textContent=t;}
+document.querySelectorAll("#scen .tab").forEach(b=>b.addEventListener("click",()=>{st.scen=b.dataset.s;document.querySelectorAll("#scen .tab").forEach(x=>x.setAttribute("aria-selected",String(x===b)));buildWorld();buildUI();camPos=null;setCam("behind");launch();}));
+$("#go").addEventListener("click",launch);$("#again").addEventListener("click",()=>{seed=Math.floor(Math.random()*1e6)+1;launch();});
+$("#tempo").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;st.tempo=+b.dataset.v;document.querySelectorAll("#tempo button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));});
+
+/* ---------- results & charts ---------- */
+function table(){
+  const rows=runs.map(r=>{const L=r.tr[r.tr.length-1];let h=0;for(const p of r.tr)h=Math.max(h,p.y);const y0=st.scen==="pong"?0.76:0;
+    let far=L.x;if(st.scen==="pong")far=L.x;
+    return "<tr><td><i style='background:"+r.col+"'></i>"+r.name+"</td><td class='n'>"+fmt(far,st.scen==="golf"?0:2)+" m</td><td class='n'>"+fmt(h-y0,st.scen==="golf"?1:2)+" m</td><td class='n'>"+fmt(L.z,2)+" m</td><td class='n'>"+fmt(L.t,2)+" s</td><td class='n'>"+fmtRe(r.tr[0].Re)+"</td><td class='n'>"+fmt(r.tr[0].cd,2)+"</td></tr>";});
+  $("#res tbody").innerHTML=rows.join("");
+  if(st.scen==="kick"){const goal=runs.map(r=>{const p=r.tr.find(q=>q.x>=25);if(!p)return null;const inG=p.z>-5.66&&p.z<1.66&&p.y<2.44;const wall=r.tr.find(q=>q.x>=9.15);const hitWall=wall&&wall.y<1.9&&wall.z>-2.6&&wall.z<-0.3;return hitWall?T.wall:inG?T.goal:T.miss;});
+    $("#res tbody").querySelectorAll("tr").forEach((tr,i)=>{tr.children[0].innerHTML+=" <span style='color:var(--muted);font-size:12px'>("+goal[i]+")</span>";});}
+}
+function fmtRe(v){const e=Math.floor(Math.log10(v));return fmt(v/Math.pow(10,e),1)+"·10<sup>"+e+"</sup>";}
+const css=k=>getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+function prep(c){const dpr=Math.min(2,window.devicePixelRatio||1),w=c.clientWidth,h=c.clientHeight;c.width=Math.round(w*dpr);c.height=Math.round(h*dpr);const g=c.getContext("2d");g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,w,h);g.font="11px "+css("--f-mono");return [g,w,h];}
+function drawCharts(){
+  const ink=css("--muted"),line=css("--line"),fg=css("--ink");
+  {const [g,w,h]=prep($("#chCd"));const L=40,R=10,Tp=8,B=24,lo=Math.log10(1e4),hi=Math.log10(1.2e6);
+    const X=r=>L+(Math.log10(r)-lo)/(hi-lo)*(w-L-R),Y=c=>Tp+(1-c/0.6)*(h-Tp-B);
+    g.strokeStyle=line;g.fillStyle=ink;g.textAlign="right";for(let c=0;c<=0.6;c+=0.1){const y=Math.round(Y(c))+0.5;g.beginPath();g.moveTo(L,y);g.lineTo(w-R,y);g.stroke();g.fillText(fmt(c,1),L-5,y+4);}
+    g.textAlign="center";for(const e of [4,5,6]){g.fillText("10"+(e===4?"⁴":e===5?"⁵":"⁶"),X(Math.pow(10,e)),h-6);}g.textAlign="center";g.fillText("Re →",X(3.2e4),h-6);
+    const kinds=[...new Set(runs.map(r=>r.bd.b))];
+    kinds.forEach(k=>{const b=BALLS[k];const r=runs.find(q=>q.bd.b===k);g.strokeStyle=r?r.col:fg;g.lineWidth=2;g.globalAlpha=0.85;g.beginPath();for(let i=0;i<=200;i++){const Re=Math.pow(10,lo+(hi-lo)*i/200);const x=X(Re),y=Y(b.cd(Re,0));i?g.lineTo(x,y):g.moveTo(x,y);}g.stroke();g.globalAlpha=1;});
+    runs.forEach(r=>{g.fillStyle=r.col;const p=posAt(r.tr,simT);for(let i=0;i<=p.i;i+=6){const q=r.tr[i];g.globalAlpha=0.35;g.beginPath();g.arc(X(q.Re),Y(q.cd),2,0,7);g.fill();}g.globalAlpha=1;g.beginPath();g.arc(X(p.Re),Y(r.tr[Math.min(p.i,r.tr.length-1)].cd),5,0,7);g.fill();g.strokeStyle="#000";g.lineWidth=1;g.stroke();});}
+  {const [g,w,h]=prep($("#chPath"));const L=40,R=10,Tp=10,B=24;const top=st.scen==="kick";
+    $("#pathTitle").textContent=top?T.pathTop:T.pathSide;
+    let xmax=0,ymax=0,zmin=0,zmax=0;for(const r of runs)for(const p of r.tr){xmax=Math.max(xmax,p.x);ymax=Math.max(ymax,p.y);zmin=Math.min(zmin,p.z);zmax=Math.max(zmax,p.z);}
+    if(st.scen==="golf"){xmax=Math.max(xmax,260);ymax=Math.max(ymax,20);}if(st.scen==="kick"){xmax=27;zmin=Math.min(zmin,-7);zmax=Math.max(zmax,5);}if(st.scen==="pong"){xmax=Math.max(3,xmax);ymax=1.4;}
+    const vmin=top?zmin:0,vmax=top?zmax:ymax*1.1;
+    const X=x=>L+(x-(st.scen==="pong"?-0.4:0))/(xmax-(st.scen==="pong"?-0.4:0))*(w-L-R),Y=v=>Tp+(top?(v-vmin):(vmax-v))/(vmax-vmin)*(h-Tp-B);
+    const nice=r=>{const p=Math.pow(10,Math.floor(Math.log10(r)));const f=r/p;return (f<1.5?1:f<3?2:f<7?5:10)*p;};
+    g.strokeStyle=line;g.fillStyle=ink;g.textAlign="right";const sv=nice((vmax-vmin)/4);for(let v=Math.ceil(vmin/sv)*sv;v<=vmax;v+=sv){const y=Math.round(Y(v))+0.5;g.beginPath();g.moveTo(L,y);g.lineTo(w-R,y);g.stroke();g.fillText(fmt(v,sv<1?1:0),L-5,y+4);}
+    g.textAlign="center";const sx=nice(xmax/5);for(let x=0;x<=xmax;x+=sx)g.fillText(fmt(x,sx<1?1:0),X(x),h-6);
+    if(st.scen==="kick"){g.strokeStyle=fg;g.lineWidth=3;g.beginPath();g.moveTo(X(25),Y(-5.66));g.lineTo(X(25),Y(1.66));g.stroke();g.fillStyle="#c23b2a";g.fillRect(X(9.15)-2,Y(-2.6),4,Y(-0.3)-Y(-2.6));g.fillStyle=ink;g.textAlign="left";g.fillText(T.goalLbl,X(25)-34,Y(-5.66)-6);g.fillText(T.wallLbl,X(9.15)+5,Y(-2.6)-4);}
+    if(st.scen==="pong"){g.strokeStyle=fg;g.lineWidth=2;g.beginPath();g.moveTo(X(0),Y(0.76));g.lineTo(X(2.74),Y(0.76));g.stroke();g.beginPath();g.moveTo(X(1.37),Y(0.76));g.lineTo(X(1.37),Y(0.9125));g.stroke();}
+    runs.forEach(r=>{const p=posAt(r.tr,simT);g.strokeStyle=r.col;g.lineWidth=2;g.beginPath();for(let i=0;i<=p.i;i++){const q=r.tr[i];const x=X(q.x),y=Y(top?q.z:q.y);i?g.lineTo(x,y):g.moveTo(x,y);}g.lineTo(X(p.x),Y(top?p.z:p.y));g.stroke();
+      g.globalAlpha=0.25;g.beginPath();r.tr.forEach((q,i)=>{const x=X(q.x),y=Y(top?q.z:q.y);i?g.lineTo(x,y):g.moveTo(x,y);});g.stroke();g.globalAlpha=1;});}
+}
+
+/* ---------- loop ---------- */
+let last=performance.now(),chartT=0;
+function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;
+  if(playing){simT+=dt*st.tempo;let maxT=0;for(const r of runs)maxT=Math.max(maxT,r.tr[r.tr.length-1].t);if(simT>maxT+1.5){simT=maxT+1.5;}}
+  for(const o of ballObjs){const p=posAt(o.run.tr,simT);o.mesh.position.set(p.x,Math.max(o.run.b.D/2*o.vis,p.y+(p.y<0.05?o.run.b.D/2*o.vis:0)),p.z);o.mesh.rotation.z-=dt*st.tempo*20;o.trail.geometry.setDrawRange(0,(p.i||0)+1);}
+  $("#hud").innerHTML=runs.map(r=>{const p=posAt(r.tr,simT);return "<div class='row'><i style='background:"+r.col+"'></i>"+r.name+": "+fmt(p.x,st.scen==="golf"?0:1)+" m · "+fmt(p.v,0)+" m/s</div>";}).join("");
+  $("#clock").textContent="t = "+fmt(simT,2)+" s";
+  applyCam();renderer.render(scene,camera);
+  if(now-chartT>120){drawCharts();chartT=now;}
+  requestAnimationFrame(frame);}
+buildWorld();buildUI();resize();launch();requestAnimationFrame(frame);
+})();
+</script>
+</body></html>

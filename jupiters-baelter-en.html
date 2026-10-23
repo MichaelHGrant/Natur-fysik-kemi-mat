@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Jupiter's Belts</title>
+<meta name="description" content="Why Jupiter is striped: turbulence on a fast-spinning planet organises itself into jets, belts and zones. Computed live and shown on a 3D Jupiter.">
+<link rel="canonical" href="https://mhgfysik.dk/jupiters-baelter-en.html">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body { margin: 0; }
+img { max-width: 100%; }
+/* Layout: the planet as hero with the wind profile beside it, the vorticity map and notes below */
+:root {
+  --void: #08090d;
+  --panel: #12131a;
+  --raise: #1c1d27;
+  --line: #2a2c3a;
+  --ink: #ece7de;
+  --muted: #9a98a6;
+  --zone: #efe2c6;
+  --belt: #b4744a;
+  --spot: #d0563a;
+  --jet: #8fc6ff;
+  --focus: #d2dcff;
+  --f-display: "Spectral", Georgia, "Times New Roman", serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { background: var(--void); color: var(--ink); }
+body { font-family: var(--f-body); font-size: 15px; line-height: 1.55; }
+a { color: var(--jet); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 56px; display: grid; gap: 18px; }
+header { display: grid; gap: 6px; }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.eyebrow a { color: inherit; }
+h1 { font-family: var(--f-display); font-weight: 400; font-size: clamp(30px, 5vw, 48px); line-height: 1.08; margin: 0; text-wrap: balance; }
+h1 em { font-style: italic; color: var(--zone); }
+.lede { margin: 4px 0 0; max-width: 68ch; color: var(--muted); }
+.stagewrap { display: grid; grid-template-columns: minmax(0, 1fr) 210px; gap: 12px; }
+@media (max-width: 760px) { .stagewrap { grid-template-columns: minmax(0, 1fr); } }
+.stage { position: relative; height: clamp(360px, 62vh, 640px); background: #050608; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.hud { position: absolute; pointer-events: none; font-family: var(--f-mono); font-size: 12px; color: var(--muted); text-shadow: 0 1px 6px #000; }
+.hud.tl { top: 12px; left: 14px; display: grid; gap: 2px; }
+.hud.tl b { color: var(--ink); font-weight: 500; }
+.prof { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px; display: grid; gap: 6px; min-width: 0; }
+.prof canvas { width: 100%; height: 100%; min-height: 300px; display: block; }
+.prof .hd { font: 500 11px var(--f-mono); color: var(--muted); }
+.controls { display: grid; gap: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.play { height: 44px; min-width: 112px; padding: 0 18px 0 14px; border-radius: 999px; border: 1px solid #4a4e6a; background: #1b1d2b; color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 600 15px/1 var(--f-body); }
+.play svg { width: 16px; height: 16px; fill: currentColor; }
+.action { font: 600 14px/1 var(--f-body); color: #2a1208; background: var(--spot); border: 0; border-radius: 999px; padding: 11px 16px; cursor: pointer; }
+.ghost { font: 500 14px/1 var(--f-body); color: var(--ink); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 10px 15px; cursor: pointer; }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
+.seg button { font: 500 13px/1 var(--f-body); color: var(--muted); background: transparent; border: 0; padding: 9px 12px; cursor: pointer; border-right: 1px solid var(--line); }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { color: var(--ink); background: var(--raise); }
+.ctl-label { font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.sliders { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px 22px; }
+.sl { display: grid; gap: 2px; font-size: 13px; color: var(--muted); }
+.sl .top { display: flex; justify-content: space-between; gap: 8px; }
+.sl output { font: 500 13px var(--f-mono); color: var(--ink); }
+.sl input { width: 100%; accent-color: var(--zone); }
+.hint { font-size: 12px; color: var(--muted); margin: 0; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.mapbox { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; display: grid; gap: 6px; }
+.mapbox .hd { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; font: 500 11px var(--f-mono); color: var(--muted); }
+.mapbox canvas { width: 100%; aspect-ratio: 2/1; max-width: 100%; display: block; image-rendering: auto; border-radius: 3px; }
+.notes { display: grid; grid-template-columns: 1.3fr 1fr; gap: 28px 36px; padding-top: 8px; }
+.notes > section { min-width: 0; }
+.notes h2 { font-family: var(--f-display); font-weight: 400; font-size: 25px; margin: 0 0 8px; text-wrap: balance; }
+.notes h3 { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 500; margin: 0 0 8px; }
+.notes p { margin: 0 0 10px; max-width: 66ch; }
+.eq { font-family: var(--f-display); font-style: italic; font-size: 18px; padding: 6px 0 10px; overflow-x: auto; white-space: nowrap; }
+.side { border-left: 1px solid var(--line); padding-left: 24px; color: #cdc9d2; font-size: 14px; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 6px 0 16px; font-size: 14px; }
+.facts dt { font-family: var(--f-mono); font-size: 12px; color: var(--muted); padding-top: 2px; }
+.facts dd { margin: 0; }
+figure.vid { margin: 8px 0 14px; display: grid; gap: 6px; }
+figure.vid video { width: 100%; max-width: 100%; aspect-ratio: 4/3; border-radius: 6px; background: #000; display: block; }
+figure.vid figcaption { font-size: 13px; color: var(--muted); }
+ul.refs { margin: 0; padding-left: 18px; font-size: 13.5px; } ul.refs li { margin-bottom: 5px; }
+@media (max-width: 760px) { .notes { grid-template-columns: 1fr; } .side { border-left: 0; border-top: 1px solid var(--line); padding-left: 0; padding-top: 16px; } .prof canvas { min-height: 200px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow"><a href="index-en.html#astro">← Home</a> · Astronomy and spaceflight · atmospheres in 3D</div>
+    <h1>Jupiter's belts: why the giant planet is <em>striped</em></h1>
+    <p class="lede">Jupiter's atmosphere is full of storms and eddies, and yet the clouds arrange themselves in light zones and dark belts, separated by jet streams. This happens by itself when turbulence is left to develop on a fast-spinning sphere. Here it is computed live: small storms are added at random, and after a while they organise themselves into jets. Drag the planet to turn it.</p>
+  </header>
+
+  <div class="stagewrap">
+    <div class="stage" id="stage">
+      <canvas id="cv" aria-label="3D Jupiter with clouds moving with the computed flow. Drag to turn."></canvas>
+      <div class="hud tl"><div>t = <b id="tOut">0</b></div><div><span id="jetLbl">jets</span>: <b id="jetOut">—</b></div><div>Rhines scale: <b id="lrOut">—</b></div></div>
+    </div>
+    <div class="prof"><div class="hd">Eastward wind, averaged over longitude</div><canvas id="profCv"></canvas></div>
+  </div>
+
+  <div class="controls">
+    <div class="row">
+      <button class="play" id="play" type="button"><svg viewBox="0 0 20 20" id="playIcon" aria-hidden="true"><path d="M4 4h12v12H4z"/></svg><span id="playTxt">Stop</span></button>
+      <button class="action" id="storm" type="button">Add a great storm</button>
+      <button class="ghost" id="reset" type="button">Start again</button>
+      <div class="group"><span class="ctl-label">Colours</span>
+        <div class="seg" id="look"><button type="button" data-v="jup" aria-pressed="true">Jupiter</button><button type="button" data-v="vort" aria-pressed="false">Vorticity</button></div>
+      </div>
+    </div>
+    <div class="sliders">
+      <label class="sl"><span class="top"><span>Rotation (β)</span><output id="betaOut">40</output></span><input type="range" id="beta" min="0" max="80" step="1" value="40"></label>
+      <label class="sl"><span class="top"><span>Storms added</span><output id="epsOut">6.0</output></span><input type="range" id="eps" min="1" max="15" step="0.5" value="6"></label>
+      <label class="sl"><span class="top"><span>Friction with deeper layers</span><output id="muOut">0.010</output></span><input type="range" id="mu" min="0.004" max="0.05" step="0.001" value="0.01"></label>
+      <label class="sl"><span class="top"><span>Speed</span><output id="spdOut">normal</output></span><input type="range" id="spd" min="4" max="40" step="1" value="14"></label>
+    </div>
+    <p class="hint">With β = 0 the planet does not rotate, and the storms merge into large, round eddies. Turn β up, and the jets become more numerous and narrower. It takes half a minute to a minute before the stripes are clear.</p>
+  </div>
+
+  <div class="mapbox">
+    <div class="hd"><span>The whole map: vorticity ζ (red: anticlockwise, blue: clockwise) and arrows for the mean wind</span><span>longitude →</span></div>
+    <canvas id="mapCv" width="512" height="256"></canvas>
+  </div>
+
+  <div class="notes">
+    <section>
+      <h2>Turbulence that organises itself</h2>
+      <p>In a thin layer of air on a rotating planet, turbulence behaves differently from turbulence in a glass of water. Small eddies merge into larger ones, so the energy moves towards large scales. On a spinning sphere the Coriolis effect changes with latitude. This change is called the β effect:</p>
+      <div class="eq">β = 2Ω cos φ / R</div>
+      <p>where Ω is the rotation, R the radius and φ the latitude. Large eddies cannot keep growing in the north–south direction. They turn into Rossby waves that travel westwards, and the energy collects instead in currents that blow east or west along the circles of latitude. The scale at which this happens is the Rhines scale:</p>
+      <div class="eq">L<sub>β</sub> ≈ 2π √(U/β)</div>
+      <p>U is the typical wind speed. The faster the planet spins, and the larger it is compared with its weather systems, the more jets fit in from pole to pole. Jupiter is eleven times as wide as the Earth and turns in under ten hours, and it has many jets that blow alternately east and west. The strongest, at about 24° north, blows at about 150 m/s. The Earth has only one or two jet streams in each hemisphere.</p>
+      <h2>Zones and belts</h2>
+      <p>Between the jets lie alternating light zones and dark belts. In the zones the air rises, and high, white clouds of ammonia ice form. In the belts the air sinks, the high clouds disappear, and we see down to deeper, brownish cloud layers. In the northern hemisphere the zones turn clockwise like highs and the belts anticlockwise like lows. The simulation colours by the same rule: where the mean wind gives anticlockwise vorticity, a belt is drawn, and where it gives clockwise vorticity, a zone.</p>
+      <h2>The Great Red Spot</h2>
+      <p>Press “Add a great storm”. A large anticyclone, a high, is put into a zone, like the Great Red Spot, which has been observed for more than 150 years. Today it is about 1.3 times as wide as the Earth and is slowly shrinking. In the simulation the vortex drifts along, carries clouds round with it and draws red streaks out into the zone, but it dissolves within a short time. On a β-plane a single vortex radiates its energy away as Rossby waves, and the model has only one layer and lacks the vertical structure that keeps the real spot alive for hundreds of years.</p>
+      <figure class="vid">
+        <video src="video/kugle-paa-vandfilm.mp4" poster="video/kugle-paa-vandfilm.jpg" muted loop playsinline controls preload="none"></video>
+        <figcaption>A large sphere turning on a thin film of water. The water runs in a thin layer over the surface and forms small waves and streaks. Jupiter's weather likewise takes place in a layer that is thin compared with the planet.</figcaption>
+      </figure>
+    </section>
+    <section class="side">
+      <h3>Jupiter</h3>
+      <dl class="facts">
+        <dt>Equatorial radius</dt><dd>71,492 km, 11.2 × Earth</dd>
+        <dt>Rotation period</dt><dd>9 h 56 min</dd>
+        <dt>β at the equator</dt><dd>2Ω/R ≈ 4.9·10⁻¹² m⁻¹s⁻¹</dd>
+        <dt>Strongest jet</dt><dd>≈ 150 m/s at 24° N</dd>
+        <dt>Depth of the jets</dt><dd>about 3000 km (measured by Juno)</dd>
+      </dl>
+      <h3>What the model computes</h3>
+      <p>The barotropic vorticity equation for a thin layer on a β-plane:</p>
+      <div class="eq" style="font-size:16px">∂ζ/∂t + J(ψ, ζ) + β ∂ψ/∂x = F − μζ − ν∇⁸ζ</div>
+      <p>ζ = ∇²ψ is the vorticity and ψ the stream function. F is random small storms added at a fixed wavelength, like convection and thunderstorms on Jupiter. μζ is friction with deeper layers, and ν∇⁸ζ removes the very smallest eddies. The equation is solved spectrally with FFT on a 128 × 64 grid in a Web Worker. The clouds are a dye on a finer grid carried along by the wind.</p>
+      <h3>Limitations</h3>
+      <p>Here β is constant, whereas on a sphere it decreases towards the poles. The map is periodic north–south and wrapped over the sphere, so the poles are not real poles, and there is no difference between the northern and southern hemispheres. The model has one layer and no rising or sinking air. It shows why jets form, but not Jupiter's exact pattern.</p>
+      <h3>Sources</h3>
+      <ul class="refs">
+        <li>P. B. Rhines, <i>J. Fluid Mech.</i> 69 (1975): waves and turbulence on a β-plane.</li>
+        <li>A. R. Vasavada &amp; A. P. Showman, <i>Rep. Prog. Phys.</i> 68 (2005): Jovian atmospheric dynamics.</li>
+        <li>Y. Kaspi et al., <i>Nature</i> 555 (2018): Juno's measurement of the depth of the jets.</li>
+      </ul>
+    </section>
+  </div>
+</div>
+<script type="text/plain" id="jcore">
+// ---- 2D barotropic vorticity on a beta-plane, pseudo-spectral, doubly periodic ----
+function makeFFT(n){const lev=Math.log2(n)|0;const cos=new Float64Array(n/2),sin=new Float64Array(n/2);for(let i=0;i<n/2;i++){cos[i]=Math.cos(2*Math.PI*i/n);sin[i]=Math.sin(2*Math.PI*i/n);}
+  const rev=new Uint32Array(n);for(let i=0;i<n;i++){let r=0,x=i;for(let k=0;k<lev;k++){r=(r<<1)|(x&1);x>>=1;}rev[i]=r;}
+  return function(re,im,off,stride,inv){ // in-place on strided data
+    for(let i=0;i<n;i++){const j=rev[i];if(j>i){const a=off+i*stride,b=off+j*stride;let t=re[a];re[a]=re[b];re[b]=t;t=im[a];im[a]=im[b];im[b]=t;}}
+    for(let size=2;size<=n;size*=2){const half=size/2,step=n/size;
+      for(let i=0;i<n;i+=size)for(let j=i,k=0;j<i+half;j++,k+=step){const a=off+j*stride,b=off+(j+half)*stride;const c=cos[k],s=inv?sin[k]:-sin[k];
+        const tr=re[b]*c-im[b]*s,ti=re[b]*s+im[b]*c;re[b]=re[a]-tr;im[b]=im[a]-ti;re[a]+=tr;im[a]+=ti;}}
+    if(inv){for(let i=0;i<n;i++){const a=off+i*stride;re[a]/=n;im[a]/=n;}}};}
+function makeSim(o){
+  const NX=o.NX||128,NY=o.NY||64,LX=o.LX||4*Math.PI,LY=o.LY||2*Math.PI,N=NX*NY;
+  const fx=makeFFT(NX),fy=makeFFT(NY);
+  function fft2(re,im,inv){for(let j=0;j<NY;j++)fx(re,im,j*NX,1,inv);for(let i=0;i<NX;i++)fy(re,im,i,NX,inv);}
+  const kx=new Float64Array(N),ky=new Float64Array(N),k2=new Float64Array(N),mask=new Uint8Array(N);
+  for(let j=0;j<NY;j++){const mj=j<=NY/2?j:j-NY;for(let i=0;i<NX;i++){const mi=i<=NX/2?i:i-NX;const p=j*NX+i;kx[p]=2*Math.PI*mi/LX;ky[p]=2*Math.PI*mj/LY;k2[p]=kx[p]*kx[p]+ky[p]*ky[p];
+    mask[p]=(Math.abs(mi)<NX/3&&Math.abs(mj)<NY/3)?1:0;}}
+  const S={NX,NY,LX,LY,N,kd2:o.Ld?1/(o.Ld*o.Ld):0,beta:o.beta??10,mu:o.mu??0.02,nu:o.nu??3e-10,kf:o.kf??12,eps:o.eps??1e-3,dt:o.dt??0.02,t:0,
+    zr:new Float64Array(N),zi:new Float64Array(N),
+    u:new Float64Array(N),v:new Float64Array(N),z:new Float64Array(N),psi:new Float64Array(N),
+    nlr0:new Float64Array(N),nli0:new Float64Array(N),first:true};
+  const ar=new Float64Array(N),ai=new Float64Array(N),br=new Float64Array(N),bi=new Float64Array(N),cr=new Float64Array(N),ci=new Float64Array(N),dr=new Float64Array(N),di=new Float64Array(N);
+  let seed=o.seed||12345;const rnd=()=>{seed=(seed*1103515245+12345)&0x7fffffff;return seed/0x7fffffff;};
+  const gauss=()=>{let u=0;while(!u)u=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*rnd());};
+  // forcing ring
+  const ring=[];for(let p=0;p<N;p++){const k=Math.sqrt(k2[p]);if(Math.abs(k-S.kf)<1.5&&mask[p])ring.push(p);}
+  S.ring=ring;
+  function physical(){ // from zeta-hat compute u,v,zeta,psi in physical space
+    for(let p=0;p<N;p++){const kk=(k2[p]+S.kd2)||1;const pr=-S.zr[p]/kk,pi=-S.zi[p]/kk;const pr0=k2[p]?pr:0,pi0=k2[p]?pi:0;
+      // u = -dpsi/dy -> -(i ky) psi ; v = dpsi/dx -> i kx psi
+      ar[p]=ky[p]*pi0;ai[p]=-ky[p]*pr0;br[p]=-kx[p]*pi0;bi[p]=kx[p]*pr0;cr[p]=-k2[p]*pr0;ci[p]=-k2[p]*pi0;dr[p]=pr0;di[p]=pi0;}
+    fft2(ar,ai,true);fft2(br,bi,true);fft2(cr,ci,true);fft2(dr,di,true);
+    for(let p=0;p<N;p++){S.u[p]=ar[p];S.v[p]=br[p];S.z[p]=cr[p];S.psi[p]=dr[p];}
+  }
+  function rhs(outr,outi){ // nonlinear + beta term: -(u zx + v zy) - beta v
+    for(let p=0;p<N;p++){const kk=(k2[p]+S.kd2)||1;const pr=k2[p]?-S.zr[p]/kk:0,pi=k2[p]?-S.zi[p]/kk:0;
+      ar[p]=ky[p]*pi;ai[p]=-ky[p]*pr;br[p]=-kx[p]*pi;bi[p]=kx[p]*pr; // u,v
+      cr[p]=-kx[p]*S.zi[p];ci[p]=kx[p]*S.zr[p];dr[p]=-ky[p]*S.zi[p];di[p]=ky[p]*S.zr[p];} // zx,zy
+    fft2(ar,ai,true);fft2(br,bi,true);fft2(cr,ci,true);fft2(dr,di,true);
+    for(let p=0;p<N;p++){outr[p]=-(ar[p]*cr[p]+br[p]*dr[p]);outi[p]=0;S.u[p]=ar[p];S.v[p]=br[p];}
+    fft2(outr,outi,false);
+    for(let p=0;p<N;p++){if(!mask[p]){outr[p]=0;outi[p]=0;}}
+  }
+  const nr=new Float64Array(N),ni=new Float64Array(N);
+  S.dt0=S.dt;const dx=Math.min(LX/NX,LY/NY);
+  S.step=function(){
+    rhs(nr,ni);
+    let um=0;for(let p=0;p<N;p++){const a=Math.abs(S.u[p])+Math.abs(S.v[p]);if(a>um)um=a;}
+    let dtn=S.dt0;while(um*dtn/dx>0.45&&dtn>S.dt0/16)dtn/=2;
+    if(dtn!==S.dt){S.dt=dtn;S.first=true;}
+    const dt=S.dt;
+    if(!S.E||S.Ebeta!==S.beta||S.Edt!==dt||S.Emu!==S.mu){S.Er=new Float64Array(N);S.Ei=new Float64Array(N);S.Ebeta=S.beta;S.Edt=dt;S.Emu=S.mu;S.E=true;
+      for(let p=0;p<N;p++){const re=-(S.mu+S.nu*Math.pow(k2[p],4))*dt,im=k2[p]?S.beta*kx[p]/(k2[p]+S.kd2)*dt:0;const m=Math.exp(re);S.Er[p]=m*Math.cos(im);S.Ei[p]=m*Math.sin(im);}}
+    const first=S.first;S.first=false;
+    for(let p=0;p<N;p++){const er=S.Er[p],ei=S.Ei[p];
+      // E*(z + dt*1.5*N) - 0.5*dt*E^2*Nold
+      let xr,xi;
+      if(first){xr=S.zr[p]+dt*nr[p];xi=S.zi[p]+dt*ni[p];}
+      else{const e2r=er*er-ei*ei,e2i=2*er*ei;xr=S.zr[p]+1.5*dt*nr[p];xi=S.zi[p]+1.5*dt*ni[p];
+        const or=S.nlr0[p],oi=S.nli0[p];// apply E to x, subtract 0.5 dt E^2 old
+        const ar_=er*xr-ei*xi-0.5*dt*(e2r*or-e2i*oi),ai_=er*xi+ei*xr-0.5*dt*(e2r*oi+e2i*or);
+        S.nlr0[p]=nr[p];S.nli0[p]=ni[p];S.zr[p]=ar_;S.zi[p]=ai_;continue;}
+      S.nlr0[p]=nr[p];S.nli0[p]=ni[p];S.zr[p]=er*xr-ei*xi;S.zi[p]=er*xi+ei*xr;}
+    const famp=Math.sqrt(S.eps*2/dt)*S.kf/Math.sqrt(ring.length)*N*1.2;
+    for(const p of ring){S.zr[p]+=famp*dt*gauss();S.zi[p]+=famp*dt*gauss();}
+    // keep field real: enforce Hermitian symmetry
+    for(let j=0;j<NY;j++)for(let i=0;i<NX;i++){const p=j*NX+i,q=((NY-j)%NY)*NX+((NX-i)%NX);if(q<p){const r=(S.zr[p]+S.zr[q])/2,im=(S.zi[p]-S.zi[q])/2;S.zr[p]=r;S.zi[p]=im;S.zr[q]=r;S.zi[q]=-im;}}
+    S.zr[0]=0;S.zi[0]=0;S.t+=dt;
+  };
+  S.physical=physical;
+  S.addVortex=function(x0,y0,r,amp){ // add Gaussian vortex in physical space
+    physical();for(let j=0;j<NY;j++)for(let i=0;i<NX;i++){let dx=i*LX/NX-x0,dy=j*LY/NY-y0;dx-=LX*Math.round(dx/LX);dy-=LY*Math.round(dy/LY);S.z[j*NX+i]+=amp*Math.exp(-(dx*dx+dy*dy)/(r*r));}
+    for(let p=0;p<N;p++){ar[p]=S.z[p];ai[p]=0;}fft2(ar,ai,false);for(let p=0;p<N;p++){S.zr[p]=mask[p]?ar[p]:0;S.zi[p]=mask[p]?ai[p]:0;}S.first=true;};
+  S.energy=function(){let e=0;for(let p=0;p<N;p++){if(!k2[p])continue;e+=(S.zr[p]*S.zr[p]+S.zi[p]*S.zi[p])/k2[p];}return 0.5*e/(N*N);};
+  S.zonal=function(){physical();const m=new Float64Array(NY);for(let j=0;j<NY;j++){let s=0;for(let i=0;i<NX;i++)s+=S.u[j*NX+i];m[j]=s/NX;}return m;};
+  return S;
+}
+</script>
+<script type="text/plain" id="jglue">
+let S=null,running=true,cfg={beta:20,mu:0.01,eps:5e-3},budget=14;
+function init(seed){S=makeSim({NX:128,NY:64,beta:cfg.beta,mu:cfg.mu,eps:cfg.eps,kf:12,dt:0.02,seed});}
+function post(){S.physical();const u=new Float32Array(S.u),v=new Float32Array(S.v),z=new Float32Array(S.z);
+  const m=new Float32Array(S.NY);for(let j=0;j<S.NY;j++){let s=0;for(let i=0;i<S.NX;i++)s+=S.u[j*S.NX+i];m[j]=s/S.NX;}
+  let ur=0;for(let p=0;p<S.N;p++)ur+=S.u[p]*S.u[p]+S.v[p]*S.v[p];ur=Math.sqrt(ur/S.N);
+  postMessage({u,v,z,m,t:S.t,urms:ur,beta:S.beta},[u.buffer,v.buffer,z.buffer,m.buffer]);}
+function loop(){if(running&&S){const t0=performance.now();let k=0;while(performance.now()-t0<budget){S.step();k++;}post();}else if(S)post();setTimeout(loop,running?4:100);}
+onmessage=e=>{const m=e.data;
+  if(m.type==="init"){Object.assign(cfg,m.cfg||{});init(m.seed||12345);}
+  else if(m.type==="cfg"){Object.assign(cfg,m.cfg);if(S){S.beta=cfg.beta;S.mu=cfg.mu;S.eps=cfg.eps;}}
+  else if(m.type==="run")running=m.on;
+  else if(m.type==="vortex"&&S)S.addVortex(m.x,m.y,m.r,m.amp);
+  else if(m.type==="budget")budget=m.ms;
+};
+loop();
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+window.TXJ={dec:".",stop:"Stop",start:"Start",west:"← west",east:"east →",jets:(e,w)=>e+" eastward, "+w+" westward",lat:"of latitude",slow:"slow",normal:"normal",fast:"fast"};
+
+</script>
+<script>
+(function(){
+"use strict";
+const $=s=>document.querySelector(s);
+const T=window.TXJ;
+const fmt=(v,d)=>(v<0?"−":"")+Math.abs(v).toFixed(d).replace(".",T.dec);
+const NX=128,NY=64,LX=4*Math.PI,LY=2*Math.PI,TW=512,TH=256;
+const st={running:true,look:"jup",beta:40,eps:6,mu:0.01,spd:14};
+const wk=new Worker(URL.createObjectURL(new Blob([$("#jcore").textContent+"\n"+$("#jglue").textContent],{type:"text/javascript"})));
+let F=null,lastT=0,pendingStorm=null;
+/* ---------- tracer fields on the fine grid ---------- */
+const C=new Float32Array(TW*TH),Dd=new Float32Array(TW*TH),R=new Float32Array(TW*TH),C2=new Float32Array(TW*TH),D2=new Float32Array(TW*TH),R2=new Float32Array(TW*TH),N0=new Float32Array(TW*TH);
+function noiseInit(){ // multi-octave value noise, periodic
+  const oct=[[8,0.5],[16,0.28],[32,0.14],[64,0.08]];N0.fill(0);
+  for(const [n,a] of oct){const g=new Float32Array(n*(n/2));for(let i=0;i<g.length;i++)g[i]=Math.random()*2-1;const gh=n/2;
+    for(let j=0;j<TH;j++)for(let i=0;i<TW;i++){const x=i/TW*n,y=j/TH*gh,xi=Math.floor(x),yi=Math.floor(y),fx=x-xi,fy=y-yi;const sx=fx*fx*(3-2*fx),sy=fy*fy*(3-2*fy);
+      const a00=g[(yi%gh)*n+xi%n],a10=g[(yi%gh)*n+(xi+1)%n],a01=g[((yi+1)%gh)*n+xi%n],a11=g[((yi+1)%gh)*n+(xi+1)%n];
+      N0[j*TW+i]+=a*((a00*(1-sx)+a10*sx)*(1-sy)+(a01*(1-sx)+a11*sx)*sy);}}
+  Dd.set(N0);C.fill(0);R.fill(0);}
+noiseInit();
+function bilU(A,x,y){ // sample sim field (NX×NY, periodic) at sim coords (x in [0,LX), y in [0,LY))
+  let gx=x/LX*NX,gy=y/LY*NY;gx=((gx%NX)+NX)%NX;gy=((gy%NY)+NY)%NY;const i=Math.floor(gx),j=Math.floor(gy),fx=gx-i,fy=gy-j,i1=(i+1)%NX,j1=(j+1)%NY;
+  return (A[j*NX+i]*(1-fx)+A[j*NX+i1]*fx)*(1-fy)+(A[j1*NX+i]*(1-fx)+A[j1*NX+i1]*fx)*fy;}
+function bilT(A,x,y){x=((x%TW)+TW)%TW;y=((y%TH)+TH)%TH;const i=Math.floor(x),j=Math.floor(y),fx=x-i,fy=y-j,i1=(i+1)%TW,j1=(j+1)%TH;
+  return (A[j*TW+i]*(1-fx)+A[j*TW+i1]*fx)*(1-fy)+(A[j1*TW+i]*(1-fx)+A[j1*TW+i1]*fx)*fy;}
+// tracer row j=0 is north (sim y = LY). sim y of row j: LY*(1-(j+0.5)/TH)
+let zbar=new Float32Array(NY);
+function advect(dt){
+  if(!F)return;const sx=TW/LX,sy=TH/LY;const relaxC=Math.min(1,dt/12),relaxD=Math.min(1,dt/45),decR=Math.exp(-dt/900);
+  // zonal-mean vorticity -dU/dy on sim grid
+  const m=F.m;for(let j=0;j<NY;j++){const a=m[(j+1)%NY],b=m[(j-1+NY)%NY];zbar[j]=-(a-b)/(2*LY/NY);}
+  let zs=0;for(const v of zbar)zs=Math.max(zs,Math.abs(v));zs=zs||1;
+  for(let j=0;j<TH;j++){const ys=LY*(1-(j+0.5)/TH);const zb=bilRow(ys);const target=-Math.tanh(2.2*zb/zs);
+    for(let i=0;i<TW;i++){const xs=(i+0.5)/sx;const u=bilU(F.u,xs,ys),v=bilU(F.v,xs,ys);const px=i-u*dt*sx,py=j+v*dt*sy;const k=j*TW+i;
+      C2[k]=bilT(C,px,py);D2[k]=bilT(Dd,px,py);R2[k]=bilT(R,px,py);
+      C2[k]+=(target-C2[k])*relaxC;D2[k]+=(N0[k]-D2[k])*relaxD;R2[k]*=decR;}}
+  C.set(C2);Dd.set(D2);R.set(R2);
+}
+function bilRow(ys){let g=ys/LY*NY-0.5;g=((g%NY)+NY)%NY;const j=Math.floor(g),f=g-j;return zbar[j]*(1-f)+zbar[(j+1)%NY]*f;}
+/* ---------- colours ---------- */
+const texCv=document.createElement("canvas");texCv.width=TW;texCv.height=TH;const tctx=texCv.getContext("2d");const img=tctx.createImageData(TW,TH);
+const ZONE=[242,231,208],BELT=[156,92,54],DEEP=[104,62,40],SPOT=[200,78,50],POLE=[140,124,108];
+function paintTex(){
+  const d=img.data;let zm=0;if(F)for(const v of F.z)zm=Math.max(zm,Math.abs(v));zm=zm||1;
+  for(let j=0;j<TH;j++){const lat=90-180*(j+0.5)/TH,pol=Math.min(1,Math.max(0,(Math.abs(lat)-60)/28));const ys=LY*(1-(j+0.5)/TH);
+    for(let i=0;i<TW;i++){const k=j*TW+i,o=4*k;let r,g,b;
+      if(st.look==="vort"&&F){const z=bilU(F.z,(i+0.5)*LX/TW,ys)/zm;const t=Math.max(-1,Math.min(1,z*1.6));if(t>0){r=20+235*t;g=24+70*t;b=40+30*t;}else{r=20-10*t;g=24-110*t;b=40-215*t;}}
+      else{const c=0.5+0.5*Math.tanh(2.0*C[k]),dd=Dd[k];let base=[BELT[0]+(ZONE[0]-BELT[0])*c,BELT[1]+(ZONE[1]-BELT[1])*c,BELT[2]+(ZONE[2]-BELT[2])*c];
+        const sh=1+0.22*dd;base=[base[0]*sh,base[1]*sh,base[2]*sh];
+        if(c<0.35){const w=(0.35-c)/0.35*Math.max(0,-dd)*0.8;base=[base[0]+(DEEP[0]-base[0])*w,base[1]+(DEEP[1]-base[1])*w,base[2]+(DEEP[2]-base[2])*w];}
+        const rr=Math.min(1,R[k]*2.2);base=[base[0]+(SPOT[0]-base[0])*rr,base[1]+(SPOT[1]-base[1])*rr,base[2]+(SPOT[2]-base[2])*rr];
+        base=[base[0]+(POLE[0]-base[0])*pol,base[1]+(POLE[1]-base[1])*pol,base[2]+(POLE[2]-base[2])*pol];
+        r=base[0];g=base[1];b=base[2];}
+      d[o]=Math.min(255,Math.max(0,r));d[o+1]=Math.min(255,Math.max(0,g));d[o+2]=Math.min(255,Math.max(0,b));d[o+3]=255;}}
+  tctx.putImageData(img,0,0);planetTex.needsUpdate=true;
+}
+/* ---------- three.js ---------- */
+const cv=$("#cv"),stage=$("#stage");
+const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true});renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x040507);
+const camera=new THREE.PerspectiveCamera(36,1,0.1,200);camera.position.set(0,0.6,7.2);camera.lookAt(0,0,0);
+scene.add(new THREE.AmbientLight(0x404650,0.55));const sun=new THREE.DirectionalLight(0xfff6e8,1.05);sun.position.set(-6,1.5,5);scene.add(sun);
+const planetTex=new THREE.CanvasTexture(texCv);planetTex.wrapS=THREE.RepeatWrapping;
+const planet=new THREE.Mesh(new THREE.SphereGeometry(2,96,64),new THREE.MeshStandardMaterial({map:planetTex,roughness:0.95,metalness:0}));
+const tilt=new THREE.Group();tilt.rotation.z=3.1*Math.PI/180;tilt.add(planet);scene.add(tilt);planet.scale.y=0.935; // Jupiter's oblateness
+{const n=900,p=new Float32Array(n*3);for(let i=0;i<n;i++){const u=Math.random()*2-1,ph=Math.random()*2*Math.PI,s=Math.sqrt(1-u*u),rr=60+Math.random()*30;const v={x:rr*s*Math.cos(ph),y:rr*u,z:rr*s*Math.sin(ph)};p.set([v.x,v.y,v.z],3*i);}
+ const g=new THREE.BufferGeometry();g.setAttribute("position",new THREE.BufferAttribute(p,3));scene.add(new THREE.Points(g,new THREE.PointsMaterial({color:0xbfc6d8,size:0.12})));}
+let rotY=0,rotX=0.15,drag=null,dist=7.2;
+cv.addEventListener("pointerdown",e=>{cv.setPointerCapture(e.pointerId);drag=[e.clientX,e.clientY];});
+cv.addEventListener("pointermove",e=>{if(!drag)return;rotY+=(e.clientX-drag[0])*0.006;rotX=Math.max(-1.3,Math.min(1.3,rotX+(e.clientY-drag[1])*0.006));drag=[e.clientX,e.clientY];});
+cv.addEventListener("pointerup",()=>drag=null);cv.addEventListener("pointercancel",()=>drag=null);
+cv.addEventListener("wheel",e=>{e.preventDefault();dist=Math.max(4,Math.min(14,dist*Math.exp(e.deltaY*0.001)));},{passive:false});
+function resize(){const w=stage.clientWidth,h=stage.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();drawProfile();}
+new ResizeObserver(resize).observe(stage);
+/* ---------- profile & map ---------- */
+const css=k=>getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+function drawProfile(){const c=$("#profCv"),dpr=Math.min(2,window.devicePixelRatio||1),w=c.clientWidth,h=c.clientHeight;if(!w||!h)return;c.width=Math.round(w*dpr);c.height=Math.round(h*dpr);
+  const g=c.getContext("2d");g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,w,h);g.font="10.5px "+css("--f-mono");
+  const L=30,Rr=8,Tp=8,B=20;const Y=lat=>Tp+(90-lat)/180*(h-Tp-B);
+  if(!F)return;let mx=0.2;for(const v of F.m)mx=Math.max(mx,Math.abs(v));const X=u=>L+(u/mx*0.5+0.5)*(w-L-Rr);
+  // belts/zones background
+  for(let j=0;j<NY;j++){const lat0=-90+180*j/NY,lat1=-90+180*(j+1)/NY;const zb=zbar[j];g.fillStyle=zb>0?"rgba(180,116,74,.22)":"rgba(239,226,198,.10)";g.fillRect(L,Y(lat1),w-L-Rr,Y(lat0)-Y(lat1)+0.5);}
+  g.strokeStyle=css("--line");g.fillStyle=css("--muted");g.textAlign="right";
+  for(const lat of [-60,-30,0,30,60]){const y=Math.round(Y(lat))+0.5;g.beginPath();g.moveTo(L,y);g.lineTo(w-Rr,y);g.stroke();g.fillText(lat+"°",L-4,y+4);}
+  g.beginPath();g.moveTo(X(0)+0.5,Tp);g.lineTo(X(0)+0.5,h-B);g.stroke();
+  g.textAlign="center";g.fillText(T.west,L+20,h-6);g.fillText(T.east,w-Rr-18,h-6);
+  g.strokeStyle=css("--jet");g.lineWidth=2;g.beginPath();for(let j=0;j<=NY;j++){const v=F.m[j%NY],lat=-90+180*((j%NY)+0.5)/NY;const x=X(v),y=Y(j===NY?90:lat);j?g.lineTo(x,y):g.moveTo(x,y);}g.stroke();}
+const mapCv=$("#mapCv"),mctx=mapCv.getContext("2d"),small=document.createElement("canvas");small.width=NX;small.height=NY;const sctx=small.getContext("2d"),simg=sctx.createImageData(NX,NY);
+function drawMap(){if(!F)return;let zm=0;for(const v of F.z)zm=Math.max(zm,Math.abs(v));zm=zm||1;const d=simg.data;
+  for(let j=0;j<NY;j++)for(let i=0;i<NX;i++){const z=F.z[(NY-1-j)*NX+i]/zm,t=Math.max(-1,Math.min(1,z*1.6)),o=4*(j*NX+i);
+    if(t>0){d[o]=18+237*t;d[o+1]=20+70*t;d[o+2]=30+25*t;}else{d[o]=18-8*t;d[o+1]=20-120*t;d[o+2]=30-220*t;}d[o+3]=255;}
+  sctx.putImageData(simg,0,0);mctx.imageSmoothingEnabled=true;mctx.drawImage(small,0,0,mapCv.width,mapCv.height);
+  // zonal-mean wind arrows
+  mctx.strokeStyle="rgba(255,255,255,.55)";mctx.lineWidth=1.2;let mx=0.1;for(const v of F.m)mx=Math.max(mx,Math.abs(v));
+  for(let j=2;j<NY;j+=4){const v=F.m[j],y=mapCv.height*(1-(j+0.5)/NY),L=Math.abs(v)/mx*40;if(L<4)continue;for(let x=30;x<mapCv.width;x+=90){const s=Math.sign(v);mctx.beginPath();mctx.moveTo(x,y);mctx.lineTo(x+s*L,y);mctx.lineTo(x+s*(L-5),y-3);mctx.moveTo(x+s*L,y);mctx.lineTo(x+s*(L-5),y+3);mctx.stroke();}}}
+/* ---------- stats ---------- */
+function stats(){if(!F)return;$("#tOut").textContent=fmt(F.t,0);
+  const m=F.m;let mx=0;for(const v of m)mx=Math.max(mx,Math.abs(v));let e=0,wv=0;
+  for(let j=0;j<NY;j++){const a=m[(j-1+NY)%NY],b=m[j],c=m[(j+1)%NY];if(b>a&&b>=c&&b>0.35*mx)e++;if(b<a&&b<=c&&b<-0.35*mx)wv++;}
+  $("#jetOut").textContent=mx<0.08?"—":T.jets(e,wv);
+  const L=st.beta>0?2*Math.PI*Math.sqrt(F.urms/st.beta):Infinity;$("#lrOut").textContent=isFinite(L)?fmt(L/LY*180,0)+"° "+T.lat:"∞";}
+/* ---------- controls ---------- */
+function send(){wk.postMessage({type:"cfg",cfg:{beta:st.beta,mu:st.mu,eps:st.eps*1e-3}});}
+function reset(){noiseInit();F=null;lastT=0;wk.postMessage({type:"init",seed:Math.floor(Math.random()*1e6)+1,cfg:{beta:st.beta,mu:st.mu,eps:st.eps*1e-3}});}
+$("#beta").addEventListener("input",e=>{st.beta=+e.target.value;$("#betaOut").textContent=st.beta;send();});
+$("#eps").addEventListener("input",e=>{st.eps=+e.target.value;$("#epsOut").textContent=fmt(st.eps,1);send();});
+$("#mu").addEventListener("input",e=>{st.mu=+e.target.value;$("#muOut").textContent=fmt(st.mu,3);send();});
+$("#spd").addEventListener("input",e=>{st.spd=+e.target.value;$("#spdOut").textContent=st.spd<10?T.slow:st.spd<20?T.normal:T.fast;wk.postMessage({type:"budget",ms:st.spd});});
+function setRun(r){st.running=r;$("#playTxt").textContent=r?T.stop:T.start;$("#playIcon").innerHTML=r?'<path d="M4 4h12v12H4z"/>':'<path d="M5 3l12 7-12 7z"/>';wk.postMessage({type:"run",on:r});}
+$("#play").onclick=()=>setRun(!st.running);$("#reset").onclick=reset;
+$("#look").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;st.look=b.dataset.v;document.querySelectorAll("#look button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));});
+$("#storm").onclick=()=>{const fu=((0.25-rotY/(2*Math.PI)-0.08)%1+1)%1,x=LX*fu;let lat=-22,best=1e9;for(let j=0;j<NY;j++){const la=-90+180*(j+0.5)/NY;if(la<-42||la>-8)continue;if(zbar[j]<best){best=zbar[j];lat=la;}}const y=LY*(lat+90)/180,r=0.42;wk.postMessage({type:"vortex",x,y,r,amp:-20});
+  // paint the storm into the red tracer and the zone tracer
+  const sx=TW/LX,sy=TH/LY,cx=x*sx,cy=(LY-y)*sy,rr=r*sx*1.15;for(let j=Math.floor(cy-2*rr);j<=cy+2*rr;j++)for(let i=Math.floor(cx-2*rr);i<=cx+2*rr;i++){const ii=((i%TW)+TW)%TW,jj=((j%TH)+TH)%TH,d2=((i-cx)**2+(j-cy)**2)/(rr*rr);const k=jj*TW+ii;R[k]=Math.max(R[k],Math.exp(-d2*1.4));C[k]=Math.max(C[k],0.6*Math.exp(-d2*0.6));}
+  if(!st.running)setRun(true);};
+wk.onmessage=e=>{const m=e.data;const dt=lastT?Math.max(0,Math.min(1.2,m.t-lastT)):0;lastT=m.t;F=m;if(dt>0)advect(dt);};
+/* ---------- loop ---------- */
+let last=performance.now(),uiT=0;
+function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;
+  if(!drag)rotY+=dt*0.06;planet.rotation.y=rotY;tilt.rotation.x=rotX;
+  camera.position.set(0,0.6*dist/7.2,dist);camera.lookAt(0,0,0);
+  if(F)paintTex();renderer.render(scene,camera);
+  if(now-uiT>250){stats();drawProfile();drawMap();uiT=now;}
+  requestAnimationFrame(frame);}
+reset();resize();requestAnimationFrame(frame);
+if(!window.matchMedia||!window.matchMedia("(prefers-reduced-motion: reduce)").matches){const v=document.querySelector("video");if(v&&"IntersectionObserver" in window){new IntersectionObserver(es=>es.forEach(en=>{if(en.isIntersecting){v.preload="auto";v.play().catch(()=>{});}else v.pause();}),{threshold:0.4}).observe(v);}}
+})();
+</script>
+</body></html>
