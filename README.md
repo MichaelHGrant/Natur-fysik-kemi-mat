@@ -44,7 +44,7 @@ Alt er skrevet på dansk og henvender sig til gymnasieelever, lærere og alle an
 [Geometri – fra punkt til keglesnit](geometribog.html)
 
 ### 10 · Historie og kultur
-[Den naturvidenskabelige metode](naturvidenskabelig-metode.html) · [Slaget ved Dybbøl](Dybb%C3%B8l2.html) · [Alhambra](alhambra.html)
+[Den naturvidenskabelige metode](naturvidenskabelig-metode.html) · [Sprogenes Europa](sprogskifte.html) ([PDF](sprogenes-europa.pdf), [English PDF](sprogenes-europa-en.pdf), [LMFK-artikel](LMFK-sprogs-spredning.pdf)) · [Slaget ved Dybbøl](Dybb%C3%B8l2.html) · [Alhambra](alhambra.html)
 
 ### 11 · Den levende tro
 [Kategorifejl og kongruensfejl](kategori-og-kongruensfejl.html) · [Den nye ateismes kategorifejl](den-nye-ateismes-kategorifejl.html) · [Rosenkransen](Rosenkrans.html) · [Fuldkommen anger](fuldkommen-anger.html) · [Bønner mod fristelser](boenner-mod-fristelser.html) · [Arianismen og den nikænske tro](arianismen-og-den-nikaenske-tro.html)
