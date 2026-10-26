@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Komet 161P/Hartley–IRAS – baneberegning fra tre eVscope2-billeder</title>
+<meta name="description" content="Banebestemmelse af kometen 161P/Hartley–IRAS med Gauss’ metode ud fra tre eVscope2-billeder fra Djursland i oktober 2026: pladeløsning, astrometri, kontrol mod MPC og usikkerhedsanalyse. Af Michael Howard Grant.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Spectral:ital,wght@0,300;0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+    :root{
+        --space-black:#0b0d17;
+        --space-deep:#050608;
+        --ink:#070810;
+        --aurora-green:#39ff14;
+        --aurora-purple:#a020f0;
+        --aurora-blue:#4cc9f0;
+        --comet-cyan:#6fd8ff;
+        --gold:#f5c878;
+        --gold-bright:#ffe0a0;
+        --text-light:#e6e6ea;
+        --text-dim:#9aa0ad;
+        --text-faint:#6b7080;
+        --hair:rgba(255,255,255,0.10);
+        --card-bg:rgba(255,255,255,0.025);
+    }
+
+    *{box-sizing:border-box;}
+    html{scroll-behavior:smooth;scroll-padding-top:64px;}
+
+    body{
+        margin:0;
+        background:var(--space-deep);
+        color:var(--text-light);
+        font-family:'Spectral',Georgia,serif;
+        font-weight:400;
+        font-size:1.08rem;
+        line-height:1.75;
+        -webkit-font-smoothing:antialiased;
+        overflow-x:hidden;
+    }
+
+    /* ---- starfield ---- */
+    #stars{
+        position:fixed;
+        inset:0;
+        z-index:-2;
+        background:
+            radial-gradient(ellipse at 18% 8%, rgba(160,32,240,0.13), transparent 45%),
+            radial-gradient(ellipse at 85% 70%, rgba(76,201,240,0.09), transparent 50%),
+            radial-gradient(ellipse at 50% 110%, rgba(57,255,20,0.06), transparent 55%),
+            var(--space-deep);
+    }
+    #stars canvas{position:absolute;inset:0;width:100%;height:100%;}
+
+    a{color:var(--aurora-blue);}
+
+    /* ===== TOP BAR ===== */
+    .topbar{
+        position:sticky;top:0;z-index:90;
+        display:flex;align-items:center;justify-content:space-between;
+        padding:0.55rem 1.4rem;
+        background:rgba(7,8,16,0.82);
+        backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+        border-bottom:1px solid var(--hair);
+        font-family:'IBM Plex Mono',monospace;
+        font-size:0.74rem;letter-spacing:0.06em;
+    }
+    .topbar a{color:var(--text-dim);text-decoration:none;transition:color .2s;}
+    .topbar a:hover{color:var(--aurora-green);}
+    .topbar .crumb{color:var(--text-faint);}
+    .topbar .crumb b{color:var(--comet-cyan);font-weight:500;}
+
+    /* ===== HERO ===== */
+    .hero{
+        position:relative;
+        max-width:1180px;margin:0 auto;
+        padding:5.5rem 1.6rem 3rem;
+        display:grid;grid-template-columns:1.05fr 0.95fr;gap:3rem;align-items:center;
+    }
+    .hero-text{position:relative;z-index:2;}
+    .eyebrow{
+        font-family:'IBM Plex Mono',monospace;
+        font-size:0.72rem;letter-spacing:0.34em;text-transform:uppercase;
+        color:var(--aurora-green);
+        display:flex;align-items:center;gap:0.8rem;margin-bottom:1.5rem;
+    }
+    .eyebrow::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,rgba(57,255,20,0.5),transparent);}
+
+    .hero h1{
+        font-family:'Fraunces',serif;
+        font-weight:500;
+        font-size:clamp(2.7rem,6.5vw,5rem);
+        line-height:0.98;
+        letter-spacing:-0.015em;
+        margin:0 0 0.7rem;
+        color:#fff;
+    }
+    .hero h1 em{
+        font-style:italic;font-weight:400;
+        background:linear-gradient(120deg,var(--comet-cyan),var(--aurora-purple));
+        -webkit-background-clip:text;background-clip:text;color:transparent;
+    }
+    .hero .deck{
+        font-size:1.18rem;color:var(--text-dim);
+        font-weight:300;line-height:1.6;max-width:36ch;
+        margin:0 0 1.8rem;
+    }
+    .byline{
+        display:flex;flex-direction:column;gap:0.15rem;
+        border-left:2px solid var(--aurora-purple);
+        padding-left:1rem;
+    }
+    .byline .name{
+        font-family:'Fraunces',serif;font-size:1.05rem;color:var(--text-light);
+        font-variant:small-caps;letter-spacing:0.05em;
+    }
+    .byline .role{
+        font-family:'IBM Plex Mono',monospace;font-size:0.72rem;
+        color:var(--text-faint);letter-spacing:0.04em;
+    }
+
+    /* hero comet image */
+    .hero-figure{
+        position:relative;z-index:1;
+        aspect-ratio:1/1;
+        border-radius:50%;
+        overflow:hidden;
+        border:1px solid rgba(111,216,255,0.25);
+        box-shadow:
+            0 0 0 1px rgba(0,0,0,0.6),
+            0 30px 80px rgba(0,0,0,0.7),
+            0 0 90px rgba(76,201,240,0.13);
+        animation:floaty 9s ease-in-out infinite;
+    }
+    .hero-figure img{width:100%;height:100%;object-fit:cover;display:block;}
+    .hero-figure .ring{
+        position:absolute;inset:-14px;border-radius:50%;
+        border:1px solid rgba(111,216,255,0.18);
+        pointer-events:none;
+    }
+    @keyframes floaty{
+        0%,100%{transform:translateY(0);}
+        50%{transform:translateY(-14px);}
+    }
+    .hero-tag{
+        position:absolute;left:50%;bottom:-12px;transform:translateX(-50%);
+        font-family:'IBM Plex Mono',monospace;font-size:0.66rem;
+        letter-spacing:0.05em;color:var(--text-faint);
+        background:var(--ink);padding:0.35rem 0.9rem;border-radius:20px;
+        border:1px solid var(--hair);white-space:nowrap;
+    }
+
+    /* ===== ARTICLE WRAP ===== */
+    article{max-width:760px;margin:0 auto;padding:1.5rem 1.6rem 4rem;}
+
+    .section{margin:4.2rem 0;}
+    .kicker{
+        font-family:'IBM Plex Mono',monospace;
+        font-size:0.7rem;letter-spacing:0.22em;text-transform:uppercase;
+        color:var(--aurora-purple);margin-bottom:0.6rem;
+        display:flex;align-items:baseline;gap:0.7rem;
+    }
+    .kicker .n{color:var(--text-faint);}
+    h2{
+        font-family:'Fraunces',serif;font-weight:500;
+        font-size:clamp(1.7rem,3.6vw,2.4rem);
+        line-height:1.12;letter-spacing:-0.01em;
+        color:#fff;margin:0 0 1rem;
+    }
+    h3{
+        font-family:'Fraunces',serif;font-weight:500;
+        font-size:1.25rem;color:var(--comet-cyan);
+        margin:2rem 0 0.5rem;
+    }
+    p{margin:0 0 1.15rem;}
+    article p strong{color:#fff;font-weight:600;}
+    .lead{
+        font-size:1.28rem;line-height:1.6;font-weight:300;
+        color:var(--text-light);
+    }
+    .lead::first-letter{
+        font-family:'Fraunces',serif;
+        float:left;font-size:4.6rem;line-height:0.74;
+        font-weight:600;margin:0.32rem 0.6rem 0 0;
+        color:var(--aurora-green);
+    }
+
+    /* ===== OBSERVATION GRID ===== */
+    .obs-grid{
+        display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;
+        margin:1.8rem 0 1rem;
+    }
+    .obs{
+        background:var(--card-bg);
+        border:1px solid var(--hair);
+        border-radius:12px;overflow:hidden;
+        transition:transform .35s ease,border-color .35s ease,box-shadow .35s ease;
+    }
+    .obs:hover{
+        transform:translateY(-6px);
+        border-color:rgba(111,216,255,0.4);
+        box-shadow:0 18px 40px rgba(0,0,0,0.55);
+    }
+    .obs .frame{position:relative;aspect-ratio:1/1;background:#000;}
+    .obs .frame img{width:100%;height:100%;object-fit:cover;display:block;}
+    .obs .num{
+        position:absolute;top:8px;left:8px;
+        width:26px;height:26px;border-radius:50%;
+        background:rgba(7,8,16,0.85);border:1px solid var(--aurora-green);
+        color:var(--aurora-green);
+        font-family:'IBM Plex Mono',monospace;font-size:0.82rem;
+        display:flex;align-items:center;justify-content:center;
+    }
+    .obs .meta{padding:0.75rem 0.85rem 0.9rem;}
+    .obs .date{
+        font-family:'Fraunces',serif;font-size:1rem;color:#fff;font-weight:500;
+    }
+    .obs .exp{
+        font-family:'IBM Plex Mono',monospace;font-size:0.68rem;
+        color:var(--aurora-blue);margin:0.15rem 0 0.5rem;
+    }
+    .obs .coord{
+        font-family:'IBM Plex Mono',monospace;font-size:0.66rem;
+        color:var(--text-dim);line-height:1.5;
+        border-top:1px dashed var(--hair);padding-top:0.5rem;
+    }
+    .obs .coord span{color:var(--text-faint);}
+    .obs.blurry .frame::after{
+        content:"DISET · 36 SEK";
+        position:absolute;bottom:8px;right:8px;
+        font-family:'IBM Plex Mono',monospace;font-size:0.58rem;
+        color:var(--gold);background:rgba(7,8,16,0.8);
+        padding:0.2rem 0.5rem;border-radius:10px;
+        border:1px solid rgba(245,200,120,0.35);
+    }
+
+    /* ===== CALLOUT ===== */
+    .callout{
+        margin:2rem 0;padding:1.5rem 1.6rem;
+        background:linear-gradient(135deg,rgba(76,201,240,0.07),rgba(160,32,240,0.04));
+        border:1px solid rgba(76,201,240,0.22);
+        border-radius:14px;
+        display:flex;gap:1.3rem;align-items:center;
+    }
+    .callout .big{
+        font-family:'Fraunces',serif;font-weight:600;
+        font-size:2.7rem;line-height:1;color:var(--comet-cyan);
+        white-space:nowrap;
+    }
+    .callout .big small{
+        display:block;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;
+        font-weight:400;color:var(--text-faint);letter-spacing:0.05em;
+        margin-top:0.3rem;
+    }
+    .callout p{margin:0;font-size:0.98rem;color:var(--text-dim);}
+
+    /* ===== GAUSS STEPS ===== */
+    .steps{counter-reset:gs;margin:1.6rem 0;}
+    .step{
+        position:relative;padding:0 0 1.3rem 3.4rem;
+        border-left:1px solid var(--hair);margin-left:1.1rem;
+    }
+    .step:last-child{border-left-color:transparent;}
+    .step::before{
+        counter-increment:gs;content:counter(gs);
+        position:absolute;left:-1.1rem;top:-0.15rem;
+        width:2.2rem;height:2.2rem;border-radius:50%;
+        background:var(--ink);border:1px solid var(--aurora-purple);
+        color:var(--aurora-purple);
+        font-family:'IBM Plex Mono',monospace;font-size:0.95rem;
+        display:flex;align-items:center;justify-content:center;
+    }
+    .step h4{
+        font-family:'Fraunces',serif;font-weight:500;font-size:1.12rem;
+        color:#fff;margin:0 0 0.25rem;
+    }
+    .step p{font-size:0.97rem;color:var(--text-dim);margin:0;}
+
+    /* ===== GAUSS DIAGRAM ===== */
+    .diagram{
+        background:radial-gradient(ellipse at 50% 40%,rgba(20,22,38,0.9),var(--ink));
+        border:1px solid var(--hair);border-radius:14px;
+        padding:1.2rem;margin:1.8rem 0;
+    }
+    .diagram svg{width:100%;height:auto;display:block;}
+    .diagram .cap{
+        font-family:'IBM Plex Mono',monospace;font-size:0.68rem;
+        color:var(--text-faint);text-align:center;margin-top:0.7rem;
+        letter-spacing:0.03em;
+    }
+
+    /* ===== STAT CARDS ===== */
+    .stats{
+        display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;
+        margin:1.8rem 0;
+    }
+    .stat{
+        background:var(--card-bg);border:1px solid var(--hair);
+        border-radius:12px;padding:1.3rem 1rem;text-align:center;
+        position:relative;overflow:hidden;
+    }
+    .stat::before{
+        content:"";position:absolute;top:0;left:0;right:0;height:2px;
+        background:linear-gradient(90deg,transparent,var(--aurora-green),transparent);
+        opacity:0.6;
+    }
+    .stat .v{
+        font-family:'Fraunces',serif;font-weight:600;
+        font-size:2.2rem;color:#fff;line-height:1;
+    }
+    .stat .v small{font-size:1rem;color:var(--text-dim);}
+    .stat .l{
+        font-family:'IBM Plex Mono',monospace;font-size:0.66rem;
+        letter-spacing:0.08em;text-transform:uppercase;
+        color:var(--aurora-green);margin-top:0.5rem;
+    }
+    .stat .sub{font-size:0.78rem;color:var(--text-faint);margin-top:0.2rem;}
+
+    /* ===== COMPARISON ===== */
+    .compare{
+        display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1.8rem 0;
+    }
+    .col{
+        border-radius:14px;padding:1.3rem 1.4rem;
+        border:1px solid var(--hair);background:var(--card-bg);
+    }
+    .col.official{
+        border-color:rgba(57,255,20,0.28);
+        background:linear-gradient(160deg,rgba(57,255,20,0.06),transparent);
+    }
+    .col.backyard{
+        border-color:rgba(245,200,120,0.28);
+        background:linear-gradient(160deg,rgba(245,200,120,0.06),transparent);
+    }
+    .col .tag{
+        font-family:'IBM Plex Mono',monospace;font-size:0.66rem;
+        letter-spacing:0.12em;text-transform:uppercase;margin-bottom:0.6rem;
+    }
+    .col.official .tag{color:var(--aurora-green);}
+    .col.backyard .tag{color:var(--gold);}
+    .col h4{
+        font-family:'Fraunces',serif;font-weight:500;font-size:1.1rem;
+        color:#fff;margin:0 0 0.7rem;
+    }
+    .col dl{margin:0;font-size:0.86rem;}
+    .col dl div{
+        display:flex;justify-content:space-between;gap:0.6rem;
+        padding:0.4rem 0;border-bottom:1px dashed var(--hair);
+    }
+    .col dl div:last-child{border-bottom:none;}
+    .col dt{color:var(--text-dim);}
+    .col dd{
+        margin:0;font-family:'IBM Plex Mono',monospace;
+        color:#fff;text-align:right;
+    }
+
+    /* eccentricity number line */
+    .eline{
+        margin:1.6rem 0;padding:1.4rem 1.5rem 1.1rem;
+        background:var(--ink);border:1px solid var(--hair);border-radius:14px;
+    }
+    .eline .track{
+        position:relative;height:4px;border-radius:2px;
+        background:linear-gradient(90deg,var(--aurora-blue),#444 49%,#444 51%,var(--aurora-purple));
+        margin:2.4rem 0.5rem 0.4rem;
+    }
+    .eline .pt{
+        position:absolute;top:50%;width:13px;height:13px;border-radius:50%;
+        transform:translate(-50%,-50%);
+    }
+    .eline .pt.boundary{
+        background:#fff;width:3px;height:24px;border-radius:1px;
+        transform:translate(-50%,-50%);
+    }
+    .eline .pt.official{
+        background:var(--gold);box-shadow:0 0 14px var(--gold);
+    }
+    .eline .lab{
+        position:absolute;font-family:'IBM Plex Mono',monospace;
+        font-size:0.64rem;white-space:nowrap;transform:translateX(-50%);
+    }
+    .eline .lab.top{top:-2.1rem;}
+    .eline .lab.bot{top:0.7rem;color:var(--text-faint);}
+    .eline .scale{
+        display:flex;justify-content:space-between;
+        font-family:'IBM Plex Mono',monospace;font-size:0.62rem;
+        color:var(--text-faint);margin:0.3rem 0.3rem 0;
+    }
+    .eline .note{
+        font-size:0.82rem;color:var(--text-dim);margin:0.9rem 0 0;text-align:center;
+    }
+
+    /* uncertainty bars */
+    .errbar{margin:1.1rem 0;}
+    .errbar .head{
+        display:flex;justify-content:space-between;align-items:baseline;
+        margin-bottom:0.4rem;
+    }
+    .errbar .head .name{
+        font-family:'Fraunces',serif;font-size:1rem;color:#fff;
+    }
+    .errbar .head .pct{
+        font-family:'IBM Plex Mono',monospace;font-size:0.78rem;
+    }
+    .errbar .rail{
+        position:relative;height:14px;border-radius:7px;
+        background:rgba(255,255,255,0.05);overflow:hidden;
+    }
+    .errbar .fill{
+        position:absolute;top:0;bottom:0;left:50%;
+        background:repeating-linear-gradient(45deg,
+            rgba(245,200,120,0.55),rgba(245,200,120,0.55) 6px,
+            rgba(245,200,120,0.25) 6px,rgba(245,200,120,0.25) 12px);
+        transform:translateX(-50%);
+        width:0;transition:width 1.1s cubic-bezier(.2,.7,.2,1);
+    }
+    .errbar .mid{
+        position:absolute;left:50%;top:-3px;bottom:-3px;width:2px;
+        background:var(--comet-cyan);transform:translateX(-50%);
+    }
+    .errbar .cap{
+        font-family:'IBM Plex Mono',monospace;font-size:0.68rem;
+        color:var(--text-faint);margin-top:0.35rem;
+    }
+
+    /* pull quote */
+    .pull{
+        margin:2.6rem 0;padding:0.4rem 0 0.4rem 1.6rem;
+        border-left:3px solid var(--aurora-green);
+    }
+    .pull p{
+        font-family:'Fraunces',serif;font-style:italic;font-weight:400;
+        font-size:1.45rem;line-height:1.4;color:#fff;margin:0;
+    }
+
+    /* anecdote / risø */
+    .anecdote{
+        margin:2.4rem 0;display:grid;grid-template-columns:1fr;gap:1.2rem;
+        background:linear-gradient(160deg,rgba(255,122,42,0.05),transparent);
+        border:1px solid rgba(245,200,120,0.2);border-radius:14px;
+        overflow:hidden;
+    }
+    .anecdote figure{margin:0;}
+    .anecdote img{
+        width:100%;display:block;
+        max-height:380px;object-fit:cover;object-position:center 32%;
+    }
+    .anecdote .body{padding:0 1.5rem 1.5rem;}
+    .anecdote figcaption{
+        font-family:'IBM Plex Mono',monospace;font-size:0.66rem;
+        color:var(--text-faint);padding:0.6rem 1.5rem 0;
+    }
+    .anecdote h3{margin-top:0.6rem;color:var(--gold-bright);}
+    .anecdote p{font-size:0.95rem;color:var(--text-dim);}
+
+    /* score / conclusion */
+    .score{
+        text-align:center;margin:2.6rem 0;padding:2.4rem 1.5rem;
+        background:radial-gradient(ellipse at 50% 0%,rgba(57,255,20,0.08),transparent 70%);
+        border:1px solid rgba(57,255,20,0.22);border-radius:18px;
+    }
+    .score .ring-wrap{position:relative;width:170px;height:170px;margin:0 auto 1rem;}
+    .score svg{transform:rotate(-90deg);}
+    .score .pctnum{
+        position:absolute;inset:0;display:flex;flex-direction:column;
+        align-items:center;justify-content:center;
+    }
+    .score .pctnum b{
+        font-family:'Fraunces',serif;font-size:2.8rem;color:#fff;font-weight:600;
+        line-height:1;
+    }
+    .score .pctnum span{
+        font-family:'IBM Plex Mono',monospace;font-size:0.62rem;
+        letter-spacing:0.14em;color:var(--aurora-green);text-transform:uppercase;
+        margin-top:0.3rem;
+    }
+    .score p{max-width:46ch;margin:0.6rem auto 0;color:var(--text-dim);}
+
+    /* footer nav */
+    .endnav{
+        max-width:760px;margin:0 auto;padding:0 1.6rem 2rem;
+        display:grid;grid-template-columns:1fr 1fr;gap:1rem;
+    }
+    .endnav a{
+        display:block;padding:1rem 1.2rem;border-radius:12px;
+        border:1px solid var(--hair);background:var(--card-bg);
+        text-decoration:none;transition:border-color .25s,transform .25s;
+    }
+    .endnav a:hover{border-color:rgba(57,255,20,0.4);transform:translateY(-3px);}
+    .endnav .t{
+        font-family:'IBM Plex Mono',monospace;font-size:0.62rem;
+        letter-spacing:0.1em;text-transform:uppercase;color:var(--text-faint);
+    }
+    .endnav .d{
+        font-family:'Fraunces',serif;font-size:1.05rem;color:var(--comet-cyan);
+        margin-top:0.2rem;
+    }
+
+    footer{
+        text-align:center;padding:2.5rem 1.5rem;
+        border-top:1px solid var(--hair);
+        font-family:'IBM Plex Mono',monospace;font-size:0.72rem;
+        color:var(--text-faint);line-height:1.9;
+    }
+    footer a{color:var(--text-dim);text-decoration:none;}
+    footer a:hover{color:var(--aurora-green);}
+
+    .refs{
+        max-width:760px;margin:0 auto;padding:0 1.6rem;
+        font-size:0.8rem;color:var(--text-faint);
+    }
+    .refs h4{
+        font-family:'IBM Plex Mono',monospace;font-size:0.66rem;
+        letter-spacing:0.14em;text-transform:uppercase;color:var(--text-dim);
+        margin:0 0 0.5rem;
+    }
+
+    /* reveal */
+    .reveal{opacity:0;transform:translateY(26px);
+        transition:opacity .8s ease,transform .8s ease;}
+    .reveal.in{opacity:1;transform:none;}
+
+    /* ===== RESPONSIVE ===== */
+    @media(max-width:760px){
+        body{font-size:1.02rem;}
+        .hero{grid-template-columns:1fr;padding:3.5rem 1.3rem 2rem;gap:2.4rem;}
+        .hero-figure{max-width:340px;margin:0 auto;}
+        .obs-grid{grid-template-columns:1fr;}
+        .stats{grid-template-columns:1fr;}
+        .compare{grid-template-columns:1fr;}
+        .callout{flex-direction:column;align-items:flex-start;gap:0.6rem;}
+        .anecdote{grid-template-columns:1fr;}
+        .endnav{grid-template-columns:1fr;}
+        .topbar .crumb{display:none;}
+    }
+    @media(prefers-reduced-motion:reduce){
+        .hero-figure{animation:none;}
+        .reveal{transition:none;opacity:1;transform:none;}
+    }
+</style>
+
+
+<style>
+    .fig{margin:2rem 0 2.2rem;}
+    .fig img{width:100%;height:auto;display:block;border-radius:12px;border:1px solid var(--hair);}
+    .fig figcaption{font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:var(--text-faint);
+        margin-top:0.6rem;line-height:1.55;letter-spacing:0.02em;}
+    .fig figcaption b{color:var(--comet-cyan);font-weight:500;}
+    .wide{width:min(1100px,calc(100vw - 2.4rem));position:relative;left:50%;transform:translateX(-50%);}
+    .tablewrap{overflow-x:auto;margin:1.6rem 0 2rem;border:1px solid var(--hair);border-radius:12px;background:var(--card-bg);}
+    table.data{border-collapse:collapse;width:100%;font-size:0.9rem;}
+    table.data th{font-family:'IBM Plex Mono',monospace;font-size:0.66rem;letter-spacing:0.1em;text-transform:uppercase;
+        color:var(--aurora-green);font-weight:500;text-align:left;padding:0.75rem 0.9rem;border-bottom:1px solid var(--hair);white-space:nowrap;}
+    table.data td{padding:0.55rem 0.9rem;border-bottom:1px solid rgba(255,255,255,0.05);color:var(--text-light);}
+    table.data tr:last-child td{border-bottom:none;}
+    table.data td:not(:first-child){font-family:'IBM Plex Mono',monospace;font-size:0.8rem;white-space:nowrap;}
+    .formula{font-family:'Spectral',Georgia,serif;font-size:1.12rem;text-align:center;color:#fff;
+        background:var(--card-bg);border:1px solid var(--hair);border-radius:12px;padding:1rem 1.2rem;margin:1.2rem 0 1.4rem;overflow-x:auto;}
+    article ul{padding-left:1.2rem;margin:0 0 1.2rem;}
+    article li{margin:0 0 0.7rem;}
+    article li::marker{color:var(--aurora-green);}
+    .small{font-size:0.86rem;color:var(--text-faint);}
+    .sources{font-size:0.92rem;}
+    .sources li{margin-bottom:0.35rem;}
+    footer{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:var(--text-faint);
+        padding:2.5rem 1rem 3rem;border-top:1px solid var(--hair);line-height:1.8;}
+    @media(max-width:760px){.wide{width:100%;left:0;transform:none;}}
+</style>
+
+</head>
+<body>
+<div id="stars"><canvas></canvas></div>
+
+<nav class="topbar">
+    <a href="index.html">← Fysik, matematik &amp; kemi</a>
+    <span class="crumb">Astronomi / <b>Komet 161P</b></span>
+    <a href="#gauss">Gauss’ metode ↓</a>
+</nav>
+
+<header class="hero">
+    <div class="hero-text">
+        <div class="eyebrow">Astrometri · oktober 2026</div>
+        <h1>Komet 161P: <em>baneberegning</em></h1>
+        <p class="deck">Tre aftener med eVscope2 på Djursland, en pladeløsning mod Tycho-2 og Gauss’ metode – og en ærlig snak om, hvorfor 8 dage er for kort en bue.</p>
+        <div class="byline">
+            <span class="name">Michael Howard Grant</span>
+            <span class="role">Lektor emeritus · Grenaa Gymnasium · 26. oktober 2026</span>
+        </div>
+    </div>
+    <div class="hero-figure">
+        <div class="ring"></div>
+        <img src="161P-hero.jpg" alt="161P/Hartley–IRAS · 19. okt. 2026 · eVscope2">
+        <span class="hero-tag">161P/Hartley–IRAS · 19. okt. 2026 · eVscope2</span>
+    </div>
+</header>
+
+<article>
+<section class="section reveal" id="resume">
+<div class="kicker"><span class="n">01</span> Resumé</div>
+<h2>Hovedresultaterne</h2>
+<p class="lead">Tre eVscope2-billeder fra 18., 19. og 26. oktober 2026 er pladeløst mod Tycho-2 med 25–30 referencestjerner og en restspredning på 1,0–1,4″. Kometens positioner ligger 8–28″ fra MPC-banens efemeride, men tværs af banen kun 0,4–3″ den 18. og 19. oktober.</p>
+<div class="stats"><div class="stat"><div class="v">0,557<small> AE</small></div><div class="l">Afstand til Jorden 19. okt.</div><div class="sub">sand værdi 0,692 AE (−19 %)</div></div><div class="stat"><div class="v">29,0<small> km/s</small></div><div class="l">Fart om Solen</div><div class="sub">sand værdi 34,3 km/s</div></div><div class="stat"><div class="v">e = 0,41</div><div class="l">Excentricitet</div><div class="sub">sand værdi 0,836</div></div></div>
+<p>Gauss’ metode rammer baneplanet nogenlunde (Ω = 2,6° mod 1,5°, i = 83° mod 96°), men ikke banens form. Årsagen er buens længde, ikke metoden: med kun 8 dage kræver en god bane positioner bedre end 2″ og tider bedre end 1 minut, og appens tidsstempler er usikre med 3–7 minutter.</p>
+</section>
+<section class="section reveal" id="obs">
+<div class="kicker"><span class="n">02</span> Observationerne</div>
+<h2>Tre aftener i oktober</h2>
+<p>Alle tre billeder er stakke fra eVscope2 på Djursland (56,5° N, 10,8° Ø), gemt som appens annoterede eksport på 2800 × 2800 pixel. Tidspunktet i filnavnet er UTC og er antaget at være slutningen af stakken, så midttidspunktet er filnavnet minus halvdelen af integrationstiden.</p>
+<div class="obs-grid"><figure class="obs"><div class="frame"><img src="161P-18okt.jpg" alt="161P/Hartley–IRAS, 18. oktober 2026" loading="lazy"><span class="num">1</span></div><div class="meta"><div class="date">18. oktober 2026</div><div class="exp">17:56:43 UTC · 7 min</div><div class="coord">RA 20h 47m 30,57s<br>Dec +8° 28′ 10,1″</div></div></figure><figure class="obs"><div class="frame"><img src="161P-19okt.jpg" alt="161P/Hartley–IRAS, 19. oktober 2026" loading="lazy"><span class="num">2</span></div><div class="meta"><div class="date">19. oktober 2026</div><div class="exp">19:09:06 UTC · 6 min</div><div class="coord">RA 20h 41m 40,79s<br>Dec +9° 02′ 05,5″</div></div></figure><figure class="obs"><div class="frame"><img src="161P-26okt.jpg" alt="161P/Hartley–IRAS, 26. oktober 2026" loading="lazy"><span class="num">3</span></div><div class="meta"><div class="date">26. oktober 2026</div><div class="exp">18:11:07 UTC · 8 min</div><div class="coord">RA 20h 11m 02,58s<br>Dec +12° 03′ 57,6″</div></div></figure></div>
+<p>Kometen er en diffus, blålig koma på ca. 1′ uden tydelig central kondensation. Den 26. oktober ligger fire stjerner oven i komaen, hvilket gør centreringen sværere.</p>
+<figure class="fig wide"><img src="161P-baneberegning-fig1-da.jpg" alt="Udsnit omkring kometen på de tre aftener. Grønne ringe er Tycho-2-stjerner brugt i pladeløsningen; pilen viser komethovedet." loading="lazy"><figcaption><b>Figur 1.</b> Udsnit omkring kometen på de tre aftener. Grønne ringe er Tycho-2-stjerner brugt i pladeløsningen; pilen viser komethovedet.</figcaption></figure>
+</section>
+<section class="section reveal" id="astrometri">
+<div class="kicker"><span class="n">03</span> Astrometri</div>
+<h2>Pladeløsning mod Tycho-2</h2>
+<p>Koordinaterne i appens filnavne kan ikke bruges: den 18. og 19. oktober ligger de 0,7–1,0° fra kometen, altså uden for billedfeltet. Alle positioner er derfor målt ved en selvstændig pladeløsning mod Tycho-2 (Big Sky-kataloget), med stjernernes egenbevægelse ført frem til 2026,8.</p>
+<div class="steps"><div class="step"><h4>Find stjernerne</h4><p>DAOStarFinder finder 850–1870 stjerner i hvert billede, ud til en radius på 0,44 af billedbredden, så teksten på kanten undgås.</p></div><div class="step"><h4>Match mønstret</h4><p>De klareste stjerner matches mod kataloget ved en søgning over skala, drejning og forskydning. Skalaen blev 0,849″ pr. pixel.</p></div><div class="step"><h4>Tilpas transformationen</h4><p>En affin transformation med 6 parametre tilpasses med mindste kvadraters metode til 25–30 stjerner. Restspredningen er 1,0–1,4″.</p></div><div class="step"><h4>Mål komahovedet</h4><p>Stjerner maskeres, og en elliptisk 2D-gaussfunktion med baggrund tilpasses komaen. Centrum giver kometens position.</p></div></div>
+<div class="tablewrap"><table class="data"><thead><tr><th>Dato 2026</th><th>Midttid (UTC)</th><th>RA (J2000)</th><th>Dec (J2000)</th><th>Stjerner</th><th>rms</th></tr></thead><tbody><tr><td>18. okt.</td><td>17:56:43</td><td>20h 47m 30,57s</td><td>+8° 28′ 10,1″</td><td>25</td><td>1,0″</td></tr><tr><td>19. okt.</td><td>19:09:06</td><td>20h 41m 40,79s</td><td>+9° 02′ 05,5″</td><td>25</td><td>1,4″</td></tr><tr><td>26. okt.</td><td>18:11:07</td><td>20h 11m 02,58s</td><td>+12° 03′ 57,6″</td><td>30</td><td>1,2″</td></tr></tbody></table></div>
+<figure class="fig"><img src="161P-baneberegning-fig2-da.png" alt="De målte positioner (orange) ligger på MPC-efemeriden (blå). De grå krydser er koordinaterne fra appens filnavne." loading="lazy"><figcaption><b>Figur 2.</b> De målte positioner (orange) ligger på MPC-efemeriden (blå). De grå krydser er koordinaterne fra appens filnavne.</figcaption></figure>
+<p class="small">Billedfeltet er ca. 35′ i diameter. Billedet den 18. oktober er drejet ca. 16° i forhold til de to andre, fordi eVscope2 er altazimutalt monteret uden feltderotator.</p>
+</section>
+<section class="section reveal" id="oc">
+<div class="kicker"><span class="n">04</span> Kontrol</div>
+<h2>Målt mod beregnet: O − C</h2>
+<p>De målte positioner er sammenlignet med en topocentrisk efemeride beregnet fra MPC’s banelementer (MPEC 2026-TP0, epoke 23. oktober 2026), med lystidskorrektion. Afvigelsen O − C er delt op langs og tværs af kometens bevægelse.</p>
+<figure class="fig"><img src="161P-baneberegning-fig3-da.png" alt="O − C langs banen (blå) og tværs af banen (orange) for de tre aftener." loading="lazy"><figcaption><b>Figur 3.</b> O − C langs banen (blå) og tværs af banen (orange) for de tre aftener.</figcaption></figure>
+<ul><li><strong>Tværs af banen</strong> er afvigelsen 0,4″ og 3,1″ den 18. og 19. oktober. Det svarer til pladeløsningens nøjagtighed og viser, at astrometrien er i orden.</li><li><strong>Langs banen</strong> ligger kometen 28″, 17″ og 7″ bagud. Med en fart på 3,8, 3,6 og 2,4″ pr. minut svarer det til, at de effektive tidspunkter er 7,4, 4,7 og 2,9 minutter tidligere end antaget. Det er stakkens tidsangivelse, ikke målingen, der er usikker.</li><li><strong>Den 26. oktober</strong> er der desuden 13″ afvigelse tværs af banen. Den skyldes sandsynligvis stjernerne oven i komaen eller en skæv koma; den kom igen med tre forskellige centreringsmetoder.</li></ul>
+</section>
+<section class="section reveal" id="gauss">
+<div class="kicker"><span class="n">05</span> Metoden</div>
+<h2>Gauss’ metode</h2>
+<p>Gauss’ metode bestemmer kometens afstand ρ på de tre tidspunkter ud fra retningsvektorerne L̂<sub>i</sub> og observatørens heliocentriske position R<sub>i</sub> (Jorden plus Marshøjs geocentriske position). Midterafstanden r<sub>2</sub> fra Solen findes som rod i Gauss’ ligning af 8. grad:</p>
+<div class="formula"><i>r</i><sub>2</sub><sup>8</sup> − (<i>A</i><sup>2</sup> + 2<i>AE</i> + <i>R</i><sub>2</sub><sup>2</sup>) <i>r</i><sub>2</sub><sup>6</sup> − 2<i>μB</i>(<i>A</i> + <i>E</i>) <i>r</i><sub>2</sub><sup>3</sup> − <i>μ</i><sup>2</sup><i>B</i><sup>2</sup> = 0,&nbsp;&nbsp; <i>E</i> = L̂<sub>2</sub> · <b>R</b><sub>2</sub></div>
+<p>Derefter forfines Lagranges f- og g-funktioner med universelle variable og lystidskorrektion, indtil løsningen står stille. Hastigheden følger af</p>
+<div class="formula"><b>v</b><sub>2</sub> = (−<i>f</i><sub>3</sub> <b>r</b><sub>1</sub> + <i>f</i><sub>1</sub> <b>r</b><sub>3</sub>) / (<i>f</i><sub>1</sub><i>g</i><sub>3</sub> − <i>f</i><sub>3</sub><i>g</i><sub>1</sub>)</div>
+<p>Koden er kontrolleret ved at give den MPC-efemeridens egne retninger på de samme tidspunkter. Den genfinder MPC-banen på alle decimaler (q = 1,26511 AE, e = 0,83618, i = 95,7919°).</p>
+</section>
+<section class="section reveal" id="resultat">
+<div class="kicker"><span class="n">06</span> Resultatet</div>
+<h2>Banen fra tre billeder</h2>
+<div class="tablewrap"><table class="data"><thead><tr><th>Størrelse</th><th>Gauss, egne billeder</th><th>MPC (MPEC 2026-TP0)</th></tr></thead><tbody><tr><td>Afstand Jord–komet ρ<sub>1</sub> / ρ<sub>2</sub> / ρ<sub>3</sub> (AE)</td><td>0,543 / 0,557 / 0,662</td><td>0,674 / 0,692 / 0,822</td></tr><tr><td>Afstand Sol–komet r<sub>2</sub> (AE)</td><td>1,279</td><td>1,373</td></tr><tr><td>Heliocentrisk fart v<sub>2</sub> (km/s)</td><td>29,0</td><td>34,3</td></tr><tr><td>Perihelafstand q (AE)</td><td>0,95</td><td>1,265</td></tr><tr><td>Halv storakse a (AE)</td><td>1,62</td><td>7,72</td></tr><tr><td>Excentricitet e</td><td>0,41</td><td>0,836</td></tr><tr><td>Inklination i</td><td>82,8°</td><td>95,79°</td></tr><tr><td>Opstigende knude Ω</td><td>2,6°</td><td>1,47°</td></tr><tr><td>Perihelargument ω</td><td>94,4°</td><td>47,07°</td></tr><tr><td>Periheltid T</td><td>9. jan. 2027</td><td>27. nov. 2026, 04:16 TT</td></tr><tr><td>Omløbstid P (år)</td><td>2,1</td><td>21,46</td></tr></tbody></table></div>
+<figure class="fig wide"><img src="161P-baneberegning-fig4-da.png" alt="Gauss-banen (orange) og MPC-banen (blå) set fra ekliptikas nordpol og fra siden. Solen er gul, Jorden grå." loading="lazy"><figcaption><b>Figur 4.</b> Gauss-banen (orange) og MPC-banen (blå) set fra ekliptikas nordpol og fra siden. Solen er gul, Jorden grå.</figcaption></figure>
+<p>Baneplanets retning (Ω og i) er nogenlunde rigtig, så kometens bevægelse næsten vinkelret på ekliptika kommer tydeligt frem. Afstanden er derimod 19 % for lille. Så bliver farten for lav, og banen bliver en kort, næsten cirkulær ellipse i stedet for den langstrakte bane af Halley-typen.</p>
+</section>
+<section class="section reveal" id="usikkerhed">
+<div class="kicker"><span class="n">07</span> Usikkerhed</div>
+<h2>Hvorfor 8 dage er for lidt</h2>
+<p>En Monte Carlo-beregning med 3000 gentagelser, hvor hver position rystes med ±2″ og hvert tidspunkt med ±4 min, giver ρ<sub>2</sub> = 0,44–0,63 AE og e = 0,39–0,59 (68 %-intervaller). Den sande ρ<sub>2</sub> = 0,692 AE ligger lige uden for intervallet, fordi den systematiske afvigelse på 13″ den 26. oktober er større end de antagne 2″.</p>
+<figure class="fig wide"><img src="161P-baneberegning-fig5-da.png" alt="Venstre: spredningen på afstanden ρ2. Højre: simuleret præcision på e for forskellige buelængder med ±2″ og ±1 min." loading="lazy"><figcaption><b>Figur 5.</b> Venstre: spredningen på afstanden ρ<sub>2</sub>. Højre: simuleret præcision på e for forskellige buelængder med ±2″ og ±1 min.</figcaption></figure>
+<p>Højre panel er en simulering med fejlfri MPC-positioner plus ±2″ og ±1 min. Selv med så gode data giver de nuværende 8 dage e = 0,55–1,19, så ellipse og hyperbel kan ikke skelnes. Tre jævnt fordelte nætter over 8 dage giver 0,68–1,01, og en bue på 16 dage (et billede omkring 3. november) giver 0,75–0,92 og ρ<sub>2</sub> inden for ±2,5 %.</p>
+<div class="callout"><div class="big">105″<small>BUESEKUNDER FRA STORCIRKLEN</small></div><p>Gauss’ metode måler i praksis banens krumning. Positionen den 19. oktober ligger kun 100″ fra storcirklen gennem de to andre ifølge MPC-banen, og 105″ ifølge mine målinger. <strong>De 5″ forskel er det, der flytter afstanden 19 %.</strong></p></div>
+</section>
+<section class="section reveal" id="videre">
+<div class="kicker"><span class="n">08</span> Konklusion</div>
+<h2>Næste skridt</h2>
+<p>Astrometrien fra eVscope2 er god nok til baneberegning: pladeløsningerne holder 1–1,4″, og positionerne afviger kun 0,4–3″ tværs af banen. Den begrænsende faktor er den korte bue på 8 dage sammen med usikre tidspunkter.</p>
+<ul><li><strong>Hent rå data fra appen</strong> (manifest.json med obs_start og obs_end) for de tre nætter. Så kendes stakkens midttid på sekunder, og afvigelsen langs banen på 7–28″ kan fjernes.</li><li><strong>Tag et billede omkring 3. november</strong>, gerne flere i træk. Kometen står da ved RA 19h 48m, Dec +14,5°, 83° fra Solen; den 12. november ved RA 19h 32m, Dec +16,6°, 73° fra Solen.</li><li><strong>Undgå felter, hvor stjerner dækker komaen</strong>, eller tag to stakke med en halv times mellemrum, så kometen er flyttet væk fra stjernerne.</li><li><strong>Brug den længste bue til Gauss</strong> (første, midterste og sidste nat), og kontroller med de øvrige nætter.</li></ul>
+</section>
+<section class="section reveal"><h3>Kilder</h3><ul class="sources"><li><a href="https://www.cobs.si/comet/393/">MPC-banelementer, MPEC 2026-TP0, via COBS (komet 393)</a></li><li><a href="https://en.wikipedia.org/wiki/161P/Hartley%E2%80%93IRAS">Periheldato og baggrund: Wikipedia, 161P/Hartley–IRAS</a></li><li><a href="https://github.com/steveberardi/starplot-bigsky">Stjernekatalog: Big Sky (Tycho-2 + Hipparcos)</a></li><li><a href="kometbane-161P.html">Interaktiv 3D-model af kometens bane</a></li></ul></section>
+</article>
+
+<footer>
+    Komet 161P/Hartley–IRAS · baneberegning · Michael Howard Grant<br>
+    Del af <a href="index.html">Fysik, matematik og kemi</a> ·
+    <a href="mailto:michael.h.grant@gmail.com">michael.h.grant@gmail.com</a>
+</footer>
+
+<script>
+/* ---------- starfield ---------- */
+(function(){
+    var c=document.querySelector('#stars canvas'),x=c.getContext('2d'),stars=[];
+    function size(){
+        c.width=innerWidth;c.height=innerHeight;
+        stars=[];
+        var n=Math.min(160,Math.round(innerWidth*innerHeight/9000));
+        for(var i=0;i<n;i++){
+            stars.push({
+                x:Math.random()*c.width,y:Math.random()*c.height,
+                r:Math.random()*1.3+0.2,
+                a:Math.random(),s:Math.random()*0.018+0.004
+            });
+        }
+    }
+    function draw(){
+        x.clearRect(0,0,c.width,c.height);
+        for(var i=0;i<stars.length;i++){
+            var st=stars[i];
+            st.a+=st.s;
+            var tw=0.45+0.55*Math.abs(Math.sin(st.a));
+            x.globalAlpha=tw;
+            x.fillStyle= i%9===0 ? '#9fdcff' : '#ffffff';
+            x.beginPath();x.arc(st.x,st.y,st.r,0,6.283);x.fill();
+        }
+        x.globalAlpha=1;
+        requestAnimationFrame(draw);
+    }
+    size();draw();
+    addEventListener('resize',size);
+})();
+
+/* ---------- scroll reveal ---------- */
+(function(){
+    var io=new IntersectionObserver(function(es){
+        es.forEach(function(e){
+            if(e.isIntersecting){
+                e.target.classList.add('in');
+                if(e.target.classList.contains('score')){
+                    var arc=document.getElementById('scoreArc');
+                    if(arc) arc.style.strokeDashoffset = 465*(1-0.94);
+                }
+                e.target.querySelectorAll('.errbar').forEach(function(b){
+                    var w=b.getAttribute('data-w');
+                    if(w) b.querySelector('.fill').style.width=w+'%';
+                });
+                io.unobserve(e.target);
+            }
+        });
+    },{threshold:0.18});
+    document.querySelectorAll('.reveal').forEach(function(el){io.observe(el);});
+})();
+</script>
+<script src="lang-switch.js" defer></script>
+</body>
+</html>

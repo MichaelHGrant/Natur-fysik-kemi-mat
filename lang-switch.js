@@ -59,6 +59,7 @@
     "solen.html": "solen-en.html",
     "arianismen-og-den-nikaenske-tro.html": "arianismen-og-den-nikaenske-tro-en.html",
     "kometbane-161P.html": "kometbane-161P-en.html",
+    "baneberegning-161P.html": "baneberegning-161P-en.html",
     "kometbane-220P.html": "kometbane-220P-en.html",
     "keplers-ligning-aarstider.html": "keplers-ligning-aarstider-en.html",
     "solformorkelse-2027.html": "solformorkelse-2027-en.html",
