@@ -38,6 +38,8 @@
     "den-nye-ateismes-kategorifejl.html": "den-nye-ateismes-kategorifejl-en.html",
     "maanens-bane-af-et-fotografi.html": "maanens-bane-af-et-fotografi-en.html",
     "solformoerkelse-2027-globus.html": "solformoerkelse-2027-globus-en.html",
+    "nordlys.html": "nordlys-en.html",
+    "jupiters-baelter.html": "jupiters-baelter-en.html",
     "undervisningspakke_gauss_web_offline_skolebog.html": "undervisningspakke_gauss_web_offline_skolebog-en.html",
     "maanens-bane-to-metoder.html": "maanens-bane-to-metoder-en.html",
     "linse-og-diffraktion.html": "linse-og-diffraktion-en.html",
