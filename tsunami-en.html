@@ -1,0 +1,877 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tsunamis</title>
+<meta name="description" content="Tsunamis in 3D: the waves from Sumatra 2004, Tōhoku 2011, Chile 1960, Lisbon 1755 and Storegga computed over the real oceans, and a section through the wave as it grows and floods the coast.">
+<link rel="canonical" href="https://mhgfysik.dk/tsunami-en.html">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body { margin: 0; }
+img { max-width: 100%; }
+/* Layout: the globe with the wave as hero, the gauges beside it, controls below, the coastal section underneath, notes at the bottom */
+:root {
+  --void: #060a10;
+  --panel: #0e151d;
+  --raise: #172230;
+  --line: #233244;
+  --ink: #e6efea;
+  --muted: #8fa29b;
+  --green: #6fd3ff;
+  --dust: #c9a77c;
+  --red: #ff6f6f;
+  --sea: #5fb7ff;
+  --sunc: #ffd36b;
+  --crest: #ff8a4c;
+  --trough: #4aa8ff;
+  --focus: #c8efff;
+  --f-display: "Spectral", Georgia, "Times New Roman", serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { background: var(--void); color: var(--ink); }
+body { font-family: var(--f-body); font-size: 15px; line-height: 1.55; }
+a { color: var(--green); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 56px; display: grid; gap: 18px; }
+header { display: grid; gap: 6px; }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.eyebrow a { color: inherit; }
+h1 { font-family: var(--f-display); font-weight: 400; font-size: clamp(30px, 5vw, 48px); line-height: 1.08; margin: 0; text-wrap: balance; }
+h1 em { font-style: italic; color: var(--green); }
+.lede { margin: 4px 0 0; max-width: 70ch; color: var(--muted); }
+.stagewrap { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 12px; }
+@media (max-width: 760px) { .stagewrap { grid-template-columns: minmax(0, 1fr); } }
+.stage { position: relative; height: clamp(380px, 64vh, 660px); background: #020305; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.hud { position: absolute; pointer-events: none; font-family: var(--f-mono); font-size: 12px; color: var(--muted); text-shadow: 0 1px 6px #000; }
+.hud.tl { top: 12px; left: 14px; display: grid; gap: 2px; }
+.hud.tl b { color: var(--ink); font-weight: 500; }
+.hud.bl { bottom: 10px; left: 14px; font-size: 11px; }
+.camtabs { position: absolute; top: 10px; right: 10px; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; max-width: 70%; }
+.camtabs button { font: 500 11px/1 var(--f-mono); color: #fff; background: rgba(8,12,15,.7); border: 1px solid rgba(255,255,255,.2); border-radius: 999px; padding: 6px 10px; cursor: pointer; }
+.camtabs button[aria-pressed="true"] { background: rgba(8,12,15,.95); border-color: rgba(200,239,255,.6); }
+.dials { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+@media (max-width: 760px) { .dials { grid-template-columns: 1fr 1fr; } .dials .ro { grid-column: 1 / -1; } }
+.dials .hd { font: 500 11px var(--f-mono); color: var(--muted); }
+.dials canvas { width: 100%; aspect-ratio: 1/1; display: block; }
+.ro { display: grid; gap: 4px; font-size: 13px; }
+.ro div { display: flex; justify-content: space-between; gap: 8px; border-top: 1px solid var(--line); padding-top: 4px; }
+.ro span { color: var(--muted); font-size: 12px; }
+.ro b { font: 500 13px var(--f-mono); font-variant-numeric: tabular-nums; text-align: right; }
+.controls { display: grid; gap: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.play { height: 44px; min-width: 112px; padding: 0 18px 0 14px; border-radius: 999px; border: 1px solid #4a5a70; background: #18222f; color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 600 15px/1 var(--f-body); }
+.play svg { width: 16px; height: 16px; fill: currentColor; }
+.action { font: 600 14px/1 var(--f-body); color: #04202c; background: var(--green); border: 0; border-radius: 999px; padding: 12px 16px; cursor: pointer; }
+.ghost { font: 500 14px/1 var(--f-body); color: var(--ink); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 10px 14px; cursor: pointer; }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
+.seg button { font: 500 13px/1 var(--f-body); color: var(--muted); background: transparent; border: 0; padding: 9px 11px; cursor: pointer; border-right: 1px solid var(--line); }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { color: var(--ink); background: var(--raise); }
+.ctl-label { font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.group { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.chk { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; cursor: pointer; }
+.chk input { width: 15px; height: 15px; accent-color: var(--green); }
+.sliders { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px 22px; }
+.sl { display: grid; gap: 2px; font-size: 13px; color: var(--muted); }
+.sl .top { display: flex; justify-content: space-between; gap: 8px; }
+.sl output { font: 500 13px var(--f-mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+.sl input[type=range] { width: 100%; accent-color: var(--green); }
+.sl input[type=date] { font: 500 13px var(--f-mono); color: var(--ink); background: var(--raise); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; color-scheme: dark; }
+.hint { font-size: 12px; color: var(--muted); margin: 0; }
+.msg { font-size: 12px; color: var(--green); min-height: 1em; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.skybox { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; display: grid; gap: 8px; }
+.skybox .hd { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+.skybox h2 { font-family: var(--f-display); font-weight: 400; font-size: 22px; margin: 0; }
+.skybox canvas { width: 100%; aspect-ratio: 3/1; display: block; border-radius: 4px; background: #01040a; }
+@media (max-width: 640px) { .skybox canvas { aspect-ratio: 2/1; } }
+.skyread { font-size: 13.5px; color: #cfdcd6; margin: 0; }
+.notes { display: grid; grid-template-columns: 1.3fr 1fr; gap: 28px 36px; padding-top: 8px; }
+.notes > section { min-width: 0; }
+.notes h2 { font-family: var(--f-display); font-weight: 400; font-size: 25px; margin: 0 0 8px; text-wrap: balance; }
+.notes h3 { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 500; margin: 0 0 8px; }
+.notes p { margin: 0 0 10px; max-width: 66ch; }
+.eq { font-family: var(--f-display); font-style: italic; font-size: 18px; padding: 6px 0 10px; overflow-x: auto; white-space: nowrap; }
+.side { border-left: 1px solid var(--line); padding-left: 24px; color: #cbd7d1; font-size: 14px; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 6px 0 16px; font-size: 14px; }
+.facts dt { font-family: var(--f-mono); font-size: 12px; color: var(--muted); padding-top: 2px; }
+.facts dd { margin: 0; }
+.tblwrap { overflow-x: auto; margin: 4px 0 14px; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; min-width: 460px; }
+th, td { text-align: left; padding: 6px 10px 6px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+td i.sw { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 6px; vertical-align: -1px; }
+ul.refs { margin: 0; padding-left: 18px; font-size: 13.5px; } ul.refs li { margin-bottom: 5px; }
+@media (max-width: 760px) { .notes { grid-template-columns: 1fr; } .side { border-left: 0; border-top: 1px solid var(--line); padding-left: 0; padding-top: 16px; } }
+@media (max-width: 640px) { .camtabs { max-width: 100%; left: 10px; top: auto; bottom: 10px; justify-content: flex-start; } .hud.bl { display: none; } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+.side2 { display: grid; gap: 8px; align-content: start; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px; min-width: 0; }
+.side2 .hd { font: 500 11px var(--f-mono); color: var(--muted); }
+.side2 h3 { font-family: var(--f-display); font-weight: 400; font-size: 20px; margin: 0; line-height: 1.15; }
+.side2 .kind { font-size: 12.5px; color: var(--muted); }
+.side2 canvas { width: 100%; height: 150px; display: block; }
+.duo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+@media (max-width: 860px) { .duo { grid-template-columns: minmax(0, 1fr); } }
+.box { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; display: grid; gap: 10px; min-width: 0; align-content: start; }
+.box h2 { font-family: var(--f-display); font-weight: 400; font-size: 22px; margin: 0; }
+.box canvas { width: 100%; height: 220px; display: block; }
+.box svg { width: 100%; height: auto; display: block; }
+.box p { margin: 0; font-size: 13.5px; color: #cdd6df; }
+.big { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--muted); }
+.big b { display: block; font: 500 20px var(--f-mono); color: var(--ink); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 10px; font: 500 11px var(--f-mono); color: var(--muted); }
+.legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; margin-right: 4px; vertical-align: -1px; }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.tab { font: 500 14px/1.2 var(--f-body); color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 9px 16px; cursor: pointer; }
+.tab[aria-selected="true"] { color: var(--ink); background: var(--raise); border-color: #4a5a70; }
+.stage .hud { color: #dbe4ea; }
+.stage.tall { height: clamp(420px, 70vh, 720px); }
+.trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 980px) { .trio { grid-template-columns: minmax(0, 1fr); } }
+.trio canvas { width: 100%; height: 240px; display: block; }
+.stagebadge { font: 600 12px var(--f-mono); padding: 3px 8px; border-radius: 999px; background: rgba(0,0,0,.45); color: #fff; }
+.stagetext { position: absolute; left: 14px; right: 14px; bottom: 34px; max-width: 520px; font-size: 13px; color: #eef3f7; text-shadow: 0 1px 6px #000; pointer-events: none; }
+@media (max-width: 640px) { .stagetext { bottom: 54px; font-size: 12px; } }
+#tiltCv { width: 100%; height: 260px; display: block; }
+.sec { font-family: var(--f-display); font-weight: 400; font-size: clamp(26px, 3.6vw, 34px); margin: 22px 0 -6px; }
+.stage.mid { height: clamp(330px, 56vh, 560px); }
+.gt { width: 100%; min-width: 0; font-size: 12.5px; }
+.gt th, .gt td { padding: 4px 6px 4px 0; }
+.gt td:nth-child(n+2), .gt th:nth-child(n+2) { white-space: nowrap; text-align: right; font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.gt tr { cursor: pointer; }
+.gt tr[aria-selected="true"] td { color: var(--green); }
+.gt tr:hover td { background: rgba(111,211,255,.06); }
+#profCv { width: 100%; height: 230px; display: block; }
+@media (max-width: 640px) { #profCv { height: 200px; } }
+.cbar { height: 10px; border-radius: 3px; }
+.cbarlbl { display: flex; justify-content: space-between; font: 500 10.5px var(--f-mono); color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow"><a href="index-en.html#geofysik">← Home</a> · Earth and geophysics · waves across a whole ocean</div>
+    <h1>Tsunamis: when <em>the whole ocean</em> moves</h1>
+    <p class="lede">When a great earthquake suddenly lifts the sea floor, the whole column of water above it is lifted too. The wave that spreads out is only a metre high in deep water, but it is several hundred kilometres long and travels at the speed of a jet airliner. Here the wave is computed over the real oceans with their depths, coasts and islands. Pick a tsunami, or click the ocean and make your own earthquake. Drag the Earth to turn it.</p>
+  </header>
+
+  <div class="tabs" role="tablist" id="ev">
+    <button class="tab" role="tab" type="button" data-e="sumatra" aria-selected="true">Sumatra 2004</button>
+    <button class="tab" role="tab" type="button" data-e="tohoku" aria-selected="false">Tōhoku 2011</button>
+    <button class="tab" role="tab" type="button" data-e="chile" aria-selected="false">Chile 1960</button>
+    <button class="tab" role="tab" type="button" data-e="lisboa" aria-selected="false">Lisbon 1755</button>
+    <button class="tab" role="tab" type="button" data-e="storegga" aria-selected="false">Storegga, 6150 BC</button>
+    <button class="tab" role="tab" type="button" data-e="custom" aria-selected="false">Your own earthquake</button>
+  </div>
+
+  <div class="stagewrap">
+    <div class="stage tall" id="stage">
+      <canvas id="cv" aria-label="The Earth with the depth of the oceans and the tsunami spreading out from the earthquake. Drag to turn, scroll to zoom, click the ocean to make an earthquake."></canvas>
+      <div class="hud tl"><div><span class="stagebadge" id="hT">—</span></div><div id="hEv"></div></div>
+      <div class="camtabs" id="cams">
+        <button type="button" data-cam="near" aria-pressed="true">Around the source</button>
+        <button type="button" data-cam="far" aria-pressed="false">Whole ocean</button>
+      </div>
+      <div class="stagetext" id="stageText"></div>
+      <div class="hud bl" id="hNote">Drag to turn · scroll to zoom</div>
+    </div>
+    <div class="side2">
+      <div class="hd">Readings</div>
+      <div class="ro">
+        <div><span>Time after the quake</span><b id="rT">—</b></div>
+        <div><span>Source</span><b id="rMw">—</b></div>
+        <div><span>Sea floor lifted by up to</span><b id="rU">—</b></div>
+        <div><span>Ocean depth at the source</span><b id="rH">—</b></div>
+        <div><span>Wave speed there</span><b id="rC">—</b></div>
+      </div>
+      <div class="hd">Gauges: arrival and largest swing</div>
+      <table class="gt" id="gtab"><thead><tr><th>Place</th><th>Arrival (h:mm)</th><th>Height</th></tr></thead><tbody></tbody></table>
+      <div class="hd" id="mgHd">Water level</div>
+      <canvas id="mgCv" aria-label="The water level at the chosen gauge as a function of time"></canvas>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="row">
+      <button class="play" id="play" type="button"><svg viewBox="0 0 20 20" id="playIcon" aria-hidden="true"><path d="M4 4h12v12H4z"/></svg><span id="playTxt">Stop</span></button>
+      <button class="ghost" id="restart" type="button">Start again</button>
+      <div class="group"><span class="ctl-label">Speed</span>
+        <div class="seg" id="tempo"><button type="button" data-v="1">½×</button><button type="button" data-v="2" aria-pressed="true">1×</button><button type="button" data-v="4">2×</button></div>
+      </div>
+      <div class="group"><span class="ctl-label">Show</span>
+        <div class="seg" id="mode"><button type="button" data-v="0" aria-pressed="true">Wave now</button><button type="button" data-v="1">Highest wave</button><button type="button" data-v="2">Arrival time</button></div>
+      </div>
+    </div>
+    <div class="row">
+      <label class="chk"><input type="checkbox" id="tGauges" checked> Gauges</label>
+      <label class="chk"><input type="checkbox" id="tIso" checked> A line for every hour</label>
+      <div style="flex:1 1 220px;max-width:360px;display:grid;gap:3px"><div class="cbar" id="cbar"></div><div class="cbarlbl" id="cbarLbl"></div></div>
+    </div>
+    <div class="sliders" id="customBox" hidden>
+      <label class="sl"><span class="top"><span>Moment magnitude Mw</span><output id="oMw"></output></span><input type="range" id="sMw" min="7" max="9.5" step="0.1" value="8.8"></label>
+      <label class="sl"><span class="top"><span>Direction of the fault</span><output id="oStr"></output></span><input type="range" id="sStr" min="0" max="179" step="1" value="20"></label>
+    </div>
+    <p class="hint" id="hint">The colours show the water level: orange is a crest, blue is a trough. The scale is logarithmic, so that waves of a few centimetres far away can be seen too. The lines show how far the wave has come after 1, 2, 3 … hours. The arrival is the first swing and the height the largest, out at sea a little way off the coast. On land the wave can run up several times as high, see the coastal section below.</p>
+    <div class="msg" id="msg" aria-live="polite"></div>
+  </div>
+
+  <h2 class="sec">Onto the coast</h2>
+  <p class="lede">Out in deep water the tsunami is low and flat. When it reaches shallow water it slows down, the wavelength shortens, and the energy is squeezed into a shorter and higher wave. Here the wave is computed in a section from the deep ocean across the continental shelf, the beach and the land with the full, non-linear shallow-water equations, so you can see the wave break, flood the land and draw back again.</p>
+  <div class="stagewrap">
+    <div class="stage mid" id="stage2">
+      <canvas id="cv2" aria-label="3D section of the coast with sea floor, beach, houses and the tsunami flooding in. Drag to turn."></canvas>
+      <div class="hud tl"><div><span class="stagebadge" id="cT">—</span></div><div id="cState"></div></div>
+      <div class="camtabs" id="cams2">
+        <button type="button" data-cam="side" aria-pressed="true">Section from the side</button>
+        <button type="button" data-cam="beach" aria-pressed="false">From land</button>
+        <button type="button" data-cam="air" aria-pressed="false">From the air</button>
+      </div>
+      <div class="hud bl">Heights are exaggerated in the side section</div>
+    </div>
+    <div class="side2">
+      <div class="hd">The wave front</div>
+      <div class="ro">
+        <div><span>Distance to the coast</span><b id="cX">—</b></div>
+        <div><span>Ocean depth</span><b id="cH">—</b></div>
+        <div><span>Speed √(gh)</span><b id="cC">—</b></div>
+        <div><span>Wavelength</span><b id="cL">—</b></div>
+        <div><span>Wave height</span><b id="cA">—</b></div>
+        <div><span>Green's law predicts</span><b id="cG">—</b></div>
+      </div>
+      <div class="hd">At the coast</div>
+      <div class="ro">
+        <div><span>Run-up above sea level</span><b id="cR">—</b></div>
+        <div><span>Flooded inland</span><b id="cI">—</b></div>
+        <div><span>The sea drew back</span><b id="cD">—</b></div>
+      </div>
+    </div>
+  </div>
+  <div class="controls">
+    <div class="row">
+      <button class="play" id="play2" type="button"><svg viewBox="0 0 20 20" id="playIcon2" aria-hidden="true"><path d="M4 4h12v12H4z"/></svg><span id="playTxt2">Stop</span></button>
+      <button class="ghost" id="restart2" type="button">Send a new wave</button>
+      <div class="group"><span class="ctl-label">In front</span>
+        <div class="seg" id="lead"><button type="button" data-v="1" aria-pressed="true">Crest</button><button type="button" data-v="-1">Trough</button></div>
+      </div>
+    </div>
+    <div class="sliders">
+      <label class="sl"><span class="top"><span>Height in deep water (4000 m)</span><output id="oA"></output></span><input type="range" id="sA" min="0.2" max="3" step="0.1" value="1"></label>
+      <label class="sl"><span class="top"><span>Wavelength in deep water</span><output id="oLam"></output></span><input type="range" id="sLam" min="40" max="300" step="10" value="120"></label>
+      <label class="sl"><span class="top"><span>Width of the continental shelf</span><output id="oSh"></output></span><input type="range" id="sSh" min="0" max="150" step="5" value="40"></label>
+      <label class="sl"><span class="top"><span>Slope of the beach</span><output id="oB"></output></span><input type="range" id="sB" min="20" max="400" step="10" value="60"></label>
+    </div>
+    <div class="box" style="padding:10px 12px">
+      <div class="legend"><span><i style="background:var(--crest)"></i>water level (m), top</span><span><i style="background:#8a6f52"></i>sea floor and land (km), bottom</span><span><i style="background:#ffffff"></i>highest water level so far</span></div>
+      <canvas id="profCv" aria-label="The whole section from the deep ocean to land: the water level at the top and the sea floor at the bottom. The distance to the coast is drawn logarithmically."></canvas>
+    </div>
+    <p class="hint">The distance to the coast is drawn logarithmically, so that both the 300 km of deep ocean and the last hundred metres of beach can be seen. When a trough arrives first, the sea draws back, often by hundreds of metres, minutes before the crest arrives. In 2004 many people walked out to look at the exposed sea floor. It is nature's warning: go to high ground at once.</p>
+  </div>
+
+  <div class="notes">
+    <section>
+      <h2>The whole ocean moves</h2>
+      <p>An ordinary wave raised by the wind is perhaps 100 m long, and it stirs only the top ten metres of the sea. A tsunami is 100–500 km long, much longer than the ocean is deep. Then the whole column of water moves back and forth from the surface to the bottom, and the wave feels the sea floor everywhere. It is a shallow-water wave, even in the middle of the Pacific. Its speed depends only on the depth h:</p>
+      <div class="eq">c = √(g h)</div>
+      <p>In water 4000 m deep, c = √(9.82 · 4000) m/s ≈ 200 m/s, or 710 km/h. The wave crosses the Pacific in a day. In deep water it is rarely more than a metre high, and it passes in 10–30 minutes. A ship does not notice it.</p>
+
+      <h2>Why the wave grows at the coast</h2>
+      <p>As the depth decreases, the wave slows down. The back of the wave catches up with the front, so the wavelength gets shorter. The energy in the wave is proportional to the height squared, and the energy flows forward at the speed c. If no energy is lost, A²·c is constant, and since c ∝ √h, we get Green's law:</p>
+      <div class="eq">A ∝ h<sup>−1/4</sup></div>
+      <p>A wave of 1 m at 4000 m depth becomes 2.5 m high at 100 m depth and 4.5 m high at 10 m depth. In the end the wave becomes so steep that it breaks and rolls in as a wall of foaming water, a bore. The run-up, the height above sea level the wave reaches on land, is often two to three times the height just off the coast. Bays and river mouths gather the wave and can give even higher run-up.</p>
+
+      <h2>The sources</h2>
+      <p>Most tsunamis come from great earthquakes in subduction zones, where one ocean plate slides beneath another. The plates stay locked for hundreds of years while the upper plate is bent down. In the earthquake it springs back up, and the sea floor is lifted by several metres over an area that can be 1000 km long. Only earthquakes that move the sea floor vertically make large tsunamis, and they usually have to be larger than Mw 7.5.</p>
+      <p>Underwater landslides can also set off large tsunamis. The Storegga Slide off Norway about 8150 years ago moved around 3000 km³ of sediment down the continental slope. The wave ran 10–12 m up in western Norway and more than 20 m up on Shetland. Volcanoes can make tsunamis when a flank collapses into the sea, or in a violent explosion like Krakatoa in 1883 and Hunga Tonga–Hunga Haʻapai in 2022. See also <a href="vulkaner-en.html">volcanoes</a> and <a href="jordskaelv-en.html">earthquakes</a>.</p>
+
+      <h2>The model on the globe</h2>
+      <p>The ocean is divided into cells of 0.5° × 0.5°, about 55 km at the equator. In each cell the water level η and the current (u, v) are computed with the linear shallow-water equations on a sphere, every 60 seconds:</p>
+      <div class="eq">∂η/∂t = −∇·(h<b>u</b>),  ∂<b>u</b>/∂t = −g ∇η</div>
+      <p>The ocean depths are read from NOAA's ETOPO1 map. The source is a simplified uplift and subsidence of the sea floor along the trench, or one uplift and one depression for the Storegga Slide. The arrival times agree with the measured ones to within 5–10 %. The model cannot see the coasts in detail, and it does not run the wave up onto land. The coastal section does that. Near the poles the depth in the model is made shallower, so that the calculation stays stable with the narrow cells.</p>
+
+      <h2>Warning</h2>
+      <p>Seismometers find a great earthquake within a few minutes, but whether it has set off a tsunami is known only when the wave has been measured. Pressure gauges on the sea floor (DART) measure the weight of the water column above them and can see a wave of a few centimetres in deep water. The warning centres then compute the arrival times, as here. Near the source there is no time for a warning: in Banda Aceh the wave came after 20 minutes. If you feel a strong or long earthquake at the coast, or the sea draws back, go to high ground or further inland at once.</p>
+    </section>
+    <aside class="side">
+      <h3>Numbers</h3>
+      <dl class="facts">
+        <dt>4000 m deep</dt><dd>c ≈ 200 m/s ≈ 710 km/h</dd>
+        <dt>1000 m deep</dt><dd>c ≈ 100 m/s ≈ 360 km/h</dd>
+        <dt>100 m deep</dt><dd>c ≈ 31 m/s ≈ 110 km/h</dd>
+        <dt>10 m deep</dt><dd>c ≈ 10 m/s ≈ 36 km/h</dd>
+        <dt>Wavelength</dt><dd>100–500 km in deep water</dd>
+        <dt>Period</dt><dd>10–60 minutes between crests</dd>
+        <dt>Wind waves</dt><dd>period 5–15 s, wavelength under 300 m</dd>
+      </dl>
+      <h3>Great tsunamis</h3>
+      <div class="tblwrap"><table style="min-width:0">
+        <thead><tr><th>Year</th><th>Source</th><th>Largest run-up</th><th>Deaths</th></tr></thead>
+        <tbody>
+          <tr><td>c. 6150 BC</td><td>Storegga Slide, Norway</td><td>&gt; 20 m (Shetland)</td><td>unknown</td></tr>
+          <tr><td>1755</td><td>Lisbon, Mw ≈ 8.5</td><td>15–20 m</td><td>30 000–50 000*</td></tr>
+          <tr><td>1883</td><td>Krakatoa, Indonesia</td><td>c. 35 m</td><td>c. 36 000</td></tr>
+          <tr><td>1958</td><td>Lituya Bay, Alaska, slide</td><td>524 m</td><td>5</td></tr>
+          <tr><td>1960</td><td>Chile, Mw 9.5</td><td>25 m</td><td>1000–6000*</td></tr>
+          <tr><td>2004</td><td>Sumatra, Mw 9.1</td><td>51 m</td><td>c. 230 000</td></tr>
+          <tr><td>2011</td><td>Tōhoku, Japan, Mw 9.0</td><td>40 m</td><td>c. 18 500</td></tr>
+          <tr><td>2022</td><td>Hunga Tonga, volcano</td><td>c. 15 m</td><td>6</td></tr>
+        </tbody></table></div>
+      <p style="font-size:12.5px;color:var(--muted)">* earthquake, tsunami and fire together.</p>
+      <h3>See also</h3>
+      <p><a href="vulkaner-en.html">Volcanoes</a> · <a href="jordskaelv-en.html">Earthquakes and volcanoes for children</a> · <a href="pladetektonik-en.html">Plate tectonics</a> · <a href="orkaner-en.html">Hurricanes</a></p>
+      <h3>Sources</h3>
+      <ul class="refs">
+        <li>V. V. Titov et al., <i>Science</i> 309 (2005): the 2004 Sumatra tsunami across the globe.</li>
+        <li>C. E. Synolakis, <i>J. Fluid Mech.</i> 185 (1987): run-up of solitary waves on a sloping beach.</li>
+        <li>Y. Okada, <i>Bull. Seism. Soc. Am.</i> 75 (1985): the motion of the sea floor in an earthquake.</li>
+        <li>S. Bondevik et al., <i>Quat. Sci. Rev.</i> 24 (2005): the Storegga tsunami in Norway, the Faroes and Shetland.</li>
+        <li>E. Audusse et al., <i>SIAM J. Sci. Comput.</i> 25 (2004): the numerical method in the coastal section.</li>
+        <li>NOAA, ETOPO1 Global Relief Model: the ocean depths.</li>
+      </ul>
+    </aside>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+window.TXT={dec:".",noWorker:"The simulation cannot start in this browser.",noDepth:"The ocean depth map could not be loaded.",stop:"Stop",start:"Start",h:"h",min:"min",kmh:"km/h",ms:"m/s",m:"m",km:"km",
+ tLbl:t=>"t = "+t,notYet:"—",wait:"Computing …",
+ hint:"Click the ocean to set off an earthquake. Drag to turn · scroll to zoom",
+ drag:"Drag to turn · scroll to zoom",
+ custTxt:"Click the ocean where the earthquake should strike. The fault is laid in the chosen direction, and its length, width and slip follow from the moment magnitude.",
+ custMw:(mw,L,D)=>"Mw "+mw+", "+L+" km long, slip "+D+" m",
+ onLand:"That point is on land. Click the ocean.",
+ slide:"Landslide",level:"Water level",
+ cbar0:["−3 m","−10 cm","0","10 cm","3 m"],cbar1:["1 cm","10 cm","1 m","5 m"],cbar2:h=>["0 h",Math.round(h/2)+" h",h+" h"],
+ crestFirst:"crest first",troughFirst:"trough first",
+ cState:["The wave is crossing the deep ocean","The wave is climbing the continental slope","The wave is over the shelf","The sea is drawing back","The wave is flooding the land","The water is pouring back to the sea"],
+ notArrived:"not arrived yet",
+ ev:{
+  sumatra:{n:"Sumatra–Andaman, 26 Dec 2004",mw:"Mw 9.1",txt:"A 1300 km stretch of the Sunda Trench ruptures in 8–10 minutes. The wave hits Banda Aceh after 20 minutes, Thailand and Sri Lanka after 1½–2 hours and Somalia after 7 hours."},
+  tohoku:{n:"Tōhoku, Japan, 11 March 2011",mw:"Mw 9.0",txt:"The sea floor at the Japan Trench is lifted by up to 5–10 m. The wave reaches the Japanese coast after 30 minutes, Hawaii after 7½ hours and Chile after 22 hours."},
+  chile:{n:"Valdivia, Chile, 22 May 1960",mw:"Mw 9.5",txt:"The largest earthquake ever measured. The wave killed 61 people in Hilo, Hawaii, 15 hours later and 142 in Japan after 22 hours, on the far side of the Pacific."},
+  lisboa:{n:"Lisbon, 1 Nov 1755",mw:"Mw ≈ 8.5",txt:"The source lay southwest of Portugal, but exactly where is uncertain. The wave struck Lisbon 30–40 minutes after the shaking, Cornwall and Ireland after 4–5 hours and the Caribbean after 7–8 hours."},
+  storegga:{n:"Storegga Slide, about 8150 years ago",mw:"landslide",txt:"The continental slope off Møre slides out into the Norwegian Sea. The wave runs 10–12 m up in western Norway, over 20 m on Shetland and inland over Scotland. Sea level was then about 15 m lower, and Doggerland was dry land."},
+  custom:{n:"Your own earthquake",mw:"",txt:""}},
+ g:{aceh:"Banda Aceh",phuket:"Phuket",galle:"Galle",chennai:"Chennai",male:"Malé",mogadishu:"Mogadishu",mauritius:"Mauritius",perth:"Perth",
+  sendai:"Sendai",midway:"Midway",hilo:"Hilo",crescent:"Crescent City",callao:"Callao",talcahuano:"Talcahuano",papeete:"Tahiti",wellington:"Wellington",
+  corral:"Corral",ofunato:"Ofunato",sydney:"Sydney",lisboa:"Lisbon",cadiz:"Cádiz",safi:"Safi",funchal:"Madeira",kinsale:"Kinsale",newlyn:"Cornwall",barbados:"Barbados",azores:"Azores",
+  aalesund:"Ålesund",bergen:"Bergen",shetland:"Shetland",faroe:"Faroe Islands",montrose:"Scotland",hvidesande:"Hvide Sande",iceland:"East Iceland",lofoten:"Lofoten",
+  honolulu:"Honolulu",tokyo:"Tokyo",manila:"Manila",anchorage:"Kodiak",sf:"San Francisco",acapulco:"Acapulco",valparaiso:"Valparaíso",capetown:"Cape Town",newyork:"New York",reykjavik:"Reykjavík",athens:"Crete",napoli:"Naples",darwin:"Darwin",auckland:"Auckland",mumbai:"Mumbai",karachi:"Karachi",jakarta:"Java",suva:"Fiji",lima:"Lima",dakar:"Dakar",rio:"Rio de Janeiro",kodiak:"Kodiak"}
+};
+
+/* ---------- tsunami: fysikkerne (deles af siden og testene) ---------- */
+const D2R=Math.PI/180,R2D=180/Math.PI,RE=6.371e6,GRAV=9.81;
+
+/* ===== 1. Lineære lavvandsligninger på kuglen (C-gitter, 0,5°) =====
+   dη/dt = −(1/(R cosφ)) [∂(h u)/∂λ + ∂(h v cosφ)/∂φ],  du/dt = −g/(R cosφ) ∂η/∂λ,  dv/dt = −(g/R) ∂η/∂φ */
+function makeGlobal(depth,W,H,dt){
+  dt=dt||60;
+  const N=W*H,D=Math.PI/H;
+  const eta=new Float32Array(N),u=new Float32Array(N),v=new Float32Array(N);
+  const hc=new Float32Array(N),hU=new Float32Array(N),hV=new Float32Array(N);
+  const cosC=new Float64Array(H),cosF=new Float64Array(H);
+  const maxA=new Float32Array(N),arr=new Float32Array(N),e0=new Float32Array(N);
+  for(let j=0;j<H;j++){cosC[j]=Math.cos((90-(j+0.5)*180/H)*D2R);cosF[j]=Math.cos((90-(j+1)*180/H)*D2R);
+    // stabilitet: på høje bredder bliver cellerne smalle; dybden loftes, så c·dt·√(1/dx²+1/dy²) ≤ 0,9
+    const dx=RE*cosC[j]*D,dy=RE*D,cmax=0.9/(dt*Math.sqrt(1/(dx*dx)+1/(dy*dy))),hcap=cmax*cmax/GRAV;
+    for(let i=0;i<W;i++){const k=j*W+i;const h=depth[k];hc[k]=h>0?Math.min(Math.max(h,10),hcap):0;}}
+  for(let j=0;j<H;j++)for(let i=0;i<W;i++){const k=j*W+i,ip=i===W-1?k-W+1:k+1;
+    hU[k]=(hc[k]>0&&hc[ip]>0)?Math.min(hc[k],hc[ip]):0;
+    hV[k]=(j<H-1&&hc[k]>0&&hc[k+W]>0)?Math.min(hc[k],hc[k+W]):0;}
+  const S={W,H,N,dt,t:0,eta,u,v,hc,maxA,arr,e0,thr:0.01,gauges:[]};
+  S.reset=function(){eta.fill(0);e0.fill(0);u.fill(0);v.fill(0);maxA.fill(0);arr.fill(-1);S.t=0;for(const g of S.gauges){g.ts.length=0;g.max=0;g.arr=-1;}};
+  S.step=function(n){
+    const cv=GRAV*dt/(RE*D);
+    for(let s=0;s<n;s++){
+      for(let j=0;j<H;j++){const cu=GRAV*dt/(RE*cosC[j]*D),o=j*W;
+        for(let i=0;i<W;i++){const k=o+i;if(hU[k]>0){const ip=i===W-1?o:k+1;u[k]-=cu*(eta[ip]-eta[k]);}
+          if(hV[k]>0)v[k]-=cv*(eta[k]-eta[k+W]);}}
+      for(let j=0;j<H;j++){const ce=dt/(RE*cosC[j]*D),o=j*W,cfN=j>0?cosF[j-1]:0,cfS=cosF[j];
+        for(let i=0;i<W;i++){const k=o+i;if(hc[k]===0)continue;const im=i===0?o+W-1:k-1;
+          const div=hU[k]*u[k]-hU[im]*u[im]+(j>0?hV[k-W]*v[k-W]*cfN:0)-hV[k]*v[k]*cfS;
+          const e=eta[k]-ce*div;eta[k]=e;let a=e-e0[k];if(a<0)a=-a;if(a>maxA[k])maxA[k]=a;}}
+      S.t+=dt;
+      {const thr=S.thr,t=S.t;for(let k=0;k<N;k++){if(arr[k]<0&&maxA[k]>thr)arr[k]=t;}}
+      for(const g of S.gauges){const e=eta[g.k];g.ts.push(e);const a=Math.abs(e-g.e0);if(a>g.max)g.max=a;if(g.arr<0&&a>S.thr)g.arr=S.t;}
+    }};
+  S.cell=function(lat,lon){let j=Math.floor((90-lat)/180*H),i=Math.floor(((lon+180)%360+360)%360/360*W);j=Math.max(0,Math.min(H-1,j));
+    // nærmeste våde celle (målere står lidt ude fra kysten)
+    let best=-1,bd=1e9;for(let r=0;r<=6&&best<0;r++)for(let dj=-r;dj<=r;dj++)for(let di=-r;di<=r;di++){const jj=j+dj;if(jj<0||jj>=H)continue;const ii=((i+di)%W+W)%W,k=jj*W+ii;if(hc[k]>0){const d=dj*dj+di*di*cosC[jj]*cosC[jj];if(d<bd){bd=d;best=k;}}}
+    return best;};
+  S.addGauge=function(g){const k=S.cell(g.lat,g.lon);const G=Object.assign({k,ts:[],max:0,arr:-1,e0:0},g);S.gauges.push(G);return G;};
+  return S;
+}
+
+/* Kilden: havbunden løftes ved et stort jordskælv i en subduktionszone.
+   Et tværsnit vinkelret på dybgraven: hævning over den lavvandede del af forkastningen, sænkning længere inde mod land
+   (tilnærmer Okadas løsning for en lavtliggende overskydning). */
+function faultProfile(x){ // x: afstand fra dybgraven mod land i enheder af forkastningens bredde
+  return Math.exp(-Math.pow((x-0.32)/0.24,2))-0.42*Math.exp(-Math.pow((x-0.95)/0.26,2));}
+function applySource(S,src){
+  const {W,H,eta,hc}=S;let peak=0;
+  for(let j=0;j<H;j++){const lat=90-(j+0.5)*180/H;
+    for(let i=0;i<W;i++){const k=j*W+i;if(hc[k]===0)continue;const lon=-180+(i+0.5)*360/W;
+      const e=srcValue(src,lat,lon);if(e!==0){eta[k]+=e;if(Math.abs(e)>peak)peak=Math.abs(e);}}}
+  // glat kilden lidt (to gange 1-2-1 i begge retninger), så gitteret ikke får støj på cellestørrelse
+  const tmp=new Float32Array(eta.length);
+  for(let pass=0;pass<2;pass++){
+    for(let j=0;j<H;j++)for(let i=0;i<W;i++){const k=j*W+i;if(hc[k]===0){tmp[k]=0;continue;}const kl=i===0?k+W-1:k-1,kr=i===W-1?k-W+1:k+1;
+      const l=hc[kl]>0?eta[kl]:eta[k],r=hc[kr]>0?eta[kr]:eta[k];tmp[k]=0.25*l+0.5*eta[k]+0.25*r;}
+    for(let j=0;j<H;j++)for(let i=0;i<W;i++){const k=j*W+i;if(hc[k]===0){eta[k]=0;continue;}const ku=j>0?k-W:k,kd=j<H-1?k+W:k;
+      const u=hc[ku]>0?tmp[ku]:tmp[k],d=hc[kd]>0?tmp[kd]:tmp[k];eta[k]=0.25*u+0.5*tmp[k]+0.25*d;}}
+  let ps=0;for(let k=0;k<eta.length;k++){S.e0[k]=eta[k];const a=Math.abs(eta[k]);if(a>ps)ps=a;}
+  S.thr=Math.min(0.03,Math.max(0.004,0.004*ps));
+  for(const g of S.gauges)g.e0=eta[g.k];
+  return peak;}
+/* lokal plan projektion omkring (lat0,lon0), km */
+function enu(lat,lon,lat0,lon0){let dl=lon-lon0;dl=((dl+540)%360)-180;return [dl*111.195*Math.cos(lat0*D2R),(lat-lat0)*111.195];}
+function srcValue(src,lat,lon){
+  if(src.type==="blob"){let s=0;for(const b of src.blobs){const [x,y]=enu(lat,lon,b.lat,b.lon);const r2=(x*x+y*y)/(b.r*b.r);if(r2<9)s+=b.A*Math.exp(-r2);}return s;}
+  // forkastning langs en polylinje (dybgraven); side=+1: land ligger til højre for liniens retning
+  const P=src.pts,Wk=src.W;let best=null;const L=src._len||(src._len=traceLen(P));
+  const [cx,cy]=[lat,lon];let sAcc=0;
+  for(let n=0;n<P.length-1;n++){const a=P[n],b=P[n+1];const lat0=(a[0]+b[0])/2,lon0=(a[1]+b[1])/2;
+    const A=enu(a[0],a[1],lat0,lon0),B=enu(b[0],b[1],lat0,lon0),Q=enu(cx,cy,lat0,lon0);
+    const dx=B[0]-A[0],dy=B[1]-A[1],l=Math.hypot(dx,dy);const tx=dx/l,ty=dy/l;
+    const along=(Q[0]-A[0])*tx+(Q[1]-A[1])*ty;const perp=((Q[0]-A[0])*ty-(Q[1]-A[1])*tx)*src.side; // + mod land
+    const ac=Math.max(0,Math.min(l,along));const out=along-ac;
+    const d=Math.abs(out)+Math.max(0,Math.max(-perp,perp-1.6*Wk));
+    if(!best||d<best.d)best={d,perp,s:(sAcc+ac)/L,out:Math.abs(out)};
+    sAcc+=l;}
+  if(!best||best.perp<-0.6*Wk||best.perp>1.7*Wk)return 0;
+  const end=Math.exp(-Math.pow(best.out/(0.25*Wk),2));
+  const tp=src.taper||[1,1];const tap=tp[0]+(tp[1]-tp[0])*best.s;
+  const edge=Math.min(1,best.s/0.06,(1-best.s)/0.06);const e2=edge<1?0.5-0.5*Math.cos(Math.PI*Math.max(0,edge)):1;
+  return src.U*tap*faultProfile(best.perp/Wk)*end*(best.out>0?1:e2);}
+function traceLen(P){let L=0;for(let n=0;n<P.length-1;n++){const a=P[n],b=P[n+1];const lat0=(a[0]+b[0])/2,lon0=(a[1]+b[1])/2;const A=enu(a[0],a[1],lat0,lon0),B=enu(b[0],b[1],lat0,lon0);L+=Math.hypot(B[0]-A[0],B[1]-A[1]);}return L;}
+/* Et jordskælv af momentstørrelse Mw: længde, bredde og forskydning (Wells & Coppersmith 1994, Hanks & Kanamori 1979) */
+function quakeSize(Mw){const M0=Math.pow(10,1.5*Mw+9.1);const L=Math.min(1500,Math.pow(10,0.59*Mw-2.44));const Wd=Math.min(220,L/2);const D=M0/(4e10*L*1e3*Wd*1e3);return {M0,L,W:Wd,D,U:0.55*D};}
+
+/* ===== 2. Ind mod kysten: ikke-lineære lavvandsligninger i 1D med tør/våd grænse =====
+   Finite volumen, hydrostatisk rekonstruktion (Audusse m.fl. 2004), MUSCL + Heun, HLL-flux, Manning-friktion */
+function makeCoast(o){
+  // o: {h0, shelfW (km), shelfH, beta (stranden: 1/beta), aIn (m), lam (km), lead: +1 top først / −1 dal først}
+  const X0=-Math.max(260e3,o.shelfW*1e3+150e3+2.4*o.lam*1e3);
+  const xs=[];let x=X0;
+  const dxAt=x=>x<0?Math.min(1500,4+0.012*(-x)):Math.min(60,4+0.004*x);
+  while(x<3500){const d=dxAt(x);xs.push(x+d/2);x+=d;}
+  const N=xs.length,dx=new Float64Array(N),xc=new Float64Array(N),z=new Float64Array(N);
+  let xe=X0;for(let i=0;i<N;i++){const d=dxAt(xe);dx[i]=d;xc[i]=xe+d/2;xe+=d;}
+  const beach=o.shelfH*o.beta,xShelf0=-beach-o.shelfW*1e3,slopeW=(o.h0-o.shelfH)*14;
+  function bed(x){
+    if(x>=0){// land: stranden fortsætter op til 6 m, derefter en svagt stigende kystslette
+      const zb=x/o.beta;return zb<6?zb:6+(x-6*o.beta)/350;}
+    if(x>-beach)return x/o.beta;
+    if(x>xShelf0)return -o.shelfH;
+    if(x>xShelf0-slopeW){const f=(xShelf0-x)/slopeW;return -o.shelfH-(o.h0-o.shelfH)*(0.5-0.5*Math.cos(Math.PI*f));}
+    return -o.h0;}
+  for(let i=0;i<N;i++)z[i]=bed(xc[i]);
+  const h=new Float64Array(N),q=new Float64Array(N);
+  const lam=o.lam*1e3,sig=lam/4,xw=xShelf0-slopeW-0.9*lam;
+  for(let i=0;i<N;i++){const xi=xc[i];const hh=Math.max(0,-z[i]);let e=0;const s=(xi-xw)/sig;
+    e=o.lead>0?o.aIn*Math.exp(-s*s):-o.aIn*1.1658*2*s*Math.exp(-s*s); // N-bølge: dalen forrest (mod land)
+    h[i]=hh>0?hh+e:0;q[i]=hh>0?e*Math.sqrt(GRAV*hh):0;}
+  const C={N,xc,dx,z,h,q,t:0,bed,X0,xw,beach,xShelf0,slopeW,maxRun:-1e9,maxInund:-1e9,maxEtaShore:0,hmax:new Float64Array(N),emax:new Float64Array(N).fill(-1e9),o};
+  for(let i=0;i<N;i++)C.emax[i]=z[i]>0?-1e9:0;
+  const hL=new Float64Array(N),hR=new Float64Array(N),uL=new Float64Array(N),uR=new Float64Array(N),zL=new Float64Array(N),zR=new Float64Array(N);
+  const Fh=new Float64Array(N+1),Fq=new Float64Array(N+1),Sl=new Float64Array(N+1),Sr=new Float64Array(N+1);
+  const dh=new Float64Array(N),dq=new Float64Array(N);
+  const EPS=1e-4,mm=(a,b)=>a*b<=0?0:(Math.abs(a)<Math.abs(b)?a:b);
+  function rhs(H,Q){
+    for(let i=0;i<N;i++){const hi=H[i],ui=hi>EPS?Q[i]/hi:0;let sh=0,se=0,su=0;
+      if(i>0&&i<N-1&&hi>EPS&&H[i-1]>EPS&&H[i+1]>EPS){const d1=xc[i]-xc[i-1],d2=xc[i+1]-xc[i];
+        const e0=H[i-1]+z[i-1],e1=hi+z[i],e2=H[i+1]+z[i+1];se=mm((e1-e0)/d1,(e2-e1)/d2);sh=mm((hi-H[i-1])/d1,(H[i+1]-hi)/d2);
+        const u0=Q[i-1]/H[i-1],u2=Q[i+1]/H[i+1];su=mm((ui-u0)/d1,(u2-ui)/d2);}
+      const hw=dx[i]/2;let a=hi-sh*hw,b=hi+sh*hw;if(a<0||b<0){a=b=hi;se=0;sh=0;}
+      hL[i]=a;hR[i]=b;const ea=hi+z[i]-se*hw,eb=hi+z[i]+se*hw;zL[i]=ea-a;zR[i]=eb-b;uL[i]=ui-su*hw;uR[i]=ui+su*hw;}
+    for(let f=0;f<=N;f++){// grænseflade mellem celle f−1 og f; f=0: åben rand mod havet, f=N: væg
+      let hl,ul,zl,hr,ur,zr;
+      if(f===0){hl=hr=hL[0];ul=ur=uL[0];zl=zr=zL[0];}
+      else if(f===N){hl=hR[N-1];ul=uR[N-1];zl=zR[N-1];hr=hl;ur=-ul;zr=zl;}
+      else{hl=hR[f-1];ul=uR[f-1];zl=zR[f-1];hr=hL[f];ur=uL[f];zr=zL[f];}
+      const zs=Math.max(zl,zr),hls=Math.max(0,hl+zl-zs),hrs=Math.max(0,hr+zr-zs);
+      const cl=Math.sqrt(GRAV*hls),cr=Math.sqrt(GRAV*hrs);const ulS=hls>EPS?ul:0,urS=hrs>EPS?ur:0;
+      const sL=Math.min(ulS-cl,urS-cr,0),sR=Math.max(ulS+cl,urS+cr,0);
+      const ql=hls*ulS,qr=hrs*urS,fl0=ql,fl1=ql*ulS+0.5*GRAV*hls*hls,fr0=qr,fr1=qr*urS+0.5*GRAV*hrs*hrs;
+      if(sR-sL<1e-12){Fh[f]=0;Fq[f]=0;}else{Fh[f]=(sR*fl0-sL*fr0+sL*sR*(hrs-hls))/(sR-sL);Fq[f]=(sR*fl1-sL*fr1+sL*sR*(qr-ql))/(sR-sL);}
+      Sl[f]=0.5*GRAV*(hl*hl-hls*hls);Sr[f]=0.5*GRAV*(hr*hr-hrs*hrs);}
+    for(let i=0;i<N;i++){const sc=-GRAV*0.5*(hL[i]+hR[i])*(zR[i]-zL[i]);
+      dh[i]=-(Fh[i+1]-Fh[i])/dx[i];dq[i]=-((Fq[i+1]+Sl[i+1])-(Fq[i]-Sr[i]))/dx[i]+sc/dx[i];}
+  }
+  const h1=new Float64Array(N),q1=new Float64Array(N);
+  C.dtMax=function(){let m=1e9;for(let i=0;i<N;i++){const hi=h[i];if(hi<=EPS)continue;const s=Math.abs(q[i]/hi)+Math.sqrt(GRAV*hi);const d=dx[i]/s;if(d<m)m=d;}return 0.45*m;};
+  C.step=function(dt){
+    rhs(h,q);for(let i=0;i<N;i++){h1[i]=Math.max(0,h[i]+dt*dh[i]);q1[i]=h1[i]>EPS?q[i]+dt*dq[i]:0;}
+    rhs(h1,q1);for(let i=0;i<N;i++){let hn=Math.max(0,0.5*(h[i]+h1[i]+dt*dh[i]));let qn=hn>EPS?0.5*(q[i]+q1[i]+dt*dq[i]):0;
+      if(hn>EPS){const uu=qn/hn,n2=0.025*0.025;qn/=1+dt*GRAV*n2*Math.abs(uu)/Math.pow(Math.max(hn,0.05),4/3);
+        // begræns hastigheden i meget tyndt vand
+        const um=Math.sqrt(GRAV*Math.max(hn,0.05))*4;if(Math.abs(qn/hn)>um)qn=Math.sign(qn)*um*hn;}
+      h[i]=hn;q[i]=qn;}
+    C.t+=dt;
+    for(let i=0;i<N;i++){if(h[i]>0.02){const e=h[i]+z[i];if(e>C.emax[i])C.emax[i]=e;if(z[i]>0){if(z[i]>C.maxRun)C.maxRun=z[i];if(xc[i]>C.maxInund)C.maxInund=xc[i];}}}
+  };
+  C.run=function(T){let s=0;while(T>1e-9&&s<200000){const d=Math.min(T,C.dtMax(),2);C.step(d);T-=d;s++;}return s;};
+  C.eta=i=>h[i]>EPS?h[i]+z[i]:z[i];
+  C.shoreIdx=function(){for(let i=0;i<N;i++)if(xc[i]>=0)return i;return N-1;};
+  return C;
+}
+/* Synolakis (1987): opløbshøjden for en ensom bølge med højden H på dybden d, der løber op ad en strand med hældningen β */
+function runupSynolakis(H,d,cotB){return 2.831*Math.sqrt(cotB)*Math.pow(H/d,1.25)*d;}
+/* Greens lov: amplituden vokser som h^(−1/4), når bølgen går ind på lavere vand */
+function greens(a1,h1,h2){return a1*Math.pow(h1/h2,0.25);}
+
+/* historiske tsunamier: kilder (forenklede) og målesteder */
+const EVENTS={
+ sumatra:{T:13*3600,src:{type:"fault",pts:[[1.8,96.6],[3.0,95.0],[4.5,93.7],[6.5,92.7],[8.5,92.2],[10.5,91.8],[12.5,91.9],[14.0,92.3]],side:1,W:150,U:6.5,taper:[1.1,0.45]},
+   ep:[3.32,95.85],cam:[5,85],
+   gauges:[{id:"aceh",lat:5.55,lon:95.15},{id:"phuket",lat:7.85,lon:98.2},{id:"galle",lat:6.0,lon:80.2},{id:"chennai",lat:13.08,lon:80.35},{id:"male",lat:4.17,lon:73.5},{id:"mogadishu",lat:2.03,lon:45.4},{id:"mauritius",lat:-20.15,lon:57.45},{id:"perth",lat:-31.95,lon:115.7}]},
+ tohoku:{T:24*3600,src:{type:"fault",pts:[[35.6,141.9],[36.8,142.6],[38.0,143.6],[39.3,144.0],[40.4,144.3]],side:-1,W:190,U:7.5,taper:[0.6,0.9]},
+   ep:[38.3,142.37],cam:[25,-170],
+   gauges:[{id:"sendai",lat:38.25,lon:141.2},{id:"midway",lat:28.2,lon:-177.4},{id:"hilo",lat:19.75,lon:-155.05},{id:"crescent",lat:41.74,lon:-124.25},{id:"callao",lat:-12.05,lon:-77.2},{id:"talcahuano",lat:-36.7,lon:-73.15},{id:"papeete",lat:-17.53,lon:-149.6},{id:"wellington",lat:-41.3,lon:174.85}]},
+ chile:{T:26*3600,src:{type:"fault",pts:[[-37.0,-74.0],[-39.0,-74.4],[-41.0,-74.9],[-43.0,-75.4],[-45.5,-76.0]],side:-1,W:190,U:7,taper:[1,0.8]},
+   ep:[-38.14,-73.41],cam:[-10,-150],
+   gauges:[{id:"corral",lat:-39.87,lon:-73.43},{id:"callao",lat:-12.05,lon:-77.2},{id:"papeete",lat:-17.53,lon:-149.6},{id:"hilo",lat:19.75,lon:-155.05},{id:"wellington",lat:-41.3,lon:174.85},{id:"ofunato",lat:39.05,lon:141.75},{id:"crescent",lat:41.74,lon:-124.25},{id:"sydney",lat:-33.85,lon:151.3}]},
+ lisboa:{T:12*3600,src:{type:"fault",pts:[[36.0,-11.6],[36.6,-10.4],[37.2,-9.6]],side:1,W:120,U:8,taper:[1,1]},
+   ep:[36.5,-10.5],cam:[30,-25],
+   gauges:[{id:"lisboa",lat:38.65,lon:-9.3},{id:"cadiz",lat:36.5,lon:-6.35},{id:"safi",lat:32.3,lon:-9.3},{id:"funchal",lat:32.6,lon:-16.9},{id:"kinsale",lat:51.65,lon:-8.5},{id:"newlyn",lat:50.0,lon:-5.6},{id:"barbados",lat:13.1,lon:-59.7},{id:"azores",lat:37.7,lon:-25.7}]},
+ storegga:{T:10*3600,src:{type:"blob",blobs:[{lat:65.0,lon:2.2,r:110,A:14},{lat:63.6,lon:5.4,r:80,A:-12}]},
+   ep:[64.3,3.8],cam:[62,0],
+   gauges:[{id:"aalesund",lat:62.5,lon:6.0},{id:"bergen",lat:60.4,lon:4.9},{id:"shetland",lat:60.5,lon:-1.0},{id:"faroe",lat:62.0,lon:-6.6},{id:"montrose",lat:56.7,lon:-2.3},{id:"hvidesande",lat:56.0,lon:7.9},{id:"iceland",lat:65.2,lon:-13.5},{id:"lofoten",lat:68.2,lon:13.5}]},
+};
+const EXTRA_G=[{id:"honolulu",lat:21.25,lon:-157.9},{id:"tokyo",lat:34.9,lon:139.95},{id:"manila",lat:14.5,lon:120.5},{id:"anchorage",lat:57.7,lon:-152.3},{id:"sf",lat:37.75,lon:-122.7},{id:"acapulco",lat:16.8,lon:-99.95},{id:"valparaiso",lat:-33.0,lon:-71.75},{id:"capetown",lat:-33.95,lon:18.3},{id:"newyork",lat:40.4,lon:-73.8},{id:"reykjavik",lat:64.1,lon:-22.2},{id:"athens",lat:35.2,lon:25.0},{id:"napoli",lat:40.75,lon:14.1},{id:"darwin",lat:-12.4,lon:130.7},{id:"auckland",lat:-36.8,lon:175.0},{id:"mumbai",lat:18.9,lon:72.7},{id:"karachi",lat:24.75,lon:66.9},{id:"jakarta",lat:-8.3,lon:110.0},{id:"suva",lat:-18.2,lon:178.4},{id:"dakar",lat:14.7,lon:-17.5},{id:"rio",lat:-22.95,lon:-43.15}];
+</script>
+<script>
+(function(){
+"use strict";
+const $=s=>document.querySelector(s);
+const T=window.TXT;
+const fmt=(v,d)=>(v<0?"−":"")+Math.abs(v).toFixed(d).replace(".",T.dec);
+const reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const IMG="https://unpkg.com/three-globe/example/img/";
+const W=720,H=360;
+function hm(sec){if(sec<0)return T.notYet;const m=Math.round(sec/60);const h=Math.floor(m/60),mm=m%60;return h>0?h+" "+T.h+" "+String(mm).padStart(2,"0")+" "+T.min:mm+" "+T.min;}
+function hmS(sec){const m=Math.round(sec/60);return Math.floor(m/60)+":"+String(m%60).padStart(2,"0");}
+function geo2vec(lat,lon){const c=Math.cos(lat*D2R);return new THREE.Vector3(c*Math.cos(lon*D2R),Math.sin(lat*D2R),-c*Math.sin(lon*D2R));}
+function fmtH(a){return a<0.1?fmt(a*100,0)+" cm":fmt(a,a<10?1:0)+" m";}
+
+/* ======================= DEL 1: KLODEN ======================= */
+const st={ev:"sumatra",running:!reduce,tempo:2,mode:0,iso:true,gauges:true,cam:"near",t:0,T:13*3600,sel:0,peak:0,inflight:false,ready:false,custom:null,visible:true};
+const cv=$("#cv"),stage=$("#stage");
+const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true});renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x020408);
+const camera=new THREE.PerspectiveCamera(36,1,0.01,100);
+// stjerner
+{const g=new THREE.BufferGeometry(),n=1400,p=new Float32Array(n*3);for(let i=0;i<n;i++){const u=Math.random()*2-1,a=Math.random()*Math.PI*2,r=40;const s=Math.sqrt(1-u*u);p[i*3]=r*s*Math.cos(a);p[i*3+1]=r*u;p[i*3+2]=r*s*Math.sin(a);}
+ g.setAttribute("position",new THREE.BufferAttribute(p,3));scene.add(new THREE.Points(g,new THREE.PointsMaterial({color:0x8899aa,size:0.06,sizeAttenuation:true})));}
+const ocRGBA=new Uint8Array(W*H*4);
+const ocTex=new THREE.DataTexture(ocRGBA,W,H,THREE.RGBAFormat);ocTex.magFilter=THREE.LinearFilter;ocTex.minFilter=THREE.LinearFilter;ocTex.wrapS=THREE.RepeatWrapping;ocTex.needsUpdate=true;
+const arRGBA=new Uint8Array(W*H*4);const arTex=new THREE.DataTexture(arRGBA,W,H,THREE.RGBAFormat);arTex.magFilter=THREE.LinearFilter;arTex.minFilter=THREE.LinearFilter;arTex.wrapS=THREE.RepeatWrapping;arTex.needsUpdate=true;
+function flatTex(r,g,b){const t=new THREE.DataTexture(new Uint8Array([r,g,b,255]),1,1,THREE.RGBAFormat);t.needsUpdate=true;return t;}
+const earthMat=new THREE.ShaderMaterial({extensions:{derivatives:true},uniforms:{day:{value:flatTex(60,70,50)},oc:{value:ocTex},ar:{value:arTex},uIso:{value:1},uTend:{value:13*3600},light:{value:new THREE.Vector3(0.4,0.6,0.7).normalize()}},
+  vertexShader:"varying vec2 vUv;varying vec3 vN;void main(){vUv=uv;vN=normalize(normal);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}",
+  fragmentShader:`uniform sampler2D day;uniform sampler2D oc;uniform sampler2D ar;uniform float uIso;uniform float uTend;uniform vec3 light;varying vec2 vUv;varying vec3 vN;
+  void main(){vec4 o=texture2D(oc,vUv);vec3 land=texture2D(day,vUv).rgb;land=pow(land,vec3(0.9))*1.05;
+   float sea=smoothstep(0.25,0.75,o.a);vec3 c=mix(land,o.rgb,sea);
+   vec4 a=texture2D(ar,vUv);if(uIso>0.5&&a.g>0.985){float hrs=(a.r*255.0-1.0)/254.0*uTend/3600.0;float f=abs(fract(hrs+0.5)-0.5);float w=max(fwidth(hrs),1e-4);float line=(1.0-smoothstep(0.3*w,1.4*w,f))*step(0.6,hrs);c=mix(c,vec3(0.93,0.95,0.97),line*0.8*sea);}float l=0.72+0.38*max(dot(vN,light),0.0);gl_FragColor=vec4(c*l,1.0);}`});
+const loader=new THREE.TextureLoader();loader.setCrossOrigin("anonymous");
+loader.load(IMG+"earth-blue-marble.jpg",t=>{earthMat.uniforms.day.value=t;});
+const earthGrp=new THREE.Group();scene.add(earthGrp);
+const earth=new THREE.Mesh(new THREE.SphereGeometry(1,128,96),earthMat);earthGrp.add(earth);
+earthGrp.add(new THREE.Mesh(new THREE.SphereGeometry(1.018,64,48),new THREE.ShaderMaterial({transparent:true,depthWrite:false,side:THREE.BackSide,blending:THREE.AdditiveBlending,
+  vertexShader:"varying vec3 vN;varying vec3 vP;void main(){vN=normalize(normalMatrix*normal);vec4 p=modelViewMatrix*vec4(position,1.0);vP=p.xyz;gl_Position=projectionMatrix*p;}",
+  fragmentShader:"varying vec3 vN;varying vec3 vP;void main(){float f=pow(1.0-abs(dot(normalize(-vP),vN)),3.0);gl_FragColor=vec4(vec3(0.3,0.6,1.0)*f*0.5,1.0);}"})));
+// mærker: epicenter, forkastning og målesteder
+function labelSprite(text,color,big){const c=document.createElement("canvas");const fs=big?30:26;const ctx=c.getContext("2d");ctx.font="500 "+fs+"px IBM Plex Sans, sans-serif";const w=Math.ceil(ctx.measureText(text).width)+16;c.width=w;c.height=fs+14;
+  const x=c.getContext("2d");x.font="500 "+fs+"px IBM Plex Sans, sans-serif";x.fillStyle="rgba(3,8,14,.62)";x.beginPath();x.roundRect?x.roundRect(0,0,w,c.height,8):x.rect(0,0,w,c.height);x.fill();x.fillStyle=color;x.textBaseline="middle";x.fillText(text,8,c.height/2+1);
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false,transparent:true}));s.userData.aspect=w/c.height;s.renderOrder=10;return s;}
+function dotSprite(color,r){const c=document.createElement("canvas");c.width=c.height=64;const x=c.getContext("2d");x.fillStyle=color;x.beginPath();x.arc(32,32,r||20,0,7);x.fill();x.lineWidth=6;x.strokeStyle="rgba(0,0,0,.7)";x.stroke();
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:true,transparent:true}));s.renderOrder=9;return s;}
+function starSprite(){const c=document.createElement("canvas");c.width=c.height=64;const x=c.getContext("2d");x.translate(32,32);x.beginPath();for(let i=0;i<10;i++){const r=i%2?11:28,a=i*Math.PI/5-Math.PI/2;x.lineTo(r*Math.cos(a),r*Math.sin(a));}x.closePath();x.fillStyle="#ffe066";x.fill();x.lineWidth=4;x.strokeStyle="#3a2a00";x.stroke();
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:true,transparent:true}));s.renderOrder=9;return s;}
+const markGrp=new THREE.Group();earthGrp.add(markGrp);
+const epi=starSprite();earthGrp.add(epi);
+let faultLine=null,gMarks=[];
+function setFaultLine(src){if(faultLine){earthGrp.remove(faultLine);faultLine.geometry.dispose();faultLine=null;}
+  if(!src||src.type!=="fault")return;const pts=[];for(let n=0;n<src.pts.length-1;n++){const a=src.pts[n],b=src.pts[n+1];for(let k=0;k<=8;k++){const f=k/8;pts.push(geo2vec(a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f).multiplyScalar(1.004));}}
+  faultLine=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0xffe066,transparent:true,opacity:0.9}));earthGrp.add(faultLine);}
+
+/* ---------- simuleringen kører i en Web Worker ---------- */
+const WSRC=["const D2R=Math.PI/180,RE=6.371e6,GRAV=9.81;",makeGlobal,faultProfile,applySource,enu,srcValue,traceLen,`
+let S=null,base=null,T=0;const W=${W},H=${H};
+function col(mode,iso,amax,rgba,ab){const e0=0.015,L=Math.log(1+amax/e0);const eta=S.eta,mx=S.maxA,ar=S.arr,hc=S.hc,Tend=T;
+ for(let j=0;j<H;j++){const row=(H-1-j)*W;for(let i=0;i<W;i++){const k=j*W+i,p=(row+i)*4;if(hc[k]===0){rgba[p+3]=0;ab[p+1]=0;continue;}{const t=ar[k];ab[p]=t>=0?1+Math.round(254*Math.min(1,t/Tend)):0;ab[p+1]=t>=0?255:0;}
+  let r=base[k*3],g=base[k*3+1],b=base[k*3+2];
+  if(mode===0){const e=eta[k],a=Math.abs(e);if(a>0.002){let s=Math.min(1,Math.log(1+a/e0)/L);const w=0.85*Math.pow(s,1.1);
+     if(e>0){const cr=255,cg=110+120*s,cb=50+60*s;r+=(cr-r)*w;g+=(cg-g)*w;b+=(cb-b)*w;}else{const cr=60+120*s,cg=150+80*s,cb=255;r+=(cr-r)*w;g+=(cg-g)*w;b+=(cb-b)*w;}}}
+  else if(mode===1){const a=mx[k];if(a>0.01){const s=Math.min(1,Math.log(a/0.01)/Math.log(500));// inferno-agtig
+     const cr=40+215*Math.min(1,s*1.6),cg=10+235*Math.max(0,s*1.3-0.35),cb=90+90*Math.sin(Math.PI*Math.min(1,s*1.5))-40*s;const w=0.35+0.65*s;r+=(cr-r)*w;g+=(cg-g)*w;b+=(Math.max(0,cb)-b)*w;}}
+  else{const t=ar[k];if(t>=0){const s=Math.min(1,t/Tend);const cr=255-150*s,cg=225-185*s,cb=110+60*Math.sin(Math.PI*s)+20*s;r+=(cr-r)*0.8;g+=(cg-g)*0.8;b+=(cb-b)*0.8;}}
+  rgba[p]=r;rgba[p+1]=g;rgba[p+2]=b;rgba[p+3]=255;}}}
+onmessage=function(ev){const m=ev.data;
+ if(m.cmd==="init"){S=makeGlobal(m.depth,W,H,60);base=new Uint8Array(W*H*3);for(let k=0;k<W*H;k++){const d=S.hc[k];const s=Math.sqrt(Math.min(1,d/7000));base[k*3]=46-36*s;base[k*3+1]=110-86*s;base[k*3+2]=130-74*s;}postMessage({type:"ready"});}
+ else if(m.cmd==="start"){T=m.T;S.gauges=[];S.reset();for(const g of m.gauges)S.addGauge(g);S.reset();const peak=applySource(S,m.src);
+   const ek=S.cell(m.ep[0],m.ep[1]);const rgba=new Uint8Array(W*H*4),ab=new Uint8Array(W*H*4);col(m.mode,m.iso,3,rgba,ab);
+   postMessage({type:"frame",t:0,peak,depthEp:ek>=0?S.hc[ek]:0,gk:S.gauges.map(g=>S.hc[g.k]),rgba,ab,g:S.gauges.map(g=>({arr:g.arr,max:g.max,ts:[]}))},[rgba.buffer,ab.buffer]);}
+ else if(m.cmd==="run"){const n0=S.gauges.length?S.gauges[0].ts.length:0;if(S.t<T&&m.n>0)S.step(Math.min(m.n,Math.ceil((T-S.t)/S.dt)));const rgba=new Uint8Array(W*H*4),ab=new Uint8Array(W*H*4);col(m.mode,m.iso,3,rgba,ab);
+   postMessage({type:"frame",t:S.t,rgba,ab,g:S.gauges.map(g=>({arr:g.arr,max:g.max,ts:g.ts.slice(n0)}))},[rgba.buffer,ab.buffer]);}
+};`].map(f=>typeof f==="function"?f.toString():f).join("\n");
+let worker=null,gData=[];
+function makeWorker(){try{worker=new Worker(URL.createObjectURL(new Blob([WSRC],{type:"application/javascript"})));}catch(e){worker=null;}
+  if(!worker){$("#msg").textContent=T.noWorker;return;}
+  worker.onmessage=ev=>{const m=ev.data;
+    if(m.type==="ready"){st.ready=true;startEvent();return;}
+    if(m.type==="frame"){st.inflight=false;ocRGBA.set(m.rgba);ocTex.needsUpdate=true;arRGBA.set(m.ab);arTex.needsUpdate=true;st.t=m.t;
+      if(m.peak!==undefined){st.peak=m.peak;st.depthEp=m.depthEp;updateSource();}
+      m.g.forEach((g,i)=>{const G=gData[i];if(!G)return;G.arr=g.arr;G.max=g.max;for(const v of g.ts)G.ts.push(v);});
+      updateReadouts();}};}
+// havdybden ligger som et gråtonebillede: værdi v (1–255) → dybde ((v−1)/254)²·11000 m, 0 = land
+function loadDepth(){const im=new Image();im.onload=()=>{const c=document.createElement("canvas");c.width=W;c.height=H;const x=c.getContext("2d");x.drawImage(im,0,0);let px;
+   try{px=x.getImageData(0,0,W,H).data;}catch(e){$("#msg").textContent=T.noDepth;return;}
+   const d=new Float32Array(W*H);for(let k=0;k<W*H;k++){const v=px[k*4];d[k]=v>0?Math.pow((v-1)/254,2)*11000:0;}
+   window.__depth=d;makeWorker();if(worker)worker.postMessage({cmd:"init",depth:d});};
+  im.onerror=()=>{$("#msg").textContent=T.noDepth;};im.src="tsunami-havdybde.png";}
+
+function curEvent(){if(st.ev!=="custom")return EVENTS[st.ev];return st.custom;}
+function customEvent(lat,lon){const mw=+$("#sMw").value,str=+$("#sStr").value;const q=quakeSize(mw);
+  const half=q.L/2/111.195,a=str*D2R;const dLat=Math.cos(a)*half,dLon=Math.sin(a)*half/Math.max(0.2,Math.cos(lat*D2R));
+  const pts=[];for(let k=0;k<=4;k++){const f=-1+k/2;pts.push([lat+dLat*f,lon+dLon*f]);}
+  const all=[];for(const e of Object.values(EVENTS))for(const g of e.gauges)if(!all.find(x=>x.id===g.id))all.push(g);for(const g of EXTRA_G)all.push(g);
+  const dist=g=>{const v1=geo2vec(lat,lon),v2=geo2vec(g.lat,g.lon);return Math.acos(Math.max(-1,Math.min(1,v1.dot(v2))));};
+  const gs=all.filter(g=>dist(g)>0.004).sort((p,q2)=>dist(p)-dist(q2)).slice(0,8);
+  const far=Math.max(...gs.map(dist));const Tsim=Math.min(26,Math.max(6,Math.ceil(far*RE/200/3600*1.25+1)))*3600;
+  return {T:Tsim,src:{type:"fault",pts,side:1,W:Math.max(20,q.W),U:q.U,taper:[1,1]},ep:[lat,lon],cam:[lat,lon],gauges:gs,mw,q};}
+function startEvent(){const E=curEvent();
+  st.t=0;st.inflight=false;
+  if(!E){gData=[];buildGaugeTable();setFaultLine(null);epi.visible=false;placeGauges([]);ocClear();updateReadouts();$("#stageText").textContent=T.custTxt;return;}
+  st.T=E.T;earthMat.uniforms.uTend.value=E.T;gData=E.gauges.map(g=>({id:g.id,lat:g.lat,lon:g.lon,arr:-1,max:0,ts:[]}));if(st.sel>=gData.length)st.sel=0;
+  buildGaugeTable();placeGauges(E.gauges);setFaultLine(E.src);epi.visible=true;epi.position.copy(geo2vec(E.ep[0],E.ep[1]).multiplyScalar(1.006));
+  $("#stageText").textContent=st.ev==="custom"?T.custMw(fmt(E.mw,1),Math.round(E.q.L),fmt(E.q.D,1)):T.ev[st.ev].txt;
+  if(worker&&st.ready){st.inflight=true;worker.postMessage({cmd:"start",src:E.src,gauges:E.gauges,T:E.T,ep:E.ep,mode:st.mode,iso:st.iso});}
+  updateReadouts();}
+function ocClear(){arRGBA.fill(0);arTex.needsUpdate=true;if(!window.__depth)return;const d=window.__depth;for(let j=0;j<H;j++)for(let i=0;i<W;i++){const k=j*W+i,p=((H-1-j)*W+i)*4;const s=Math.sqrt(Math.min(1,d[k]/7000));ocRGBA[p]=46-36*s;ocRGBA[p+1]=110-86*s;ocRGBA[p+2]=130-74*s;ocRGBA[p+3]=d[k]>0?255:0;}ocTex.needsUpdate=true;}
+function placeGauges(list){for(const m of gMarks){markGrp.remove(m.dot);markGrp.remove(m.lab);}gMarks=[];
+  list.forEach((g,i)=>{const p=geo2vec(g.lat,g.lon);const dot=dotSprite(i===st.sel?"#6fd3ff":"#ffffff",16);dot.position.copy(p.clone().multiplyScalar(1.006));dot.scale.set(0.022,0.022,1);
+    const lab=labelSprite(T.g[g.id]||g.id,"#e6efea");lab.position.copy(p.clone().multiplyScalar(1.03));lab.userData.p=p;markGrp.add(dot);markGrp.add(lab);gMarks.push({dot,lab,p});});
+  markGrp.visible=st.gauges;}
+function buildGaugeTable(){const tb=$("#gtab tbody");tb.innerHTML="";gData.forEach((g,i)=>{const tr=document.createElement("tr");tr.setAttribute("aria-selected",i===st.sel?"true":"false");tr.tabIndex=0;
+  tr.innerHTML="<td>"+(T.g[g.id]||g.id)+"</td><td></td><td></td>";tr.onclick=()=>{st.sel=i;buildGaugeTable();placeGauges(curEvent().gauges);drawMarigram();};tr.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();tr.onclick();}};tb.appendChild(tr);});}
+function updateSource(){const E=curEvent();if(!E)return;$("#rU").textContent=st.ev==="storegga"?"+"+fmt(st.peak,0)+" / −12 m":fmt(st.peak,1)+" m";
+  const h=st.depthEp||0;$("#rH").textContent=h>0?Math.round(h/10)*10+" m":"—";$("#rC").textContent=h>0?Math.round(Math.sqrt(GRAV*h)*3.6/10)*10+" "+T.kmh:"—";}
+function updateReadouts(){const E=curEvent();$("#hT").textContent=T.tLbl(hm(st.t));$("#rT").textContent=hm(st.t);
+  $("#hEv").textContent=st.ev==="custom"?(E?T.ev.custom.n:""):T.ev[st.ev].n;
+  $("#rMw").textContent=E?(st.ev==="custom"?"Mw "+fmt(E.mw,1):T.ev[st.ev].mw):"—";if(!E){$("#rU").textContent="—";$("#rH").textContent="—";$("#rC").textContent="—";}
+  const rows=$("#gtab tbody").children;gData.forEach((g,i)=>{const r=rows[i];if(!r)return;r.children[1].textContent=g.arr>=0?hmS(g.arr):(st.t>0?"·":"—");r.children[2].textContent=g.arr>=0?fmtH(g.max):"";});
+  drawMarigram();}
+/* vandstanden ved det valgte målested */
+const mg=$("#mgCv");
+function drawMarigram(){const r=mg.getBoundingClientRect();const dpr=Math.min(2,window.devicePixelRatio||1);const w=Math.max(10,r.width),h=Math.max(10,r.height);if(mg.width!==Math.round(w*dpr)){mg.width=Math.round(w*dpr);mg.height=Math.round(h*dpr);}
+  const x=mg.getContext("2d");x.setTransform(dpr,0,0,dpr,0,0);x.clearRect(0,0,w,h);const G=gData[st.sel];
+  $("#mgHd").textContent=G?T.level+": "+(T.g[G.id]||G.id):T.level;
+  const L=34,R=6,Tp=8,B=18,pw=w-L-R,ph=h-Tp-B;x.font="10px IBM Plex Mono, monospace";x.fillStyle="#8fa29b";x.strokeStyle="#233244";x.lineWidth=1;
+  const Th=st.T/3600;let am=0.05;if(G)for(const v of G.ts)am=Math.max(am,Math.abs(v));am*=1.15;
+  x.beginPath();x.moveTo(L,Tp+ph/2);x.lineTo(L+pw,Tp+ph/2);x.stroke();
+  const step=Th>14?6:Th>7?2:1;for(let t=0;t<=Th+1e-6;t+=step){const X=L+pw*t/Th;x.beginPath();x.moveTo(X,Tp);x.lineTo(X,Tp+ph);x.stroke();x.fillText(t+" "+T.h,X-8,h-5);}
+  x.fillText("+"+fmtH(am),0,Tp+8);x.fillText("−"+fmtH(am),0,Tp+ph);
+  if(!G||!G.ts.length)return;
+  x.beginPath();x.strokeStyle="#6fd3ff";x.lineWidth=1.4;const n=G.ts.length;for(let k=0;k<n;k++){const X=L+pw*((k+1)*60/3600)/Th,Y=Tp+ph/2-ph/2*G.ts[k]/am;k?x.lineTo(X,Y):x.moveTo(X,Y);}x.stroke();
+  if(G.arr>=0){const X=L+pw*G.arr/3600/Th;x.strokeStyle="rgba(255,138,76,.8)";x.setLineDash([3,3]);x.beginPath();x.moveTo(X,Tp);x.lineTo(X,Tp+ph);x.stroke();x.setLineDash([]);}}
+function drawCbar(){const cb=$("#cbar"),lb=$("#cbarLbl");let g,l;
+  if(st.mode===0){g="linear-gradient(90deg,#b4e6ff,#4a96ff 30%,#1c4c66 50%,#ff8a4c 70%,#ffe6aa)";l=T.cbar0;}
+  else if(st.mode===1){g="linear-gradient(90deg,#3a1a5a,#a0285a 35%,#f06a28 65%,#ffe86a)";l=T.cbar1;}
+  else{g="linear-gradient(90deg,#ffe16e,#c07a8a 50%,#6a2896)";l=T.cbar2(Math.round(st.T/3600));}
+  cb.style.background=g;lb.innerHTML=l.map(s=>"<span>"+s+"</span>").join("");}
+
+/* ---------- kamera og træk ---------- */
+const cam={lat:5,lon:85,dist:2.6,tLat:5,tLon:85,tDist:2.6};
+function setCam(){const E=curEvent()||{cam:[cam.tLat,cam.tLon]};cam.tLat=Math.max(-60,Math.min(70,E.cam[0]));cam.tLon=E.cam[1];cam.tDist=st.cam==="near"?2.35:3.9;}
+let drag=null,moved=0;
+cv.addEventListener("pointerdown",e=>{drag={x:e.clientX,y:e.clientY};moved=0;try{cv.setPointerCapture(e.pointerId);}catch(_){}cv.style.cursor="grabbing";});
+cv.addEventListener("pointermove",e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag={x:e.clientX,y:e.clientY};moved+=Math.abs(dx)+Math.abs(dy);
+  const k=0.25*(cam.dist-1)/1.6;cam.tLon-=dx*k;cam.tLat=Math.max(-80,Math.min(80,cam.tLat+dy*k));cam.lon=cam.tLon;cam.lat=cam.tLat;});
+cv.addEventListener("pointerup",e=>{cv.style.cursor="grab";const wasClick=drag&&moved<5;drag=null;if(wasClick)clickGlobe(e);});
+cv.addEventListener("wheel",e=>{e.preventDefault();cam.tDist=Math.max(1.35,Math.min(5,cam.tDist*(1+e.deltaY*0.001)));},{passive:false});
+const ray=new THREE.Raycaster(),ndc=new THREE.Vector2();
+function clickGlobe(e){const r=cv.getBoundingClientRect();ndc.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(ndc,camera);const hit=ray.intersectObject(earth)[0];if(!hit)return;
+  const p=hit.point;const lat=Math.asin(p.y/p.length())*R2D,lon=Math.atan2(-p.z,p.x)*R2D;
+  const d=window.__depth;if(!d)return;const j=Math.min(H-1,Math.floor((90-lat)/180*H)),i=Math.min(W-1,Math.floor((lon+180)/360*W));
+  if(d[j*W+i]<=0){$("#msg").textContent=T.onLand;return;}$("#msg").textContent="";
+  if(st.ev!=="custom")selectEvent("custom",true);
+  st.custom=customEvent(lat,lon);st.custom.cam=[cam.tLat,cam.tLon];startEvent();if(!st.running)togglePlay(true);}
+function resize(){const r=stage.getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/Math.max(1,r.height);camera.updateProjectionMatrix();drawMarigram();}
+window.addEventListener("resize",()=>{resize();resize2();drawProfile();});
+
+/* ---------- styring ---------- */
+function selectEvent(e,keepCustom){st.ev=e;document.querySelectorAll("#ev .tab").forEach(b=>b.setAttribute("aria-selected",b.dataset.e===e?"true":"false"));
+  $("#customBox").hidden=e!=="custom";$("#hNote").textContent=e==="custom"?T.hint:T.drag;st.sel=0;
+  if(e==="custom"&&!keepCustom){st.custom=null;}
+  if(e!=="custom")setCam();startEvent();}
+document.querySelectorAll("#ev .tab").forEach(b=>b.onclick=()=>selectEvent(b.dataset.e));
+function togglePlay(on){st.running=on===undefined?!st.running:on;$("#playTxt").textContent=st.running?T.stop:T.start;$("#playIcon").innerHTML=st.running?'<path d="M4 4h12v12H4z"/>':'<path d="M5 3l12 7-12 7z"/>';}
+$("#play").onclick=()=>{if(!st.running&&st.t>=st.T-1)startEvent();togglePlay();};
+$("#restart").onclick=()=>{startEvent();togglePlay(true);};
+function seg(id,fn){document.querySelectorAll(id+" button").forEach(b=>b.onclick=()=>{document.querySelectorAll(id+" button").forEach(c=>c.setAttribute("aria-pressed",c===b?"true":"false"));fn(b.dataset.v!==undefined?b.dataset.v:b.dataset.cam);});}
+seg("#tempo",v=>st.tempo=+v);
+seg("#mode",v=>{st.mode=+v;drawCbar();refreshFrame();});
+seg("#cams",v=>{st.cam=v;const E=curEvent();if(E){cam.tLat=E.cam[0];cam.tLon=E.cam[1];}cam.tDist=v==="near"?2.35:3.9;});
+$("#tGauges").onchange=e=>{st.gauges=e.target.checked;markGrp.visible=st.gauges;};
+$("#tIso").onchange=e=>{st.iso=e.target.checked;earthMat.uniforms.uIso.value=st.iso?1:0;};
+function refreshFrame(){if(worker&&st.ready&&!st.inflight&&curEvent()){st.inflight=true;worker.postMessage({cmd:"run",n:0,mode:st.mode,iso:st.iso});}}
+function custOut(){$("#oMw").textContent=fmt(+$("#sMw").value,1);$("#oStr").textContent=$("#sStr").value+"°";}
+["#sMw","#sStr"].forEach(id=>{$(id).oninput=custOut;$(id).onchange=()=>{if(st.custom){const c=st.custom;st.custom=customEvent(c.ep[0],c.ep[1]);st.custom.cam=c.cam;startEvent();}};});
+custOut();
+
+/* ======================= DEL 2: KYSTSNITTET ======================= */
+const cs={running:!reduce,cam:"side",lead:1,C:null,cfg:null,ex:20,exT:20,a0:1,T0:0,drawMax:0,shoreMin:0,tArr:-1,done:false,visible:true,orbit:{az:0,el:0,dist:1}};
+const cv2=$("#cv2"),stage2=$("#stage2");
+const r2=new THREE.WebGLRenderer({canvas:cv2,antialias:true});r2.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+const sc2=new THREE.Scene();
+const cam2=new THREE.PerspectiveCamera(40,1,1,60000);
+const sky2=new THREE.Mesh(new THREE.SphereGeometry(30000,32,16),new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,
+  vertexShader:"varying vec3 vP;void main(){vP=normalize(position);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}",
+  fragmentShader:"varying vec3 vP;void main(){float h=vP.y;vec3 top=vec3(0.32,0.52,0.78),hor=vec3(0.80,0.86,0.9),low=vec3(0.25,0.3,0.32);vec3 c=h>0.0?mix(hor,top,pow(min(1.0,h*2.0),0.6)):mix(hor,low,min(1.0,-h*5.0));gl_FragColor=vec4(c,1.0);}"}));
+sc2.add(sky2);sc2.add(new THREE.HemisphereLight(0xe8f0ff,0x50463a,0.75));const sun2=new THREE.DirectionalLight(0xfff4e0,0.75);sun2.position.set(2000,3000,-2500);sc2.add(sun2);
+const XV0=-3200,XV1=1300,YW=1800,NXV=300,NYV=36;
+const world=new THREE.Group();sc2.add(world);
+// havbund og land
+const gGeo=new THREE.PlaneGeometry(1,1,NXV-1,NYV-1);const gPos=gGeo.attributes.position;const gCol=new Float32Array(gPos.count*3);gGeo.setAttribute("color",new THREE.BufferAttribute(gCol,3));
+const ground=new THREE.Mesh(gGeo,new THREE.MeshLambertMaterial({vertexColors:true}));world.add(ground);
+// vandoverfladen
+const wGeo=new THREE.PlaneGeometry(1,1,NXV-1,NYV-1);const wPos=wGeo.attributes.position;const wCol=new Float32Array(wPos.count*3);wGeo.setAttribute("color",new THREE.BufferAttribute(wCol,3));
+const water=new THREE.Mesh(wGeo,new THREE.MeshPhongMaterial({vertexColors:true,transparent:true,opacity:0.86,shininess:60,specular:0x557788,side:THREE.DoubleSide,depthWrite:false}));world.add(water);water.renderOrder=2;
+// snitfladen ved forkanten: jord og vand
+const cutG=new THREE.BufferGeometry(),cutW=new THREE.BufferGeometry();const cgp=new Float32Array(NXV*2*3),cwp=new Float32Array(NXV*2*3);
+cutG.setAttribute("position",new THREE.BufferAttribute(cgp,3));cutW.setAttribute("position",new THREE.BufferAttribute(cwp,3));
+const idx=[];for(let i=0;i<NXV-1;i++){const a=i*2,b=a+1,c=a+2,d=a+3;idx.push(a,c,b,b,c,d);}cutG.setIndex(idx);cutW.setIndex(idx);
+const cutGm=new THREE.Mesh(cutG,new THREE.MeshBasicMaterial({color:0x4a3a2a,side:THREE.DoubleSide}));const cutWm=new THREE.Mesh(cutW,new THREE.MeshBasicMaterial({color:0x1d6a8a,transparent:true,opacity:0.55,side:THREE.DoubleSide,depthWrite:false}));
+world.add(cutGm);world.add(cutWm);
+// huse og træer
+const houses=new THREE.Group();sc2.add(houses);
+const rnd=(s=>()=>(s=(s*16807)%2147483647)/2147483647)(7);
+const XS=new Float32Array(NXV);for(let i=0;i<NXV;i++)XS[i]=XV0+(XV1-XV0)*i/(NXV-1);
+const latNoise=(x,y)=>0.6*Math.sin(y*0.004+x*0.0013)+0.35*Math.sin(y*0.011-x*0.003);
+function buildCoast(){const C=cs.C;
+  for(let j=0;j<NYV;j++)for(let i=0;i<NXV;i++){const v=j*NXV+i,x=XS[i],y=-YW/2+YW*j/(NYV-1);const z=C.bed(x)+(x>-600&&x<80?0.35*latNoise(x,y):0);
+    gPos.setXYZ(v,x,z,y);let r,g,b;if(z<-1.5){const f=Math.min(1,-z/60);r=0.55-0.25*f;g=0.5-0.22*f;b=0.38-0.1*f;}else if(z<3.5){r=0.86;g=0.78;b=0.58;}else{const n=0.5+0.5*Math.sin(x*0.02+y*0.013);r=0.32+0.06*n;g=0.48+0.08*n;b=0.24;}gCol.set([r,g,b],v*3);}
+  gPos.needsUpdate=true;gGeo.attributes.color.needsUpdate=true;gGeo.computeVertexNormals();
+  for(let i=0;i<NXV;i++){const z=C.bed(XS[i]);cgp.set([XS[i],z,YW/2,XS[i],-100,YW/2],i*6);}cutG.attributes.position.needsUpdate=true;cutG.computeBoundingSphere();
+  while(houses.children.length)houses.remove(houses.children[0]);
+  const wallM=new THREE.MeshLambertMaterial({color:0xece4d6}),roofM=new THREE.MeshLambertMaterial({color:0xa4442e}),treeM=new THREE.MeshLambertMaterial({color:0x2f5a2c}),boatM=new THREE.MeshLambertMaterial({color:0xf0f0f0});
+  const box=new THREE.BoxGeometry(1,1,1),roof=new THREE.ConeGeometry(0.75,0.6,4),cone=new THREE.ConeGeometry(1,1,7);
+  for(let k=0;k<70;k++){const x=60+Math.pow(rnd(),0.8)*(XV1-120),y=-YW/2+80+rnd()*(YW-160);const z=C.bed(x);
+    if(rnd()<0.62){const s=8+rnd()*8;const hgt=5+rnd()*4;const m=new THREE.Mesh(box,wallM);m.scale.set(s,hgt,s*1.3);m.position.set(x,0,y);m.userData.z=z;m.userData.dy=hgt/2;m.rotation.y=rnd()*0.4;houses.add(m);
+      const rf=new THREE.Mesh(roof,roofM);rf.scale.set(s*0.98,hgt*0.7,s*1.28);rf.rotation.y=Math.PI/4+m.rotation.y;rf.position.set(x,0,y);rf.userData.z=z;rf.userData.dy=hgt+hgt*0.21;houses.add(rf);}
+    else{const hh=8+rnd()*7;const t=new THREE.Mesh(cone,treeM);t.scale.set(hh*0.35,hh,hh*0.35);t.position.set(x,0,y);t.userData.z=z;t.userData.dy=hh/2;houses.add(t);}}
+  // et par både ved stranden
+  for(let k=0;k<4;k++){const b=new THREE.Mesh(box,boatM);b.scale.set(9,2.2,3.2);b.userData.x0=-250-rnd()*900;b.userData.y=-YW/2+200+rnd()*(YW-400);b.position.set(b.userData.x0,0,b.userData.y);b.userData.boat=true;houses.add(b);}}
+function newCoast(){const cfg={h0:4000,shelfW:+$("#sSh").value,shelfH:100,beta:+$("#sB").value,aIn:+$("#sA").value,lam:+$("#sLam").value,lead:cs.lead};
+  cs.cfg=cfg;cs.C=makeCoast(cfg);cs.a0=cfg.aIn;cs.T0=cfg.lam*1e3/Math.sqrt(GRAV*cfg.h0);cs.shoreMin=0;cs.tArr=-1;cs.done=false;cs.maxCrest=0;buildCoast();}
+function resize2(){const r=stage2.getBoundingClientRect();r2.setSize(r.width,r.height,false);cam2.aspect=r.width/Math.max(1,r.height);cam2.updateProjectionMatrix();}
+const CAMS2={side:{ex:20,pos:[-700,430,2700],look:[-700,-200,0]},beach:{ex:1.5,pos:[520,20,260],look:[-500,0,-160]},air:{ex:3,pos:[1000,760,1700],look:[-1100,0,-100]}};
+function setCam2(k){cs.cam=k;const c=CAMS2[k];cs.exT=c.ex;const p=new THREE.Vector3(...c.pos),l=new THREE.Vector3(...c.look);const d=p.clone().sub(l);
+  cs.orbit={look:l,dist:d.length(),az:Math.atan2(d.x,-d.z),el:Math.asin(d.y/d.length())};}
+let drag2=null;
+cv2.addEventListener("pointerdown",e=>{drag2={x:e.clientX,y:e.clientY};try{cv2.setPointerCapture(e.pointerId);}catch(_){}});
+cv2.addEventListener("pointermove",e=>{if(!drag2)return;const dx=e.clientX-drag2.x,dy=e.clientY-drag2.y;drag2={x:e.clientX,y:e.clientY};cs.orbit.az-=dx*0.005;cs.orbit.el=Math.max(0.005,Math.min(1.3,cs.orbit.el+dy*0.004));});
+cv2.addEventListener("pointerup",()=>{drag2=null;});
+cv2.addEventListener("wheel",e=>{e.preventDefault();cs.orbit.dist=Math.max(150,Math.min(9000,cs.orbit.dist*(1+e.deltaY*0.001)));},{passive:false});
+function interpC(x,arr){// lineær interpolation i solverens celler
+  const C=cs.C,xc=C.xc;let lo=0,hi=C.N-1;if(x<=xc[0])return arr(0);if(x>=xc[hi])return arr(hi);while(hi-lo>1){const m=(lo+hi)>>1;if(xc[m]>x)hi=m;else lo=m;}const f=(x-xc[lo])/(xc[hi]-xc[lo]);return arr(lo)*(1-f)+arr(hi)*f;}
+const tmpE=new Float32Array(NXV),tmpH=new Float32Array(NXV),tmpU=new Float32Array(NXV);
+function updateWater(tw){const C=cs.C;for(let i=0;i<NXV;i++){const x=XS[i];tmpH[i]=interpC(x,k=>C.h[k]);tmpE[i]=interpC(x,k=>C.h[k]+C.z[k]);tmpU[i]=interpC(x,k=>C.h[k]>1e-3?C.q[k]/C.h[k]:0);}
+  for(let j=0;j<NYV;j++){const y=-YW/2+YW*j/(NYV-1);for(let i=0;i<NXV;i++){const v=j*NXV+i,x=XS[i];const hh=tmpH[i],zb=C.bed(x);
+    const rip=0.12*Math.sin(x*0.09+y*0.02-tw*1.7)+0.08*Math.sin(x*0.05-y*0.07+tw*1.1);
+    let e=hh>0.03?tmpE[i]+rip*Math.min(1,hh/2):zb-0.6;
+    const sl=i>0&&i<NXV-1?Math.abs(tmpE[i+1]-tmpE[i-1])/(XS[i+1]-XS[i-1]):0;const fr=hh>0.05?Math.abs(tmpU[i])/Math.sqrt(GRAV*hh):0;
+    let foam=Math.min(1,Math.max(0,(sl-0.004)*90)+Math.max(0,fr-1.1)*0.5+(hh<0.4&&hh>0.03&&Math.abs(tmpU[i])>1?0.2:0));foam*=0.75+0.25*Math.sin(y*0.05+x*0.2);
+    const deep=Math.min(1,hh/40);let r=0.18+0.1*(1-deep),g=0.42+0.12*(1-deep),b=0.52+0.06*(1-deep);if(hh<4&&zb>-4){const f=zb>0?1:0.5;r=0.30+0.2*f;g=0.55-0.05*f;b=0.58-0.12*f;} // grumset vand inde på land
+    r+=(0.95-r)*foam;g+=(0.97-g)*foam;b+=(0.98-b)*foam;wPos.setXYZ(v,x,e,y);wCol[v*3]=r;wCol[v*3+1]=g;wCol[v*3+2]=b;}}
+  wPos.needsUpdate=true;wGeo.attributes.color.needsUpdate=true;wGeo.computeVertexNormals();
+  for(let i=0;i<NXV;i++){const zb=C.bed(XS[i]);const top=tmpH[i]>0.03?tmpE[i]:zb;cwp.set([XS[i],top,YW/2+0.5,XS[i],zb,YW/2+0.5],i*6);}cutW.attributes.position.needsUpdate=true;cutW.computeBoundingSphere();
+  for(const b of houses.children)if(b.userData.boat){const x=b.userData.x0+Math.max(0,interpC(b.userData.x0,k=>C.h[k]>1e-3?C.q[k]/C.h[k]:0))*0;const e=interpC(b.userData.x0,k=>C.h[k]+C.z[k]);b.position.y=e*cs.ex+0.6;}else b.position.y=b.userData.z*cs.ex+b.userData.dy;}
+function coastStats(){const C=cs.C,N=C.N;let iCrest=-1,em=-1e9;const s0=C.shoreIdx();
+  for(let i=0;i<N;i++){if(C.h[i]<0.05)continue;const e=C.h[i]+C.z[i];if(C.xc[i]<0&&e>em){em=e;iCrest=i;}}
+  let front=-1e9;for(let i=0;i<N;i++){if(C.h[i]<0.05)continue;const e=C.h[i]+C.z[i];if(C.xc[i]<0&&Math.abs(e)>0.03*cs.a0)front=C.xc[i];}
+  // strandlinjen: den første tørre celle fra havet
+  let xs=0;for(let i=0;i<N;i++){if(C.h[i]<0.02&&C.z[i]>-12){xs=C.xc[i];break;}}
+  if(xs<cs.shoreMin)cs.shoreMin=xs;
+  return {iCrest,em,front,xs};}
+const profCv=$("#profCv");
+function xmap(x){return x<0?-Math.log10(1+(-x)/200):Math.log10(1+x/200);}
+function drawProfile(){if(!cs.C)return;const C=cs.C;const r=profCv.getBoundingClientRect();const dpr=Math.min(2,window.devicePixelRatio||1);const w=Math.max(10,r.width),h=Math.max(10,r.height);
+  if(profCv.width!==Math.round(w*dpr)||profCv.height!==Math.round(h*dpr)){profCv.width=Math.round(w*dpr);profCv.height=Math.round(h*dpr);}
+  const x=profCv.getContext("2d");x.setTransform(dpr,0,0,dpr,0,0);x.clearRect(0,0,w,h);
+  const L=40,R=8,top=8,mid=h*0.55,bot=h-20;const xa=xmap(C.X0),xb=xmap(3500);const X=v=>L+(w-L-R)*(xmap(v)-xa)/(xb-xa);
+  // aksen
+  x.font="10px IBM Plex Mono, monospace";x.fillStyle="#8fa29b";x.strokeStyle="#233244";
+  for(const d of [-300e3,-100e3,-30e3,-10e3,-3e3,-1e3,-300,0,300,1000,3000]){if(d<C.X0)continue;const px=X(d);x.beginPath();x.moveTo(px,top);x.lineTo(px,bot);x.stroke();const t=Math.abs(d)>=1000?(d/1000)+" km":d+" m";x.fillText(t.replace("-","−"),px-12,h-6);}
+  // vandstand
+  let am=cs.a0;for(let i=0;i<C.N;i++){const e=C.emax[i];if(e>-1e8&&C.z[i]<30)am=Math.max(am,e);}am=Math.max(am*1.1,0.5);
+  const eY=v=>top+(mid-top)*(0.5-0.5*v/am);
+  x.strokeStyle="#2c3c50";x.beginPath();x.moveTo(L,eY(0));x.lineTo(w-R,eY(0));x.stroke();
+  x.fillText("+"+fmt(am,am<3?1:0)+" m",2,top+8);x.fillText("−"+fmt(am,am<3?1:0)+" m",2,mid);
+  x.strokeStyle="rgba(255,255,255,.55)";x.beginPath();let st0=false;for(let i=0;i<C.N;i+=1){const e=C.emax[i];if(e<-1e8){st0=false;continue;}const px=X(C.xc[i]),py=eY(e);st0?x.lineTo(px,py):x.moveTo(px,py);st0=true;}x.stroke();
+  x.strokeStyle="#ff8a4c";x.lineWidth=1.6;x.beginPath();st0=false;for(let i=0;i<C.N;i++){if(C.h[i]<0.02){st0=false;continue;}const px=X(C.xc[i]),py=eY(C.h[i]+C.z[i]);st0?x.lineTo(px,py):x.moveTo(px,py);st0=true;}x.stroke();x.lineWidth=1;
+  // havbund
+  const zY=z=>mid+12+(bot-mid-12)*(z>0?-z/60*0.15:Math.pow(-z/4200,0.5));
+  x.fillStyle="#1c4c66";x.beginPath();x.moveTo(X(C.X0),zY(0));for(let i=0;i<C.N;i+=2){x.lineTo(X(C.xc[i]),zY(Math.min(0,C.z[i])));}x.lineTo(X(0),zY(0));x.closePath();x.fill();
+  x.fillStyle="#8a6f52";x.beginPath();x.moveTo(X(C.X0),bot);for(let i=0;i<C.N;i+=2)x.lineTo(X(C.xc[i]),zY(C.z[i]));x.lineTo(w-R,bot);x.closePath();x.fill();
+  x.fillStyle="#8fa29b";x.fillText("0",L-10,zY(0)+3);x.fillText("4 km",L-34,zY(-4000)+3);
+  // udsnittet i 3D
+  x.strokeStyle="rgba(111,211,255,.6)";x.setLineDash([4,3]);x.strokeRect(X(XV0),top,X(XV1)-X(XV0),bot-top);x.setLineDash([]);}
+function coastReadouts(s){const C=cs.C;$("#cT").textContent=T.tLbl(hm(C.t));
+  const cr=s.iCrest;let stI=0;
+  if(cs.tArr<0&&s.front>-200)cs.tArr=C.t;
+  if(s.xs<-15&&C.maxRun<0.5)stI=3;else if(C.maxInund>5&&s.xs>5)stI=4;else if(C.maxInund>5)stI=5;else if(s.front<C.xShelf0-C.slopeW)stI=0;else if(s.front<C.xShelf0)stI=1;else stI=2;
+  $("#cState").textContent=T.cState[stI];
+  if(cr>=0){const hh=Math.max(0.5,C.h[cr]);const c=Math.sqrt(GRAV*hh);$("#cX").textContent=fmt(-C.xc[cr]/1000,-C.xc[cr]<10000?1:0)+" km";$("#cH").textContent=Math.round(hh)+" m";
+    $("#cC").textContent=Math.round(c*3.6)+" "+T.kmh;$("#cL").textContent=fmt(c*cs.T0/1000,c*cs.T0<10000?1:0)+" km";$("#cA").textContent=fmt(s.em,1)+" m";
+    $("#cG").textContent=fmt(greens(cs.a0,4000,hh),1)+" m";}
+  $("#cR").textContent=C.maxRun>0.05?fmt(C.maxRun,1)+" m":"—";$("#cI").textContent=C.maxInund>2?Math.round(C.maxInund)+" m":"—";$("#cD").textContent=cs.shoreMin<-5?Math.round(-cs.shoreMin)+" m":"—";}
+function togglePlay2(on){cs.running=on===undefined?!cs.running:on;$("#playTxt2").textContent=cs.running?T.stop:T.start;$("#playIcon2").innerHTML=cs.running?'<path d="M4 4h12v12H4z"/>':'<path d="M5 3l12 7-12 7z"/>';}
+$("#play2").onclick=()=>{if(cs.done)newCoast();togglePlay2();};
+$("#restart2").onclick=()=>{newCoast();togglePlay2(true);};
+seg("#lead",v=>{cs.lead=+v;newCoast();togglePlay2(true);});
+seg("#cams2",v=>setCam2(v));
+function coastOut(){$("#oA").textContent=fmt(+$("#sA").value,1)+" m";$("#oLam").textContent=$("#sLam").value+" km";$("#oSh").textContent=$("#sSh").value+" km";$("#oB").textContent="1 : "+$("#sB").value;}
+["#sA","#sLam","#sSh","#sB"].forEach(id=>{$(id).oninput=coastOut;$(id).onchange=()=>{newCoast();togglePlay2(true);};});
+coastOut();
+
+/* ======================= løkken ======================= */
+let last=performance.now(),tw=0,lastProf=0;
+if("IntersectionObserver" in window){new IntersectionObserver(es=>es.forEach(e=>{if(e.target===stage)st.visible=e.isIntersecting;else cs.visible=e.isIntersecting;}),{threshold:0.02}).observe(stage);
+  new IntersectionObserver(es=>es.forEach(e=>{cs.visible=e.isIntersecting;}),{threshold:0.02}).observe(stage2);}
+function frame(now){const dt=Math.min(0.1,(now-last)/1000);last=now;tw+=dt;
+  if(st.visible){
+    if(st.running&&worker&&st.ready&&!st.inflight&&curEvent()&&st.t<st.T){st.inflight=true;worker.postMessage({cmd:"run",n:st.tempo,mode:st.mode,iso:st.iso});}
+    if(st.running&&st.t>=st.T&&curEvent())togglePlay(false);
+    const k=drag?1:Math.min(1,dt*3);cam.lat+=(cam.tLat-cam.lat)*k;let dl=((cam.tLon-cam.lon+540)%360)-180;cam.lon+=dl*k;cam.dist+=(cam.tDist-cam.dist)*Math.min(1,dt*3);
+    const p=geo2vec(cam.lat,cam.lon).multiplyScalar(cam.dist);camera.position.copy(p);camera.up.set(0,1,0);camera.lookAt(0,0,0);
+    const ls=0.0135*cam.dist;for(const m of gMarks){m.lab.scale.set(ls*m.lab.userData.aspect,ls,1);m.lab.visible=m.p.dot(p)>0.25*cam.dist;m.dot.scale.set(0.0085*cam.dist,0.0085*cam.dist,1);}
+    epi.scale.set(0.012*cam.dist,0.012*cam.dist,1);
+    renderer.render(scene,camera);}
+  if(cs.visible&&cs.C){
+    if(cs.running&&!cs.done){const s0=coastStats();const d=-s0.front;let f=d>40e3?300:d>12e3?90:d>3e3?30:14;if(cs.C.maxInund>5||s0.xs<-15)f=10;
+      cs.C.run(Math.min(f*dt,60));if(cs.tArr>0&&cs.C.t>cs.tArr+2*cs.T0+1500){cs.done=true;togglePlay2(false);}}
+    const s=coastStats();coastReadouts(s);
+    cs.ex+=(cs.exT-cs.ex)*Math.min(1,dt*3);world.scale.y=cs.ex;
+    updateWater(tw);
+    const o=cs.orbit;const lk=o.look.clone();lk.y*=cs.ex/CAMS2[cs.cam].ex;
+    cam2.position.set(lk.x+o.dist*Math.cos(o.el)*Math.sin(o.az),lk.y+o.dist*Math.sin(o.el),lk.z-o.dist*Math.cos(o.el)*Math.cos(o.az));cam2.lookAt(lk);
+    r2.render(sc2,cam2);
+    if(now-lastProf>90){drawProfile();lastProf=now;}}
+  requestAnimationFrame(frame);}
+
+/* start */
+togglePlay(st.running);togglePlay2(cs.running);drawCbar();resize();resize2();setCam();cam.lat=cam.tLat;cam.lon=cam.tLon;cam.dist=cam.tDist;
+setCam2("side");newCoast();loadDepth();updateReadouts();
+requestAnimationFrame(frame);
+window.__tsu={st,cs,startEvent,selectEvent,setCam2,newCoast};
+})();
+</script>
+<script src="lang-switch.js" defer></script>
+</body></html>
