@@ -1,0 +1,651 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tornadoer og skypumper</title>
+<meta name="description" content="Tornadoer og skypumper i 3D: hvirvlens vind og tryk, kondensationstragten, støv- og vandsprøjt, flere hvirvler i én tornado, og hvordan en skypumpe opstår og dør over havet.">
+<link rel="canonical" href="https://mhgfysik.dk/tornadoer.html">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body { margin: 0; }
+img { max-width: 100%; }
+/* Layout: tornadoen i landskabet som hovedperson, målinger ved siden af, styring under, profil, snit og jordkort i et gitter, forklaringen nederst */
+:root {
+  --void: #060a10;
+  --panel: #0e151d;
+  --raise: #172230;
+  --line: #233244;
+  --ink: #e6efea;
+  --muted: #8fa29b;
+  --green: #ffb257;
+  --dust: #c9a77c;
+  --red: #ff6f6f;
+  --sea: #5fb7ff;
+  --sunc: #ffd36b;
+  --focus: #ffe2b8;
+  --f-display: "Spectral", Georgia, "Times New Roman", serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { background: var(--void); color: var(--ink); }
+body { font-family: var(--f-body); font-size: 15px; line-height: 1.55; }
+a { color: var(--green); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 56px; display: grid; gap: 18px; }
+header { display: grid; gap: 6px; }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.eyebrow a { color: inherit; }
+h1 { font-family: var(--f-display); font-weight: 400; font-size: clamp(30px, 5vw, 48px); line-height: 1.08; margin: 0; text-wrap: balance; }
+h1 em { font-style: italic; color: var(--green); }
+.lede { margin: 4px 0 0; max-width: 70ch; color: var(--muted); }
+.stagewrap { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 12px; }
+@media (max-width: 760px) { .stagewrap { grid-template-columns: minmax(0, 1fr); } }
+.stage { position: relative; height: clamp(380px, 64vh, 660px); background: #020305; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.hud { position: absolute; pointer-events: none; font-family: var(--f-mono); font-size: 12px; color: var(--muted); text-shadow: 0 1px 6px #000; }
+.hud.tl { top: 12px; left: 14px; display: grid; gap: 2px; }
+.hud.tl b { color: var(--ink); font-weight: 500; }
+.hud.bl { bottom: 10px; left: 14px; font-size: 11px; }
+.camtabs { position: absolute; top: 10px; right: 10px; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; max-width: 70%; }
+.camtabs button { font: 500 11px/1 var(--f-mono); color: #fff; background: rgba(8,12,15,.7); border: 1px solid rgba(255,255,255,.2); border-radius: 999px; padding: 6px 10px; cursor: pointer; }
+.camtabs button[aria-pressed="true"] { background: rgba(8,12,15,.95); border-color: rgba(255,226,184,.6); }
+.dials { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+@media (max-width: 760px) { .dials { grid-template-columns: 1fr 1fr; } .dials .ro { grid-column: 1 / -1; } }
+.dials .hd { font: 500 11px var(--f-mono); color: var(--muted); }
+.dials canvas { width: 100%; aspect-ratio: 1/1; display: block; }
+.ro { display: grid; gap: 4px; font-size: 13px; }
+.ro div { display: flex; justify-content: space-between; gap: 8px; border-top: 1px solid var(--line); padding-top: 4px; }
+.ro span { color: var(--muted); font-size: 12px; }
+.ro b { font: 500 13px var(--f-mono); font-variant-numeric: tabular-nums; text-align: right; }
+.controls { display: grid; gap: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.play { height: 44px; min-width: 112px; padding: 0 18px 0 14px; border-radius: 999px; border: 1px solid #4a5a70; background: #18222f; color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 600 15px/1 var(--f-body); }
+.play svg { width: 16px; height: 16px; fill: currentColor; }
+.action { font: 600 14px/1 var(--f-body); color: #2a1404; background: var(--green); border: 0; border-radius: 999px; padding: 12px 16px; cursor: pointer; }
+.ghost { font: 500 14px/1 var(--f-body); color: var(--ink); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 10px 14px; cursor: pointer; }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
+.seg button { font: 500 13px/1 var(--f-body); color: var(--muted); background: transparent; border: 0; padding: 9px 11px; cursor: pointer; border-right: 1px solid var(--line); }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { color: var(--ink); background: var(--raise); }
+.ctl-label { font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.group { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.chk { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; cursor: pointer; }
+.chk input { width: 15px; height: 15px; accent-color: var(--green); }
+.sliders { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px 22px; }
+.sl { display: grid; gap: 2px; font-size: 13px; color: var(--muted); }
+.sl .top { display: flex; justify-content: space-between; gap: 8px; }
+.sl output { font: 500 13px var(--f-mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+.sl input[type=range] { width: 100%; accent-color: var(--green); }
+.sl input[type=date] { font: 500 13px var(--f-mono); color: var(--ink); background: var(--raise); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; color-scheme: dark; }
+.hint { font-size: 12px; color: var(--muted); margin: 0; }
+.msg { font-size: 12px; color: var(--green); min-height: 1em; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.skybox { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; display: grid; gap: 8px; }
+.skybox .hd { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+.skybox h2 { font-family: var(--f-display); font-weight: 400; font-size: 22px; margin: 0; }
+.skybox canvas { width: 100%; aspect-ratio: 3/1; display: block; border-radius: 4px; background: #01040a; }
+@media (max-width: 640px) { .skybox canvas { aspect-ratio: 2/1; } }
+.skyread { font-size: 13.5px; color: #cfdcd6; margin: 0; }
+.notes { display: grid; grid-template-columns: 1.3fr 1fr; gap: 28px 36px; padding-top: 8px; }
+.notes > section { min-width: 0; }
+.notes h2 { font-family: var(--f-display); font-weight: 400; font-size: 25px; margin: 0 0 8px; text-wrap: balance; }
+.notes h3 { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 500; margin: 0 0 8px; }
+.notes p { margin: 0 0 10px; max-width: 66ch; }
+.eq { font-family: var(--f-display); font-style: italic; font-size: 18px; padding: 6px 0 10px; overflow-x: auto; white-space: nowrap; }
+.side { border-left: 1px solid var(--line); padding-left: 24px; color: #cbd7d1; font-size: 14px; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 6px 0 16px; font-size: 14px; }
+.facts dt { font-family: var(--f-mono); font-size: 12px; color: var(--muted); padding-top: 2px; }
+.facts dd { margin: 0; }
+.tblwrap { overflow-x: auto; margin: 4px 0 14px; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; min-width: 460px; }
+th, td { text-align: left; padding: 6px 10px 6px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+td i.sw { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 6px; vertical-align: -1px; }
+ul.refs { margin: 0; padding-left: 18px; font-size: 13.5px; } ul.refs li { margin-bottom: 5px; }
+@media (max-width: 760px) { .notes { grid-template-columns: 1fr; } .side { border-left: 0; border-top: 1px solid var(--line); padding-left: 0; padding-top: 16px; } }
+@media (max-width: 640px) { .camtabs { max-width: 100%; left: 10px; top: auto; bottom: 10px; justify-content: flex-start; } .hud.bl { display: none; } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+.side2 { display: grid; gap: 8px; align-content: start; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px; min-width: 0; }
+.side2 .hd { font: 500 11px var(--f-mono); color: var(--muted); }
+.side2 h3 { font-family: var(--f-display); font-weight: 400; font-size: 20px; margin: 0; line-height: 1.15; }
+.side2 .kind { font-size: 12.5px; color: var(--muted); }
+.side2 canvas { width: 100%; height: 150px; display: block; }
+.duo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+@media (max-width: 860px) { .duo { grid-template-columns: minmax(0, 1fr); } }
+.box { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; display: grid; gap: 10px; min-width: 0; align-content: start; }
+.box h2 { font-family: var(--f-display); font-weight: 400; font-size: 22px; margin: 0; }
+.box canvas { width: 100%; height: 220px; display: block; }
+.box svg { width: 100%; height: auto; display: block; }
+.box p { margin: 0; font-size: 13.5px; color: #cdd6df; }
+.big { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--muted); }
+.big b { display: block; font: 500 20px var(--f-mono); color: var(--ink); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 10px; font: 500 11px var(--f-mono); color: var(--muted); }
+.legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; margin-right: 4px; vertical-align: -1px; }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.tab { font: 500 14px/1.2 var(--f-body); color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 9px 16px; cursor: pointer; }
+.tab[aria-selected="true"] { color: var(--ink); background: var(--raise); border-color: #4a5a70; }
+.stage .hud { color: #dbe4ea; }
+.stage.tall { height: clamp(420px, 70vh, 720px); }
+.trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 980px) { .trio { grid-template-columns: minmax(0, 1fr); } }
+.trio canvas { width: 100%; height: 240px; display: block; }
+.stagebadge { font: 600 12px var(--f-mono); padding: 3px 8px; border-radius: 999px; background: rgba(0,0,0,.45); color: #fff; }
+.stagetext { position: absolute; left: 14px; right: 14px; bottom: 34px; max-width: 520px; font-size: 13px; color: #eef3f7; text-shadow: 0 1px 6px #000; pointer-events: none; }
+@media (max-width: 640px) { .stagetext { bottom: 54px; font-size: 12px; } }
+#tiltCv { width: 100%; height: 260px; display: block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow"><a href="index.html#geofysik">← Forsiden</a> · Jorden og geofysik · hvirvler i 3D</div>
+    <h1>Tornadoer og skypumper: atmosfærens <em>stærkeste</em> hvirvler</h1>
+    <p class="lede">En tornado er en lodret hvirvel, der går fra en tordensky ned til jorden. Over vand hedder den en skypumpe. Vinden kan nå over 100 m/s, og trykket i midten falder så meget, at luften fortætter til den synlige tragt. Skru på vinden, hvirvelforholdet og luftens fugtighed, og se tragten vokse ned mod jorden, støv og vragdele slynges rundt, og én hvirvel dele sig i flere. Træk i billedet for at dreje.</p>
+  </header>
+
+  <div class="tabs" role="tablist" id="scene">
+    <button class="tab" role="tab" type="button" data-s="tornado" aria-selected="true">Tornado fra en supercelle</button>
+    <button class="tab" role="tab" type="button" data-s="tws" aria-selected="false">Tornadisk skypumpe</button>
+    <button class="tab" role="tab" type="button" data-s="fws" aria-selected="false">Skypumpe i godt vejr</button>
+  </div>
+
+  <div class="stagewrap">
+    <div class="stage tall" id="stage">
+      <canvas id="cv" aria-label="3D-landskab med en tornado eller skypumpe under en tordensky. Træk for at dreje, rul for at zoome."></canvas>
+      <div class="hud tl"><div><span class="stagebadge" id="hEF">—</span></div><div id="hRegime"></div><div id="hStage"></div></div>
+      <div class="camtabs" id="cams">
+        <button type="button" data-cam="far" aria-pressed="true">På afstand</button>
+        <button type="button" data-cam="near" aria-pressed="false">Tæt på</button>
+        <button type="button" data-cam="low" aria-pressed="false">Ved foden</button>
+        <button type="button" data-cam="top" aria-pressed="false">Ovenfra</button>
+      </div>
+      <div class="stagetext" id="stageText"></div>
+      <div class="hud bl" id="hNote">Træk for at dreje · rul for at zoome</div>
+    </div>
+    <div class="side2">
+      <div class="hd">Målinger</div>
+      <div class="ro">
+        <div><span>Største vind ved jorden</span><b id="rV">—</b></div>
+        <div><span>Skala</span><b id="rEF">—</b></div>
+        <div><span>Trykfald i midten</span><b id="rDp">—</b></div>
+        <div><span>Radius for største vind</span><b id="rRm">—</b></div>
+        <div><span>Kondensationsniveau</span><b id="rZc">—</b></div>
+        <div><span>Tragtens spids</span><b id="rTip">—</b></div>
+        <div><span>Hvirvlens type</span><b id="rReg">—</b></div>
+        <div><span>Fart over jorden</span><b id="rTr">—</b></div>
+      </div>
+      <div class="hd">Vind og tryk ud fra midten</div>
+      <canvas id="profCv" style="height:170px" aria-label="Vindhastighed og trykfald som funktion af afstanden fra hvirvlens midte"></canvas>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="row">
+      <button class="play" id="play" type="button"><svg viewBox="0 0 20 20" id="playIcon" aria-hidden="true"><path d="M4 4h12v12H4z"/></svg><span id="playTxt">Stop</span></button>
+      <button class="ghost" id="restart" type="button">Start forfra</button>
+      <div class="group"><span class="ctl-label">Tempo</span>
+        <div class="seg" id="tempo"><button type="button" data-v="0.25">¼×</button><button type="button" data-v="0.5">½×</button><button type="button" data-v="1" aria-pressed="true">1×</button></div>
+      </div>
+    </div>
+    <div class="row">
+      <label class="chk"><input type="checkbox" id="tParts" checked> Støv, vragdele og sprøjt</label>
+      <label class="chk"><input type="checkbox" id="tCloud" checked> Skyen</label>
+      <label class="chk"><input type="checkbox" id="tLife" checked> Livsforløb</label>
+    </div>
+    <div class="sliders">
+      <label class="sl"><span class="top"><span>Største vind</span><output id="oVm"></output></span><input type="range" id="sVm" min="15" max="120" step="1" value="65"></label>
+      <label class="sl"><span class="top"><span>Hvirvelforhold S</span><output id="oS"></output></span><input type="range" id="sS" min="0.05" max="3" step="0.05" value="0.6"></label>
+      <label class="sl"><span class="top"><span>Radius for største vind</span><output id="oRm"></output></span><input type="range" id="sRm" min="5" max="400" step="1" value="70"></label>
+      <label class="sl"><span class="top"><span>Dugpunktsforskel i den indstrømmende luft</span><output id="oDd"></output></span><input type="range" id="sDd" min="0.5" max="8" step="0.1" value="3"></label>
+      <label class="sl"><span class="top"><span>Fart over jorden</span><output id="oTr"></output></span><input type="range" id="sTr" min="0" max="25" step="0.5" value="12"></label>
+    </div>
+    <p class="hint">Hvirvelforholdet S er forholdet mellem luftens rotation og den mængde luft, der suges op. Ved lavt S er tornadoen smal og glat. Ved S ≈ 0,5–1 bryder hvirvlen sammen fra oven, og kernen får nedadgående luft. Over S ≈ 1,3 deler den sig i flere små sugehvirvler, der kredser om midten. Tør luft giver et højt kondensationsniveau, og så når tragten ikke ned: man ser kun en støvsky ved jorden.</p>
+  </div>
+
+  <div class="trio">
+    <div class="box">
+      <h2>Snit gennem hvirvlen</h2>
+      <canvas id="secCv" aria-label="Lodret snit gennem hvirvlen med pile for luftens bevægelse ind, op og ned, kondensationstragten og kondensationsniveauet"></canvas>
+      <p>Pilene viser luften ind langs jorden og op i hvirvlen. Den grå flade er tragten, hvor trykket er faldet nok til, at luften fortætter.</p>
+    </div>
+    <div class="box">
+      <h2>Vinden ved jorden</h2>
+      <canvas id="gndCv" aria-label="Kort over vinden ved jorden omkring tornadoen, farvet efter EF-skalaen, med sporet efter tornadoen"></canvas>
+      <p>Hvirvlen drejer mod uret og bevæger sig mod øst. På højre side lægges farten over jorden til vinden, og skaderne bliver størst dér. Sporet viser den største vind, der har ramt hvert sted.</p>
+    </div>
+    <div class="box">
+      <h2>Fra vindskæring til rotation</h2>
+      <canvas id="tiltCv" aria-label="Animation af en vandret luftrulle, der løftes op af en opvind og bliver til to lodrette hvirvler, der drejer hver sin vej"></canvas>
+      <label class="sl"><span class="top"><span>Opvindens styrke</span><output id="oUp"></output></span><input type="range" id="sUp" min="0" max="1" step="0.01" value="0.7"></label>
+    </div>
+  </div>
+
+  <div class="notes">
+    <section>
+      <h2>Hvirvlen: vind og tryk</h2>
+      <p>Tæt på midten drejer luften som et fast legeme, og vinden vokser udad. Uden for kernen aftager vinden som 1/r, fordi impulsmomentet bevares. Modellen bruger Burgers–Rott-hvirvlen, der forbinder de to. Den største vind ligger i afstanden r<sub>m</sub> fra midten.</p>
+      <p>Luften kan kun følge den krumme bane, hvis trykket falder ind mod midten. Kraften fra trykforskellen skal give centripetalaccelerationen, den cyklostrofiske balance:</p>
+      <div class="eq">dp/dr = ρ v²/r</div>
+      <p>Integreret ind til midten giver det et trykfald på omkring 1,7 ρV<sub>m</sub>². Ved 60 m/s er det 70 hPa, lige så meget som forskellen mellem havoverfladen og 600 meters højde. Coriolis-kraften er uden betydning i så lille en hvirvel, så tornadoer kan i princippet dreje begge veje. Langt de fleste drejer alligevel mod uret på den nordlige halvkugle, fordi de arver rotationen fra moderskyens mesocyklon.</p>
+      <h2>Tragten er en sky</h2>
+      <p>Den synlige tragt er ikke selve hvirvlen, men vanddamp, der fortætter. Luften, der suges ind langs jorden, udvider sig, når trykket falder, og den køles af. Hvor trykket er faldet lige så meget som til luftens kondensationsniveau, dannes der skydråber. Tragtens rand er derfor den flade, hvor</p>
+      <div class="eq">Δp(r, z) = ρ g (z<sub>c</sub> − z)</div>
+      <p>og z<sub>c</sub> ≈ 125 m pr. grad dugpunktsforskel. Fugtig luft giver en tragt, der når helt ned. I tør luft når den ikke ned, selv om hvirvlen er kraftig ved jorden. Man ser så kun en hvirvlende støvsky under en kort tragt. Det er en grund til, at man aldrig må vurdere en tornado efter, om tragten rører jorden.</p>
+      <h2>Én hvirvel eller flere</h2>
+      <p>I laboratoriet laver man tornadoer i et kammer, hvor luft suges op gennem toppen, mens skovle får den indstrømmende luft til at rotere. Neil Ward og Christopher Church fandt i 1970'erne, at hvirvlens udseende afhænger af hvirvelforholdet S, forholdet mellem rotationen og opsugningen. Ved lavt S stiger luften op i en smal, glat hvirvel. Ved større S bryder hvirvlen sammen fra oven: et sted på aksen standser opvinden, og over det synker luften ned i midten. Det sammenbrud vandrer ned mod jorden, og kernen bliver tocellet, med nedadgående luft i midten og opadgående luft i en ring. Ved endnu større S bliver ringen ustabil og deler sig i to til seks sugehvirvler, der kredser om midten. Hvor en sugehvirvels egen vind lægges til hovedhvirvlens, bliver vinden kraftigst, og det forklarer de smalle striber af totale ødelæggelser ved siden af næsten urørte huse.</p>
+      <h2>Hvordan en tornado opstår</h2>
+      <p>Den kraftigste slags tornado kommer fra en supercelle, en tordensky med en roterende opvind, mesocyklonen, 2–10 km bred. Rotationen begynder som vindskæring: vinden blæser stærkere og fra en anden retning i højden end ved jorden. Luften mellem de to lag ruller som en vandret valse. Når opvinden løfter valsen, vipper den op og bliver til to lodrette hvirvler, der drejer hver sin vej. Prøv animationen ovenfor. Drejer vinden med højden, kommer opvinden til at falde sammen med den ene hvirvel, og skyen begynder at rotere.</p>
+      <p>For at mesocyklonen bliver til en tornado, skal rotationen ned til jorden og trækkes sammen. Den nedadgående luft på skyens bagside, bagflankens nedvind, bringer roterende luft ned. Opvinden strækker den lodret, og ligesom en skøjteløber, der trækker armene ind, drejer luften hurtigere, når den samles om en smallere akse. Bevares v·r, bliver vinden ti gange stærkere, når radius går fra 1 km til 100 m. Kun en mindre del af mesocyklonerne giver en tornado, og hvorfor netop de gør, er stadig ikke helt forstået.</p>
+      <h2>Skypumper</h2>
+      <p>En tornadisk skypumpe er en tornado over vand fra en supercelle, lige så farlig som over land. Den almindelige skypumpe dannes i godt vejr under voksende cumulusskyer langs en linje, hvor vinden ved havoverfladen mødes fra to sider. Der dannes små lodrette hvirvler langs linjen, og når en sky lige over har en kraftig opvind, strækkes en af dem og bliver til en skypumpe. Vinden er som regel under 30 m/s, svarende til EF0–EF1, og tragten er få meter til omkring 100 m bred. Joseph Golden beskrev i 1974 fem stadier, som du kan følge under <em>Skypumpe i godt vejr</em>: en mørk plet på vandet, et spiralmønster, en ring af sprøjt, den modne hvirvel og henfaldet, hvor tragten bliver tynd som et reb og brydes.</p>
+      <p>Skypumper ses over de danske farvande de fleste år, mest i sensommeren og efteråret, når havet stadig er varmt, og kold luft strømmer ind over det.</p>
+    </section>
+    <section class="side">
+      <h3>EF-skalaen</h3>
+      <dl class="facts">
+        <dt>EF0</dt><dd>29–38 m/s · grene, tagsten</dd>
+        <dt>EF1</dt><dd>38–49 m/s · tage, campingvogne</dd>
+        <dt>EF2</dt><dd>50–60 m/s · tage revet af, træer knækket</dd>
+        <dt>EF3</dt><dd>61–74 m/s · vægge væltet</dd>
+        <dt>EF4</dt><dd>74–89 m/s · huse jævnet med jorden</dd>
+        <dt>EF5</dt><dd>over 89 m/s · huse fejet væk</dd>
+      </dl>
+      <p>Skalaen er et skøn over 3-sekunders vindstød ud fra skaderne. Den blev indført i USA i 2007 efter Fujitas skala fra 1971. I Europa bruges den internationale Fujita-skala, der bygger på samme idé.</p>
+      <h3>Tal</h3>
+      <dl class="facts">
+        <dt>Tornadoer pr. år</dt><dd>ca. 1200 i USA, ca. 300 i Europa</dd>
+        <dt>Typisk bredde</dt><dd>50–500 m</dd>
+        <dt>Bredeste</dt><dd>4,2 km, El Reno, Oklahoma, 2013</dd>
+        <dt>Største vind målt</dt><dd>ca. 135 m/s med Doppler-radar, Oklahoma, 3. maj 1999</dd>
+        <dt>Største trykfald målt</dt><dd>ca. 100 hPa, Manchester, South Dakota, 2003</dd>
+        <dt>Levetid</dt><dd>fra få minutter til over en time</dd>
+      </dl>
+      <h3>Hvad modellen regner</h3>
+      <p>Vinden er Burgers–Rott-hvirvlen, hvor radius vokser lidt med højden, og cirkulationen er konstant. Indstrømningen langs jorden, opvinden og den tocellede kerne over sammenbrudshøjden er en kinematisk model, ikke en løsning af Navier–Stokes-ligningerne. Trykket regnes fra den cyklostrofiske balance, og tragten der, hvor trykfaldet når kondensationsniveauet. Sugehvirvlerne lægges oven i hovedhvirvlen. Støv og vragdele følger luften med en træghed, så de tunge slynges ud og falder ned. Vinden ved jorden er vinden fra hvirvlen plus farten over jorden.</p>
+      <h3>Begrænsninger</h3>
+      <p>Grænserne for, hvornår hvirvlen bryder sammen og deler sig, er tilnærmede efter laboratorieforsøgene. Den virkelige tornado har et turbulent grænselag, hvor den største vind ligger 20–50 m over jorden, og den skifter hele tiden form. Skyen, regnen og landskabet er tegnet, ikke beregnet.</p>
+      <p>Mere om de store tropiske hvirvler på siden om <a href="orkaner.html">orkaner og tyfoner</a>, og om grænselag i <a href="navier-stokes-vindtunnel.html#blasius">Navier–Stokes-vindtunnelen</a>.</p>
+      <h3>Kilder</h3>
+      <ul class="refs">
+        <li>N. Rott, <i>Z. Angew. Math. Phys.</i> 9 (1958): Burgers–Rott-hvirvlen.</li>
+        <li>N. B. Ward, <i>J. Atmos. Sci.</i> 29 (1972): tornadokammeret og flere hvirvler.</li>
+        <li>C. R. Church m.fl., <i>J. Atmos. Sci.</i> 36 (1979): hvirvelforholdet.</li>
+        <li>J. H. Golden, <i>J. Appl. Meteor.</i> 13 (1974): skypumpens livsforløb.</li>
+        <li>R. Davies-Jones, <i>Atmos. Res.</i> 158 (2015): tornadogenese, en oversigt.</li>
+        <li>H. B. Bluestein, <i>Severe Convective Storms and Tornadoes</i> (Springer, 2013).</li>
+      </ul>
+    </section>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+window.TXT={dec:",",stop:"Stop",start:"Start",kmh:"km/t",wind:"vind",dp:"trykfald (hPa)",belowEF:"under EF0",ground:"når jorden",none:"ingen tragt",above:"over jorden",
+reg:["Éncellet, glat","Sammenbrud fra oven","Tocellet kerne","Flere sugehvirvler"],motion:"bevægelse",zcLbl:"kondensationsniveau",zbLbl:"skybase",bdLbl:"sammenbrud",
+windTop:"stærk vind i højden",windLow:"svag vind ved jorden",updraft:"opvind",cw:"med uret",ccw:"mod uret",
+stage:k=>"Stadie "+k,stages:["mørk plet","spiralmønster","ring af sprøjt","moden skypumpe","henfald"],
+stageTxt:["En mørk plet på vandet: vinden ved overfladen begynder at dreje og gør vandet ru under skyen.","Lyse og mørke spiralbånd breder sig omkring pletten, mens hvirvlen strammes.","En ring af sprøjt rejser sig fra havet, og tragten begynder at vokse ned fra skyen.","Tragten når næsten ned til vandet, og sprøjtet hvirvler op omkring den. Vinden er størst nu.","Kold luft fra regn under skyen afskærer den varme indstrømning. Tragten bliver tynd som et reb, bøjer og brydes."]};
+
+/* ---------- tornadoer og skypumper: fysikkerne (deles af siden og testene) ---------- */
+const RHO=1.15,G0=9.81,LCL_PER_K=125; // luftens massefylde, tyngdeacceleration, skybase pr. grad dugpunktsforskel
+/* Burgers–Rott-hvirvlen skrevet med radius og fart for den største vind: x = r/rm */
+const BR_K=1.2564,BR_N=0.7153;
+function vShape(x){if(x<1e-6)return 0;return (1-Math.exp(-BR_K*x*x))/(x*BR_N);}
+/* Trykfaldet Δp(r) = ρ Vm² · G(r/rm) fra den cyklostrofiske balance dp/dr = ρ v²/r */
+const GT=(()=>{const N=2001,dx=0.01,t=new Float64Array(N),f=1/BR_N;
+  t[N-1]=f*f/(2*20*20); // halen ud over x = 20, hvor v ≈ Vm/(BR_N·x)
+  for(let i=N-2;i>=0;i--){const a=i*dx,b=a+dx,fa=a>0?vShape(a)**2/a:0,fb=vShape(b)**2/b;t[i]=t[i+1]+0.5*(fa+fb)*dx;}
+  return t;})();
+function Gp(x){if(x>=20)return 1/(BR_N*BR_N)/(2*x*x);const f=x/0.01,i=Math.floor(f),u=f-i;return GT[i]*(1-u)+GT[Math.min(GT.length-1,i+1)]*u;}
+function Ginv(y){ // x, så G(x)=y (G aftager); NaN hvis y > G(0)
+  if(y>GT[0])return NaN;if(y<=Gp(20))return Math.sqrt(1/(BR_N*BR_N)/(2*y));let lo=0,hi=20;for(let k=0;k<50;k++){const m=(lo+hi)/2;if(Gp(m)>y)lo=m;else hi=m;}return (lo+hi)/2;}
+/* Hvirvlens struktur med højden. P: {Vm, rm, zb, zc, S}  (m/s, m, skybase m, kondensationsniveau for den indstrømmende luft m, hvirvelforhold) */
+function rmAt(P,z){return P.rm*(1+0.5*Math.min(1,Math.max(0,z)/P.zb)*(0.6+0.4*Math.min(1,P.S)));}
+function surf(z){return 1-Math.exp(-Math.max(0,z)/6);} // friktion i de nederste meter
+function VmAt(P,z){return P.Vm*P.rm/rmAt(P,z);}             // konstant cirkulation
+/* Sammenbrudshøjde for hvirvlen: over den er kernen tocellet med nedadgående luft */
+function breakdownZ(P){if(P.S<0.25)return Infinity;return P.zb*Math.max(0,Math.min(1,(1.15-P.S)/0.9));}
+function nSub(P){return P.S<1.25?0:Math.min(6,Math.round(1+2.2*(P.S-1.25)));}
+function regime(P){const n=nSub(P);if(n>1)return {k:3,n};if(P.S>=1.0)return {k:2,n:0};if(P.S>=0.25)return {k:1,n:0};return {k:0,n:0};}
+/* Kondensationstragten: den indstrømmende luft fortætter, hvor trykket er faldet til trykket i dens kondensationsniveau zc:  Δp(R,z) = ρ g (zc − z) */
+function funnelR(P,z){if(z>=P.zc)return NaN;const Vm=VmAt(P,z),rm=rmAt(P,z);const need=G0*(P.zc-z)/(Vm*Vm);const x=Ginv(need);return isNaN(x)?NaN:x*rm;}
+function funnelTip(P){let lo=0,hi=P.zc;if(!isNaN(funnelR(P,0)))return 0;for(let k=0;k<40;k++){const m=(lo+hi)/2;if(isNaN(funnelR(P,m)))lo=m;else hi=m;}return hi;}
+function centralDp(P){return RHO*P.Vm*P.Vm*GT[0];}   // Pa
+/* Vindfeltet i hvirvlens ramme (cylinderkoordinater): returnerer {ur, vt, w} i m/s */
+function flow(P,r,z){const rm=rmAt(P,z),x=r/rm,Vm=VmAt(P,z);
+  const vt=Vm*vShape(x)*surf(z);
+  const zi=Math.max(25,0.6*P.rm);const inflow=0.55*P.Vm*Math.min(1,P.rm/Math.max(P.rm,1))*(2*x/(1+x*x))*Math.exp(-z/zi);
+  let ur=-inflow-0.06*P.Vm*(2*x/(1+x*x))*Math.exp(-z/(0.5*P.zb));
+  const W0=0.7*P.Vm*Math.sqrt(P.rm/rm);const zbd=breakdownZ(P);const rise=1-Math.exp(-z/(0.4*zi+5));
+  let w;
+  if(z<zbd)w=W0*Math.exp(-x*x)*rise;
+  else{const f=Math.min(1,(z-zbd)/(0.15*P.zb+1));w=W0*rise*((1-f)*Math.exp(-x*x)+f*(1.5*Math.exp(-Math.pow((x-1)/0.55,2))-0.75*Math.exp(-Math.pow(x/0.55,2))));}
+  // hjørnestrømningen: ved jorden bryder indstrømningen op i en ring lidt uden for r_m
+  w+=0.45*P.Vm*Math.exp(-Math.pow((x-1.1)/0.55,2))*Math.exp(-z/(2*zi))*(1-Math.exp(-z/6));
+  // svag udstrømning lige under skybasen
+  if(z>0.85*P.zb)ur+=0.15*P.Vm*x/(1+x*x)*Math.min(1,(z-0.85*P.zb)/(0.15*P.zb));
+  return {ur,vt,w};}
+/* EF-skalaen (3-sekunders vindstød, m/s) */
+const EF=[29,38,50,61,74,89];
+function efCat(v){if(v<EF[0])return -1;for(let i=5;i>=0;i--)if(v>=EF[i])return i;return -1;}
+const EFCOL=["#7fd1a8","#c9e36b","#ffd24d","#ff9a3d","#ff5a4a","#d23fd1"];
+</script>
+<script>
+(function(){
+"use strict";
+const $=s=>document.querySelector(s);
+const T=window.TXT;
+const fmt=(v,d)=>(v<0?"−":"")+Math.abs(v).toFixed(d).replace(".",T.dec);
+const reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const css=k=>getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+const SCN={
+  tornado:{Vm:65,S:0.6,rm:70,dd:3,tr:12,zb:1300,ground:"land",cloud:"super",far:2700,near:950},
+  tws:{Vm:45,S:0.45,rm:35,dd:2.2,tr:7,zb:1000,ground:"sea",cloud:"super",far:2100,near:650},
+  fws:{Vm:28,S:0.3,rm:10,dd:1.2,tr:2,zb:650,ground:"sea",cloud:"cu",far:950,near:300}};
+const st={scene:"tornado",running:true,tempo:1,parts:true,cloud:true,life:true,cam:"far",t:0,lifeT:0,cx:-2600,phi:0};
+let base=Object.assign({},SCN.tornado);
+let P={Vm:65,rm:70,zb:1300,zc:375,S:0.6},A=0,lifeF=1,stage=-1;
+
+/* ---------- livsforløbet for en skypumpe i godt vejr (Golden 1974) ---------- */
+const LIFE=[[0,0.12],[0.15,0.32],[0.3,0.55],[0.48,0.85],[0.6,1],[0.8,0.92],[0.93,0.35],[1,0]];
+function lifeCurve(L){for(let i=1;i<LIFE.length;i++)if(L<=LIFE[i][0]){const a=LIFE[i-1],b=LIFE[i],f=(L-a[0])/(b[0]-a[0]);return a[1]+(b[1]-a[1])*f;}return 0;}
+function stageOf(L){return L<0.15?0:L<0.3?1:L<0.5?2:L<0.8?3:4;}
+const LIFE_DUR=80;
+function lifeOn(){return st.scene==="fws"&&st.life;}
+function updateP(){
+  const L=Math.min(1,st.lifeT/LIFE_DUR);lifeF=lifeOn()?lifeCurve(L):1;stage=lifeOn()?stageOf(L):-1;
+  const zc=Math.max(40,LCL_PER_K*base.dd);const rope=lifeOn()&&L>0.8?Math.min(1,(L-0.8)/0.15):0;
+  P={Vm:Math.max(3,base.Vm*lifeF),rm:base.rm*(1-0.45*rope),zb:Math.max(SCN[st.scene].zb,zc+120),zc,S:base.S};
+  A=(0.12+0.45*rope)*P.zc+0.02*P.zb;}
+/* aksens krumning med højden (samme formel i shaderen) */
+function axisOff(z){const f=Math.min(1.5,Math.max(0,z/P.zc));return [A*(0.7*f+0.3*Math.sin(3*f+st.phi)-0.3*Math.sin(st.phi)),A*0.5*Math.sin(2.2*f+0.7*st.phi)*f];}
+
+/* ---------- three.js ---------- */
+const cv=$("#cv"),stage3=$("#stage");
+const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true});renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(42,1,1,60000);
+const hemi=new THREE.HemisphereLight(0xdfe8f0,0x3a4430,0.7);scene.add(hemi);const sunL=new THREE.DirectionalLight(0xfff2dd,0.7);sunL.position.set(-3000,4000,2000);scene.add(sunL);
+// himmel
+const skyMat=new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,uniforms:{top:{value:new THREE.Color()},hor:{value:new THREE.Color()},low:{value:new THREE.Color()}},
+  vertexShader:"varying vec3 vP;void main(){vP=normalize(position);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}",
+  fragmentShader:"uniform vec3 top;uniform vec3 hor;uniform vec3 low;varying vec3 vP;void main(){float h=vP.y;vec3 c=h>0.0?mix(hor,top,pow(min(1.0,h*2.2),0.7)):mix(hor,low,min(1.0,-h*6.0));gl_FragColor=vec4(c,1.0);}"});
+const sky=new THREE.Mesh(new THREE.SphereGeometry(40000,32,16),skyMat);scene.add(sky);
+const NOISE=`float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}
+float fbm(vec2 p){float a=0.5,s=0.0;for(int i=0;i<5;i++){s+=a*vn(p);p*=2.03;a*=0.5;}return s;}`;
+/* ---------- jorden: land ---------- */
+function fieldsTex(){const c=document.createElement("canvas");c.width=c.height=1024;const g=c.getContext("2d");const cols=["#6f8a3e","#86964a","#a39b58","#5e7a35","#93a35a","#7c6f45","#6a8a46"];
+  for(let i=0;i<14;i++)for(let j=0;j<14;j++){g.fillStyle=cols[(i*7+j*3+((i*j)%5))%cols.length];g.fillRect(i*73,j*73,74,74);for(let k=0;k<12;k++){g.fillStyle="rgba(0,0,0,.05)";g.fillRect(i*73,j*73+k*6,74,2);}}
+  g.strokeStyle="#9e9a8c";g.lineWidth=5;g.beginPath();g.moveTo(0,512);g.lineTo(1024,540);g.moveTo(300,0);g.lineTo(320,1024);g.stroke();
+  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(12,12);t.anisotropy=4;return t;}
+const land=new THREE.Mesh(new THREE.PlaneGeometry(60000,60000),new THREE.MeshLambertMaterial({map:fieldsTex()}));land.rotation.x=-Math.PI/2;scene.add(land);
+// træer og huse
+const trees=new THREE.InstancedMesh(new THREE.ConeGeometry(4,14,6),new THREE.MeshLambertMaterial({color:0x2f4a26}),900);
+const houses=new THREE.InstancedMesh(new THREE.BoxGeometry(12,6,9),new THREE.MeshLambertMaterial({color:0xb9a48a}),160);
+{const m=new THREE.Matrix4(),q=new THREE.Quaternion(),s=new THREE.Vector3();let k=0;for(let i=0;i<900;i++){const x=(Math.random()*2-1)*6000,z=(Math.random()*2-1)*3500;const sc=0.7+Math.random()*0.8;m.compose(new THREE.Vector3(x,7*sc,z),q,s.set(sc,sc,sc));trees.setMatrixAt(i,m);}
+ for(let i=0;i<160;i++){const x=(Math.random()*2-1)*6000,z=(Math.random()*2-1)*3500;q.setFromAxisAngle(new THREE.Vector3(0,1,0),Math.random()*3);m.compose(new THREE.Vector3(x,3,z),q,s.set(1,1,1));houses.setMatrixAt(i,m);}}
+scene.add(trees);scene.add(houses);
+// skadessporet
+const SW={x0:-4200,x1:4200,z0:-1600,z1:1600,res:8};SW.nx=Math.round((SW.x1-SW.x0)/SW.res);SW.nz=Math.round((SW.z1-SW.z0)/SW.res);
+const swMax=new Float32Array(SW.nx*SW.nz);const swCv=document.createElement("canvas");swCv.width=SW.nx;swCv.height=SW.nz;const swCtx=swCv.getContext("2d"),swImg=swCtx.createImageData(SW.nx,SW.nz);
+const swTex=new THREE.CanvasTexture(swCv);const swath=new THREE.Mesh(new THREE.PlaneGeometry(SW.x1-SW.x0,SW.z1-SW.z0),new THREE.MeshBasicMaterial({map:swTex,transparent:true,depthWrite:false}));
+swath.rotation.x=-Math.PI/2;swath.position.set((SW.x0+SW.x1)/2,0.6,(SW.z0+SW.z1)/2);scene.add(swath);
+function clearSwath(){swMax.fill(0);swImg.data.fill(0);swCtx.putImageData(swImg,0,0);swTex.needsUpdate=true;}
+/* ---------- jorden: hav ---------- */
+const seaMat=new THREE.ShaderMaterial({uniforms:{time:{value:0},c:{value:new THREE.Vector2()},rm:{value:50},spot:{value:0},spiral:{value:0},ring:{value:0},hor:{value:new THREE.Color()},deep:{value:new THREE.Color(0x0e2a3a)},sun:{value:new THREE.Vector3(-0.5,0.6,0.4).normalize()}},
+  vertexShader:"varying vec3 vW;void main(){vec4 w=modelMatrix*vec4(position,1.0);vW=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}",
+  fragmentShader:NOISE+`
+uniform float time;uniform vec2 c;uniform float rm;uniform float spot;uniform float spiral;uniform float ring;uniform vec3 hor;uniform vec3 deep;uniform vec3 sun;varying vec3 vW;
+void main(){vec2 p=vW.xz;
+  vec2 g=vec2(0.0);float t=time;
+  g+=0.8*vec2(cos(p.x*0.021+t*1.3),0.3*cos(p.y*0.017+t))*0.2;g+=vec2(fbm(p*0.01+t*0.05)-0.5,fbm(p*0.012-t*0.04+7.0)-0.5)*0.6;
+  vec3 n=normalize(vec3(-g.x,1.0,-g.y));vec3 v=normalize(cameraPosition-vW);float fr=pow(1.0-max(0.0,dot(n,v)),3.0);
+  vec3 col=mix(deep,hor,0.25+0.7*fr);col+=vec3(1.0,0.95,0.85)*pow(max(0.0,dot(reflect(-sun,n),v)),120.0)*0.6;
+  vec2 d=p-c;float r=length(d);float th=atan(d.y,d.x);
+  col*=1.0-spot*0.45*exp(-pow(r/(4.0*rm),2.0));
+  float sp=sin(2.0*th-3.5*log(r/rm+0.3)+time*1.5);col+=spiral*0.16*smoothstep(0.2,1.0,sp)*exp(-pow(r/(9.0*rm),2.0))*(1.0-exp(-pow(r/(1.5*rm),2.0)));
+  float rg=exp(-pow((r-1.6*rm)/(0.9*rm),2.0));col=mix(col,vec3(0.92,0.95,0.97),ring*0.7*rg*(0.6+0.4*fbm(vec2(th*6.0+time*3.0,r*0.05))));
+  float fog=1.0-exp(-length(vW-cameraPosition)/18000.0);col=mix(col,hor,fog);
+  gl_FragColor=vec4(col,1.0);}`});
+const sea=new THREE.Mesh(new THREE.PlaneGeometry(60000,60000),seaMat);sea.rotation.x=-Math.PI/2;sea.position.y=0.2;scene.add(sea);
+
+/* ---------- skyen ---------- */
+const cloudGrp=new THREE.Group();scene.add(cloudGrp);
+const baseMat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,uniforms:{time:{value:0},Rm:{value:2000},Vm:{value:15},dark:{value:0.7},col:{value:new THREE.Color(0x3a4048)},rad:{value:12000}},
+  vertexShader:"varying vec2 vL;void main(){vL=position.xy;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}",
+  fragmentShader:NOISE+`uniform float time;uniform float Rm;uniform float Vm;uniform float dark;uniform vec3 col;uniform float rad;varying vec2 vL;
+void main(){float r=length(vL);float om=Vm/max(r,Rm)*min(1.0,r/Rm)/max(r,Rm)*Rm;float th=atan(vL.y,vL.x)+time*om;vec2 q=vec2(cos(th),sin(th))*r;
+  float n=fbm(q*0.0016)*0.65+fbm(q*0.006+3.0)*0.35;vec3 c=col*(0.65+0.7*n)*(1.0-dark*0.35*exp(-r*r/(Rm*Rm*1.5)));
+  float a=smoothstep(rad,rad*0.75,r)*(0.85+0.15*n);gl_FragColor=vec4(c,a);}`});
+const baseDisk=new THREE.Mesh(new THREE.CircleGeometry(1,96),baseMat);baseDisk.rotation.x=Math.PI/2;cloudGrp.add(baseDisk);
+const wallMat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,side:THREE.DoubleSide,uniforms:{time:{value:0},om:{value:0.02},col:{value:new THREE.Color(0x40464c)}},
+  vertexShader:"varying vec2 vU;varying vec3 vN;varying vec3 vV;void main(){vU=uv;vec4 mv=modelViewMatrix*vec4(position,1.0);vN=normalize(normalMatrix*normal);vV=normalize(-mv.xyz);gl_Position=projectionMatrix*mv;}",
+  fragmentShader:NOISE+`uniform float time;uniform float om;uniform vec3 col;varying vec2 vU;varying vec3 vN;varying vec3 vV;
+void main(){float n=fbm(vec2(vU.x*18.0+time*om*3.0,vU.y*3.0));float e=1.0-abs(dot(vN,vV));gl_FragColor=vec4(col*(0.7+0.6*n),0.85*smoothstep(0.0,0.12,vU.y)+0.1*e);}`});
+let wallMesh=null;
+// regnskyl
+const rainMat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,side:THREE.DoubleSide,uniforms:{time:{value:0}},
+  vertexShader:"varying vec2 vU;void main(){vU=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}",
+  fragmentShader:NOISE+"uniform float time;varying vec2 vU;void main(){float s=vn(vec2(vU.x*260.0,vU.y*6.0+time*2.0));float a=0.32*(0.5+0.5*s)*smoothstep(0.0,0.25,vU.y)*smoothstep(1.0,0.85,vU.y);gl_FragColor=vec4(vec3(0.42,0.46,0.5),a);}"});
+const rain=new THREE.Mesh(new THREE.CylinderGeometry(1500,1800,1,48,1,true),rainMat);cloudGrp.add(rain);
+// cumulustårne
+const cuGrp=new THREE.Group();cloudGrp.add(cuGrp);
+function buildCu(zb){while(cuGrp.children.length){const o=cuGrp.children.pop();o.geometry.dispose();}
+  const mat=new THREE.MeshLambertMaterial({color:0xf2f4f7});
+  for(let i=0;i<46;i++){const g=new THREE.IcosahedronGeometry(1,2);const p=g.attributes.position;for(let k=0;k<p.count;k++){const f=0.82+0.3*Math.random();p.setXYZ(k,p.getX(k)*f,p.getY(k)*f,p.getZ(k)*f);}g.computeVertexNormals();
+    const m=new THREE.Mesh(g,mat);const a=Math.random()*6.283,r=Math.pow(Math.random(),0.7)*2600;const R=250+Math.random()*450;m.scale.set(R,R*0.85,R);m.position.set(r*Math.cos(a)-400,zb+R*0.95+Math.random()*1200*(1-r/2600),r*Math.sin(a)-1000);cuGrp.add(m);}}
+/* ---------- tragten ---------- */
+const funnelVS=`uniform float A;uniform float ph;uniform float zc;varying vec2 vU;varying vec3 vN;varying vec3 vV;varying float vY;
+void main(){vec3 p=position;float f=clamp(p.y/zc,0.0,1.5);p.x+=A*(0.7*f+0.3*sin(3.0*f+ph)-0.3*sin(ph));p.z-=A*0.5*sin(2.2*f+0.7*ph)*f;
+  vU=uv;vY=position.y;vec4 mv=modelViewMatrix*vec4(p,1.0);vN=normalize(normalMatrix*normal);vV=normalize(-mv.xyz);gl_Position=projectionMatrix*mv;}`;
+function funnelMat(){return new THREE.ShaderMaterial({transparent:true,depthWrite:false,side:THREE.DoubleSide,uniforms:{time:{value:0},om:{value:1},A:{value:0},ph:{value:0},zc:{value:400},col:{value:new THREE.Color(0x9aa3ab)},dust:{value:new THREE.Color(0x7d6a52)},dustH:{value:0},op:{value:0.9},fade:{value:1e9}},
+  vertexShader:funnelVS,
+  fragmentShader:NOISE+`uniform float time;uniform float om;uniform vec3 col;uniform vec3 dust;uniform float dustH;uniform float op;uniform float fade;varying vec2 vU;varying vec3 vN;varying vec3 vV;varying float vY;
+void main(){float n=fbm(vec2(vU.x*22.0-time*om,vY*0.01-time*0.35));float n2=vn(vec2(vU.x*60.0-time*om*1.4,vY*0.004));
+  float e=pow(1.0-abs(dot(vN,vV)),1.3);vec3 c=mix(col*(0.75+0.45*n),dust,smoothstep(dustH,0.0,vY)*0.8*step(0.01,dustH));
+  float a=op*(0.62+0.38*e)*(0.8+0.2*n2)*smoothstep(fade,fade*0.6,vY);gl_FragColor=vec4(c,a);}`});}
+const fMain=new THREE.Mesh(new THREE.BufferGeometry(),funnelMat());fMain.frustumCulled=false;scene.add(fMain);
+const fSubs=[];for(let i=0;i<6;i++){const m=new THREE.Mesh(new THREE.BufferGeometry(),funnelMat());m.frustumCulled=false;m.visible=false;scene.add(m);fSubs.push(m);}
+let tipZ=0,funnelKey="";
+function lathePts(Rfun,z0,z1,n){const pts=[];pts.push(new THREE.Vector2(0.001,z0));for(let i=0;i<=n;i++){const z=z0+(z1-z0)*Math.pow(i/n,1.3);const R=Rfun(z);pts.push(new THREE.Vector2(Math.max(0.3,R),z));}return pts;}
+function buildFunnels(){
+  const key=[P.Vm,P.rm,P.zc,P.zb,P.S].map(v=>v.toFixed(2)).join("|");if(key===funnelKey)return;funnelKey=key;
+  tipZ=funnelTip(P);const top=P.zb;const zLim=P.zc*0.93;let Rtop=funnelR(P,zLim);if(isNaN(Rtop))Rtop=0;Rtop=Math.min(Rtop,3.5*P.rm);
+  const Rf=z=>{if(z<zLim){const R=funnelR(P,z);return isNaN(R)?0.3:Math.min(R,3.5*P.rm);}const f=(z-zLim)/Math.max(1,top-zLim);return Rtop*(1+0.6*f)+0.8*P.rm*f;};
+  fMain.geometry.dispose();
+  if(tipZ<P.zc*0.97){fMain.geometry=new THREE.LatheGeometry(lathePts(Rf,tipZ,top,70),56);fMain.visible=true;}else{fMain.geometry=new THREE.BufferGeometry();fMain.visible=false;}
+  // sugehvirvlernes små tragte
+  const n=nSub(P);const Vs=0.55*P.Vm,rs=Math.max(2,0.2*P.rm);
+  for(let i=0;i<6;i++){const m=fSubs[i];m.geometry.dispose();m.geometry=new THREE.BufferGeometry();m.visible=false;if(i>=n)continue;
+    const Rs=z=>{if(z>=P.zc)return NaN;const Vp=VmAt(P,z);const need=(G0*(P.zc-z)-Vp*Vp*Gp(0.85))/(Vs*Vs);return need<=0?3*rs:Ginv(need)*rs;};
+    let lo=0,hi=P.zc*0.6;if(isNaN(Rs(0))){for(let k=0;k<30;k++){const mm=(lo+hi)/2;if(isNaN(Rs(mm)))lo=mm;else hi=mm;}}else hi=0;
+    if(hi<P.zc*0.4){m.geometry=new THREE.LatheGeometry(lathePts(z=>{const R=Rs(z);return isNaN(R)?0.3:Math.min(R,1.1*rs)*(1+0.6*z/P.zc);},hi,P.zc*0.45,30),20);m.visible=true;}}
+  buildWall();}
+function buildWall(){if(wallMesh){cloudGrp.remove(wallMesh);wallMesh.geometry.dispose();wallMesh=null;}
+  if(SCN[st.scene].cloud!=="super")return;const zw=Math.max(P.zc,P.zb-380);if(P.zb-zw<25)return;const Rw=Math.min(1600,Math.max(260,7*P.rm));
+  const pts=[new THREE.Vector2(0.01,zw-P.zb),new THREE.Vector2(Rw*0.75,zw-P.zb),new THREE.Vector2(Rw,(zw-P.zb)*0.6),new THREE.Vector2(Rw*1.25,(zw-P.zb)*0.25),new THREE.Vector2(Rw*1.7,0)];
+  wallMesh=new THREE.Mesh(new THREE.LatheGeometry(pts,64),wallMat);cloudGrp.add(wallMesh);}
+
+/* ---------- partikler: støv, vragdele, sprøjt ---------- */
+const NP=9000;const px=new Float32Array(NP),py=new Float32Array(NP),pz=new Float32Array(NP),vx=new Float32Array(NP),vy=new Float32Array(NP),vz=new Float32Array(NP),age=new Float32Array(NP),kind=new Uint8Array(NP),live=new Uint8Array(NP);
+const pPos=new Float32Array(NP*3),pCol=new Float32Array(NP*4),pSize=new Float32Array(NP);
+const pGeo=new THREE.BufferGeometry();pGeo.setAttribute("position",new THREE.BufferAttribute(pPos,3));pGeo.setAttribute("aCol",new THREE.BufferAttribute(pCol,4));pGeo.setAttribute("aSize",new THREE.BufferAttribute(pSize,1));
+const pMat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,uniforms:{scale:{value:500}},
+  vertexShader:"attribute vec4 aCol;attribute float aSize;uniform float scale;varying vec4 vC;void main(){vC=aCol;vec4 mv=modelViewMatrix*vec4(position,1.0);gl_PointSize=clamp(aSize*scale/-mv.z,1.0,48.0);gl_Position=projectionMatrix*mv;}",
+  fragmentShader:"varying vec4 vC;void main(){vec2 d=gl_PointCoord-0.5;float r=dot(d,d)*4.0;if(r>1.0)discard;gl_FragColor=vec4(vC.rgb,vC.a*(1.0-r));}"});
+const pts=new THREE.Points(pGeo,pMat);pts.frustumCulled=false;scene.add(pts);
+// 0 støv, 1 vragdele, 2 sprøjt
+const KT=[{tau:0.25,thr:16,col:[0.6,0.5,0.38,0.32],size:9},{tau:1.3,thr:34,col:[0.2,0.17,0.14,0.95],size:2.2},{tau:0.45,thr:13,col:[0.93,0.96,1,0.42],size:4}];
+let subs=[];
+function subCenters(){const n=nSub(P);subs=[];const Rs=0.85*P.rm;for(let i=0;i<n;i++){const a=st.phi*4.2+i*2*Math.PI/n;subs.push([Rs*Math.cos(a),Rs*Math.sin(a)]);}return subs;}
+const tmp={e:0,n:0,w:0};
+/* luftens hastighed i verdenskoordinater (e = øst, n = nord) */
+function air(e,n,z){const ao=axisOff(z);const de=e-(st.cx+ao[0]),dn=n-(0-ao[1]);const r=Math.hypot(de,dn)+1e-6,c=de/r,s=dn/r;const f=flow(P,r,z);
+  let ae=f.ur*c-f.vt*s+base.tr,an=f.ur*s+f.vt*c,aw=f.w;
+  if(subs.length){const Vs=0.55*P.Vm,rs=Math.max(2,0.2*P.rm),zf=Math.exp(-z/(0.45*P.zc));
+    for(const q of subs){const qe=de-q[0],qn=dn-q[1],d=Math.hypot(qe,qn)+1e-6;const v=Vs*vShape(d/rs)*surf(z)*zf;ae+=-v*qn/d;an+=v*qe/d;aw+=0.6*Vs*Math.exp(-(d/rs)*(d/rs))*zf*(1-Math.exp(-z/15));}}
+  tmp.e=ae;tmp.n=an;tmp.w=aw;return tmp;}
+function spawn(i,kd){const rm0=P.rm;const r=rm0*(0.25+3.4*Math.pow(Math.random(),1.6)),a=Math.random()*6.283;const ao=axisOff(0);
+  const e=st.cx+ao[0]+r*Math.cos(a),n=-ao[1]+r*Math.sin(a);const z=0.5+Math.random()*3;const u=air(e,n,z);const sp=Math.hypot(u.e-base.tr,u.n);
+  if(sp<KT[kd].thr*(0.8+0.4*Math.random()))return false;px[i]=e;pz[i]=-n;py[i]=z;vx[i]=u.e*0.5;vz[i]=-u.n*0.5;vy[i]=2+Math.random()*4;age[i]=0;kind[i]=kd;live[i]=1;return true;}
+function stepParts(dt){const sea=SCN[st.scene].ground==="sea";let tries=0;
+  for(let i=0;i<NP;i++){if(!live[i]){if(tries<260){tries++;const kd=sea?2:(Math.random()<0.72?0:1);spawn(i,kd);}continue;}
+    const K=KT[kind[i]];const u=air(px[i],-pz[i],py[i]);const it=dt/K.tau;
+    const turb=kind[i]===1?0.06:0.2;const sp=Math.hypot(u.e-base.tr,u.n);const kick=turb*sp*(Math.random()*2-1)*Math.sqrt(dt*20)*(py[i]<4*P.rm?1:0.4);
+    vx[i]+=(u.e-vx[i])*Math.min(1,it);vz[i]+=(-u.n-vz[i])*Math.min(1,it);vy[i]+=(u.w+kick*3-vy[i])*Math.min(1,it)-9.81*dt;
+    px[i]+=vx[i]*dt;py[i]+=vy[i]*dt;pz[i]+=vz[i]*dt;age[i]+=dt;
+    const de=px[i]-st.cx,dn=-pz[i];if(py[i]<0||py[i]>P.zc*0.95||de*de+dn*dn>Math.pow(12*P.rm+200,2)||age[i]>30)live[i]=0;}}
+function writeParts(){const sc=Math.max(0.35,Math.min(1.6,P.rm/45));for(let i=0;i<NP;i++){const K=KT[kind[i]];pPos[3*i]=px[i];pPos[3*i+1]=live[i]?py[i]:-1e4;pPos[3*i+2]=pz[i];
+    const fade=Math.min(1,age[i]/0.6)*Math.min(1,(30-age[i])/3);pCol[4*i]=K.col[0];pCol[4*i+1]=K.col[1];pCol[4*i+2]=K.col[2];pCol[4*i+3]=K.col[3]*fade;pSize[i]=K.size*sc*(kind[i]===0?1+py[i]/120:1);}
+  pGeo.attributes.position.needsUpdate=true;pGeo.attributes.aCol.needsUpdate=true;pGeo.attributes.aSize.needsUpdate=true;}
+function windGround(e,n){const u=air(e,n,15);return Math.hypot(u.e,u.n);}
+let swT=0;
+function paintSwath(){if(SCN[st.scene].ground!=="land")return;const R=Math.min(900,6*P.rm+60),d=swImg.data;const i0=Math.max(0,Math.floor((st.cx-R-SW.x0)/SW.res)),i1=Math.min(SW.nx-1,Math.ceil((st.cx+R-SW.x0)/SW.res));
+  const j0=Math.max(0,Math.floor((-R-SW.z0)/SW.res)),j1=Math.min(SW.nz-1,Math.ceil((R-SW.z0)/SW.res));
+  for(let j=j0;j<=j1;j++){const zw=SW.z0+(j+0.5)*SW.res;for(let i=i0;i<=i1;i++){const xw=SW.x0+(i+0.5)*SW.res;const v=windGround(xw,-zw);const k=j*SW.nx+i;if(v>swMax[k]){swMax[k]=v;const c=efCat(v);const o=4*k;
+      if(c>=0){const col=new THREE.Color(EFCOL[c]);d[o]=60+col.r*60;d[o+1]=50+col.g*40;d[o+2]=40+col.b*30;d[o+3]=Math.min(200,60+c*28);}}}}
+  swCtx.putImageData(swImg,0,0);swTex.needsUpdate=true;}
+
+/* ---------- scenerne ---------- */
+function setScene(s){st.scene=s;base=Object.assign({},SCN[s]);const S=SCN[s];
+  for(const [k,id] of [["Vm","#sVm"],["S","#sS"],["rm","#sRm"],["dd","#sDd"],["tr","#sTr"]]){$(id).value=base[k];}
+  document.querySelectorAll("#scene .tab").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.s===s)));
+  $("#tLife").parentElement.hidden=s!=="fws";
+  const isLand=S.ground==="land";land.visible=isLand;trees.visible=isLand;houses.visible=isLand;swath.visible=isLand;sea.visible=!isLand;
+  const sup=S.cloud==="super";rain.visible=sup;cuGrp.visible=!sup;
+  if(sup){skyMat.uniforms.top.value.set(0x2a3138);skyMat.uniforms.hor.value.set(s==="tws"?0x8a989e:0x9c9e86);skyMat.uniforms.low.value.set(0x3a3f3a);baseMat.uniforms.col.value.set(0x3b4248);baseMat.uniforms.dark.value=0.8;baseMat.uniforms.rad.value=11000;baseMat.uniforms.Vm.value=16;baseMat.uniforms.Rm.value=2200;hemi.intensity=0.55;sunL.intensity=0.45;}
+  else{skyMat.uniforms.top.value.set(0x3f78b8);skyMat.uniforms.hor.value.set(0xbad3e6);skyMat.uniforms.low.value.set(0x5a7f99);baseMat.uniforms.col.value.set(0x8c939b);baseMat.uniforms.dark.value=0.6;baseMat.uniforms.rad.value=3600;baseMat.uniforms.Vm.value=5;baseMat.uniforms.Rm.value=500;hemi.intensity=0.8;sunL.intensity=0.9;}
+  hemi.groundColor.set(isLand?0x3a4430:0x6f7d88);
+  seaMat.uniforms.hor.value.copy(skyMat.uniforms.hor.value);scene.fog=null;
+  st.cx=isLand?-2600:0;st.lifeT=0;live.fill(0);clearSwath();funnelKey="";updateP();
+  baseDisk.geometry.dispose();baseDisk.geometry=new THREE.CircleGeometry(baseMat.uniforms.rad.value,96);
+  for(const m of [fMain,...fSubs]){m.material.uniforms.col.value.set(sup?0x7d868e:0xd9e1e8);m.material.uniforms.op.value=sup?0.92:0.75;}
+  buildCu(P.zb);camDist=null;setCam("far");syncOut();}
+document.querySelectorAll("#scene .tab").forEach(b=>b.addEventListener("click",()=>setScene(b.dataset.s)));
+
+/* ---------- kamera ---------- */
+let yaw=-0.25,pitch=0.06,zoom=1,camDist=null,drag=null;const camTgt=new THREE.Vector3();
+function camPreset(){const S=SCN[st.scene];switch(st.cam){case "near":return {d:S.near,p:0.1,ty:0.3};case "low":return {d:S.near*0.45,p:0.02,ty:0.08};case "top":return {d:S.far*0.7,p:1.35,ty:0};default:return {d:S.far,p:0.05,ty:0.32};}}
+function setCam(c){st.cam=c;const pr=camPreset();pitch=pr.p;zoom=1;document.querySelectorAll("#cams button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.cam===c)));}
+$("#cams").addEventListener("click",e=>{const b=e.target.closest("button");if(b)setCam(b.dataset.cam);});
+cv.addEventListener("pointerdown",e=>{cv.setPointerCapture(e.pointerId);drag=[e.clientX,e.clientY];});
+cv.addEventListener("pointermove",e=>{if(!drag)return;yaw-=(e.clientX-drag[0])*0.005;pitch=Math.max(-0.05,Math.min(1.45,pitch+(e.clientY-drag[1])*0.004));drag=[e.clientX,e.clientY];});
+cv.addEventListener("pointerup",()=>drag=null);cv.addEventListener("pointercancel",()=>drag=null);
+cv.addEventListener("wheel",e=>{e.preventDefault();zoom=Math.max(0.25,Math.min(3,zoom*Math.exp(e.deltaY*0.001)));},{passive:false});
+function applyCam(dt){const pr=camPreset();const dT=pr.d*zoom*Math.max(1,0.9/camera.aspect);camDist=camDist===null?dT:camDist+(dT-camDist)*Math.min(1,dt*3);
+  const ty=pr.ty*P.zc;camTgt.set(st.cx+(st.cam==="top"?0:0.25*A),ty,0);
+  const top=st.cam==="top";let y=camTgt.y+camDist*Math.sin(pitch);if(!top)y=Math.min(y,P.zb-30);y=Math.max(y,1.6);
+  camera.position.set(camTgt.x+camDist*Math.cos(pitch)*Math.sin(yaw),y,camTgt.z+camDist*Math.cos(pitch)*Math.cos(yaw));camera.lookAt(camTgt);
+  cloudGrp.visible=st.cloud&&!(top&&camera.position.y>P.zb);}
+function resize(){const w=stage3.clientWidth,h=stage3.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();pMat.uniforms.scale.value=h*renderer.getPixelRatio()/(2*Math.tan(camera.fov*Math.PI/360));}
+new ResizeObserver(resize).observe(stage3);
+
+/* ---------- styring ---------- */
+function syncOut(){$("#oVm").textContent=Math.round(base.Vm)+" m/s · "+Math.round(base.Vm*3.6)+" "+T.kmh;$("#oS").textContent=fmt(base.S,2);$("#oRm").textContent=Math.round(base.rm)+" m";
+  $("#oDd").textContent=fmt(base.dd,1)+" °C · "+Math.round(LCL_PER_K*base.dd)+" m";$("#oTr").textContent=fmt(base.tr,1)+" m/s";}
+for(const [k,id] of [["Vm","#sVm"],["S","#sS"],["rm","#sRm"],["dd","#sDd"],["tr","#sTr"]])$(id).addEventListener("input",e=>{base[k]=+e.target.value;syncOut();});
+$("#tParts").addEventListener("change",e=>{st.parts=e.target.checked;pts.visible=st.parts;});
+$("#tCloud").addEventListener("change",e=>{st.cloud=e.target.checked;});
+$("#tLife").addEventListener("change",e=>{st.life=e.target.checked;st.lifeT=0;});
+$("#tempo").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;st.tempo=+b.dataset.v;document.querySelectorAll("#tempo button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));});
+function setRun(r){st.running=r;$("#playTxt").textContent=r?T.stop:T.start;$("#playIcon").innerHTML=r?'<path d="M4 4h12v12H4z"/>':'<path d="M5 3l12 7-12 7z"/>';}
+$("#play").onclick=()=>setRun(!st.running);
+$("#restart").onclick=()=>{st.lifeT=0;st.cx=SCN[st.scene].ground==="land"?-2600:0;live.fill(0);clearSwath();};
+
+/* ---------- graferne ---------- */
+function prep(c){const dpr=Math.min(2,window.devicePixelRatio||1),w=c.clientWidth,h=c.clientHeight;if(!w||!h)return null;if(c.width!==Math.round(w*dpr)||c.height!==Math.round(h*dpr)){c.width=Math.round(w*dpr);c.height=Math.round(h*dpr);}const g=c.getContext("2d");g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,w,h);g.font="10.5px "+css("--f-mono");return [g,w,h];}
+function nice(x){const p=Math.pow(10,Math.floor(Math.log10(x)));const f=x/p;return (f<1.5?1:f<3?2:f<7?5:10)*p;}
+function drawProf(){const Q=prep($("#profCv"));if(!Q)return;const [g,w,h]=Q;const L=30,R=34,Tp=8,B=18;const rmax=5*P.rm;const X=r=>L+r/rmax*(w-L-R);
+  const vmax=Math.max(20,P.Vm*1.1),Y=v=>Tp+(1-v/vmax)*(h-Tp-B);const dp0=centralDp(P)/100,Yp=p=>Tp+(p/(dp0*1.1))*(h-Tp-B);
+  g.strokeStyle=css("--line");g.fillStyle=css("--muted");g.lineWidth=1;const sv=nice(vmax/4);g.textAlign="right";for(let v=0;v<=vmax;v+=sv){const y=Math.round(Y(v))+0.5;g.beginPath();g.moveTo(L,y);g.lineTo(w-R,y);g.stroke();g.fillText(String(v),L-3,y+4);}
+  g.textAlign="left";const sp=nice(dp0/3);for(let p=0;p<=dp0*1.1;p+=sp)g.fillText("−"+Math.round(p),w-R+3,Yp(p)+4);
+  g.textAlign="center";const sr=nice(rmax/4);for(let r=0;r<=rmax;r+=sr)g.fillText(String(r),X(r),h-4);g.textAlign="left";g.fillText("m",L+2,h-4);
+  const Rf=isNaN(funnelR(P,5))?NaN:funnelR(P,5);if(!isNaN(Rf)){g.fillStyle="rgba(200,210,220,.12)";g.fillRect(L,Tp,X(Rf)-L,h-Tp-B);}
+  g.strokeStyle=css("--sea");g.lineWidth=2;g.beginPath();for(let i=0;i<=120;i++){const r=rmax*i/120;const y=Yp(RHO*P.Vm*P.Vm*Gp(r/P.rm)/100);i?g.lineTo(X(r),y):g.moveTo(X(r),y);}g.stroke();
+  g.strokeStyle=css("--green");g.beginPath();for(let i=0;i<=120;i++){const r=rmax*i/120;const y=Y(P.Vm*vShape(r/P.rm));i?g.lineTo(X(r),y):g.moveTo(X(r),y);}g.stroke();
+  g.fillStyle=css("--green");g.fillText(T.wind,X(1.15*P.rm),Y(P.Vm)+12);g.fillStyle=css("--sea");g.fillText(T.dp,X(0.15*P.rm),Yp(dp0)-6);}
+function drawSec(){const Q=prep($("#secCv"));if(!Q)return;const [g,w,h]=Q;const L=34,R=8,Tp=8,B=18;let Rmax=4*P.rm;const zt=P.zb*1.04;
+  const X=r=>L+(r+Rmax)/(2*Rmax)*(w-L-R),Y=z=>Tp+(1-z/zt)*(h-Tp-B);
+  g.fillStyle="rgba(120,140,160,.08)";g.fillRect(L,Tp,w-L-R,h-Tp-B);
+  // tragten
+  const zLim=P.zc*0.93;g.fillStyle="rgba(190,200,210,.35)";g.beginPath();let first=true;const side=[];
+  for(let i=0;i<=60;i++){const z=tipZ+(Math.min(zLim,P.zb)-tipZ)*i/60;const Rr=funnelR(P,z);side.push([isNaN(Rr)?0:Math.min(Rr,Rmax),z]);}
+  if(tipZ<P.zc*0.97){g.moveTo(X(0),Y(tipZ));for(const [r,z] of side)g.lineTo(X(r),Y(z));g.lineTo(X(side[side.length-1][0]),Y(P.zb));g.lineTo(X(-side[side.length-1][0]),Y(P.zb));for(let i=side.length-1;i>=0;i--)g.lineTo(X(-side[i][0]),Y(side[i][1]));g.closePath();g.fill();}
+  // pile
+  g.lineWidth=1.3;let vmax=1;const nx=14,nz=9,arr=[];for(let j=0;j<nz;j++){const z=P.zb*(0.03+0.9*Math.pow(j/(nz-1),1.4));for(let i=0;i<nx;i++){const r=-Rmax+2*Rmax*(i+0.5)/nx;const f=flow(P,Math.abs(r),z);const u=f.ur*Math.sign(r||1),ww=f.w;arr.push([r,z,u,ww]);vmax=Math.max(vmax,Math.hypot(u,ww));}}
+  const sc=Math.min((w-L-R)/nx,(h-Tp-B)/nz)*0.9/vmax;
+  for(const [r,z,u,ww] of arr){const x=X(r),y=Y(z),dx=u*sc,dy=-ww*sc,l=Math.hypot(dx,dy);if(l<1.5)continue;const m=Math.hypot(u,ww)/vmax;g.strokeStyle=ww<-0.5?"rgba(95,183,255,"+(0.4+0.6*m)+")":"rgba(255,178,87,"+(0.4+0.6*m)+")";
+    g.beginPath();g.moveTo(x-dx/2,y-dy/2);g.lineTo(x+dx/2,y+dy/2);g.stroke();const a=Math.atan2(dy,dx);g.beginPath();g.moveTo(x+dx/2,y+dy/2);g.lineTo(x+dx/2-4*Math.cos(a-0.5),y+dy/2-4*Math.sin(a-0.5));g.moveTo(x+dx/2,y+dy/2);g.lineTo(x+dx/2-4*Math.cos(a+0.5),y+dy/2-4*Math.sin(a+0.5));g.stroke();}
+  // linjer
+  g.setLineDash([4,4]);g.strokeStyle="rgba(230,240,250,.55)";g.lineWidth=1;g.beginPath();g.moveTo(L,Y(P.zc));g.lineTo(w-R,Y(P.zc));g.stroke();g.setLineDash([]);
+  g.fillStyle="#4a5058";g.fillRect(L,Tp,w-L-R,Y(P.zb)-Tp);g.fillStyle="#d8dde3";g.textAlign="left";g.fillText(T.zcLbl,L+4,Y(P.zc)-4);g.fillText(T.zbLbl,L+4,Y(P.zb)-3);
+  const zbd=breakdownZ(P);if(isFinite(zbd)&&zbd<P.zb){g.fillStyle="#9fd0ff";g.beginPath();g.arc(X(0),Y(zbd),4,0,7);g.fill();g.fillText(T.bdLbl,X(0)+7,Y(zbd)+4);}
+  g.fillStyle=css("--muted");g.textAlign="right";const sz=nice(zt/4);for(let z=0;z<=zt;z+=sz)g.fillText(String(z),L-3,Y(z)+4);g.textAlign="center";g.fillText("−"+Math.round(Rmax)+" m",X(-Rmax)+18,h-4);g.fillText("0",X(0),h-4);g.fillText(Math.round(Rmax)+" m",X(Rmax)-18,h-4);}
+function drawGnd(){const Q=prep($("#gndCv"));if(!Q)return;const [g,w,h]=Q;const half=Math.max(5*P.rm,60);const s=Math.min(w,h)/(2*half*1.0);const W2=half*w/Math.min(w,h),H2=half*h/Math.min(w,h);
+  const N=Math.round(w/3),M=Math.round(h/3),img=g.createImageData(N,M),d=img.data;const land=SCN[st.scene].ground==="land";
+  for(let j=0;j<M;j++){const n=H2-(j+0.5)/M*2*H2;for(let i=0;i<N;i++){const e=st.cx-W2+(i+0.5)/N*2*W2;const v=windGround(e,n);let c=efCat(v);let o=4*(j*N+i);
+      let rgb=c>=0?new THREE.Color(EFCOL[c]):null;let a=c>=0?220:0;
+      if(land){const ii=Math.floor((e-SW.x0)/SW.res),jj=Math.floor((-n-SW.z0)/SW.res);if(ii>=0&&ii<SW.nx&&jj>=0&&jj<SW.nz){const vm=swMax[jj*SW.nx+ii];const c2=efCat(vm);if(c2>=0&&a===0){rgb=new THREE.Color(EFCOL[c2]);a=90;}}}
+      if(rgb){d[o]=rgb.r*255;d[o+1]=rgb.g*255;d[o+2]=rgb.b*255;d[o+3]=a;}else{d[o]=20;d[o+1]=30;d[o+2]=38;d[o+3]=255;}}}
+  const tc=document.createElement("canvas");tc.width=N;tc.height=M;tc.getContext("2d").putImageData(img,0,0);g.imageSmoothingEnabled=true;g.drawImage(tc,0,0,w,h);
+  g.strokeStyle="rgba(255,255,255,.85)";g.lineWidth=2;g.beginPath();g.moveTo(w-70,h-16);g.lineTo(w-24,h-16);g.lineTo(w-32,h-21);g.moveTo(w-24,h-16);g.lineTo(w-32,h-11);g.stroke();g.fillStyle="#fff";g.textAlign="right";g.fillText(T.motion,w-76,h-12);
+  g.textAlign="left";g.fillText("N ↑",6,14);g.fillText(Math.round(2*half)+" m",6,h-6);
+  g.font="10px "+css("--f-mono");let lx=6;for(let c=0;c<6;c++){g.fillStyle=EFCOL[c];g.fillRect(lx,20,10,8);g.fillStyle="#dfe6ec";g.fillText("EF"+c,lx+12,28);lx+=40;if(lx>w-40)break;}}
+/* ---------- vipning af en vandret hvirvel ---------- */
+let tiltPh=0;
+function drawTilt(dt){const Q=prep($("#tiltCv"));if(!Q)return;const [g,w,h]=Q;const up=+$("#sUp").value;$("#oUp").textContent=Math.round(up*100)+" %";tiltPh+=dt*(reduce?0:2.2);
+  const ox=w*0.08,oy=h*0.8,sx=w*0.84,sz=h*0.55;const P2=(x,y,z)=>[ox+x*sx+y*0.22*sx,oy-z*sz-y*0.35*sz];
+  g.fillStyle="rgba(120,150,110,.25)";g.beginPath();for(const [x,y] of [[0,-0.5],[1,-0.5],[1,0.6],[0,0.6]]){const p=P2(x,y,0);g.lineTo(p[0],p[1]);}g.closePath();g.fill();
+  // vindpile ind i billedet, stærkere i højden
+  g.strokeStyle="rgba(255,255,255,.75)";g.lineWidth=1.6;for(const [z,l] of [[0.04,0.25],[0.75,0.8]]){for(const x of [0.1,0.9]){const a=P2(x,-0.3*l,z),b=P2(x,0.3*l+0.05,z);g.beginPath();g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.stroke();const an=Math.atan2(b[1]-a[1],b[0]-a[0]);g.beginPath();g.moveTo(b[0],b[1]);g.lineTo(b[0]-7*Math.cos(an-0.45),b[1]-7*Math.sin(an-0.45));g.moveTo(b[0],b[1]);g.lineTo(b[0]-7*Math.cos(an+0.45),b[1]-7*Math.sin(an+0.45));g.stroke();}}
+  g.fillStyle="rgba(255,255,255,.8)";g.font="11px "+css("--f-mono");g.textAlign="left";g.fillText(T.windTop,8,16);g.textAlign="right";g.fillText(T.windLow,w-8,h-6);
+  // røret
+  const zc=x=>0.18+up*0.62*Math.exp(-Math.pow((x-0.5)/0.17,2));const rr=0.045;const rings=44;
+  for(let k=0;k<=rings;k++){const x=0.04+0.92*k/rings,z=zc(x),dz=(zc(x+0.005)-zc(x-0.005))/0.01;const tl=Math.hypot(1,dz),tx=1/tl,tz=dz/tl;
+    // ringens akser: (0,1,0) og normal (−tz,0,tx)
+    const cen=P2(x,0,z);g.strokeStyle="rgba(165,200,255,.55)";g.lineWidth=1.2;g.beginPath();for(let a=0;a<=24;a++){const t=a/24*6.283;const yy=rr*Math.cos(t),nx=-tz*rr*Math.sin(t),nz=tx*rr*Math.sin(t);const p=P2(x+nx,yy,z+nz);a?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]);}g.stroke();
+    if(k%3===0){const t=tiltPh+k*0.0;const yy=rr*Math.cos(t),nx=-tz*rr*Math.sin(t),nz=tx*rr*Math.sin(t);const p=P2(x+nx,yy,z+nz);g.fillStyle="#ffb257";g.beginPath();g.arc(p[0],p[1],2.4,0,7);g.fill();}}
+  // opvind
+  const a=P2(0.5,0,0.05),b=P2(0.5,0,0.18+up*0.62+0.12);g.strokeStyle="rgba(255,178,87,"+(0.3+0.6*up)+")";g.lineWidth=3;g.beginPath();g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.stroke();g.beginPath();g.moveTo(b[0],b[1]);g.lineTo(b[0]-6,b[1]+10);g.moveTo(b[0],b[1]);g.lineTo(b[0]+6,b[1]+10);g.stroke();
+  g.fillStyle="#ffd9a8";g.textAlign="center";g.fillText(T.updraft,b[0],b[1]-6);
+  if(up>0.35){g.fillStyle="#e8eef5";const l=P2(0.33,0,zc(0.37)+0.1),r=P2(0.67,0,zc(0.63)+0.1);g.fillText(T.cw,l[0]-10,l[1]);g.fillText(T.ccw,r[0]+10,r[1]);}
+  g.textAlign="left";}
+
+/* ---------- løkken ---------- */
+let last=performance.now(),slow=0,ui=0;
+function frame(now){const dtR=Math.min(0.05,(now-last)/1000);last=now;const dt=st.running?dtR*st.tempo:0;
+  st.t+=dt;st.phi+=dt*0.15;if(lifeOn()){st.lifeT+=dt;if(st.lifeT>LIFE_DUR+6){st.lifeT=0;live.fill(0);}}
+  updateP();subCenters();
+  if(SCN[st.scene].ground==="land"){st.cx+=base.tr*dt;if(st.cx>3600){st.cx=-3600;clearSwath();}}else st.cx+=base.tr*dt*0.3,st.cx=st.cx>800?-800:st.cx;
+  buildFunnels();
+  const om=P.Vm/Math.max(5,P.rm)*0.18;
+  for(const m of [fMain,...fSubs]){const u=m.material.uniforms;u.time.value=st.t;u.om.value=om*6;u.A.value=A;u.ph.value=st.phi;u.zc.value=P.zc;u.dustH.value=SCN[st.scene].ground==="land"?Math.min(160,1.6*P.rm+30)*(P.Vm>35?1:0.4):0;}
+  fMain.position.set(st.cx,0,0);const n=nSub(P);fSubs.forEach((m,i)=>{if(i<n){m.position.set(st.cx+subs[i][0],0,-subs[i][1]);m.material.uniforms.fade.value=P.zc*0.45;m.material.uniforms.op.value=1;m.material.uniforms.col.value.set(0x6f7880);}});
+  const fws=st.scene==="fws";fMain.material.uniforms.op.value=(SCN[st.scene].cloud==="super"?0.92:0.75)*(n>1?0.32:1)*(lifeOn()?Math.min(1,Math.max(0,(st.lifeT/LIFE_DUR-0.22)/0.15))*Math.min(1,(1-st.lifeT/LIFE_DUR)/0.06+0.02):1);
+  cloudGrp.position.set(st.cx+(fws?0:0),P.zb,0);
+  baseMat.uniforms.time.value=st.t;wallMat.uniforms.time.value=st.t;wallMat.uniforms.om.value=0.05;rainMat.uniforms.time.value=st.t;rain.position.set(1700,-P.zb/2,-3200);rain.scale.set(1,P.zb,1);cuGrp.position.set(0,-P.zb,0);
+  seaMat.uniforms.time.value=st.t;seaMat.uniforms.c.value.set(st.cx+axisOff(0)[0],-(-axisOff(0)[1]));seaMat.uniforms.rm.value=P.rm;
+  const L=st.lifeT/LIFE_DUR;seaMat.uniforms.spot.value=fws?(lifeOn()?Math.min(1,L/0.08):0.6):0;seaMat.uniforms.spiral.value=fws?(lifeOn()?(L>0.12?Math.min(1,(L-0.12)/0.1):0)*(L<0.9?1:0.4):0.6):0.2;seaMat.uniforms.ring.value=SCN[st.scene].ground==="sea"?Math.max(0,Math.min(1,(P.Vm-14)/14)):0;
+  if(st.parts&&!reduce&&dt>0){const sub=2;for(let k=0;k<sub;k++)stepParts(dt/sub);}writeParts();
+  applyCam(dtR);renderer.render(scene,camera);
+  swT+=dt;if(swT>0.2){swT=0;paintSwath();}
+  drawTilt(dtR);
+  slow+=dtR;if(slow>0.2){slow=0;readouts();drawProf();drawSec();drawGnd();}
+  requestAnimationFrame(frame);}
+function readouts(){let vmax=0;const ao=axisOff(0);for(let k=0;k<72;k++){const a=k/72*6.283;for(const f of [0.8,1,1.2]){const r=P.rm*f;const v=windGround(st.cx+ao[0]+r*Math.cos(a),-ao[1]+r*Math.sin(a));if(v>vmax)vmax=v;}}
+  for(const q of subs){for(let k=0;k<24;k++){const a=k/24*6.283,rs=Math.max(2,0.2*P.rm);const v=windGround(st.cx+ao[0]+q[0]+rs*Math.cos(a),-ao[1]+q[1]+rs*Math.sin(a));if(v>vmax)vmax=v;}}
+  const c=efCat(vmax);$("#rV").textContent=Math.round(vmax)+" m/s · "+Math.round(vmax*3.6)+" "+T.kmh;$("#rEF").textContent=c<0?T.belowEF:"EF"+c;$("#rEF").style.color=c<0?css("--ink"):EFCOL[c];
+  const b=$("#hEF");b.textContent=c<0?T.belowEF:"EF"+c;b.style.background=c<0?"rgba(0,0,0,.45)":EFCOL[c];b.style.color=c<0?"#fff":"#1a1206";
+  $("#rDp").textContent=fmt(centralDp(P)/100,0)+" hPa";$("#rRm").textContent=Math.round(P.rm)+" m";$("#rZc").textContent=Math.round(P.zc)+" m";
+  $("#rTip").textContent=tipZ<1?T.ground:tipZ>=P.zc*0.97?T.none:Math.round(tipZ)+" m "+T.above;const rg=regime(P);const rt=T.reg[rg.k]+(rg.k===3?" ("+rg.n+")":"");$("#rReg").textContent=rt;$("#hRegime").textContent=rt;
+  $("#rTr").textContent=fmt(base.tr,1)+" m/s";
+  if(lifeOn()){$("#hStage").textContent=T.stage(stage+1)+": "+T.stages[stage];$("#stageText").textContent=T.stageTxt[stage];}else{$("#hStage").textContent="";$("#stageText").textContent="";}}
+syncOut();setScene("tornado");resize();requestAnimationFrame(frame);
+})();
+</script>
+<script src="lang-switch.js" defer></script>
+</body></html>
