@@ -42,6 +42,7 @@
     "orkaner.html": "orkaner-en.html",
     "el-nino.html": "el-nino-en.html",
     "tornadoer.html": "tornadoer-en.html",
+    "pladetektonik.html": "pladetektonik-en.html",
     "jupiters-baelter.html": "jupiters-baelter-en.html",
     "undervisningspakke_gauss_web_offline_skolebog.html": "undervisningspakke_gauss_web_offline_skolebog-en.html",
     "maanens-bane-to-metoder.html": "maanens-bane-to-metoder-en.html",
