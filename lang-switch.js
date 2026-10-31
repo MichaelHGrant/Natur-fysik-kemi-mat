@@ -45,6 +45,7 @@
     "pladetektonik.html": "pladetektonik-en.html",
     "vulkaner.html": "vulkaner-en.html",
     "tsunami.html": "tsunami-en.html",
+    "yellowstone.html": "yellowstone-en.html",
     "jupiters-baelter.html": "jupiters-baelter-en.html",
     "undervisningspakke_gauss_web_offline_skolebog.html": "undervisningspakke_gauss_web_offline_skolebog-en.html",
     "maanens-bane-to-metoder.html": "maanens-bane-to-metoder-en.html",

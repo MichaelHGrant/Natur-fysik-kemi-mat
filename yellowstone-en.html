@@ -1,0 +1,771 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Yellowstone in 3D</title>
+<meta name="description" content="The Yellowstone supervolcano in 3D: a section down to 60 km showing the two magma chambers and the hotspot, and how a supereruption might unfold, from recharge through Plinian columns and caldera collapse to pyroclastic flows and ash fall over North America. With hydrothermal explosions, lava flows and the hotspot track.">
+<link rel="canonical" href="https://mhgfysik.dk/yellowstone-en.html">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+
+body { margin: 0; }
+img { max-width: 100%; }
+/* Layout: vulkanen i snit som hovedperson, målinger ved siden af, styring under, søjlen og udbrudskortet, kloden med vulkanerne og klimaet nedenunder, forklaringen nederst */
+:root {
+  --void: #060a10;
+  --panel: #0e151d;
+  --raise: #172230;
+  --line: #233244;
+  --ink: #e6efea;
+  --muted: #8fa29b;
+  --green: #ff9a4d;
+  --dust: #c9a77c;
+  --red: #ff6f6f;
+  --sea: #5fb7ff;
+  --sunc: #ffd36b;
+  --crest: #ff8a4c;
+  --trough: #4aa8ff;
+  --focus: #ffd9b8;
+  --f-display: "Spectral", Georgia, "Times New Roman", serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { background: var(--void); color: var(--ink); }
+body { font-family: var(--f-body); font-size: 15px; line-height: 1.55; }
+a { color: var(--green); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 56px; display: grid; gap: 18px; }
+header { display: grid; gap: 6px; }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.eyebrow a { color: inherit; }
+h1 { font-family: var(--f-display); font-weight: 400; font-size: clamp(30px, 5vw, 48px); line-height: 1.08; margin: 0; text-wrap: balance; }
+h1 em { font-style: italic; color: var(--green); }
+.lede { margin: 4px 0 0; max-width: 70ch; color: var(--muted); }
+.stagewrap { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 12px; }
+@media (max-width: 760px) { .stagewrap { grid-template-columns: minmax(0, 1fr); } }
+.stage { position: relative; height: clamp(380px, 64vh, 660px); background: #020305; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.hud { position: absolute; pointer-events: none; font-family: var(--f-mono); font-size: 12px; color: var(--muted); text-shadow: 0 1px 6px #000; }
+.hud.tl { top: 12px; left: 14px; display: grid; gap: 2px; }
+.hud.tl b { color: var(--ink); font-weight: 500; }
+.hud.bl { bottom: 10px; left: 14px; font-size: 11px; }
+.camtabs { position: absolute; top: 10px; right: 10px; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; max-width: 70%; }
+.camtabs button { font: 500 11px/1 var(--f-mono); color: #fff; background: rgba(8,12,15,.7); border: 1px solid rgba(255,255,255,.2); border-radius: 999px; padding: 6px 10px; cursor: pointer; }
+.camtabs button[aria-pressed="true"] { background: rgba(8,12,15,.95); border-color: rgba(255,217,184,.6); }
+.dials { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+@media (max-width: 760px) { .dials { grid-template-columns: 1fr 1fr; } .dials .ro { grid-column: 1 / -1; } }
+.dials .hd { font: 500 11px var(--f-mono); color: var(--muted); }
+.dials canvas { width: 100%; aspect-ratio: 1/1; display: block; }
+.ro { display: grid; gap: 4px; font-size: 13px; }
+.ro div { display: flex; justify-content: space-between; gap: 8px; border-top: 1px solid var(--line); padding-top: 4px; }
+.ro span { color: var(--muted); font-size: 12px; }
+.ro b { font: 500 13px var(--f-mono); font-variant-numeric: tabular-nums; text-align: right; }
+.controls { display: grid; gap: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.play { height: 44px; min-width: 112px; padding: 0 18px 0 14px; border-radius: 999px; border: 1px solid #4a5a70; background: #18222f; color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 600 15px/1 var(--f-body); }
+.play svg { width: 16px; height: 16px; fill: currentColor; }
+.action { font: 600 14px/1 var(--f-body); color: #2a1204; background: var(--green); border: 0; border-radius: 999px; padding: 12px 16px; cursor: pointer; }
+.ghost { font: 500 14px/1 var(--f-body); color: var(--ink); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 10px 14px; cursor: pointer; }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
+.seg button { font: 500 13px/1 var(--f-body); color: var(--muted); background: transparent; border: 0; padding: 9px 11px; cursor: pointer; border-right: 1px solid var(--line); }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { color: var(--ink); background: var(--raise); }
+.ctl-label { font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.group { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.chk { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; cursor: pointer; }
+.chk input { width: 15px; height: 15px; accent-color: var(--green); }
+.sliders { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px 22px; }
+.sl { display: grid; gap: 2px; font-size: 13px; color: var(--muted); }
+.sl .top { display: flex; justify-content: space-between; gap: 8px; }
+.sl output { font: 500 13px var(--f-mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+.sl input[type=range] { width: 100%; accent-color: var(--green); }
+.sl input[type=date] { font: 500 13px var(--f-mono); color: var(--ink); background: var(--raise); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; color-scheme: dark; }
+.hint { font-size: 12px; color: var(--muted); margin: 0; }
+.msg { font-size: 12px; color: var(--green); min-height: 1em; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.skybox { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; display: grid; gap: 8px; }
+.skybox .hd { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+.skybox h2 { font-family: var(--f-display); font-weight: 400; font-size: 22px; margin: 0; }
+.skybox canvas { width: 100%; aspect-ratio: 3/1; display: block; border-radius: 4px; background: #01040a; }
+@media (max-width: 640px) { .skybox canvas { aspect-ratio: 2/1; } }
+.skyread { font-size: 13.5px; color: #cfdcd6; margin: 0; }
+.notes { display: grid; grid-template-columns: 1.3fr 1fr; gap: 28px 36px; padding-top: 8px; }
+.notes > section { min-width: 0; }
+.notes h2 { font-family: var(--f-display); font-weight: 400; font-size: 25px; margin: 0 0 8px; text-wrap: balance; }
+.notes h3 { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 500; margin: 0 0 8px; }
+.notes p { margin: 0 0 10px; max-width: 66ch; }
+.eq { font-family: var(--f-display); font-style: italic; font-size: 18px; padding: 6px 0 10px; overflow-x: auto; white-space: nowrap; }
+.side { border-left: 1px solid var(--line); padding-left: 24px; color: #cbd7d1; font-size: 14px; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 6px 0 16px; font-size: 14px; }
+.facts dt { font-family: var(--f-mono); font-size: 12px; color: var(--muted); padding-top: 2px; }
+.facts dd { margin: 0; }
+.tblwrap { overflow-x: auto; margin: 4px 0 14px; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; min-width: 460px; }
+th, td { text-align: left; padding: 6px 10px 6px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+td i.sw { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 6px; vertical-align: -1px; }
+ul.refs { margin: 0; padding-left: 18px; font-size: 13.5px; } ul.refs li { margin-bottom: 5px; }
+@media (max-width: 760px) { .notes { grid-template-columns: 1fr; } .side { border-left: 0; border-top: 1px solid var(--line); padding-left: 0; padding-top: 16px; } }
+@media (max-width: 640px) { .camtabs { max-width: 100%; left: 10px; top: auto; bottom: 10px; justify-content: flex-start; } .hud.bl { display: none; } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+.side2 { display: grid; gap: 8px; align-content: start; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px; min-width: 0; }
+.side2 .hd { font: 500 11px var(--f-mono); color: var(--muted); }
+.side2 h3 { font-family: var(--f-display); font-weight: 400; font-size: 20px; margin: 0; line-height: 1.15; }
+.side2 .kind { font-size: 12.5px; color: var(--muted); }
+.side2 canvas { width: 100%; height: 150px; display: block; }
+.duo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+@media (max-width: 860px) { .duo { grid-template-columns: minmax(0, 1fr); } }
+.box { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; display: grid; gap: 10px; min-width: 0; align-content: start; }
+.box h2 { font-family: var(--f-display); font-weight: 400; font-size: 22px; margin: 0; }
+.box canvas { width: 100%; height: 220px; display: block; }
+.box svg { width: 100%; height: auto; display: block; }
+.box p { margin: 0; font-size: 13.5px; color: #cdd6df; }
+.big { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--muted); }
+.big b { display: block; font: 500 20px var(--f-mono); color: var(--ink); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 10px; font: 500 11px var(--f-mono); color: var(--muted); }
+.legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; margin-right: 4px; vertical-align: -1px; }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.tab { font: 500 14px/1.2 var(--f-body); color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 9px 16px; cursor: pointer; }
+.tab[aria-selected="true"] { color: var(--ink); background: var(--raise); border-color: #4a5a70; }
+.stage .hud { color: #dbe4ea; }
+.stage.tall { height: clamp(420px, 70vh, 720px); }
+.trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 980px) { .trio { grid-template-columns: minmax(0, 1fr); } }
+.trio canvas { width: 100%; height: 240px; display: block; }
+.stagebadge { font: 600 12px var(--f-mono); padding: 3px 8px; border-radius: 999px; background: rgba(0,0,0,.45); color: #fff; }
+.stagetext { position: absolute; left: 14px; right: 14px; bottom: 34px; max-width: 520px; font-size: 13px; color: #eef3f7; text-shadow: 0 1px 6px #000; pointer-events: none; }
+@media (max-width: 640px) { .stagetext { bottom: 54px; font-size: 12px; } }
+#tiltCv { width: 100%; height: 260px; display: block; }
+.sec { font-family: var(--f-display); font-weight: 400; font-size: clamp(26px, 3.6vw, 34px); margin: 22px 0 -6px; }
+.stage.mid { height: clamp(330px, 56vh, 560px); }
+.gt { width: 100%; min-width: 0; font-size: 12.5px; }
+.gt th, .gt td { padding: 4px 6px 4px 0; }
+.gt td:nth-child(n+2), .gt th:nth-child(n+2) { white-space: nowrap; text-align: right; font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.gt tr { cursor: pointer; }
+.gt tr[aria-selected="true"] td { color: var(--green); }
+.gt tr:hover td { background: rgba(255,154,77,.07); }
+#profCv { width: 100%; height: 230px; display: block; }
+@media (max-width: 640px) { #profCv { height: 200px; } }
+.cbar { height: 10px; border-radius: 3px; }
+.cbarlbl { display: flex; justify-content: space-between; font: 500 10.5px var(--f-mono); color: var(--muted); }
+.box canvas.tallc { height: 280px; }
+.vinfo h3 { margin: 0; }
+.vinfo p { margin: 0; font-size: 13.5px; color: #cdd6df; }
+.rbadge { display: inline-block; font: 600 12px var(--f-mono); padding: 3px 9px; border-radius: 999px; color: #160a02; }
+
+.wrap { grid-template-columns: minmax(0, 1fr); }
+.wrap > * { min-width: 0; }
+.phs span { min-width: 0; }
+.controls { grid-template-columns: minmax(0, 1fr); }
+.controls > *, #superCtl > * { min-width: 0; }
+.phs { overflow: hidden; }
+.lbl3 { position: absolute; left: 0; top: 0; pointer-events: none; font: 500 11.5px var(--f-body); color: #fff; background: rgba(0,0,0,.5); padding: 2px 6px; border-radius: 4px; white-space: nowrap; display: none; }
+.scrubwrap { display: grid; gap: 4px; }
+.scrubwrap input { width: 100%; accent-color: var(--green); margin: 0; }
+.phs { display: flex; font: 500 11px var(--f-mono); color: var(--muted); }
+.phs span { border-left: 1px solid var(--line); padding: 2px 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.phs span:hover { color: var(--ink); }
+.side2 .ro { display: grid; gap: 6px; }
+.side2 .ro div { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--muted); border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+.side2 .ro b { font: 500 13px var(--f-mono); color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
+.box canvas.map { height: auto; aspect-ratio: 1.69; border-radius: 4px; cursor: crosshair; }
+.box canvas.map2 { height: auto; aspect-ratio: 1.3; border-radius: 4px; }
+.ctlrow { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+#superCtl { display: grid; gap: 10px; }
+.cbar { height: 10px; border-radius: 3px; background: linear-gradient(90deg, rgba(250,245,190,.9) 0 25%, rgba(245,190,60,.9) 25% 50%, rgba(230,90,30,.9) 50% 75%, rgba(150,20,20,.9) 75%); }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow"><a href="index-en.html#geofysik">← Home</a> · Earth and geophysics · Yellowstone in 3D</div>
+    <h1>Yellowstone: if the <em>supervolcano</em> wakes</h1>
+    <p class="lede">Beneath Yellowstone National Park lies one of the largest magma chambers on Earth. Three times in the last 2.1 million years it has been emptied in a supereruption, when hundreds to thousands of cubic kilometres of magma were blasted out in days to weeks and the ground above the chamber collapsed into a caldera. Here you can follow how a new supereruption might unfold, in a 3D section through the caldera down to a depth of 60 km, and compare it with what is far more likely: a hydrothermal explosion or a lava flow. Drag the picture to turn it.</p>
+  </header>
+
+  <div class="tabs" role="tablist" id="pre">
+    <button class="tab" role="tab" type="button" data-p="today" aria-selected="false">Today</button>
+    <button class="tab" role="tab" type="button" data-p="hydro" aria-selected="false">Hydrothermal explosion</button>
+    <button class="tab" role="tab" type="button" data-p="lava" aria-selected="false">Lava flow</button>
+    <button class="tab" role="tab" type="button" data-p="super" aria-selected="true">Supereruption</button>
+  </div>
+
+  <div class="stagewrap">
+    <div class="stage tall" id="stage">
+      <canvas id="cv" aria-label="3D model of the Yellowstone caldera with a section down to 60 km showing the magma chambers. Drag to turn, scroll to zoom."></canvas>
+      <div class="hud tl"><div><span class="rbadge" id="hReg">—</span></div><div id="hMag"></div></div>
+      <div class="camtabs" id="cams">
+        <button type="button" data-cam="far" aria-pressed="true">Whole eruption</button>
+        <button type="button" data-cam="cut" aria-pressed="false">Section</button>
+        <button type="button" data-cam="near" aria-pressed="false">Close up</button>
+      </div>
+      <div class="stagetext" id="stageText"></div>
+      <div class="hud bl">Drag to turn · scroll to zoom</div>
+    </div>
+    <div class="side2">
+      <div class="hd">Yellowstone now in the model</div>
+      <div class="ro" id="ro"></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="row">
+      <button class="play" id="play" type="button"><svg viewBox="0 0 20 20" id="playIcon" aria-hidden="true"><path d="M4 4h12v12H4z"/></svg><span id="playTxt">Stop</span></button>
+      <button class="ghost" id="restart" type="button">Start again</button>
+      <div class="group"><span class="ctl-label">Speed</span>
+        <div class="seg" id="tempo"><button type="button" data-v="0.5">½×</button><button type="button" data-v="1" aria-pressed="true">1×</button><button type="button" data-v="2">2×</button></div>
+      </div>
+      <label class="chk"><input type="checkbox" id="tCut" checked> Cut through the ground</label>
+      <label class="chk"><input type="checkbox" id="tVe" checked> Double height</label>
+      <label class="chk"><input type="checkbox" id="tLbl" checked> Names</label>
+    </div>
+    <div class="scrubwrap">
+      <input type="range" id="scrub" min="0" max="40" step="0.05" value="0" aria-label="Timeline of the sequence">
+      <div class="phs" id="phs"></div>
+    </div>
+    <div id="superCtl">
+      <div class="ctlrow"><span class="ctl-label">Like</span>
+        <div class="seg" id="vpre"><button type="button" data-v="mesa">Mesa Falls · 280 km³</button><button type="button" data-v="lava" aria-pressed="true">Lava Creek · 1000 km³</button><button type="button" data-v="huck">Huckleberry Ridge · 2450 km³</button></div>
+      </div>
+      <div class="sliders">
+        <label class="sl"><span class="top"><span>Magma erupted</span><output id="oV"></output></span><input type="range" id="sV" min="0" max="100" step="0.5" value="70"></label>
+        <label class="sl"><span class="top"><span>Duration of the eruption</span><output id="oD"></output></span><input type="range" id="sD" min="3" max="30" step="1" value="7"></label>
+      </div>
+    </div>
+    <p class="hint">The scale: the block is 200 × 150 km and goes 60 km down. Heights are shown doubled by default, and the uplift before the eruption is exaggerated 40 times. The timeline is not to a fixed scale: the recharge would take weeks to years, the eruption itself days to weeks.</p>
+  </div>
+
+  <h2 class="sec">Ash over North America</h2>
+  <p class="lede">In a supereruption the column is so powerful that the ash spreads out in the stratosphere as a vast umbrella that pushes outwards in every direction, even against the wind. So the ash settles like a bull's-eye around Yellowstone rather than in a fan downwind as in smaller eruptions. The map shows the final thickness faintly and the ash that has fallen so far in the animation strongly. Click the map to see the thickness at a particular place.</p>
+  <div class="duo">
+    <div class="box">
+      <canvas id="ashCv" class="map" aria-label="Map of North America with the ash thickness after a supereruption at Yellowstone"></canvas>
+      <div class="cbar"></div><div class="cbarlbl"><span>1 mm</span><span>1 cm</span><span>10 cm</span><span>1 m</span><span></span></div>
+      <p id="ashPick">Click the map to see the thickness at a particular place.</p>
+    </div>
+    <div class="box">
+      <div class="tblwrap"><table class="gt"><thead><tr><th>City</th><th>Distance</th><th>Now</th><th>Finally</th></tr></thead><tbody id="ashTb"></tbody></table></div>
+      <p>The thicknesses come from a simple formula fitted to the U.S. Geological Survey computer model (Mastin et al. 2014): decimetres to metres in the northern Rocky Mountains, centimetres to decimetres in the northern Midwest and millimetres to centimetres on the coasts. They depend on the weather, on how long the eruption lasts and on how finely the ash is broken up, so take them as orders of magnitude.</p>
+    </div>
+  </div>
+
+  <h2 class="sec">The hotspot track</h2>
+  <p class="lede">The hotspot beneath Yellowstone stays more or less fixed in the mantle, while the North American plate slides over it towards the south-west. That is why a string of older calderas runs in a line through the Snake River Plain in Idaho, like beads on a string. Drag the slider or press play to watch the hotspot travel across the plate.</p>
+  <div class="duo">
+    <div class="box">
+      <canvas id="trCv" class="map2" aria-label="Map of the north-western USA with the calderas along the Yellowstone hotspot track"></canvas>
+      <div class="ctlrow">
+        <button class="ghost" id="trPlay" type="button">Play</button>
+        <label class="sl" style="flex:1;min-width:200px"><span class="top"><span>Time before present</span><output id="oAge"></output></span><input type="range" id="sAge" min="0" max="16.5" step="0.05" value="16.5"></label>
+      </div>
+    </div>
+    <div class="box">
+      <div class="tblwrap"><table class="gt" style="min-width:0"><thead><tr><th>Caldera</th><th>Million years ago</th></tr></thead><tbody id="trTb"></tbody></table></div>
+      <p id="trTxt"></p>
+    </div>
+  </div>
+
+  <div class="notes">
+    <section>
+      <h2>What is a supervolcano?</h2>
+      <p>A supereruption is one that puts out more than 1000 km³ of material, VEI 8 on the volcanic explosivity index. For comparison, Mount St. Helens put out about 1 km³ in 1980 and Pinatubo about 10 km³ in 1991. Yellowstone has had three great caldera-forming eruptions: Huckleberry Ridge 2.1 million years ago with about 2450 km³, Mesa Falls 1.3 million years ago with 280 km³, and Lava Creek about 631,000 years ago with about 1000 km³. Lava Creek formed the caldera that today is 85 km long and 45 km wide, so large that it was first recognised from the air and in geological maps.</p>
+      <p>Between and after the great eruptions came many smaller ones. Since Lava Creek there have been about 30, and the most recent ones have been thick flows of rhyolite lava inside the caldera. The youngest, the Pitchstone Plateau in the south-west, is about 70,000 years old.</p>
+      <h2>Two magma chambers and a hotspot</h2>
+      <p>Seismic waves travel more slowly through hot, partly molten rock, and by recording thousands of earthquakes two chambers have been mapped beneath Yellowstone. The upper one lies 5–17 km down, is about 90 km long and 40 km wide, and holds silica-rich rhyolite magma. It is not a lake of molten rock but a crystal mush, with the melt held between the crystals like water in a sponge. Maguire et al. (2022) found that 16–20 % of it is melt, more than had been thought but still below the 35–50 % thought to be needed before the mush can flow and erupt. The lower chamber lies 20–50 km down, is about four and a half times larger and holds basalt with only a few per cent melt. It is fed by hot mantle rising from the depths: the hotspot.</p>
+      <h2>How a supereruption might unfold</h2>
+      <p>First the chamber has to be recharged. New basalt from below must melt so much rhyolite that a large layer of liquid magma gathers at the top of the mush. That would announce itself with strong earthquakes, uplift of the ground by metres and new gas emissions, and it could be measured with the seismometers, GPS stations and gas sensors that the Yellowstone Volcano Observatory has in the park, weeks to years before an eruption.</p>
+      <p>When the magma breaks through, the pressure drops, the dissolved gas forms bubbles and the magma shatters into ash that is shot up in columns reaching 30–40 km. Once the chamber is half empty, its roof can no longer hold and breaks along a ring fault. The block in the middle sinks like a piston, and magma is squeezed up all round the ring. The columns now become so heavy that they collapse into pyroclastic flows of glowing ash and gas that race across the landscape. They settle as ignimbrite, ash so hot that it welds into solid rock. Recent studies show that both Huckleberry Ridge and Lava Creek came in several episodes, perhaps weeks to years apart.</p>
+      <h2>The calculations behind the model</h2>
+      <p>The column height is computed with Mastin's formula <i>H</i> = 2.00 · <i>Q</i><sup>0.241</sup> km, where <i>Q</i> is the magma flow in m³/s. The formula is fitted to observed eruptions that are far smaller, so for a supereruption it gives only a rough value; in the model the column stops at 45 km and the umbrella lies at most at 30 km. The radius of the umbrella cloud follows <i>R</i>³ = 3λ<i>N</i><i>V</i><i>t</i>/2π, where <i>V</i> is the volume that has flowed into the cloud, <i>N</i> = 0.02 s⁻¹ is the buoyancy frequency of the stratosphere and λ ≈ 0.2. The caldera floor sinks by the volume of magma erupted divided by the area of the caldera, just over 3000 km². The area covered by pyroclastic flows outside the caldera is set to 7500 · (<i>V</i>/1000 km³)<sup>0.8</sup> km², a fit to the three old eruptions. The ash map is a simple formula fitted to Mastin et al. (2014), not a calculation with real winds.</p>
+      <h2>The ash and the climate</h2>
+      <p>Just a few centimetres of ash stop traffic, block sewers and waterworks and short-circuit the power grid, and more than about 10 cm of wet ash can make roofs collapse. In a belt several hundred kilometres around Yellowstone, farming would be ruined for years. The sulphur dioxide from the eruption turns into tiny droplets of sulphuric acid in the stratosphere, which scatter sunlight back to space. Pinatubo cooled the Earth by about 0.5 °C for two years. Older calculations gave 2–8 °C of cooling after a supereruption, but a recent study (McGraw et al. 2024) finds that it would hardly exceed about 1.5 °C averaged over the whole Earth, because the droplets grow large and fall out faster. Regionally and for harvests it could still be serious for some years. See also <a href="vulkaner-en.html">Volcanoes</a>, where you can calculate volcanoes and climate.</p>
+      <h2>How likely is it?</h2>
+      <p>The U.S. Geological Survey puts the chance of a new caldera-forming eruption at about 1 in 730,000 per year. Yellowstone is not "overdue": there are only two intervals between the great eruptions, 800,000 and 660,000 years, and two numbers make no regular rhythm. Nor does the chamber hold enough melt at present. By far the most likely events are a hydrothermal explosion, when superheated water suddenly boils, or a lava flow inside the caldera. Large hydrothermal explosions happen on average about every 700 years and can leave craters more than 2 km across. The Mary Bay crater in Yellowstone Lake is about 13,800 years old. Each year 1000–3000 small earthquakes are recorded, often in swarms, and the ground rises and falls by a few centimetres for periods. It has done so for as long as it has been measured.</p>
+      <h2>The hotspot</h2>
+      <p>About 16–17 million years ago the head of the hotspot struck the plate near the border between Nevada and Oregon and set off some of the largest lava eruptions in Earth's recent history, the Columbia River basalts. Since then the plate has slid south-west by about 2–3 cm a year, and the hotspot has burned its way through it in a series of calderas that get younger towards the north-east. The track shows as the Snake River Plain, a low plain where the old calderas are covered by younger basalt. In millions of years the volcanism will have moved on north-east into Montana.</p>
+    </section>
+    <aside class="side">
+      <h3>Yellowstone in numbers</h3>
+      <dl class="facts">
+        <dt>The caldera</dt><dd>85 × 45 km, 2300–2500 m above sea level</dd>
+        <dt>Upper chamber</dt><dd>5–17 km deep, 16–20 % melt</dd>
+        <dt>Lower chamber</dt><dd>20–50 km deep, about 2 % melt</dd>
+        <dt>Latest supereruption</dt><dd>Lava Creek, about 631,000 years ago</dd>
+        <dt>Latest eruption</dt><dd>Lava flow, about 70,000 years ago</dd>
+        <dt>Earthquakes</dt><dd>1000–3000 a year</dd>
+        <dt>Geysers</dt><dd>more than half the world's geysers</dd>
+      </dl>
+      <h3>The great eruptions</h3>
+      <div class="tblwrap"><table class="gt" style="min-width:0"><thead><tr><th>Eruption</th><th>Years ago</th><th>km³</th><th>Area</th></tr></thead><tbody>
+        <tr><td>Huckleberry Ridge</td><td>2.1 million</td><td>2450</td><td>15,500 km²</td></tr>
+        <tr><td>Mesa Falls</td><td>1.3 million</td><td>280</td><td>2700 km²</td></tr>
+        <tr><td>Lava Creek</td><td>631,000</td><td>1000</td><td>7500 km²</td></tr>
+      </tbody></table></div>
+      <p style="font-size:12.5px;color:var(--muted)">The area is the region covered by the pyroclastic flows.</p>
+      <h3>See also</h3>
+      <p><a href="vulkaner-en.html#yellowstone">If Yellowstone erupts (on the Volcanoes page)</a> · <a href="vulkaner-en.html">Volcanoes</a> · <a href="pladetektonik-en.html">Plate tectonics</a> · <a href="tsunami-en.html">Tsunamis</a> · <a href="jordskaelv.html">Earthquakes and volcanoes for children</a></p>
+      <h3>Sources</h3>
+      <ul class="refs">
+        <li>U.S. Geological Survey, Yellowstone Volcano Observatory: eruption history, the caldera and monitoring.</li>
+        <li>R. Maguire et al., <i>Science</i> 378 (2022): magma in the chamber beneath Yellowstone, 16–20 % melt.</li>
+        <li>L. G. Mastin, A. R. Van Eaton and J. B. Lowenstern, <i>Geochem. Geophys. Geosyst.</i> 15 (2014): ash fall from a Yellowstone supereruption.</li>
+        <li>L. G. Mastin et al., <i>J. Volcanol. Geotherm. Res.</i> 186 (2009): column height and magma flow.</li>
+        <li>A. Costa, A. Folch and G. Macedonio, <i>J. Geophys. Res.</i> 118 (2013): growth of the umbrella cloud.</li>
+        <li>C. J. N. Wilson, M. E. Stelten and J. B. Lowenstern, <i>Bull. Volcanol.</i> 80 (2018): the age of the Lava Creek eruption.</li>
+        <li>Z. McGraw et al., <i>J. Climate</i> (2024): supereruptions and climate.</li>
+        <li>L. A. Morgan et al., <i>GSA Special Paper</i> 459 (2009): hydrothermal explosions at Yellowstone.</li>
+      </ul>
+    </aside>
+  </div>
+</div>
+<script>window.TXT={dec:".",thou:",",play:"Play",stop:"Stop",ma:"Myr",
+ ph:{today:"Today",recharge:"Recharge",plinian:"Plinian phase",collapse:"Caldera collapses",after:"Afterwards",h0:"Calm",h1:"Pressure drops",h2:"The explosion",h3:"The crater",l0:"Magma rises",l1:"The lava flows",l2:"The lava solidifies"},
+ pt:{today:"Today the upper chamber is a crystal mush with 16–20 % melt, far from the 35–50 % thought to be needed for a large eruption. The heat drives geysers and hot springs.",
+  recharge:"Imagined recharge: new basalt from below melts rhyolite in the upper chamber. The melt gathers at the top, the ground rises metre by metre, and the earthquakes become more frequent and larger. It could be measured weeks to years ahead.",
+  plinian:"The magma breaks through. The gas expands and shatters the magma into ash, which is shot up in columns to the stratosphere and spreads out as an umbrella.",
+  collapse:"The roof over the half-empty chamber breaks along a ring fault and sinks. Magma wells up all round the ring, and the columns collapse into pyroclastic flows of glowing ash that race across the landscape.",
+  after:"The caldera has sunk and the landscape is covered with ignimbrite, welded ash. The umbrella cloud spreads over the continent, and sulphur in the stratosphere cools the Earth for some years.",
+  h0:"Beneath Yellowstone Lake lies water above 100 °C, kept liquid by the pressure of the water above.",
+  h1:"The pressure suddenly drops, for example because an earthquake opens a crack or the lake level falls. The water starts to boil.",
+  h2:"The water flashes to steam in an instant and expands more than a thousand times. Steam, mud and rock explode upwards.",
+  h3:"A crater is left behind. The Mary Bay crater in the lake is the largest known at Yellowstone, about 13,800 years old.",
+  l0:"Rhyolite magma rises through a crack in the caldera. It is so viscous that the gas seeps out without blowing it apart.",
+  l1:"A thick flow of rhyolite lava spreads out slowly, perhaps a few metres a day, for months to years. It is 100–300 m thick.",
+  l2:"The lava solidifies into a plateau. This is what the last many eruptions at Yellowstone looked like, most recently the Pitchstone Plateau about 70,000 years ago."},
+ fUp:"Upper chamber: rhyolite crystal mush, 5–17 km",fLow:"Lower chamber: basalt, 20–50 km",fPlume:"The hotspot",fCrust:"The crust",
+ lYL:"Yellowstone Lake",lOF:"Old Faithful",lCal:"Caldera rim",lWash:"Mount Washburn",lSRP:"Snake River Plain",lAbs:"Absaroka Range",lMary:"Mary Bay",lPitch:"Pitchstone Plateau",
+ rMelt:"Melt in the upper chamber",rMeltL:"Melt in the lower chamber",rUpl:"Uplift of the ground",rDay:"Time since the eruption began",rEr:"Magma erupted so far",rM:"Mass flow",rH:"Column height (Mastin's formula)",rR:"Umbrella cloud radius",rSub:"Caldera floor sinks",rFlow:"Pyroclastic flows",rVEI:"VEI",
+ rEq:"Earthquakes",eqYr:"1000–3000 a year",rProb:"Chance of a supereruption",probVal:"1 in 730,000 a year",rLast:"Latest eruption",lastVal:"about 70,000 years ago",rHeat:"Alert level",heatVal:"normal / green",
+ rPh:"Phase",rCr:"Craters",crVal:"up to more than 2 km across",rThrow:"Rocks thrown",throwVal:"up to 3–4 km away",rFreq:"Large explosions",freqVal:"about every 700 years",rMaryAge:"Mary Bay",maryVal:"about 13,800 years ago",
+ rLvol:"Volume",lvolVal:"up to tens of km³",rLth:"Thickness",lthVal:"100–300 m",rLsp:"Speed",lspVal:"metres a day",rLlast:"Most recent",llastVal:"about 70,000 years ago",
+ days:n=>n+" days",dayOf:(d,D)=>"day "+d+" of "+D,upl:v=>v+" m (imagined)",kgs:v=>v+" million t/s",flowTxt:d=>"up to "+d+" km beyond the rim",vei:V=>V>=1000?"8":V>=100?"7":"6",
+ pickTxt:(la,lo,d,t)=>la+"° N, "+lo+"° W: "+d+" km from Yellowstone, "+t+" of ash in the end.",
+ trackTxt:(d,v)=>"From the McDermitt caldera to Yellowstone is "+d+" km, covered in just under 16 million years: "+v+" cm a year. That is a little more than the plate's own speed, because the land south-west of the track is being stretched at the same time.",
+ plate:"The plate slides south-west",
+ cities:[["Bozeman", 45.68, -111.04], ["Billings", 45.78, -108.5], ["Idaho Falls", 43.49, -112.04], ["Salt Lake City", 40.76, -111.89], ["Boise", 43.62, -116.2], ["Denver", 39.74, -104.99], ["Rapid City", 44.08, -103.23], ["Seattle", 47.61, -122.33], ["San Francisco", 37.77, -122.42], ["Los Angeles", 34.05, -118.24], ["Minneapolis", 44.98, -93.27], ["Dallas", 32.78, -96.8], ["Chicago", 41.88, -87.63], ["New York", 40.71, -74.01]]};</script>
+<script>
+(function(){
+"use strict";
+const T=window.TXT,$=s=>document.querySelector(s),$$=s=>Array.from(document.querySelectorAll(s));
+const fmt=(x,d)=>{const s=(Math.abs(x)<1e-12?0:x).toFixed(d);return T.dec===","?s.replace(".",","):s;};
+const fmtN=x=>{const s=Math.round(x).toString();return s.replace(/\B(?=(\d{3})+(?!\d))/g,T.thou);};
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x)),lerp=(a,b,u)=>a+(b-a)*u,smooth=u=>{u=clamp(u,0,1);return u*u*(3-2*u);};
+const IMG="https://unpkg.com/three-globe/example/img/";
+
+/* ===================== geografi (lokale km: x mod øst, z mod syd, kalderaens midte i 0,0) ===================== */
+const C0={lat:44.55,lon:-110.55},KLAT=111.2,KLON=111.2*Math.cos(44.55*Math.PI/180);
+const ll2xz=(la,lo)=>[(lo-C0.lon)*KLON,-(la-C0.lat)*KLAT];
+const CAL={a:42,b:23,rot:0.14};          // kalderaen 85 x 45 km
+const ACAL=Math.PI*CAL.a*CAL.b;          // km²
+const XB=100,ZB=75,DEPTH=60,ZC=12;              // blokkens udstrækning
+function calRho(x,z){const c=Math.cos(CAL.rot),s=Math.sin(CAL.rot),u=x*c+z*s,v=-x*s+z*c;return Math.sqrt((u/CAL.a)**2+(v/CAL.b)**2);}
+function calPt(th,k){const c=Math.cos(CAL.rot),s=Math.sin(CAL.rot),u=CAL.a*k*Math.cos(th),v=CAL.b*k*Math.sin(th);return [u*c-v*s,u*s+v*c];}
+const P={lake:[15,11,13,11],mary:[19,2],oldf:ll2xz(44.460,-110.828),norris:ll2xz(44.726,-110.703),grand:ll2xz(44.525,-110.838),pitch:[-24,21],mallard:ll2xz(44.47,-110.76),sour:ll2xz(44.64,-110.33)};
+function lakeF(x,z){const dx=(x-P.lake[0])/P.lake[2],dz=(z-P.lake[1])/P.lake[3],th=Math.atan2(dz,dx);return dx*dx+dz*dz+0.18*Math.sin(3*th+0.6)+0.1*Math.sin(5*th);}
+function hash(i,j){const s=Math.sin(i*127.1+j*311.7)*43758.5453;return s-Math.floor(s);}
+function vnoise(x,z){const i=Math.floor(x),j=Math.floor(z),fx=x-i,fz=z-j,ux=fx*fx*(3-2*fx),uz=fz*fz*(3-2*fz);
+  return lerp(lerp(hash(i,j),hash(i+1,j),ux),lerp(hash(i,j+1),hash(i+1,j+1),ux),uz);}
+function fbm(x,z){let a=0,f=1,w=0.5;for(let k=0;k<5;k++){a+=w*vnoise(x*f,z*f);f*=2.03;w*=0.5;}return a;}
+const g2=(x,z,cx,cz,sx,sz)=>Math.exp(-(((x-cx)/sx)**2+((z-cz)/sz)**2));
+function baseH(x,z){
+  let h=2.45+0.28*(fbm(x/14+3,z/14+7)-0.5);
+  const r=calRho(x,z);
+  h+=0.12*Math.exp(-(((r-1.02)/0.07)**2))-0.06*smooth((1-r)/0.2);   // randen og bunden
+  h+=0.9*g2(x,z,70,0,22,60)+0.35*(fbm(x/6,z/6)-0.4)*smooth((x-45)/25); // Absaroka mod øst
+  h+=0.6*g2(x,z,-62,-48,20,30)+0.25*(fbm(x/5+9,z/5)-0.4)*g2(x,z,-62,-48,30,40); // Gallatin mod nordvest
+  h+=0.55*g2(x,z,10,-31,9,6);                                   // Mount Washburn
+  h+=0.12*g2(x,z,P.mallard[0],P.mallard[1],7,6)+0.14*g2(x,z,P.sour[0],P.sour[1],8,7); // de to hævede domer
+  const s=(-(x)*0.77+z*0.64);h-=0.75*smooth((s-55)/45);           // Snake River-sletten mod sydvest
+  h-=0.9*g2(x,z,-30,-70,25,15)*0.6;                              // Madison-dalen
+  const L=lakeF(x,z);if(L<1.25)h=lerp(h,2.29-0.05*smooth(1-L),smooth((1.25-L)/0.25));
+  return h;}
+const LAKE_Y=2.357;
+
+/* ===================== modellen ===================== */
+const st={scen:"super",t:0,running:true,tempo:1,V:1000,D:7,ve:2,cut:true,lbl:true,cam:"far",dirty:true};
+const SCEN={
+  today:[["today",12]],
+  hydro:[["h0",4],["h1",4],["h2",6],["h3",5]],
+  lava:[["l0",4],["l1",16],["l2",5]],
+  super:[["today",3],["recharge",7],["plinian",9],["collapse",13],["after",8]]};
+const total=s=>SCEN[s].reduce((a,p)=>a+p[1],0);
+function phaseAt(t){const L=SCEN[st.scen];let a=0;for(let i=0;i<L.length;i++){if(t<a+L[i][1]||i===L.length-1)return {k:L[i][0],u:clamp((t-a)/L[i][1],0,1),i,a};a+=L[i][1];}}
+const MASTIN=vdot=>2.0*Math.pow(Math.max(vdot,1e-9),0.241);       // km, vdot i m³/s DRE (Mastin m.fl. 2009)
+const NBV=0.02,LAM=0.2;
+const qUmb=M=>0.43*Math.sqrt(0.1)*Math.pow(M,0.75)/Math.pow(NBV,1.25); // m³/s (Costa m.fl. 2013)
+function flowD(V){const A=7500*Math.pow(V/1000,0.8),ab=CAL.a*CAL.b,s=CAL.a+CAL.b;return (-s+Math.sqrt(s*s+4*A/Math.PI))/2;}
+function derive(){
+  const ph=phaseAt(st.t),V=st.V,D=st.D,o={k:ph.k,u:ph.u,melt:0.18,upl:0,quake:0.15,day:-1,er:0,erP:0,subs:0,flow:0,ash:0,col:0,ring:0,H:0,M:0,R:0,steam:1,hyd:0,lava:0};
+  const t1=0.25*D*86400,t2=D*86400,V1=0.1*V*1e9,V2=0.9*V*1e9,vd1=V1/t1,vd2=V2/(t2-t1);
+  const q1=qUmb(vd1*2500),q2=qUmb(vd2*2500);
+  const umb=ts=>{const Qc=q1*Math.min(ts,t1)+q2*Math.max(0,ts-t1);return Math.cbrt(3*LAM*NBV*Qc*ts/(2*Math.PI))/1000;};
+  if(st.scen==="super"){
+    if(ph.k==="recharge"){o.melt=lerp(0.18,0.5,smooth(ph.u));o.upl=8*ph.u*ph.u;o.quake=0.15+0.85*ph.u;}
+    if(ph.k==="plinian"){const ts=ph.u*t1;o.day=ts/86400;o.er=0.1*V*ph.u;o.melt=0.5-0.04*ph.u;o.upl=8;o.quake=1;o.col=smooth(ph.u/0.08);o.H=MASTIN(vd1);o.M=vd1*2500;o.R=umb(ts);}
+    if(ph.k==="collapse"){const ts=t1+ph.u*(t2-t1);o.day=ts/86400;o.er=0.1*V+0.9*V*ph.u;o.melt=lerp(0.46,0.14,ph.u);o.upl=8*(1-smooth(ph.u/0.15));o.quake=1;o.col=1-0.6*smooth((ph.u-0.85)/0.15);o.ring=1-smooth((ph.u-0.88)/0.12);o.H=MASTIN(vd2);o.M=vd2*2500;o.R=umb(ts);o.flow=Math.pow(ph.u,0.6);}
+    if(ph.k==="after"){o.day=D;o.er=V;o.melt=0.12;o.quake=0.4;o.flow=1;o.R=umb(t2)*(1+0.25*ph.u);o.col=0;o.steam=2;}
+    o.subs=o.er>0.1*V?(o.er-0.1*V)/ACAL:0;o.ash=o.er/V;o.erP=Math.min(o.er,0.1*V);
+  } else if(st.scen==="hydro"){o.melt=0.18;o.quake=ph.k==="h1"?0.6:0.15;o.hyd=ph.k==="h0"?0:ph.k==="h1"?0.2*ph.u:ph.k==="h2"?0.2+0.8*ph.u:1;o.blast=ph.k==="h2"?ph.u:-1;}
+  else if(st.scen==="lava"){o.melt=0.2;o.quake=ph.k==="l0"?0.5:0.25;o.lava=ph.k==="l0"?0:ph.k==="l1"?smooth(ph.u)*0.97+0.03*ph.u:1;}
+  o.Hv=Math.min(o.H,45);o.zU=Math.min(0.7*o.H,30);o.Dflow=flowD(V);return o;}
+
+/* ===================== three.js ===================== */
+const cv=$("#cv"),stage=$("#stage");
+const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true});renderer.localClippingEnabled=true;
+let pr=Math.min(2,window.devicePixelRatio||1);renderer.setPixelRatio(pr);renderer.setClearColor(0x05080d);
+const scene=new THREE.Scene();scene.fog=new THREE.Fog(0x05080d,700,1900);
+const camera=new THREE.PerspectiveCamera(42,1,0.5,6000);
+scene.add(new THREE.HemisphereLight(0xcfe3ff,0x2a1d12,0.75));
+const sun=new THREE.DirectionalLight(0xfff1dc,0.85);sun.position.set(-120,160,90);scene.add(sun);
+const clipCut=new THREE.Plane(new THREE.Vector3(0,0,-1),ZC);
+const clipList=()=>st.cut?[clipCut]:[];
+const clipped=[];
+
+// terræn
+const NX=200,NZ=150,tGeo=new THREE.PlaneGeometry(2*XB,2*ZB,NX,NZ);tGeo.rotateX(-Math.PI/2);
+const nV=tGeo.attributes.position.count,TP=tGeo.attributes.position.array;
+const hB=new Float32Array(nV),mCal=new Float32Array(nV),mUp=new Float32Array(nV),rho=new Float32Array(nV),cBase=new Float32Array(nV*3),isLake=new Uint8Array(nV),lavaD=new Float32Array(nV);
+for(let i=0;i<nV;i++){const x=TP[3*i],z=TP[3*i+2];hB[i]=baseH(x,z);const r=calRho(x,z);rho[i]=r;mCal[i]=smooth((1.01-r)/0.06);mUp[i]=Math.exp(-r*r*1.6);
+  isLake[i]=lakeF(x,z)<1&&hB[i]<LAKE_Y?1:0;lavaD[i]=Math.hypot(x-P.pitch[0],(z-P.pitch[1])*1.25);
+  const h=hB[i],n=fbm(x/3,z/3);let c;
+  if(h<2.2)c=[0.47+0.1*n,0.43+0.08*n,0.30];else if(h<2.9)c=[0.16+0.1*n,0.27+0.12*n,0.15+0.05*n];else c=[0.38+0.1*n,0.36+0.08*n,0.32];
+  if(st&&Math.abs(r-1.02)<0.03)c=[c[0]*0.85,c[1]*0.85,c[2]*0.85];
+  cBase.set(c,3*i);}
+tGeo.setAttribute("color",new THREE.BufferAttribute(new Float32Array(nV*3),3));
+const tMat=new THREE.MeshLambertMaterial({vertexColors:true});const terrain=new THREE.Mesh(tGeo,tMat);scene.add(terrain);clipped.push(tMat);
+const lakeGeo=new THREE.PlaneGeometry(40,34,1,1);lakeGeo.rotateX(-Math.PI/2);
+const lakeMat=new THREE.MeshPhongMaterial({color:0x2a5d86,shininess:90,specular:0x6688aa,transparent:true,opacity:0.92});
+const lake=new THREE.Mesh(lakeGeo,lakeMat);lake.position.set(P.lake[0],0,P.lake[1]);scene.add(lake);clipped.push(lakeMat);
+// søen tegnes kun hvor terrænet er under vandspejlet: dybdetesten klarer resten
+
+// blokkens sider
+const wallMat=new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide});clipped.push(wallMat);
+const walls=new THREE.Group();scene.add(walls);
+function buildWalls(){while(walls.children.length){const m=walls.children.pop();m.geometry.dispose();}
+  const ve=st.ve,edges=[[[-XB,-ZB],[XB,-ZB]],[[XB,-ZB],[XB,ZB]],[[XB,ZB],[-XB,ZB]],[[-XB,ZB],[-XB,-ZB]]];
+  for(const [a,b] of edges){const N=80,pos=[],col=[],idx=[];
+    for(let k=0;k<=N;k++){const x=lerp(a[0],b[0],k/N),z=lerp(a[1],b[1],k/N),h=baseH(x,z);
+      const lv=[h,0,-5,-17,-20,-50,-DEPTH];
+      for(let j=0;j<lv.length;j++){pos.push(x,lv[j]*ve,z);const d=-lv[j];const c=d<0?[0.32,0.27,0.22]:d<20?[0.27,0.24,0.22]:d<35?[0.24,0.2,0.19]:[0.3,0.17,0.13];col.push(...c);}}
+    const L=7;for(let k=0;k<N;k++)for(let j=0;j<L-1;j++){const p=k*L+j;idx.push(p,p+L,p+1,p+1,p+L,p+L+1);}
+    const g=new THREE.BufferGeometry();g.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));g.setAttribute("color",new THREE.Float32BufferAttribute(col,3));g.setIndex(idx);g.computeVertexNormals();
+    walls.add(new THREE.Mesh(g,wallMat));}}
+
+// snittet: lærred med lagene, magmakamrene og varmepletten
+const FW=1400,FH=Math.round(FW*(DEPTH+6)/(2*XB)*1.35);
+const fCan=document.createElement("canvas");fCan.width=FW;fCan.height=FH;const fx=fCan.getContext("2d");
+const fTex=new THREE.CanvasTexture(fCan);fTex.anisotropy=4;
+const faceMat=new THREE.MeshBasicMaterial({map:fTex,transparent:true,side:THREE.DoubleSide,depthWrite:true,alphaTest:0.05});
+const face=new THREE.Mesh(new THREE.PlaneGeometry(2*XB,1,1,1),faceMat);scene.add(face);
+const FTOP=6;
+function placeFace(){face.scale.set(1,(DEPTH+FTOP)*st.ve,1);face.position.set(0,(FTOP-DEPTH)/2*st.ve,ZC+0.05);}
+const fX=x=>(x+XB)/(2*XB)*FW,fY=y=>(FTOP-y)/(DEPTH+FTOP)*FH;
+const QK=[];for(let i=0;i<70;i++)QK.push([(hash(i,3)-0.5)*90,-(1.5+hash(i,9)*12),hash(i,17)]);
+function drawFace(o){
+  const ve=st.ve;fx.clearRect(0,0,FW,FH);
+  // jorden under profilet
+  fx.save();fx.beginPath();fx.moveTo(0,FH);
+  for(let k=0;k<=200;k++){const x=-XB+k;const h=surfH(x,ZC,o);fx.lineTo(fX(x),fY(h));}
+  fx.lineTo(FW,FH);fx.closePath();fx.clip();
+  let g=fx.createLinearGradient(0,fY(3),0,FH);
+  g.addColorStop(0,"#5a4a3c");g.addColorStop(0.08,"#4a4038");g.addColorStop(0.3,"#3b3532");g.addColorStop(0.55,"#352d2b");g.addColorStop(1,"#4a2a20");
+  fx.fillStyle=g;fx.fillRect(0,0,FW,FH);
+  // lag af tuf (de tre udbrud) og lavastrømme i kalderaen
+  fx.fillStyle="rgba(214,190,150,.20)";fx.fillRect(0,fY(2.5),FW,fY(0.5)-fY(2.5));
+  fx.strokeStyle="rgba(255,255,255,.07)";fx.lineWidth=1;for(let d=10;d<DEPTH;d+=10){fx.beginPath();fx.moveTo(0,fY(-d));fx.lineTo(FW,fY(-d));fx.stroke();}
+  // varmepletten: varm kappe, der stiger op skråt fra nordvest
+  g=fx.createLinearGradient(0,FH,0,fY(-40));g.addColorStop(0,"rgba(255,120,60,.55)");g.addColorStop(1,"rgba(255,120,60,0)");
+  fx.fillStyle=g;fx.beginPath();fx.moveTo(fX(-75),FH);fx.bezierCurveTo(fX(-55),fY(-55),fX(-25),fY(-50),fX(-10),fY(-42));fx.lineTo(fX(25),fY(-42));fx.bezierCurveTo(fX(10),fY(-52),fX(-15),fY(-58),fX(-20),FH);fx.closePath();fx.fill();
+  // nedre kammer: basalt, ca. 2 % smelte
+  const ell=(cx,cy,rx,ry,c1,c2)=>{const px=fX(rx)-fX(0),py=fY(-ry)-fY(0);const gg=fx.createRadialGradient(fX(cx),fY(cy),2,fX(cx),fY(cy),Math.max(px,py));gg.addColorStop(0,c1);gg.addColorStop(0.6,c1);gg.addColorStop(1,c2);
+    fx.beginPath();fx.ellipse(fX(cx),fY(cy),px,py,0,0,7);fx.fillStyle=gg;fx.fill();};
+  ell(-5,-35,58,15,"rgba(230,90,50,.55)","rgba(160,50,30,.15)");
+  // øvre kammer: rhyolit-krystalgrød; gløden følger smelteandelen
+  const m=o.melt,drain=st.scen==="super"?clamp((o.er-0.1*st.V)/(0.9*st.V),0,1):0;
+  const top=-5-3*drain-(o.k==="after"?2:0);
+  const a=clamp((m-0.1)/0.45,0,1);
+  fx.save();fx.beginPath();fx.ellipse(fX(0),fY(top-5.5),fX(46)-fX(0),fY(-5.8)-fY(0),0,0,7);
+  const gu=fx.createRadialGradient(fX(0),fY(top-3),4,fX(0),fY(top-5),fX(46)-fX(0));
+  gu.addColorStop(0,`rgba(255,${Math.round(150+80*a)},${Math.round(60+40*a)},${0.45+0.5*a})`);gu.addColorStop(0.7,`rgba(220,100,50,${0.3+0.4*a})`);gu.addColorStop(1,"rgba(150,60,40,.12)");
+  fx.fillStyle=gu;fx.fill();fx.restore();
+  // pletter af smelte i grøden
+  for(let i=0;i<90;i++){const px=(hash(i,1)-0.5)*84,py=top-0.5-hash(i,2)*10.5;if(((px/44)**2+((py-(top-5.5))/5.7)**2)>1)continue;const show=hash(i,5)<m*1.6;if(!show)continue;
+    fx.fillStyle=`rgba(255,${200+Math.round(40*hash(i,7))},120,${0.35+0.5*a})`;fx.beginPath();fx.ellipse(fX(px),fY(py),3+5*hash(i,8)*a,1.6+2*a,0,0,7);fx.fill();}
+  // kanaler mellem kamrene
+  fx.strokeStyle="rgba(255,140,70,.45)";fx.lineWidth=3;for(const xx of [-28,-6,14,33]){fx.beginPath();fx.moveTo(fX(xx),fY(-21));fx.bezierCurveTo(fX(xx+3),fY(-18),fX(xx-2),fY(-17),fX(xx+1),fY(-15.5));fx.stroke();}
+  // jordskælv
+  const tt=performance.now()/1000;for(let i=0;i<QK.length;i++){if(QK[i][2]>o.quake)continue;const ph=(tt*0.7+QK[i][2]*13)%1;if(ph>0.35)continue;fx.fillStyle=`rgba(255,255,255,${0.9*(1-ph/0.35)})`;fx.beginPath();fx.arc(fX(QK[i][0]),fY(QK[i][1]),2+4*ph,0,7);fx.fill();}
+  // ringforkastningen og magma, der stiger op
+  const sb=o.subs;
+  if(st.scen==="super"&&(o.ring>0||o.k==="after")){
+    for(const xr of RIMX){fx.strokeStyle=o.ring>0?`rgba(255,${120+Math.round(80*Math.random())},60,${0.6*o.ring+0.2})`:"rgba(200,170,140,.45)";fx.lineWidth=o.ring>0?4:2;
+      fx.beginPath();fx.moveTo(fX(xr*0.98),fY(surfH(xr*0.98,0,o)));fx.lineTo(fX(xr*0.9),fY(top));fx.stroke();}
+    // den nedsunkne blok
+    fx.strokeStyle="rgba(255,255,255,.25)";fx.setLineDash([6,5]);fx.beginPath();fx.moveTo(fX(RIMX[0]*0.95),fY(2.4-sb));fx.lineTo(fX(RIMX[1]*0.95),fY(2.4-sb));fx.stroke();fx.setLineDash([]);}
+  if(o.col>0&&o.ring===0){fx.strokeStyle="rgba(255,160,80,.8)";fx.lineWidth=5;for(const v of VENTS){const x=v[0];fx.beginPath();fx.moveTo(fX(x*0.6),fY(top));fx.lineTo(fX(x),fY(2.4));fx.stroke();}}
+  if(st.scen==="lava"&&o.k!=="l2"){const x=P.pitch[0];fx.strokeStyle="rgba(255,150,80,.85)";fx.lineWidth=5;fx.beginPath();fx.moveTo(fX(x*0.7),fY(top));fx.lineTo(fX(x),fY(2.4));fx.stroke();}
+  if(st.scen==="hydro"){const x=P.mary[0];const r=(o.hyd||0);fx.fillStyle=`rgba(140,200,255,${0.25+0.5*r})`;fx.beginPath();fx.ellipse(fX(x),fY(1.6),fX(6)-fX(0),fY(-0.8)-fY(0),0,0,7);fx.fill();}
+  fx.restore();
+  if(!(o.flow>0.5)){fx.fillStyle="rgba(60,120,180,.9)";for(let k=0;k<=200;k++){const x=-XB+k;if(lakeF(x,ZC)<1){const h=surfH(x,ZC,o);const wl=LAKE_Y+(o.upl/1000)*40*Math.exp(-0.5);if(h<wl)fx.fillRect(fX(x),fY(wl),fX(1)-fX(0)+1,fY(h)-fY(wl));}}}
+  // dybdeskala og navne
+  fx.font="600 26px 'IBM Plex Mono',monospace";fx.textBaseline="middle";
+  fx.fillStyle="rgba(255,255,255,.8)";for(let d=10;d<=DEPTH-10;d+=10){fx.fillRect(0,fY(-d)-1,18,3);fx.fillText(d+" km",24,fY(-d));}
+  if(st.lbl){fx.font="600 30px 'IBM Plex Sans',sans-serif";fx.textAlign="center";
+    const lab=(t,x,y,c)=>{fx.fillStyle="rgba(0,0,0,.6)";const w=fx.measureText(t).width+20;fx.fillRect(fX(x)-w/2,fY(y)-21,w,42);fx.fillStyle=c||"#fff";fx.fillText(t,fX(x),fY(y));};
+    lab(T.fUp,0,top-5.5,"#ffe3c4");lab(T.fLow,-5,-35,"#ffd0c0");lab(T.fPlume,-62,-55,"#ffc2a0");lab(T.fCrust,72,-20,"#d8d0c8");
+    fx.textAlign="left";}
+  fTex.needsUpdate=true;}
+
+// overfladen: grundhøjde + hævning - nedsynkning (i km)
+function rimX(sg){let a=0,b=sg*100;for(let k=0;k<40;k++){const c=(a+b)/2;if(calRho(c,ZC)<1)a=c;else b=c;}return a;}
+const RIMX=[rimX(-1),rimX(1)];
+function surfH(x,z,o){const r=calRho(x,z);let h=baseH(x,z);h+=(o.upl/1000)*40*Math.exp(-r*r*1.6);h-=(o.subs||0)*smooth((1.01-r)/0.06);return h;}
+const ASHC=[0.62,0.6,0.57],IGN=[0.86,0.78,0.64],LAVA=[0.12,0.1,0.1];
+function updTerrain(o){
+  const ve=st.ve,pa=tGeo.attributes.position.array,ca=tGeo.attributes.color.array,up=(o.upl/1000)*40,sb=o.subs||0;
+  const Df=o.Dflow,fl=o.flow||0,ash=Math.min(1,(o.ash||0)*1.3),lavR=Math.sqrt(30/(Math.PI*0.25))*(o.lava||0);
+  for(let i=0;i<nV;i++){let h=hB[i]+up*mUp[i]-sb*mCal[i];
+    let c0=cBase[3*i],c1=cBase[3*i+1],c2=cBase[3*i+2];
+    if(fl>0){const rr=rho[i],x=pa[3*i],z=pa[3*i+2];// strømmenes front som en ellipse med afstanden Df uden for randen
+      const ex=CAL.a+Df*fl,ez=CAL.b+Df*fl,c=Math.cos(CAL.rot),s=Math.sin(CAL.rot),u=x*c+z*s,v=-x*s+z*c,q=Math.sqrt((u/ex)**2+(v/ez)**2);
+      const w=smooth((1.0-q)/0.05+0.5*(hash(i,1)-0.5));
+      if(w>0){h+=0.06*w*(1-mCal[i]);c0=lerp(c0,IGN[0],w);c1=lerp(c1,IGN[1],w);c2=lerp(c2,IGN[2],w);}
+      if(rr<1){const k=mCal[i]*fl;c0=lerp(c0,0.42,k);c1=lerp(c1,0.36,k);c2=lerp(c2,0.31,k);}}
+    if(ash>0){const k=0.55*ash;c0=lerp(c0,ASHC[0],k);c1=lerp(c1,ASHC[1],k);c2=lerp(c2,ASHC[2],k);}
+    if(lavR>0&&lavaD[i]<lavR){const e=lavaD[i]/lavR,th=0.22*Math.sqrt(1-e*e)+0.05;h=Math.max(h,hB[i]+th);const hot=o.lava<1?smooth((e-0.75)/0.25)*0.8:0;c0=lerp(LAVA[0],1.0,hot);c1=lerp(LAVA[1],0.35,hot);c2=lerp(LAVA[2],0.1,hot);}
+    pa[3*i+1]=h*ve;ca[3*i]=c0;ca[3*i+1]=c1;ca[3*i+2]=c2;}
+  tGeo.attributes.position.needsUpdate=true;tGeo.attributes.color.needsUpdate=true;tGeo.computeVertexNormals();
+  lake.position.y=(LAKE_Y+up*Math.exp(-0.5))*ve+0.01;lake.visible=!(fl>0.5);}
+
+// partikler
+function spriteTex(soft){const c=document.createElement("canvas");c.width=c.height=64;const x=c.getContext("2d"),g=x.createRadialGradient(32,32,0,32,32,32);
+  g.addColorStop(0,"rgba(255,255,255,1)");g.addColorStop(soft?0.45:0.25,"rgba(255,255,255,.55)");g.addColorStop(1,"rgba(255,255,255,0)");x.fillStyle=g;x.fillRect(0,0,64,64);return new THREE.CanvasTexture(c);}
+function makePts(N,size,blend,soft){const g=new THREE.BufferGeometry(),p=new Float32Array(N*3),c=new Float32Array(N*3);for(let i=0;i<N;i++)p[3*i+1]=-9999;
+  g.setAttribute("position",new THREE.BufferAttribute(p,3));g.setAttribute("color",new THREE.BufferAttribute(c,3));
+  const m=new THREE.PointsMaterial({size,map:spriteTex(soft),vertexColors:true,transparent:true,opacity:blend===THREE.AdditiveBlending?0.9:0.55,depthWrite:false,blending:blend,sizeAttenuation:true});
+  const pts=new THREE.Points(g,m);pts.frustumCulled=false;scene.add(pts);
+  const P2={pts,N,p,c,v:new Float32Array(N*3),age:new Float32Array(N).fill(1e9),life:new Float32Array(N),ty:new Uint8Array(N),a:new Float32Array(N),next:0};return P2;}
+const CL=makePts(3200,12,THREE.NormalBlending,true),GL=makePts(900,2.6,THREE.AdditiveBlending,false);
+function spawn(S,ty,x,y,z,vx,vy,vz,life,col,a){const i=S.next;S.next=(i+1)%S.N;S.p[3*i]=x;S.p[3*i+1]=y;S.p[3*i+2]=z;S.v[3*i]=vx;S.v[3*i+1]=vy;S.v[3*i+2]=vz;S.age[i]=0;S.life[i]=life;S.ty[i]=ty;S.a[i]=a||0;S.c[3*i]=col[0];S.c[3*i+1]=col[1];S.c[3*i+2]=col[2];}
+const VENTS=[calPt(0.75,0.93),calPt(-2.5,0.95)];
+let acc={col:0,pdc:0,steam:0,ring:0,co:0,hy:0};
+function particles(dt,o){
+  const ve=st.ve,Hv=o.Hv*ve,zU=o.zU*ve,Rv=Math.min(o.R,180);
+  // søjlerne
+  if(o.col>0&&(o.k==="plinian"||o.k==="collapse")){
+    const vents=o.k==="plinian"?VENTS:VENTS.concat([calPt(2.2,0.97),calPt(1.5,0.97),calPt(-1,0.97),calPt(3.6,0.98)]);
+    acc.col+=dt*190*o.col;while(acc.col>1){acc.col--;const vt=vents[Math.floor(Math.random()*vents.length)];const x=vt[0]+(Math.random()-0.5)*2,z=vt[1]+(Math.random()-0.5)*2;
+      const y=surfH(vt[0],vt[1],o)*ve;const sh=0.35+0.3*Math.random();spawn(CL,1,x,y,z,0,zU/2.6,0,9,[sh+0.08,sh+0.04,sh],Math.random()*6.283);
+      if(Math.random()<0.5)spawn(GL,7,x,y+1,z,(Math.random()-0.5)*6,8+Math.random()*10,(Math.random()-0.5)*6,1.6,[1,0.45+0.3*Math.random(),0.15]);}}
+  // pyroklastiske strømme langs ringen
+  if(o.ring>0){acc.pdc+=dt*240*o.ring;while(acc.pdc>1){acc.pdc--;const th=Math.random()*6.283,pt=calPt(th,1),n=Math.hypot(pt[0],pt[1]);
+      const sp=(o.Dflow*Math.max(o.flow,0.3)+6)/3.2*(0.6+0.6*Math.random());const sh=0.42+0.25*Math.random();
+      spawn(CL,3,pt[0],surfH(pt[0],pt[1],o)*ve+1.5,pt[1],pt[0]/n*sp,1.2,pt[1]/n*sp,3.4,[sh+0.1,sh+0.05,sh],0);
+      if(Math.random()<0.45){spawn(GL,7,pt[0],surfH(pt[0],pt[1],o)*ve+1,pt[1],(Math.random()-0.5)*4,6+Math.random()*9,(Math.random()-0.5)*4,1.4,[1,0.5,0.15]);}}
+    acc.co+=dt*40*o.ring;while(acc.co>1){acc.co--;const th=Math.random()*6.283,k=1+Math.random()*o.Dflow*o.flow/CAL.a,pt=calPt(th,k);const sh=0.5+0.2*Math.random();
+      spawn(CL,4,pt[0],surfH(pt[0],pt[1],o)*ve+3,pt[1],0,zU/7,0,8,[sh,sh,sh-0.02],0);}}
+  // damp fra gejsere og varme kilder
+  if(st.scen!=="super"||o.k==="today"||o.k==="recharge"||o.k==="after"){acc.steam+=dt*(o.k==="after"?60:22);while(acc.steam>1){acc.steam--;
+    const src=o.k==="after"?[(Math.random()-0.5)*70,(Math.random()-0.5)*36]:[P.oldf,P.norris,P.grand,P.mary,P.sour][Math.floor(Math.random()*5)];
+    const x=src[0]+(Math.random()-0.5)*2.5,z=src[1]+(Math.random()-0.5)*2.5;spawn(CL,5,x,surfH(x,z,o)*ve+0.3,z,0.5,2.2+Math.random()*1.5,0,2.2,[0.92,0.94,0.96],0);}}
+  // hydrotermisk eksplosion
+  if(st.scen==="hydro"&&o.blast>=0&&o.blast<0.5){acc.hy+=dt*400*(1-o.blast*2);while(acc.hy>1){acc.hy--;const th=Math.random()*6.283,s=Math.random();const sp=4+10*Math.random();
+    const x=P.mary[0],z=P.mary[1];if(s<0.6)spawn(CL,6,x,LAKE_Y*ve,z,Math.cos(th)*sp*0.25,6+Math.random()*7,Math.sin(th)*sp*0.25,4,[0.88,0.9,0.93],0);
+    else spawn(CL,6,x,LAKE_Y*ve,z,Math.cos(th)*sp*0.35,4+Math.random()*6,Math.sin(th)*sp*0.35,3,[0.4,0.36,0.32],1);}}
+  if(st.scen==="lava"&&o.lava>0&&o.lava<1){acc.ring+=dt*25;while(acc.ring>1){acc.ring--;const x=P.pitch[0]+(Math.random()-0.5)*2,z=P.pitch[1]+(Math.random()-0.5)*2;spawn(GL,7,x,(baseH(x,z)+0.3)*ve,z,(Math.random()-0.5)*0.4,0.8+Math.random(),(Math.random()-0.5)*0.4,1.2,[1,0.5,0.2]);}}
+  // flyt partiklerne
+  for(const S of [CL,GL]){for(let i=0;i<S.N;i++){if(S.age[i]>=S.life[i]){if(S.p[3*i+1]>-9000)S.p[3*i+1]=-9999;continue;}S.age[i]+=dt;
+    const j=3*i;let x=S.p[j],y=S.p[j+1],z=S.p[j+2],vx=S.v[j],vy=S.v[j+1],vz=S.v[j+2];const ty=S.ty[i];
+    if(ty===1){// søjle: stiger, spredes lidt og vender ud i paraplyen
+      const r=0.06*y+1.5;x+=Math.cos(S.a[i]+S.age[i]*0.8)*r*dt*0.6;z+=Math.sin(S.a[i]+S.age[i]*0.8)*r*dt*0.6;
+      if(y>=zU){S.ty[i]=2;const d=Math.hypot(x,z)||1,a=Math.random()*6.283;S.v[j]=Math.cos(a)*Rv/5;S.v[j+2]=Math.sin(a)*Rv/5;S.v[j+1]=0;vx=S.v[j];vz=S.v[j+2];vy=0;S.age[i]=0;S.life[i]=5;}
+      else{vy=Math.max(zU/4,vy);}}
+    if(ty===2){y=zU+(Hv-zU)*0.25*Math.sin(S.age[i]*1.3)*0.3+ (Math.random()-0.5)*0.3;vx*=1-0.15*dt;vz*=1-0.15*dt;}
+    if(ty===3){vx*=1-0.45*dt;vz*=1-0.45*dt;vy+=0.6*dt;const g=surfH(x,z,{upl:0,subs:0})*ve;if(y<g+1)y=g+1;}
+    if(ty===4){vy*=1;if(y>zU)vy=0;}
+    if(ty===6){vy-=6*dt*(S.a[i]?1.4:0.6);}
+    if(S.pts===GL.pts||S===GL){vy-=9*dt;}
+    x+=vx*dt;y+=vy*dt;z+=vz*dt;S.v[j]=vx;S.v[j+1]=vy;S.v[j+2]=vz;S.p[j]=x;S.p[j+1]=y;S.p[j+2]=z;}
+    S.pts.geometry.attributes.position.needsUpdate=true;S.pts.geometry.attributes.color.needsUpdate=true;}
+}
+// paraplyskyen som en skive
+function umbTex(){const c=document.createElement("canvas");c.width=c.height=256;const x=c.getContext("2d"),g=x.createRadialGradient(128,128,0,128,128,128);
+  g.addColorStop(0,"rgba(255,255,255,.95)");g.addColorStop(0.75,"rgba(255,255,255,.75)");g.addColorStop(0.92,"rgba(255,255,255,.35)");g.addColorStop(1,"rgba(255,255,255,0)");x.fillStyle=g;x.fillRect(0,0,256,256);return new THREE.CanvasTexture(c);}
+const umb=new THREE.Mesh(new THREE.CircleGeometry(1,96),new THREE.MeshBasicMaterial({map:umbTex(),color:0x8a8178,transparent:true,opacity:0.5,depthWrite:false,side:THREE.DoubleSide}));umb.rotation.x=-Math.PI/2;scene.add(umb);
+// ringen
+const ringGeo=new THREE.BufferGeometry().setFromPoints(Array.from({length:181},(_,k)=>{const p=calPt(k/180*6.283,1);return new THREE.Vector3(p[0],0,p[1]);}));
+const ringMat=new THREE.LineBasicMaterial({color:0xffb070,transparent:true,opacity:0.6});const ring=new THREE.Line(ringGeo,ringMat);scene.add(ring);
+// navne i 3D
+const labels=[];function mkLabel(txt,x,z,dy){const d=document.createElement("div");d.className="lbl3";d.textContent=txt;stage.appendChild(d);labels.push({d,x,z,dy:dy||0});}
+mkLabel(T.lYL,P.lake[0],P.lake[1]);mkLabel(T.lOF,P.oldf[0],P.oldf[1],0.6);mkLabel(T.lWash,10,-31,0.6);mkLabel(T.lSRP,-82,58);mkLabel(T.lAbs,78,10,0.8);mkLabel(T.lMary,P.mary[0],P.mary[1],0.3);mkLabel(T.lPitch,P.pitch[0],P.pitch[1],0.4);
+const vtmp=new THREE.Vector3();
+function placeLabels(o){const W=cv.clientWidth,H=cv.clientHeight;for(const L of labels){let show=st.lbl;if(L.d.textContent===T.lMary)show=show&&st.scen==="hydro";if(L.d.textContent===T.lPitch)show=show&&st.scen==="lava";if(L.d.textContent===T.lOF)show=show&&orb.d<260;
+  if(st.cut&&L.z>ZC+0.5&&L.d.textContent!==T.lSRP)show=false;
+  if(!show){L.d.style.display="none";continue;}vtmp.set(L.x,(surfH(L.x,L.z,o)+0.3+L.dy)*st.ve,L.z).project(camera);
+  if(vtmp.z>1||Math.abs(vtmp.x)>1.05||Math.abs(vtmp.y)>1.05){L.d.style.display="none";continue;}L.d.style.display="block";L.d.style.transform=`translate(${(vtmp.x*0.5+0.5)*W}px,${(-vtmp.y*0.5+0.5)*H}px) translate(-50%,-120%)`;}}
+
+/* ===================== kamera ===================== */
+const orb={az:0.5,el:0.3,d:420,look:new THREE.Vector3(),tAz:0.5,tEl:0.3,tD:420,tLook:new THREE.Vector3()};
+const CAMS={block:()=>({az:0.55,el:0.34,d:250+st.ve*25,look:[0,-6*st.ve,0]}),far:()=>({az:0.55,el:0.26,d:340+st.ve*35,look:[0,16*st.ve,0]}),cut:()=>({az:0.0,el:0.06,d:270,look:[0,-24*st.ve,0]}),near:()=>({az:0.35,el:0.55,d:150,look:[0,2.4*st.ve,0]}),
+  mary:()=>({az:0.6,el:0.42,d:58,look:[P.mary[0],LAKE_Y*st.ve+2,P.mary[1]]}),pitch:()=>({az:0.3,el:0.5,d:62,look:[P.pitch[0],2.4*st.ve,P.pitch[1]]})};
+function setCam(k,inst){st.cam=k;const c=CAMS[k]();orb.tAz=c.az;orb.tEl=c.el;orb.tD=c.d;orb.tLook.set(...c.look);if(inst){orb.az=c.az;orb.el=c.el;orb.d=c.d;orb.look.copy(orb.tLook);}
+  $$("#cams button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.cam===k||(k==="mary"||k==="pitch")&&b.dataset.cam==="near"||k==="block"&&b.dataset.cam==="far")));}
+let drag=null,pinch=0;
+cv.addEventListener("pointerdown",e=>{st.autoCam=false;drag={x:e.clientX,y:e.clientY,id:e.pointerId};cv.setPointerCapture(e.pointerId);cv.style.cursor="grabbing";});
+cv.addEventListener("pointermove",e=>{if(!drag||e.pointerId!==drag.id)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.x=e.clientX;drag.y=e.clientY;orb.tAz-=dx*0.006;orb.tEl=clamp(orb.tEl+dy*0.005,-0.25,1.45);});
+const endDrag=()=>{drag=null;cv.style.cursor="grab";};cv.addEventListener("pointerup",endDrag);cv.addEventListener("pointercancel",endDrag);
+cv.addEventListener("wheel",e=>{e.preventDefault();st.autoCam=false;orb.tD=clamp(orb.tD*Math.exp(e.deltaY*0.0012),25,1400);},{passive:false});
+cv.addEventListener("touchstart",e=>{if(e.touches.length===2){drag=null;pinch=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);}},{passive:true});
+cv.addEventListener("touchmove",e=>{if(e.touches.length===2&&pinch){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);orb.tD=clamp(orb.tD*pinch/d,25,1400);pinch=d;}},{passive:true});
+cv.addEventListener("touchend",()=>{pinch=0;});
+
+/* ===================== kortene ===================== */
+const earthImg=new Image();earthImg.crossOrigin="anonymous";let earthOK=false;earthImg.onload=()=>{earthOK=true;drawAsh();drawTrack();};earthImg.src=IMG+"earth-blue-marble.jpg";
+function drawBase(x,cvs,box){const W=cvs.width,H=cvs.height;x.fillStyle="#0b1622";x.fillRect(0,0,W,H);
+  if(earthOK){const iw=earthImg.width,ih=earthImg.height,sx=(box.lo0+180)/360*iw,sw=(box.lo1-box.lo0)/360*iw,sy=(90-box.la1)/180*ih,sh=(box.la1-box.la0)/180*ih;x.globalAlpha=0.9;x.drawImage(earthImg,sx,sy,sw,sh,0,0,W,H);x.globalAlpha=1;}
+  x.strokeStyle="rgba(255,255,255,.08)";x.lineWidth=1;for(let lo=Math.ceil(box.lo0/5)*5;lo<box.lo1;lo+=5){const X=(lo-box.lo0)/(box.lo1-box.lo0)*W;x.beginPath();x.moveTo(X,0);x.lineTo(X,H);x.stroke();}
+  for(let la=Math.ceil(box.la0/5)*5;la<box.la1;la+=5){const Y=(box.la1-la)/(box.la1-box.la0)*H;x.beginPath();x.moveTo(0,Y);x.lineTo(W,Y);x.stroke();}}
+function fitCanvas(c){const r=c.getBoundingClientRect(),d=Math.min(2,window.devicePixelRatio||1);const w=Math.round(r.width*d),h=Math.round(r.height*d);if(c.width!==w||c.height!==h){c.width=w;c.height=h;}return d;}
+const YS=[44.43,-110.67];
+const rad=Math.PI/180;
+function gc(a,b){const d=Math.sin(a[0]*rad)*Math.sin(b[0]*rad)+Math.cos(a[0]*rad)*Math.cos(b[0]*rad)*Math.cos((b[1]-a[1])*rad);return 6371*Math.acos(clamp(d,-1,1));}
+function brg(a,b){const y=Math.sin((b[1]-a[1])*rad)*Math.cos(b[0]*rad),x=Math.cos(a[0]*rad)*Math.sin(b[0]*rad)-Math.sin(a[0]*rad)*Math.cos(b[0]*rad)*Math.cos((b[1]-a[1])*rad);return Math.atan2(y,x);}
+// askefald: en enkel tilpasning til Ash3d-resultaterne fra Mastin m.fl. 2014 (330 km³ DRE aske for et Lava Creek-lignende udbrud), vestenvind skubber asken mod øst
+const AK=0.15,AW=0.35;let A0=1;
+function ashRaw(p){const r=gc(YS,p),b=brg(YS,p),re=r*(1-AW*Math.sin(b));return Math.exp(-AK*Math.sqrt(Math.max(re,0)));}
+(function norm(){let s=0;for(let i=-300;i<=300;i++)for(let j=-300;j<=300;j++){const x=i*10,y=j*10,r=Math.hypot(x,y);if(r<1)continue;s+=Math.exp(-AK*Math.sqrt(r*(1-AW*x/r)))*100;}A0=825/s;})(); // km
+const ashT=(p,V)=>A0*ashRaw(p)*(V/1000)*1000; // m
+const CITIES=T.cities;
+const BOXA={lo0:-128,lo1:-66,la0:23,la1:52};
+function fmtT(m){if(m>=1)return fmt(m,1)+" m";if(m>=0.01)return Math.round(m*100)+" cm";if(m>=0.001)return Math.round(m*1000)+" mm";return "< 1 mm";}
+let ashGrid=null,ashGridV=-1,ashPick=null;
+function drawAsh(o){const c=$("#ashCv");if(!c)return;fitCanvas(c);const x=c.getContext("2d"),W=c.width,H=c.height,box=BOXA;drawBase(x,c,box);
+  o=o||lastO;const frac=o?(o.ash||0):0;const V=st.V;
+  const toXY=(la,lo)=>[(lo-box.lo0)/(box.lo1-box.lo0)*W,(box.la1-la)/(box.la1-box.la0)*H];
+  // tykkelsen på et gitter
+  const cs=Math.max(4,Math.round(W/160));if(!ashGrid||ashGridV!==V||ashGrid.cs!==cs||ashGrid.W!==W){ashGrid={cs,W,v:[]};ashGridV=V;for(let Y=0;Y<H;Y+=cs)for(let X=0;X<W;X+=cs){const lo=box.lo0+(X+cs/2)/W*(box.lo1-box.lo0),la=box.la1-(Y+cs/2)/H*(box.la1-box.la0);ashGrid.v.push(ashT([la,lo],V));}}
+  const showF=st.scen==="super"&&frac>0?frac:0;const ghost=0.18;
+  let k=0;for(let Y=0;Y<H;Y+=cs)for(let X=0;X<W;X+=cs){const tF=ashGrid.v[k++],t=showF>0?tF*showF:tF;if(t<0.001)continue;const L=Math.log10(t);
+    let col=L>0?[150,20,20]:L>-1?[230,90,30]:L>-2?[245,190,60]:[250,245,190];const al=showF>0?0.62:ghost*1.6;x.fillStyle=`rgba(${col[0]},${col[1]},${col[2]},${al})`;x.fillRect(X,Y,cs,cs);}
+  // paraplyskyens kant
+  if(o&&o.R>0&&st.scen==="super"){x.strokeStyle="rgba(255,255,255,.85)";x.setLineDash([6,5]);x.lineWidth=1.5*(W/700+0.5);x.beginPath();
+    for(let a=0;a<=72;a++){const bb=a/72*2*Math.PI,dd=o.R/6371;const la2=Math.asin(Math.sin(YS[0]*rad)*Math.cos(dd)+Math.cos(YS[0]*rad)*Math.sin(dd)*Math.cos(bb)),lo2=YS[1]*rad+Math.atan2(Math.sin(bb)*Math.sin(dd)*Math.cos(YS[0]*rad),Math.cos(dd)-Math.sin(YS[0]*rad)*Math.sin(la2));const p=toXY(la2/rad,lo2/rad);a?x.lineTo(p[0],p[1]):x.moveTo(p[0],p[1]);}
+    x.stroke();x.setLineDash([]);}
+  const f=W/700;x.font=`500 ${Math.round(11*f+3)}px 'IBM Plex Sans',sans-serif`;x.textBaseline="middle";
+  for(const ci of CITIES){const p=toXY(ci[1],ci[2]);x.fillStyle="#fff";x.beginPath();x.arc(p[0],p[1],2.6*f+1,0,7);x.fill();x.fillStyle="rgba(0,0,0,.6)";const tx=ci[0];x.fillText(tx,p[0]+5*f+2,p[1]+1);x.fillStyle="#fff";x.fillText(tx,p[0]+5*f+1,p[1]);}
+  const yp=toXY(YS[0],YS[1]);x.fillStyle="#ff5a3c";x.beginPath();x.moveTo(yp[0],yp[1]-8*f-2);x.lineTo(yp[0]+6*f+2,yp[1]+5*f+2);x.lineTo(yp[0]-6*f-2,yp[1]+5*f+2);x.closePath();x.fill();
+  if(ashPick){const p=toXY(ashPick[0],ashPick[1]);x.strokeStyle="#fff";x.lineWidth=2;x.beginPath();x.arc(p[0],p[1],6*f+2,0,7);x.stroke();}
+  // tabellen
+  const rows=CITIES.map(ci=>{const tF=ashT([ci[1],ci[2]],V),now=st.scen==="super"?tF*frac:0;return `<tr><td>${ci[0]}</td><td>${fmtN(gc(YS,[ci[1],ci[2]]))} km</td><td>${st.scen==="super"&&frac>0?fmtT(now):"—"}</td><td>${fmtT(tF)}</td></tr>`;});
+  $("#ashTb").innerHTML=rows.join("");
+  if(ashPick){const tF=ashT(ashPick,V);$("#ashPick").textContent=T.pickTxt(fmt(ashPick[0],1),fmt(-ashPick[1],1),fmtN(gc(YS,ashPick)),fmtT(tF));}}
+$("#ashCv").addEventListener("click",e=>{const r=e.currentTarget.getBoundingClientRect();const lo=BOXA.lo0+(e.clientX-r.left)/r.width*(BOXA.lo1-BOXA.lo0),la=BOXA.la1-(e.clientY-r.top)/r.height*(BOXA.la1-BOXA.la0);ashPick=[la,lo];drawAsh();});
+
+// varmepletsporet
+const TRACK=[["McDermitt",16.4,42.0,-117.8],["Owyhee-Humboldt",13.5,42.3,-116.4],["Bruneau-Jarbidge",12.0,42.4,-115.5],["Twin Falls",10.0,42.6,-114.6],["Picabo",10.2,43.3,-114.0],["Heise",6.6,43.65,-112.3],["Huckleberry Ridge",2.1,44.4,-111.3],["Mesa Falls",1.3,44.3,-111.45],["Lava Creek",0.64,44.55,-110.55]];
+const BOXT={lo0:-123,lo1:-104,la0:39.2,la1:48.2};
+let trAge=0,trPlay=false;
+function hotAt(age){const L=TRACK.filter(t=>t[0]!=="Picabo"&&t[0]!=="Mesa Falls").slice().sort((a,b)=>b[1]-a[1]);if(age>=L[0][1])return [L[0][2],L[0][3]];
+  for(let i=0;i<L.length-1;i++){if(age<=L[i][1]&&age>=L[i+1][1]){const u=(L[i][1]-age)/(L[i][1]-L[i+1][1]);return [lerp(L[i][2],L[i+1][2],u),lerp(L[i][3],L[i+1][3],u)];}}
+  const last=L[L.length-1],u=last[1]>0?(last[1]-age)/last[1]:0;return [last[2]+0.1*u,last[3]+0.2*u];}
+function drawTrack(){const c=$("#trCv");if(!c)return;fitCanvas(c);const x=c.getContext("2d"),W=c.width,H=c.height,box=BOXT;drawBase(x,c,box);const f=W/600;
+  x.fillStyle="rgba(5,8,13,.35)";x.fillRect(0,0,W,H);
+  const toXY=(la,lo)=>[(lo-box.lo0)/(box.lo1-box.lo0)*W,(box.la1-la)/(box.la1-box.la0)*H];const kmpx=W/((box.lo1-box.lo0)*111.2*Math.cos(43.5*rad));
+  x.strokeStyle="rgba(255,220,160,.16)";x.lineWidth=80*kmpx;x.lineCap="round";x.beginPath();const a=toXY(42.7,-116.2),b=toXY(43.9,-111.9);x.moveTo(a[0],a[1]);x.lineTo(b[0],b[1]);x.stroke();x.lineCap="butt";
+  x.font=`600 ${Math.round(10*f+2)}px 'IBM Plex Mono',monospace`;x.textBaseline="middle";x.textAlign="center";
+  const act=TRACK.filter(t=>t[1]>=trAge-1e-6).reduce((m,t)=>!m||t[1]<m[1]?t:m,null);
+  for(const t of TRACK){if(t[1]<trAge-1e-6)continue;const p=toXY(t[2],t[3]),r=(t[1]<3?22:30)*kmpx,on=t===act;
+    x.fillStyle=on?"rgba(255,120,60,.45)":"rgba(226,123,255,.22)";x.strokeStyle=on?"#ffb080":"rgba(226,170,255,.85)";x.lineWidth=1.6*f;x.beginPath();x.ellipse(p[0],p[1],r*1.3,r,0.4,0,7);x.fill();x.stroke();
+    const dy={"Mesa Falls":r+8*f,"Huckleberry Ridge":-r-8*f,"Picabo":-r-7*f,"Twin Falls":r+8*f}[t[0]]||0;
+    const lab=fmt(t[1],t[1]<1?2:1);const w=x.measureText(lab).width+8*f;x.fillStyle="rgba(0,0,0,.6)";x.fillRect(p[0]-w/2,p[1]+dy-8*f,w,16*f);x.fillStyle="#fff";x.fillText(lab,p[0],p[1]+dy);}
+  const h=hotAt(trAge),hp=toXY(h[0],h[1]),hr=45*kmpx;const g=x.createRadialGradient(hp[0],hp[1],0,hp[0],hp[1],hr);g.addColorStop(0,"rgba(255,90,40,.95)");g.addColorStop(1,"rgba(255,90,40,0)");x.fillStyle=g;x.beginPath();x.arc(hp[0],hp[1],hr,0,7);x.fill();
+  x.strokeStyle="rgba(255,255,255,.9)";x.fillStyle="rgba(255,255,255,.9)";x.lineWidth=2*f;const s=toXY(47.3,-107.0),e=[s[0]-60*f,s[1]+30*f];x.beginPath();x.moveTo(s[0],s[1]);x.lineTo(e[0],e[1]);x.stroke();
+  const ang=Math.atan2(e[1]-s[1],e[0]-s[0]);x.beginPath();x.moveTo(e[0],e[1]);x.lineTo(e[0]-10*f*Math.cos(ang-0.45),e[1]-10*f*Math.sin(ang-0.45));x.lineTo(e[0]-10*f*Math.cos(ang+0.45),e[1]-10*f*Math.sin(ang+0.45));x.closePath();x.fill();
+  x.font=`500 ${Math.round(10*f+2)}px 'IBM Plex Sans',sans-serif`;x.textAlign="right";x.fillText(T.plate,W-8*f,s[1]-12*f);x.textAlign="left";
+  $("#oAge").textContent=fmt(trAge,1)+" "+T.ma;
+  $("#trTb").innerHTML=TRACK.slice().sort((p,q)=>q[1]-p[1]).map(t=>`<tr aria-selected="${t===act}" style="opacity:${t[1]>=trAge-1e-6?1:0.35}"><td>${t[0]}</td><td>${fmt(t[1],t[1]<1?2:1)}</td></tr>`).join("");
+  const d=gc([42.0,-117.8],[44.55,-110.55]);$("#trTxt").textContent=T.trackTxt(fmtN(d),fmt(d*1e5/((16.4-0.64)*1e6),1));}
+$("#sAge").addEventListener("input",e=>{trAge=16.5-(+e.target.value);trPlay=false;$("#trPlay").textContent=T.play;drawTrack();});
+$("#trPlay").addEventListener("click",()=>{trPlay=!trPlay;if(trPlay&&trAge<=0.01)trAge=16.5;$("#trPlay").textContent=trPlay?T.stop:T.play;});
+
+/* ===================== styring ===================== */
+const VPRE={mesa:280,lava:1000,huck:2450};
+const vFromS=s=>Math.round(100*Math.pow(30,s/100)),sFromV=v=>100*Math.log(v/100)/Math.log(30);
+function setV(v){st.V=v;$("#sV").value=sFromV(v);$("#oV").textContent=fmtN(v)+" km³";$$("#vpre button").forEach(b=>b.setAttribute("aria-pressed",String(VPRE[b.dataset.v]===v)));drawAsh();}
+$("#sV").addEventListener("input",e=>{setV(vFromS(+e.target.value));});
+$$("#vpre button").forEach(b=>b.addEventListener("click",()=>{setV(VPRE[b.dataset.v]);if(st.scen!=="super")setScen("super");}));
+$("#sD").addEventListener("input",e=>{st.D=+e.target.value;$("#oD").textContent=T.days(st.D);});
+function buildScrub(){const tt=total(st.scen),s=$("#scrub");s.max=tt;s.step=0.05;const L=SCEN[st.scen];let a=0;
+  $("#phs").innerHTML=L.map(p=>{const w=p[1]/tt*100;const h=`<span style="width:${w}%" data-a="${a}">${T.ph[p[0]]}</span>`;a+=p[1];return h;}).join("");
+  $$("#phs span").forEach(e=>e.addEventListener("click",()=>{st.t=+e.dataset.a+0.01;}));}
+$("#scrub").addEventListener("input",e=>{st.t=+e.target.value;});
+function setScen(k){st.scen=k;st.t=0;st.running=true;togglePlay(true);$$("#pre .tab").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.p===k)));buildScrub();
+  $("#superCtl").hidden=k!=="super";setCut(k!=="lava");st.autoCam=true;setCam(k==="hydro"?"mary":k==="lava"?"pitch":k==="today"?"near":"block");}
+$$("#pre .tab").forEach(b=>b.addEventListener("click",()=>setScen(b.dataset.p)));
+function togglePlay(on){st.running=on;$("#playTxt").textContent=on?T.stop:T.play;$("#playIcon").innerHTML=on?'<path d="M4 4h12v12H4z"/>':'<path d="M5 3l12 7-12 7z"/>';}
+$("#play").addEventListener("click",()=>{if(!st.running&&st.t>=total(st.scen)-0.01)st.t=0;togglePlay(!st.running);});
+$("#restart").addEventListener("click",()=>{st.t=0;togglePlay(true);});
+$$("#tempo button").forEach(b=>b.addEventListener("click",()=>{st.tempo=+b.dataset.v;$$("#tempo button").forEach(c=>c.setAttribute("aria-pressed",String(c===b)));}));
+function setCut(on){st.cut=on;$("#tCut").checked=on;for(const m of clipped){m.clippingPlanes=clipList();m.needsUpdate=true;}face.visible=on;}
+$("#tCut").addEventListener("change",e=>setCut(e.target.checked));
+$("#tLbl").addEventListener("change",e=>{st.lbl=e.target.checked;});
+$("#tVe").addEventListener("change",e=>{st.ve=e.target.checked?2:1;buildWalls();placeFace();setCam(st.cam);});
+$$("#cams button").forEach(b=>b.addEventListener("click",()=>{st.autoCam=false;let k=b.dataset.cam;if(k==="near"&&st.scen==="hydro")k="mary";if(k==="near"&&st.scen==="lava")k="pitch";setCam(k);}));
+
+/* ===================== aflæsninger ===================== */
+let lastO=null,roT=0;
+function readouts(o){const R=[];const pct=v=>Math.round(v*100)+" %";
+  if(st.scen==="super"){
+    R.push([T.rMelt,o.k==="today"?"16–20 %":pct(o.melt)]);R.push([T.rUpl,o.upl>0.05?T.upl(fmt(o.upl,o.upl<10?1:0)):"—"]);
+    R.push([T.rDay,o.day>=0?T.dayOf(fmt(o.day,1),st.D):"—"]);R.push([T.rEr,o.er>0?fmtN(o.er)+" km³":"—"]);
+    R.push([T.rM,o.M>0?T.kgs(fmt(o.M/1e9,1)):"—"]);R.push([T.rH,o.H>0?fmtN(o.H)+" km":"—"]);
+    R.push([T.rR,o.R>0?fmtN(o.R)+" km":"—"]);R.push([T.rSub,o.subs>0?fmtN(o.subs*1000)+" m":"—"]);
+    R.push([T.rFlow,o.flow>0?T.flowTxt(fmtN(o.Dflow*o.flow)):"—"]);R.push([T.rVEI,T.vei(st.V)]);}
+  else if(st.scen==="today"){R.push([T.rMelt,"16–20 %"],[T.rMeltL,"≈ 2 %"],[T.rEq,T.eqYr],[T.rHeat,T.heatVal],[T.rProb,T.probVal],[T.rLast,T.lastVal]);}
+  else if(st.scen==="hydro"){R.push([T.rPh,T.ph[o.k]],[T.rCr,T.crVal],[T.rThrow,T.throwVal],[T.rFreq,T.freqVal],[T.rMaryAge,T.maryVal]);}
+  else{R.push([T.rPh,T.ph[o.k]],[T.rLvol,T.lvolVal],[T.rLth,T.lthVal],[T.rLsp,T.lspVal],[T.rLlast,T.llastVal]);}
+  $("#ro").innerHTML=R.map(r=>`<div><span>${r[0]}</span><b>${r[1]}</b></div>`).join("");
+  const badge=$("#hReg"),col={today:"#8fd3a8",recharge:"#ffd36b",plinian:"#ff9a4d",collapse:"#ff6f6f",after:"#c9a77c",h0:"#8fd3a8",h1:"#ffd36b",h2:"#9fd0ff",h3:"#c9a77c",l0:"#ffd36b",l1:"#ff9a4d",l2:"#c9a77c"};
+  badge.textContent=T.ph[o.k];badge.style.background=col[o.k]||"#ccc";$("#stageText").textContent=T.pt[o.k];
+  $("#hMag").textContent=st.scen==="super"&&o.day>=0?T.dayOf(fmt(o.day,1),st.D):"";}
+
+/* ===================== løkken ===================== */
+function resize(){const w=cv.clientWidth,h=cv.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.fov=camera.aspect<1?Math.min(78,42/Math.pow(camera.aspect,0.75)):42;camera.updateProjectionMatrix();}
+window.addEventListener("resize",()=>{resize();drawAsh();drawTrack();});
+let vis=true;new IntersectionObserver(es=>{vis=es[0].isIntersecting;},{threshold:0}).observe(stage);
+let last=performance.now(),fpsA=0,fpsN=0,ashT0=0,tKey="",fKey="",faceT=0;
+function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;
+  if(st.running){st.t+=dt*st.tempo;const tt=total(st.scen);if(st.t>=tt){if(st.scen==="today")st.t-=tt;else{st.t=tt;togglePlay(false);}}}
+  $("#scrub").value=st.t;
+  const o=derive();lastO=o;
+  if(st.scen==="super"&&st.autoCam){const want=(o.k==="today"||o.k==="recharge")?"block":"far";if(st.cam!==want)setCam(want);}
+  if(vis){const key=[st.ve,Math.round(o.upl*4),Math.round((o.subs||0)*400),Math.round((o.flow||0)*60),Math.round((o.ash||0)*40),Math.round((o.lava||0)*80)].join();
+    if(key!==tKey){tKey=key;updTerrain(o);}
+    faceT+=dt;if(faceT>0.1||fKey!==key){faceT=0;fKey=key;drawFace(o);}particles(dt*st.tempo*(st.running?1:0)+(st.running?0:0),o);
+    const ve=st.ve,Rv=Math.min(o.R,180);umb.visible=Rv>1;if(umb.visible){umb.scale.set(Rv,Rv,1);umb.position.set(0,o.zU*ve+0.2,0);umb.material.opacity=0.42*(o.k==="after"?1-0.6*o.u:1);}
+    ring.visible=st.scen==="super";ring.position.y=(2.5-(o.subs||0)*0.5)*ve;ringMat.color.setHex(o.ring>0?0xff7a3a:0xffc490);ringMat.opacity=o.ring>0?0.95:0.35;
+    const k=Math.min(1,dt*2.5);orb.az+=(orb.tAz-orb.az)*k;orb.el+=(orb.tEl-orb.el)*k;orb.d+=(orb.tD-orb.d)*k;orb.look.lerp(orb.tLook,k);
+    camera.position.set(orb.look.x+orb.d*Math.cos(orb.el)*Math.sin(orb.az),orb.look.y+orb.d*Math.sin(orb.el),orb.look.z+orb.d*Math.cos(orb.el)*Math.cos(orb.az));camera.lookAt(orb.look);
+    fpsA+=dt;fpsN++;if(fpsN>=40){const fps=fpsN/fpsA;if(fps<28&&pr>1){pr=Math.max(1,pr-0.5);renderer.setPixelRatio(pr);resize();}fpsA=0;fpsN=0;}
+    renderer.render(scene,camera);placeLabels(o);}
+  roT+=dt;if(roT>0.2){roT=0;readouts(o);}
+  ashT0+=dt;if(ashT0>0.25&&st.scen==="super"&&st.running){ashT0=0;drawAsh(o);}
+  if(trPlay){trAge=Math.max(0,trAge-dt*1.6);$("#sAge").value=16.5-trAge;drawTrack();if(trAge<=0){trPlay=false;$("#trPlay").textContent=T.play;}}
+  requestAnimationFrame(frame);}
+
+/* start */
+buildWalls();placeFace();for(const m of clipped){m.clippingPlanes=clipList();}
+setV(1000);$("#oD").textContent=T.days(st.D);trAge=0;$("#sAge").value=16.5;
+setScen("super");setCam("block",true);resize();drawTrack();readouts(derive());
+requestAnimationFrame(frame);
+window.__ys={st,derive,setScen,ashT,flowD,MASTIN,CL,GL,camera,orb};
+})();
+
+</script>
+<script src="lang-switch.js" defer></script>
+</body></html>
