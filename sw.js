@@ -4,7 +4,7 @@
  * uden forbindelse vises den gemte udgave.
  * Ret VERSION, hvis du vil tvinge alle til at hente forfra.
  */
-const VERSION = 'mhgfysik-v1';
+const VERSION = 'mhgfysik-v2';
 const CORE = [
   '/', '/index.html', '/index-en.html',
   '/boeger.html', '/boeger-en.html',

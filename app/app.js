@@ -9,12 +9,10 @@
   var T = en ? {
     support: 'This app is free. If you find it useful, you can support the work by buying one of my books.',
     books: 'See the books', close: 'Close',
-    ios: 'On iPhone/iPad: tap the Share button <b>⎋</b> in Safari, then “Add to Home Screen”.',
     done: 'The app is installed – find it on your home screen.'
   } : {
     support: 'Appen er gratis. Har du glæde af den, kan du støtte arbejdet ved at købe en af mine bøger.',
     books: 'Se bøgerne', close: 'Luk',
-    ios: 'På iPhone/iPad: tryk på Del-knappen <b>⎋</b> i Safari og vælg “Føj til hjemmeskærm”.',
     done: 'Appen er installeret – du finder den på din hjemmeskærm.'
   };
   var booksUrl = en ? '/boeger-en.html' : '/boeger.html';
@@ -31,30 +29,53 @@
     });
   }
 
-  // 2) Installér-knap
+  // 2) Installér-boksen (#app-install): knap hvis browseren tilbyder det, ellers vejledning
+  var H = en ? {
+    ios: 'On iPhone/iPad: open the site in <b>Safari</b>, tap the Share button (square with an arrow) and choose <b>“Add to Home Screen”</b>.',
+    android: 'On Android: open the site in <b>Chrome</b>, tap the menu <b>⋮</b> at the top right and choose <b>“Install app”</b> (or “Add to Home screen”).',
+    mac: 'In Safari on a Mac: choose <b>File → Add to Dock</b>. In Chrome or Edge: click the install icon at the right end of the address bar.',
+    desktop: 'In Chrome or Edge: click the install icon at the right end of the address bar, or open the menu <b>⋮</b> and choose <b>“Install mhgfysik”</b>.',
+    firefox: 'Firefox cannot install web apps on a computer – open mhgfysik.dk in Chrome or Edge instead. On Android, Firefox can: menu <b>⋮</b> → “Install”.',
+    ready: 'Click the button to install mhgfysik – with its own icon, full screen and offline use. The app is free; if you find it useful, please support the work by buying one of the books.'
+  } : {
+    ios: 'På iPhone/iPad: åbn siden i <b>Safari</b>, tryk på Del-knappen (firkanten med en pil) og vælg <b>“Føj til hjemmeskærm”</b>.',
+    android: 'På Android: åbn siden i <b>Chrome</b>, tryk på menuen <b>⋮</b> øverst til højre og vælg <b>“Installer app”</b> (eller “Føj til startskærm”).',
+    mac: 'I Safari på Mac: vælg <b>Arkiv → Føj til Dock</b>. I Chrome eller Edge: klik på installér-ikonet yderst til højre i adresselinjen.',
+    desktop: 'I Chrome eller Edge: klik på installér-ikonet yderst til højre i adresselinjen, eller åbn menuen <b>⋮</b> og vælg <b>“Installer mhgfysik”</b>.',
+    firefox: 'Firefox kan ikke installere web-apps på en computer – åbn mhgfysik.dk i Chrome eller Edge i stedet. På Android kan Firefox godt: menu <b>⋮</b> → “Installer”.',
+    ready: 'Tryk på knappen for at installere mhgfysik – med eget ikon, i fuld skærm og med offline-brug. Appen er gratis; har du glæde af den, så støt gerne arbejdet ved at købe en af bøgerne.'
+  };
   var deferred = null;
+  function el(id) { return document.getElementById(id); }
+  function showButton() {
+    var btn = el('app-install-btn'), msg = el('app-install-msg');
+    if (btn) btn.hidden = false;
+    if (msg) msg.innerHTML = H.ready;
+  }
   window.addEventListener('beforeinstallprompt', function (e) {
     e.preventDefault(); deferred = e;
-    var box = document.getElementById('app-install');
-    if (box) box.hidden = false;
+    if (document.readyState !== 'loading') showButton();
   });
   window.addEventListener('appinstalled', function () {
-    var msg = document.getElementById('app-install-msg');
-    if (msg) msg.innerHTML = T.done;
-    var btn = document.getElementById('app-install-btn');
-    if (btn) btn.hidden = true;
+    var msg = el('app-install-msg'); if (msg) msg.innerHTML = T.done;
+    var btn = el('app-install-btn'); if (btn) btn.hidden = true;
   });
   document.addEventListener('DOMContentLoaded', function () {
-    var box = document.getElementById('app-install');
-    if (!box || standalone) return;
-    var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) ||
-      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    if (isIOS) {
-      box.hidden = false;
-      var b = document.getElementById('app-install-btn'); if (b) b.hidden = true;
-      var m = document.getElementById('app-install-msg'); if (m) m.innerHTML = T.ios;
+    var box = el('app-install');
+    if (!box) return;
+    if (standalone) { box.hidden = true; return; }
+    var ua = navigator.userAgent;
+    var isIOS = /iphone|ipad|ipod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    var msg = el('app-install-msg');
+    if (deferred) showButton();
+    else if (msg) {
+      msg.innerHTML = isIOS ? H.ios
+        : /android/i.test(ua) ? H.android
+        : /firefox/i.test(ua) ? H.firefox
+        : (/macintosh/i.test(ua) && !/chrome|edg/i.test(ua)) ? H.mac
+        : H.desktop;
     }
-    var btn = document.getElementById('app-install-btn');
+    var btn = el('app-install-btn');
     if (btn) btn.addEventListener('click', function () {
       if (!deferred) return;
       deferred.prompt();
