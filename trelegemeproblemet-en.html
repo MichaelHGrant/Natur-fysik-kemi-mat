@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The three-body problem – from Newton's headache to chaos | mhgfysik.dk</title>
+<meta name="description" content="The three-body problem: Newton and the Moon, Euler and Lagrange, the Lagrange points and the Trojans, Poincaré and chaos, Sundman's series, the figure eight and the stability of the Solar System – with a three-body simulator and the landscape of the Lagrange points in 3D.">
+<style>
+:root{
+  --bg:#06080d; --panel:#0e1320; --panel2:#141b2b; --ink:#e7e9ef; --muted:#9ba4b6;
+  --gold:#d8b46a; --gold2:#f2d590; --ice:#9fd0ff; --line:#252f47; --green:#7fd1b9; --red:#f08a7a; --violet:#c3a6ff;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;line-height:1.6}
+a{color:var(--gold2)}
+.wrap{max-width:1180px;margin:0 auto;padding:0 16px}
+header{padding:18px 0 8px;border-bottom:1px solid var(--line)}
+.crumb{font-size:.85rem;color:var(--muted)}
+.crumb a{color:var(--muted);text-decoration:none}
+.crumb a:hover{color:var(--gold2)}
+h1{font-family:Georgia,"Times New Roman",serif;font-weight:normal;color:var(--gold2);
+  font-size:clamp(1.6rem,4.2vw,2.5rem);margin:.3em 0 .2em;letter-spacing:.01em}
+h2{font-family:Georgia,serif;font-weight:normal;color:var(--gold);font-size:1.45rem;
+  margin:1.8em 0 .5em;border-bottom:1px solid var(--line);padding-bottom:.25em;scroll-margin-top:12px}
+h3{color:var(--gold2);font-size:1.08rem;margin:1.3em 0 .3em;scroll-margin-top:12px}
+.lead{color:#cfd4df;font-size:1.05rem;max-width:860px}
+p,li{max-width:900px}
+nav.toc{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 4px}
+nav.toc a{font-size:.82rem;text-decoration:none;color:#cfd4df;background:var(--panel2);border:1px solid var(--line);
+  border-radius:14px;padding:3px 10px}
+nav.toc a:hover{border-color:var(--gold);color:var(--gold2)}
+mjx-container{color:#fff}
+mjx-container[display="true"]{overflow-x:auto;overflow-y:hidden;padding:2px 0}
+.eq{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:8px;padding:6px 14px;margin:12px 0;max-width:900px}
+
+/* ---------- simulations ---------- */
+.simbox{position:relative;margin:14px 0 0;border:1px solid var(--line);border-radius:12px 12px 0 0;
+  overflow:hidden;background:#000;height:min(62vh,560px);min-height:340px;touch-action:none}
+.simbox.flat{height:min(58vh,480px)}
+.simbox.tall{height:min(80vh,680px)}
+#hud3{left:auto;right:12px;top:34px}
+#hud4{left:auto;right:12px;top:34px;max-width:36%}
+@media(max-width:639px){#hud4{top:auto;bottom:8px;left:8px;right:auto;max-width:92%}}
+.simbox > canvas{display:block;width:100%;height:100%}
+.hud{position:absolute;left:10px;top:8px;pointer-events:none;max-width:62%;font-size:.84rem;
+  background:rgba(8,11,19,.72);border:1px solid var(--line);border-radius:8px;padding:6px 10px;line-height:1.45}
+.hud b{color:var(--gold2);font-weight:normal}
+.hud .msg{color:var(--green);margin-top:3px}
+.hud .warn{color:var(--red);margin-top:3px}
+.labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.lbl{position:absolute;transform:translate(-50%,-120%);font-size:11.5px;color:#dfe5f2;white-space:nowrap;
+  text-shadow:0 0 3px #000,0 0 6px #000}
+.lbl.g{color:var(--gold2)} .lbl.b{color:var(--ice)} .lbl.gr{color:var(--green)} .lbl.r{color:var(--red)} .lbl.v{color:var(--violet)}
+.hint{position:absolute;right:10px;bottom:6px;font-size:.72rem;color:#7d879b;pointer-events:none}
+.simbox canvas.graph{position:absolute;right:10px;top:8px;width:250px;height:150px;background:rgba(8,11,19,.8);
+  border:1px solid var(--line);border-radius:8px;pointer-events:none}
+.controls{background:var(--panel);border:1px solid var(--line);border-top:none;border-radius:0 0 12px 12px;
+  padding:8px 12px 10px;margin-bottom:10px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0}
+button{background:var(--panel2);color:var(--ink);border:1px solid #33405e;border-radius:8px;
+  padding:6px 11px;font-size:.9rem;cursor:pointer;font-family:inherit}
+button:hover{border-color:var(--gold)}
+button.on{background:#3a2f17;border-color:var(--gold);color:var(--gold2)}
+button.chip{font-size:.8rem;padding:4px 10px;border-radius:14px}
+input[type=range]{accent-color:var(--gold)}
+input[type=number]{background:var(--panel2);color:var(--ink);border:1px solid #33405e;border-radius:6px;padding:3px 5px;width:66px;font-family:inherit}
+.sl{display:flex;align-items:center;gap:6px;font-size:.85rem;color:#c9cfdb;min-width:230px}
+.sl input[type=range]{flex:1;min-width:110px}
+.sl b{color:var(--gold2);font-weight:normal;min-width:62px;display:inline-block}
+label.tg{font-size:.85rem;color:#c9cfdb;display:flex;align-items:center;gap:4px;cursor:pointer;user-select:none}
+.sep{width:1px;height:22px;background:var(--line);margin:0 4px}
+select{background:var(--panel2);color:var(--ink);border:1px solid #33405e;border-radius:6px;padding:4px 6px;font-family:inherit}
+.task{font-size:.88rem;color:#c3c9d6;background:var(--panel2);border-radius:8px;padding:8px 14px;margin:8px 0 18px}
+.task b{color:var(--gold)}
+.task ol{margin:.3em 0;padding-left:1.3em}
+
+/* ---------- article ---------- */
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+@media(max-width:820px){.cols{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 16px;min-width:0}
+.card h3{margin-top:.4em}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+.tw{overflow-x:auto;max-width:100%}
+th,td{border-bottom:1px solid var(--line);padding:5px 6px;text-align:left}
+th{color:var(--gold);font-weight:normal}
+.note{font-size:.85rem;color:var(--muted)}
+blockquote{margin:.8em 0;padding:.4em 1em;border-left:3px solid var(--gold);color:#d6d9e2;font-family:Georgia,serif;font-style:italic;max-width:860px}
+.timeline{list-style:none;padding:0;margin:.5em 0}
+.timeline li{padding:4px 0 4px 92px;position:relative;border-bottom:1px dashed var(--line)}
+.timeline li span{position:absolute;left:0;top:4px;color:var(--gold2);font-family:Georgia,serif}
+ul.src{font-size:.86rem;color:#b9c0cf}
+footer{margin:40px 0 0;padding:16px 0 30px;border-top:1px solid var(--line);color:var(--muted);font-size:.85rem}
+@media(max-width:600px){
+  .hud{max-width:72%;font-size:.74rem;padding:4px 7px}
+  .simbox canvas.graph{width:170px;height:105px;top:auto;bottom:24px}
+  .lbl{font-size:10px}
+  button{padding:6px 9px}
+  .sl{min-width:100%}
+  .timeline li{padding-left:70px}
+  .hint{display:none}
+  .simbox.tall{height:min(94vh,760px)}
+  input[type=number]{width:54px}
+}
+</style>
+<script>
+window.MathJax = { tex: { inlineMath: [['$','$'], ['\\(','\\)']] }, svg: { fontCache: 'global' } };
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+
+<!-- app (PWA) -->
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/app/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="mhgfysik">
+<script src="/app/app.js" defer></script>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="crumb"><a href="index-en.html#astro">← Home</a> · Astronomy and spaceflight · <a href="principia-en.html">Newton's Principia</a> · <a href="hamilton-mekanik-en.html">Hamiltonian mechanics</a> · <a href="trelegemeproblemet.html">Dansk</a></div>
+    <h1>The three-body problem – from Newton's headache to chaos</h1>
+    <p class="lead">Two bodies attracting each other move in ellipses – Newton solved that completely. Add a third, and the problem has no general solution in formulas. The three-body problem has shaped mathematics for three hundred years: it gave us the Lagrange points, where the James Webb telescope floats today, Poincaré's discovery of chaos, and a figure-eight orbit first found in 1993. Here is the story – with a simulator in which you can release three bodies yourself, and the landscape of the Lagrange points in 3D.</p>
+    <p class="note pdflink">This page as a PDF for printing: <a href="trelegemeproblemet-en.pdf">English</a> · <a href="trelegemeproblemet.pdf" hreflang="da">dansk</a></p>
+    <nav class="toc">
+      <a href="#to">Two bodies: solved</a>
+      <a href="#newton">Newton and the Moon</a>
+      <a href="#simulator">The simulator</a>
+      <a href="#euler-lagrange">Euler and Lagrange</a>
+      <a href="#begraenset">The restricted problem</a>
+      <a href="#lagrangepunkter">The Lagrange points in 3D</a>
+      <a href="#poincare">Poincaré and chaos</a>
+      <a href="#sundman">Sundman's series</a>
+      <a href="#nye">The figure eight and new orbits</a>
+      <a href="#solsystemet">Is the Solar System stable?</a>
+      <a href="#opgaver">Exercises</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+<h2 id="to">Two bodies: solved</h2>
+<p>For two bodies of masses $m_1$ and $m_2$ the motion can be split into the uniform motion of the centre of mass and the relative motion $\mathbf r=\mathbf r_2-\mathbf r_1$, which satisfies</p>
+<div class="eq">$$\ddot{\mathbf r}=-\frac{G(m_1+m_2)}{r^3}\,\mathbf r .$$</div>
+<p>This is a problem of one body in a fixed central field, and Newton showed in the <a href="principia-en.html#bog1">Principia</a> that the orbit is a conic section – an ellipse, parabola or hyperbola. The problem has enough conserved quantities (energy, angular momentum and the Laplace–Runge–Lenz vector) to determine the orbit completely. With three bodies there are 18 unknowns (three positions and three velocity components in space for each body) but only 10 classical conserved quantities: the energy, three components of momentum, three of angular momentum, and the three initial coordinates of the centre of mass. Heinrich Bruns showed in 1887 that there are no further algebraic conservation laws. The equations</p>
+<div class="eq">$$m_i\ddot{\mathbf r}_i=\sum_{j\neq i}\frac{G\,m_im_j\,(\mathbf r_j-\mathbf r_i)}{|\mathbf r_j-\mathbf r_i|^3},\qquad i=1,2,3,$$</div>
+<p>therefore cannot be reduced to something that can be solved by formulas.</p>
+
+<h2 id="newton">Newton and the Moon</h2>
+<p>Newton met the problem at once, because the Moon does not move in an ellipse. The Sun pulls on both the Earth and the Moon, and the Moon's orbit turns, wobbles and changes shape (see <a href="maanens-bane-3d-en.html">The Moon's orbit in 3D</a>). In Book I of the Principia, Proposition 66 with its 22 corollaries, Newton described qualitatively how a third body disturbs an ellipse, and in Book III he tried to calculate the Moon's inequalities. He obtained the rotation of the line of apsides only half as large as it is. According to an account from Newton's circle, he told Halley that the theory of the Moon made his head ache and kept him awake so often that he would think of it no more. The problem was solved only in 1749, when Alexis Clairaut realised that second-order terms in the perturbation calculation must be taken into account.</p>
+
+<h3 id="simulator">The simulator: release three bodies</h3>
+<p>Here Newton's equations are solved numerically with fourth-order Runge–Kutta and a time step that automatically shrinks when two bodies come close. Choose one of the classic initial conditions. Switch on "Shadow system" to start a copy of the system with one coordinate changed by a millionth – the graph shows how quickly the two copies part.</p>
+<div class="simbox" id="box1"><div class="labels"></div><div class="hud" id="hud1"></div><canvas class="graph" id="graph1"></canvas><div class="hint">Drag: rotate · pinch/scroll: zoom</div></div>
+<div class="controls" data-sim="s1">
+  <div class="row">
+    <button class="chip on" data-mode="eight">Figure eight</button>
+    <button class="chip" data-mode="lagrange">Lagrange's triangle</button>
+    <button class="chip" data-mode="euler">Euler's line</button>
+    <button class="chip" data-mode="pyth">Pythagoras (Burrau)</button>
+    <button class="chip" data-mode="hier">Star, planet and moon</button>
+    <button class="chip" data-mode="random">Random</button>
+  </div>
+  <div class="row">
+    <button data-act="play">▶ Start</button><button data-act="rev">◀ Reverse</button><button data-act="reset">↺ Reset</button>
+    <span class="sep"></span>
+    <label class="sl">Speed <input type="range" data-speed min="0.1" max="4" step="0.1" value="1"><b>1.0×</b></label>
+    <label class="tg"><input type="checkbox" id="c1ghost" checked> Shadow system (Δ = 10⁻⁶)</label>
+  </div>
+</div>
+<div class="task"><b>Try it yourself.</b> <ol>
+  <li>Figure eight: does the shadow system keep up? For how long? (The orbit is stable, so the difference grows only slowly.)</li>
+  <li>Lagrange's triangle with three equal masses: how long does the triangle last? What happens when it breaks up?</li>
+  <li>Pythagoras: three masses of 3, 4 and 5 start at rest at the corners of a 3-4-5 triangle. How does it end? Watch the energy and angular momentum in the readout – they should be conserved.</li>
+  <li>Star, planet and moon: why is this system so much more predictable than Pythagoras?</li>
+</ol></div>
+
+<h2 id="euler-lagrange">Euler and Lagrange: the five special solutions</h2>
+<p>Although there is no general solution, there are special solutions in which the figure formed by the three bodies keeps its shape and merely rotates and scales. Leonhard Euler found the <b>collinear</b> solutions in 1767: the three bodies always lie on a straight line that rotates. Joseph-Louis Lagrange found the <b>equilateral triangle</b> in 1772 in his prize essay "Essai sur le problème des trois corps": for <em>any</em> distribution of the masses the three bodies can move so that they always form an equilateral triangle. Lagrange himself thought these solutions were mere curiosities.</p>
+<p>The Euler and Lagrange solutions with three equal masses are unstable – try them in the simulator. But if one mass is much larger than the other two, and the middle one much larger than the smallest, Lagrange's triangle is stable. Edward Routh showed in 1875 that this requires</p>
+<div class="eq">$$27\,(m_1m_2+m_2m_3+m_3m_1)<(m_1+m_2+m_3)^2 ,$$</div>
+<p>for a sun and planet with a small third mass: $\mu=m_2/(m_1+m_2)<0.0385$. Jupiter has $\mu\approx0.001$ and satisfies the condition with a wide margin. In 1906 Max Wolf in Heidelberg found the asteroid (588) Achilles 60° ahead of Jupiter in its orbit – the first example in nature of Lagrange's triangle. Today more than 10,000 of these <b>Trojans</b> are known, sharing Jupiter's orbit in two groups, and NASA's <em>Lucy</em> probe is on its way to visit some of them.</p>
+
+<h3 id="begraenset">The restricted three-body problem</h3>
+<p>If the third body is so light that it does not affect the other two – a satellite, an asteroid, a dust grain – the two heavy bodies move in circles about their centre of mass. In a coordinate system rotating with them they stand still, and the light particle feels the gravity of both together with the centrifugal and Coriolis forces. With the distance between the heavy bodies as unit of length and the orbital period $2\pi$ as unit of time, they lie at $(-\mu,0)$ and $(1-\mu,0)$, and the particle's motion is</p>
+<div class="eq">$$\ddot x-2\dot y=\frac{\partial\Omega}{\partial x},\qquad \ddot y+2\dot x=\frac{\partial\Omega}{\partial y},\qquad
+\Omega=\tfrac12(x^2+y^2)+\frac{1-\mu}{r_1}+\frac{\mu}{r_2}.$$</div>
+<p>Carl Jacobi found one conserved quantity in 1836, the <b>Jacobi constant</b> $C=2\Omega-\dot x^2-\dot y^2$. Since $\dot x^2+\dot y^2\geq0$, the particle can only be where $2\Omega\geq C$. The boundary is called the <b>zero-velocity curve</b>, and George William Hill used it in 1878 to show that the Moon can never escape from the Earth. The equilibrium points, where $\nabla\Omega=0$, are the five <b>Lagrange points</b>: L1, L2 and L3 on the line (Euler's solutions) and L4 and L5 at the apexes of two equilateral triangles (Lagrange's).</p>
+
+<h3 id="lagrangepunkter">The Lagrange points in 3D</h3>
+<p>The surface shows the effective potential $-\Omega$ in the rotating frame, with the height magnified near the top so that the small differences between the Lagrange points can be seen. The wells are the two heavy bodies; L1, L2 and L3 are saddle points, and L4 and L5 are hilltops. That L4 and L5 are nevertheless stable is due to the Coriolis force: a particle rolling down the hill is deflected and goes into orbit around the top. Choose a particle and watch its orbit, and the light-green zero-velocity curve for its Jacobi constant.</p>
+<div class="simbox" id="box2"><div class="labels"></div><div class="hud" id="hud2"></div><div class="hint">Drag: rotate · pinch/scroll: zoom</div></div>
+<div class="controls" data-sim="s2">
+  <div class="row">
+    <button class="chip on" data-mode="tad">Trojan about L4 (tadpole)</button>
+    <button class="chip" data-mode="horse">Horseshoe orbit</button>
+    <button class="chip" data-mode="l1">At L1 (unstable)</button>
+    <button class="chip" data-mode="moon">Earth–Moon: captured by the Earth</button>
+  </div>
+  <div class="row">
+    <button data-act="play">▶ Start</button><button data-act="rev">◀ Reverse</button><button data-act="reset">↺ Reset</button>
+    <span class="sep"></span>
+    <label class="sl">Speed <input type="range" data-speed min="0.2" max="6" step="0.2" value="2"><b>2.0×</b></label>
+    <label class="tg"><input type="checkbox" id="c2zvc" checked> Zero-velocity curve</label>
+  </div>
+</div>
+<div class="task"><b>Try it yourself.</b> <ol>
+  <li>The Trojan (Earth–Moon): it starts a little to the side of L4 and circles the point in an elongated "tadpole" orbit. Why does it not roll down the hill?</li>
+  <li>The horseshoe (Sun–Jupiter; here the differences in the landscape are too small to see): the particle shuttles between the L4 and L5 sides and turns at L3. Saturn's moons Janus and Epimetheus swap orbits in this way every four years.</li>
+  <li>L1: how quickly does the particle leave the point? Why must probes at L1 and L2 (SOHO, James Webb) correct their orbits with rocket engines?</li>
+  <li>Earth–Moon: the particle cannot cross the zero-velocity curve. What does that mean for whether it can reach the Moon?</li>
+</ol></div>
+<div class="cols">
+  <div class="card">
+    <h3>The Lagrange points in practice</h3>
+    <p><b>Sun–Earth L1</b> (1.5 million km towards the Sun): the solar observatory SOHO since 1996 – an uninterrupted view of the Sun. <b>Sun–Earth L2</b> (1.5 million km away from the Sun): Planck, Gaia and the James Webb telescope, which has the Sun, Earth and Moon in the same direction and can keep cold behind its sunshield. <b>L4 and L5</b>: Jupiter's Trojans, the Trojans of Neptune and Mars, and at least two small Earth Trojans (2010 TK<sub>7</sub> and 2020 XL<sub>5</sub>).</p>
+  </div>
+  <div class="card">
+    <h3>Where is L1?</h3>
+    <p>For a small mass $m_2$ at distance $a$ from $m_1$, L1 and L2 lie at a distance</p>
+    $$r\approx a\sqrt[3]{\frac{m_2}{3m_1}}$$
+    <p>from $m_2$ – the <b>Hill radius</b>. For the Earth and the Sun it is about 1.5 million km, four times the Moon's distance. Within the Hill radius the Earth's gravity dominates the Sun's tidal force, and moons can orbit stably there.</p>
+  </div>
+</div>
+
+<h2 id="poincare">Poincaré and the discovery of chaos</h2>
+<p>In 1885 the Swedish mathematician Gösta Mittag-Leffler announced, on behalf of King Oscar II, a prize for solving the $N$-body problem: find a convergent series describing the motion for all time. The 34-year-old Henri Poincaré won the prize in January 1889 with a memoir on the restricted three-body problem – without solving it, but with so many new ideas that the judges were convinced. While the memoir was being printed in <em>Acta Mathematica</em>, the young Swedish mathematician Lars Edvard Phragmén, who was editing it, raised some questions, and Poincaré discovered a serious error. He had assumed that certain curves in phase space closed neatly; in reality they intersect each other infinitely many times in a web he called <em>homoclinic</em> intersections. The printed issue was recalled and destroyed – Poincaré paid himself, and it cost him more than the prize. The corrected version of 1890 became the foundation of his great work <em>Les méthodes nouvelles de la mécanique céleste</em> (1892–1899), and in 1908 he summed up in <em>Science et méthode</em>:</p>
+<blockquote>It may happen that small differences in the initial conditions produce very great ones in the final phenomena … Prediction becomes impossible.</blockquote>
+<p>This was the discovery of what we now call <b>deterministic chaos</b>: the motion is completely determined by Newton's laws, yet so sensitive to the initial conditions that in practice it cannot be predicted. Try the shadow system in the simulator above with the Pythagorean initial conditions. Poincaré's tool – cross-sections of phase space, now called Poincaré sections – is described on the page on <a href="hamilton-mekanik-en.html">Hamiltonian mechanics</a>.</p>
+
+<h3 id="sundman">Sundman's series – the answer that cannot be used</h3>
+<p>King Oscar's question was in fact answered. In 1912 the Finnish mathematician Karl Frithiof Sundman showed that the three-body problem (when the angular momentum is not zero) has a solution in the form of a convergent power series in $t^{1/3}$ – after a clever rescaling of time – valid for all time. But the series converges so slowly that, according to an estimate by Beloriszky in 1930, about $10^{8\,000\,000}$ terms would be needed to calculate with astronomical accuracy. Chaos does not disappear because one has a formula; it hides in the formula's immense length.</p>
+
+<h2 id="nye">The figure eight and other new orbits</h2>
+<p>In 1993 the physicist Cristopher Moore found numerically an entirely new periodic solution: three equal masses chasing each other round a figure eight. Alain Chenciner and Richard Montgomery proved in 2000 that it exists. With $G=m=1$ the initial conditions are (Carles Simó):</p>
+<div class="eq">$$\mathbf r_1=-\mathbf r_2=(-0.97000436,\;0.24308753),\quad \mathbf r_3=\mathbf 0,\qquad \mathbf v_3=(0.93240737,\;0.86473146),\quad \mathbf v_1=\mathbf v_2=-\tfrac12\mathbf v_3 .$$</div>
+<p>In 2013 Milovan Šuvakov and Veljko Dmitrašinović found 13 new families of periodic orbits, and with computer searches thousands are now known. Another classic example is the <b>Pythagorean problem</b>, posed by Carl Burrau in 1913: masses 3, 4 and 5 at rest at the corners of a right-angled triangle with sides 3, 4 and 5. Only with Victor Szebehely and C. Frederick Peters' computer calculations in 1967 did it become clear that after a long and chaotic dance the two heaviest form a binary star, and the lightest is flung out.</p>
+<p class="note">The three-body problem also gave its name to Liu Cixin's science-fiction novel <em>The Three-Body Problem</em> (2008), in which a civilisation lives in a chaotic three-star system. Our nearest neighbours, Alpha Centauri A and B and Proxima Centauri, form a real three-star system – but a hierarchical and therefore far more stable one.</p>
+
+<h2 id="solsystemet">Is the Solar System stable?</h2>
+<p>The Solar System is an $N$-body problem, and Newton himself thought that God must intervene from time to time to keep it in order. Laplace and Lagrange showed around 1780 that the planets' mean distances do not change to first order in perturbation theory, and Laplace declared the system stable. Poincaré's work showed that the question was far harder. In 1989 Jacques Laskar calculated that the motion of the inner planets is chaotic, with a Lyapunov time of about 5 million years: an uncertainty of 15 metres in the Earth's position today grows to 150 million km – the whole orbit – within 100 million years. Laskar and Mickaël Gastineau found in 2009, by computing 2501 almost identical solar systems 5 billion years ahead, that in about 1% of them Mercury acquired so large an eccentricity that it could collide with Venus or the Sun. The Solar System, in short, is stable enough – but not predictable for ever.</p>
+
+<h2 id="opgaver">Exercises</h2>
+<ol>
+  <li>Show that three equal masses $m$ at the corners of an equilateral triangle of side $a$ can move in circles about the centre of mass with angular velocity $\omega=\sqrt{3Gm/a^3}$.</li>
+  <li>Show for Euler's line with three equal masses at distance $a$ from the middle one that $\omega=\sqrt{5Gm/(4a^3)}$.</li>
+  <li>Does Sun–Earth–(small mass) satisfy Routh's condition? And Pluto–Charon ($m_2/m_1\approx0.12$)?</li>
+  <li>Calculate the Hill radius of the Earth in the Sun's field and of the Moon in the Earth's field. Why does the Moon have no moons?</li>
+  <li>Count conserved quantities: how many degrees of freedom (positions and velocities) does the planar three-body problem have, and how many conserved quantities are there? Compare with the two-body problem.</li>
+  <li>The Lyapunov time of the inner planets is about 5 million years. By what factor does a small error grow in 100 million years?</li>
+</ol>
+
+<h2 id="kilder">Sources and further reading</h2>
+<ul class="src">
+  <li>J.-L. Lagrange: "Essai sur le problème des trois corps", Prix de l'Académie royale des sciences de Paris, 1772.</li>
+  <li>H. Poincaré: "Sur le problème des trois corps et les équations de la dynamique", <em>Acta Mathematica</em> 13 (1890) 1–270.</li>
+  <li>J. Barrow-Green: <em>Poincaré and the Three Body Problem</em>. American Mathematical Society, 1997.</li>
+  <li>K. F. Sundman: "Mémoire sur le problème des trois corps", <em>Acta Mathematica</em> 36 (1912) 105–179.</li>
+  <li>C. Moore: "Braids in classical dynamics", <em>Physical Review Letters</em> 70 (1993) 3675; A. Chenciner, R. Montgomery: "A remarkable periodic solution of the three-body problem in the case of equal masses", <em>Annals of Mathematics</em> 152 (2000) 881–901.</li>
+  <li>M. Šuvakov, V. Dmitrašinović: "Three classes of Newtonian three-body planar periodic orbits", <em>Physical Review Letters</em> 110 (2013) 114301.</li>
+  <li>V. Szebehely, C. F. Peters: "Complete solution of a general problem of three bodies", <em>Astronomical Journal</em> 72 (1967) 876.</li>
+  <li>J. Laskar, M. Gastineau: "Existence of collisional trajectories of Mercury, Mars and Venus with the Earth", <em>Nature</em> 459 (2009) 817–819.</li>
+  <li>R. Montgomery: figure-eight animations and initial conditions, people.ucsc.edu/~rmont.</li>
+</ul>
+<p class="note">Related pages: <a href="principia-en.html">Newton's Principia</a> · <a href="hamilton-mekanik-en.html">Hamiltonian mechanics</a> · <a href="lagrange-mekanik-en.html#dobbelt">The double pendulum and chaos</a> · <a href="maanens-bane-3d-en.html">The Moon's orbit in 3D</a> · <a href="solsystem-en.html">The Solar System</a>.</p>
+
+</main>
+<footer>
+  <div class="wrap">mhgfysik.dk · Michael H. Grant, lektor emeritus in physics &amp; mathematics · The content may be reused under <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a> with attribution. · <a href="index-en.html">Home</a></div>
+</footer>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* ================================================================
+   Fælles værktøj (samme motor som principia.html)
+   ================================================================ */
+const UP = new THREE.Vector3(0,1,0);
+const G0 = 9.82;
+const fmt = (x,d=2)=>{ if(!isFinite(x)) return '–'; if(Math.abs(x)<0.5*Math.pow(10,-d)) x=0; return x.toFixed(d).replace('-','−'); };
+const sims = [];
+const dummy = new THREE.Object3D();
+const _v = new THREE.Vector3(), _a = new THREE.Vector3();
+
+function makeView(boxId, {cam, target, bg=0x070a12, fog=false, polar=Math.PI*0.495}){
+  const box = document.getElementById(boxId);
+  const renderer = new THREE.WebGLRenderer({antialias:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  box.insertBefore(renderer.domElement, box.firstChild);
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(bg);
+  if(fog) scene.fog = new THREE.Fog(bg, 45, 140);
+  const camera = new THREE.PerspectiveCamera(45, 1, 0.05, 1000);
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true; controls.dampingFactor = 0.12; controls.maxPolarAngle = polar;
+  scene.add(new THREE.HemisphereLight(0xdfe6ff, 0x262a33, 1.1));
+  const dl = new THREE.DirectionalLight(0xffffff, 1.6); dl.position.set(8,14,9); scene.add(dl);
+  const view = {box, renderer, scene, camera, controls, labels: box.querySelector('.labels'), labelList: []};
+  view.setCam = (c=cam, t=target)=>{ camera.position.set(...c); controls.target.set(...t); controls.update(); };
+  view.setCam();
+  const resize = ()=>{ const w=box.clientWidth, h=box.clientHeight; if(!w||!h) return;
+    renderer.setSize(w, h, false); camera.aspect = w/h; camera.updateProjectionMatrix(); };
+  new ResizeObserver(resize).observe(box); resize();
+  return view;
+}
+function addLabel(view, cls=''){
+  const el = document.createElement('div'); el.className = 'lbl '+cls; view.labels.appendChild(el);
+  const L = {el, pos:new THREE.Vector3(), show:true, set(t){ if(this._t!==t){ this._t=t; el.innerHTML=t; } }};
+  view.labelList.push(L); return L;
+}
+function updateLabels(view){
+  const w=view.box.clientWidth, h=view.box.clientHeight;
+  for(const L of view.labelList){
+    if(!L.show){ L.el.style.display='none'; continue; }
+    _v.copy(L.pos).project(view.camera);
+    if(_v.z>1 || Math.abs(_v.x)>1.1 || Math.abs(_v.y)>1.1){ L.el.style.display='none'; continue; }
+    L.el.style.display='block';
+    L.el.style.left=((_v.x+1)/2*w)+'px'; L.el.style.top=((1-_v.y)/2*h)+'px';
+  }
+}
+function makeArrow(color, r=0.06){
+  const g = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({color, emissive:color, emissiveIntensity:0.45, roughness:0.4});
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(r,r,1,12), mat);
+  const head = new THREE.Mesh(new THREE.ConeGeometry(r*2.6, r*6, 16), mat);
+  g.add(shaft, head);
+  const d = new THREE.Vector3();
+  g.set = (origin, dir, len)=>{
+    if(!(len>1e-3)){ g.visible=false; return; }
+    g.visible = true; g.position.copy(origin);
+    const hl = Math.min(r*6, len*0.5);
+    shaft.scale.set(1, len-hl, 1); shaft.position.y = (len-hl)/2;
+    head.scale.setScalar(hl/(r*6)); head.position.y = len-hl/2;
+    d.copy(dir).normalize(); g.quaternion.setFromUnitVectors(UP, d);
+  };
+  return g;
+}
+function starField(scene, n=1600, R=400){
+  const p=new Float32Array(n*3);
+  for(let i=0;i<n;i++){ const u=Math.random()*2-1, th=Math.random()*Math.PI*2, s=Math.sqrt(1-u*u);
+    p[3*i]=R*s*Math.cos(th); p[3*i+1]=R*u; p[3*i+2]=R*s*Math.sin(th); }
+  const g=new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(p,3));
+  const pts=new THREE.Points(g, new THREE.PointsMaterial({color:0xcfd6ff, size:1.3, sizeAttenuation:false, fog:false}));
+  scene.add(pts); return pts;
+}
+const std = (color, o={})=> new THREE.MeshStandardMaterial(Object.assign({color, roughness:0.55, metalness:0.1}, o));
+/* en 2D-canvas, der følger sin CSS-størrelse og skærmens pixeltæthed */
+function fit2d(cv){
+  const dpr=Math.min(window.devicePixelRatio||1,2), W=cv.clientWidth, H=cv.clientHeight;
+  if(cv.width!==Math.round(W*dpr) || cv.height!==Math.round(H*dpr)){ cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); }
+  const c=cv.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0); return {c,W,H};
+}
+/* en lille trail (linje) i 3D med fast kapacitet */
+function makeTrail(scene, color, cap=1500, opacity=0.9){
+  const pos=new Float32Array(cap*3), g=new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos,3).setUsage(THREE.DynamicDrawUsage));
+  const line=new THREE.Line(g, new THREE.LineBasicMaterial({color, transparent:true, opacity}));
+  line.frustumCulled=false; scene.add(line);
+  return {line, pos, cap, n:0,
+    clear(){ this.n=0; g.setDrawRange(0,0); },
+    push(x,y,z){ if(this.n>=cap){ pos.copyWithin(0,3); this.n=cap-1; } pos[3*this.n]=x; pos[3*this.n+1]=y; pos[3*this.n+2]=z; this.n++;
+      g.setDrawRange(0,this.n); g.attributes.position.needsUpdate=true; }};
+}
+
+/* --------- simulations-runner: start/pause, baglæns, tempo --------- */
+function addSim(sim){
+  Object.assign(sim, {running:false, reverse:false, speed:1, hist:[], visible:false, finished:false});
+  sims.push(sim);
+  const box = sim.view ? sim.view.box : sim.box;
+  new IntersectionObserver(es=>{ sim.visible = es[0].isIntersecting; }, {rootMargin:'100px'}).observe(box);
+  const bar = document.querySelector(`.controls[data-sim="${sim.id}"]`);
+  sim.bar = bar;
+  sim.restart = (newMode)=>{ sim.hist.length=0; sim.finished=false; sim.reset(newMode); };
+  bar.querySelectorAll('[data-act]').forEach(b=>b.addEventListener('click', ()=>{
+    const a=b.dataset.act;
+    if(a==='play'){
+      if(!sim.running && sim.finished && !sim.reverse) sim.restart();
+      if(sim.reverse){ sim.reverse=false; sim.running=true; }
+      else sim.running = !sim.running;
+    } else if(a==='rev'){
+      if(sim.reverse){ sim.reverse=false; sim.running=false; }
+      else if(sim.hist.length || (sim.reversible && sim.tNow()>1e-9)){ sim.reverse=true; sim.running=true; sim.finished=false; }
+    } else if(a==='reset'){ sim.restart(); sim.running=false; sim.reverse=false; }
+    syncBar(sim);
+  }));
+  const sp = bar.querySelector('[data-speed]');
+  if(sp) sp.addEventListener('input', ()=>{ sim.speed=+sp.value; sp.nextElementSibling.textContent = fmt(sim.speed,1)+'×'; });
+  bar.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click', ()=>{
+    bar.querySelectorAll('[data-mode]').forEach(x=>x.classList.toggle('on', x===b));
+    sim.mode = b.dataset.mode;
+    bar.querySelectorAll('[data-for]').forEach(r=>r.style.display = (r.dataset.for===sim.mode)?'':'none');
+    sim.restart(true); sim.running=false; sim.reverse=false; syncBar(sim);
+  }));
+  bar.querySelectorAll('[data-for]').forEach(r=>r.style.display = (r.dataset.for===sim.mode)?'':'none');
+}
+function syncBar(sim){
+  const p = sim.bar.querySelector('[data-act="play"]'), r = sim.bar.querySelector('[data-act="rev"]');
+  if(p){ p.textContent = (sim.running && !sim.reverse) ? '⏸ Pause' : '▶ Start'; p.classList.toggle('on', sim.running && !sim.reverse); }
+  if(r) r.classList.toggle('on', sim.reverse);
+}
+function param(id, obj, key, show, onChange){
+  const el=document.getElementById(id), out=document.getElementById(id+'v');
+  const upd=()=>{ obj[key] = (el.tagName==='SELECT') ? el.value : (el.type==='checkbox' ? el.checked : +el.value); if(out) out.innerHTML = show(obj[key]); };
+  el.addEventListener('input', ()=>{ upd(); onChange&&onChange(); }); upd();
+}
+function paramReset(sim){ return ()=>{ const was = sim.running && !sim.reverse; sim.restart(); sim.running = was; sim.reverse=false; syncBar(sim); }; }
+
+function startLoop(){
+  const clock = new THREE.Clock();
+  function frame(){
+    requestAnimationFrame(frame);
+    const dt = Math.min(clock.getDelta(), 0.05);
+    for(const s of sims){
+      if(!s.visible) continue;
+      if(s.running){
+        if(s.reverse && s.reversible){
+          s.step(-Math.min(dt*s.speed, s.tNow()));
+          if(s.tNow()<=1e-9){ s.running=false; s.reverse=false; syncBar(s); }
+        } else if(s.reverse){
+          const st = s.hist.pop(); if(st) s.setState(st);
+          if(!s.hist.length){ s.running=false; s.reverse=false; syncBar(s); }
+        } else {
+          if(!s.reversible) s.hist.push(s.getState());
+          if(s.hist.length>9000) s.hist.splice(0,1500);
+          s.step(dt*s.speed);
+          if(s.done && s.done()){ s.running=false; s.finished=true; syncBar(s); }
+        }
+      }
+      s.draw(dt);
+      if(s.view){
+        s.view.controls.update();
+        s.view.renderer.render(s.view.scene, s.view.camera);
+        updateLabels(s.view);
+      }
+      if(s.hud) s.hud();
+    }
+  }
+  sims.forEach(syncBar);
+  frame();
+}
+
+
+/* ================================================================
+   SIM 1 – det generelle trelegemeproblem (G = 1, i planen)
+   ================================================================ */
+const v1=makeView('box1',{cam:[0,2.4,2.6],target:[0,0,0],polar:Math.PI*0.49});
+const s1={id:'s1', view:v1, mode:'eight'};
+const hud1=document.getElementById('hud1'), graph1=document.getElementById('graph1');
+starField(v1.scene,1400,300);
+const COL1=[0xf2d590,0x6fa8dc,0xf08a7a], CSS1=['#f2d590','#9fd0ff','#f08a7a'];
+const grid1=new THREE.PolarGridHelper(1,12,8,64,0x1c2740,0x141c30); v1.scene.add(grid1);
+const bodies=COL1.map(c=>{ const m=new THREE.Mesh(new THREE.SphereGeometry(1,24,16), std(c,{emissive:c,emissiveIntensity:0.5,roughness:0.35})); v1.scene.add(m); return m; });
+const ghosts=COL1.map(c=>{ const m=new THREE.Mesh(new THREE.SphereGeometry(1,16,12), new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:0.35,wireframe:true})); v1.scene.add(m); return m; });
+const lbl1=COL1.map(()=>addLabel(v1,''));
+const TR=3000;
+const trails=COL1.map(c=>{ const pos=new Float32Array(TR*3), g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3).setUsage(THREE.DynamicDrawUsage));
+  const l=new THREE.Line(g,new THREE.LineBasicMaterial({color:c,transparent:true,opacity:0.8})); l.frustumCulled=false; v1.scene.add(l); return {pos,g,t:new Float64Array(TR),n:0}; });
+const gtr=COL1.map(c=>{ const pos=new Float32Array(TR*3), g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3).setUsage(THREE.DynamicDrawUsage));
+  const l=new THREE.Line(g,new THREE.LineDashedMaterial({color:c,transparent:true,opacity:0.35,dashSize:0.03,gapSize:0.03})); l.frustumCulled=false; v1.scene.add(l); return {pos,g,l,t:new Float64Array(TR),n:0}; });
+let ghostOn=true;
+const cg=document.getElementById('c1ghost'); cg.onchange=()=>{ ghostOn=cg.checked; };
+let M1=[1,1,1], ext=1.2, rate=1, st1;
+const sep={t:new Float64Array(20000), d:new Float32Array(20000), n:0};
+function accel(Y,m,out){
+  for(let i=0;i<3;i++){ out[4*i]=Y[4*i+2]; out[4*i+1]=Y[4*i+3]; out[4*i+2]=0; out[4*i+3]=0; }
+  for(let i=0;i<3;i++) for(let j=i+1;j<3;j++){
+    const dx=Y[4*j]-Y[4*i], dy=Y[4*j+1]-Y[4*i+1], r2=dx*dx+dy*dy, r3=r2*Math.sqrt(r2);
+    const fx=dx/r3, fy=dy/r3;
+    out[4*i+2]+=m[j]*fx; out[4*i+3]+=m[j]*fy; out[4*j+2]-=m[i]*fx; out[4*j+3]-=m[i]*fy; }
+}
+const k1=new Float64Array(12),k2=new Float64Array(12),k3=new Float64Array(12),k4=new Float64Array(12),tmp=new Float64Array(12);
+function rk4(Y,m,h){
+  accel(Y,m,k1); for(let i=0;i<12;i++) tmp[i]=Y[i]+0.5*h*k1[i];
+  accel(tmp,m,k2); for(let i=0;i<12;i++) tmp[i]=Y[i]+0.5*h*k2[i];
+  accel(tmp,m,k3); for(let i=0;i<12;i++) tmp[i]=Y[i]+h*k3[i];
+  accel(tmp,m,k4); for(let i=0;i<12;i++) Y[i]+=h*(k1[i]+2*k2[i]+2*k3[i]+k4[i])/6;
+}
+function dtFor(Y,m){ let tmin=1e9; for(let i=0;i<3;i++) for(let j=i+1;j<3;j++){ const dx=Y[4*j]-Y[4*i], dy=Y[4*j+1]-Y[4*i+1], r=Math.hypot(dx,dy); tmin=Math.min(tmin,Math.sqrt(r*r*r/(m[i]+m[j]))); } return Math.min(0.004*rate, 0.006*tmin); }
+function advance(Y,m,T){ let left=T, guard=0; while(left>1e-12 && guard++<60000){ const h=Math.min(left,dtFor(Y,m)); rk4(Y,m,h); left-=h; } }
+function energy(Y,m){ let E=0; for(let i=0;i<3;i++) E+=0.5*m[i]*(Y[4*i+2]**2+Y[4*i+3]**2);
+  for(let i=0;i<3;i++) for(let j=i+1;j<3;j++) E-=m[i]*m[j]/Math.hypot(Y[4*j]-Y[4*i],Y[4*j+1]-Y[4*i+1]); return E; }
+const angmom=(Y,m)=>{ let L=0; for(let i=0;i<3;i++) L+=m[i]*(Y[4*i]*Y[4*i+3]-Y[4*i+1]*Y[4*i+2]); return L; };
+function centre(Y,m){ const M=m[0]+m[1]+m[2]; let cx=0,cy=0,px=0,py=0; for(let i=0;i<3;i++){ cx+=m[i]*Y[4*i]; cy+=m[i]*Y[4*i+1]; px+=m[i]*Y[4*i+2]; py+=m[i]*Y[4*i+3]; }
+  for(let i=0;i<3;i++){ Y[4*i]-=cx/M; Y[4*i+1]-=cy/M; Y[4*i+2]-=px/M; Y[4*i+3]-=py/M; } }
+function initial(mode){
+  let Y=new Float64Array(12), m;
+  const set=(i,x,y,vx,vy)=>{ Y[4*i]=x; Y[4*i+1]=y; Y[4*i+2]=vx; Y[4*i+3]=vy; };
+  if(mode==='eight'){ m=[1,1,1]; const x=-0.97000436, y=0.24308753, vx=0.93240737, vy=0.86473146;
+    set(0,x,y,-vx/2,-vy/2); set(1,-x,-y,-vx/2,-vy/2); set(2,0,0,vx,vy); ext=1.25; rate=1; }
+  else if(mode==='lagrange'){ m=[1,1,1]; const a=1, r=a/Math.sqrt(3), w=Math.sqrt(3/a**3);
+    for(let i=0;i<3;i++){ const th=Math.PI/2+i*2*Math.PI/3; set(i,r*Math.cos(th),r*Math.sin(th),-w*r*Math.sin(th),w*r*Math.cos(th)); } Y[0]+=1e-5; ext=1.3; rate=1; }
+  else if(mode==='euler'){ m=[1,1,1]; const w=Math.sqrt(5/4); set(0,-1,0,0,-w); set(1,0,0,0,0); set(2,1,0,0,w); Y[1]+=1e-5; ext=1.8; rate=1; }
+  else if(mode==='pyth'){ m=[3,4,5]; set(0,1,3,0,0); set(1,-2,-1,0,0); set(2,1,-1,0,0); ext=5; rate=2.5; }
+  else if(mode==='hier'){ m=[1,0.01,1e-4]; const vp=Math.sqrt(1.01), rm=0.06, vm=Math.sqrt(0.01/rm);
+    set(0,0,0,0,0); set(1,1,0,0,vp); set(2,1+rm,0,0,vp+vm); ext=1.4; rate=1.2; }
+  else { m=[0,1,2].map(()=>0.5+Math.random()); for(let i=0;i<3;i++){ const r=0.4+0.8*Math.random(), a=Math.random()*Math.PI*2; set(i,r*Math.cos(a),r*Math.sin(a),(Math.random()-0.5)*0.8,(Math.random()-0.5)*0.8); } ext=2; rate=1; }
+  centre(Y,m); return {Y,m};
+}
+const G3=(x,y)=>new THREE.Vector3(x,0,-y);
+s1.reset=()=>{
+  const {Y,m}=initial(s1.mode); M1=m;
+  const Yg=Y.slice(); Yg[0]+=1e-6;
+  st1={t:0, Y, Yg, E0:energy(Y,m), L0:angmom(Y,m)};
+  trails.forEach(T=>{ T.n=0; T.g.setDrawRange(0,0); }); gtr.forEach(T=>{ T.n=0; T.g.setDrawRange(0,0); }); sep.n=0;
+  v1.setCam([0,ext*1.6,ext*1.9],[0,0,0]); grid1.scale.setScalar(ext);
+  bodies.forEach((b,i)=>b.scale.setScalar(Math.max(0.018,0.045*Math.cbrt(m[i]/Math.max(...m)))*ext));
+  ghosts.forEach((b,i)=>b.scale.copy(bodies[i].scale).multiplyScalar(1.35));
+};
+s1.getState=()=>({t:st1.t, Y:st1.Y.slice(), Yg:st1.Yg.slice(), E0:st1.E0, L0:st1.L0});
+s1.setState=x=>{ st1={t:x.t, Y:x.Y.slice(), Yg:x.Yg.slice(), E0:x.E0, L0:x.L0}; };
+function pushTrail(T,x,y,t){ while(T.n>0 && T.t[T.n-1]>=t) T.n--; if(T.n>=TR){ T.pos.copyWithin(0,3); T.t.copyWithin(0,1); T.n=TR-1; }
+  T.pos[3*T.n]=x; T.pos[3*T.n+1]=0; T.pos[3*T.n+2]=-y; T.t[T.n]=t; T.n++; }
+s1.step=dt=>{
+  const T=dt*rate; const nsub=Math.max(1,Math.ceil(T/0.01));
+  for(let k=0;k<nsub;k++){
+    advance(st1.Y,M1,T/nsub); if(ghostOn) advance(st1.Yg,M1,T/nsub); st1.t+=T/nsub;
+    for(let i=0;i<3;i++){ pushTrail(trails[i],st1.Y[4*i],st1.Y[4*i+1],st1.t); if(ghostOn) pushTrail(gtr[i],st1.Yg[4*i],st1.Yg[4*i+1],st1.t); }
+    if(ghostOn){ let d=0; for(let i=0;i<12;i++) d+=(st1.Y[i]-st1.Yg[i])**2; while(sep.n>0 && sep.t[sep.n-1]>=st1.t) sep.n--; if(sep.n<20000){ sep.t[sep.n]=st1.t; sep.d[sep.n]=Math.log10(Math.sqrt(d)+1e-16); sep.n++; } }
+  }
+};
+s1.done=()=>st1.t>400;
+s1.draw=()=>{
+  for(let i=0;i<3;i++){
+    bodies[i].position.copy(G3(st1.Y[4*i],st1.Y[4*i+1]));
+    ghosts[i].visible=ghostOn; ghosts[i].position.copy(G3(st1.Yg[4*i],st1.Yg[4*i+1]));
+    // vis kun spor op til nuværende tid (vigtigt ved baglæns)
+    let n=trails[i].n; while(n>0 && trails[i].t[n-1]>st1.t+1e-9) n--; trails[i].g.setDrawRange(0,n); trails[i].g.attributes.position.needsUpdate=true;
+    let ng=gtr[i].n; while(ng>0 && gtr[i].t[ng-1]>st1.t+1e-9) ng--; gtr[i].l.visible=ghostOn; gtr[i].g.setDrawRange(0,ng); gtr[i].g.attributes.position.needsUpdate=true; gtr[i].l.computeLineDistances();
+    lbl1[i].pos.copy(bodies[i].position).add(new THREE.Vector3(0,bodies[i].scale.x*1.6,0)); lbl1[i].el.style.color=CSS1[i];
+    lbl1[i].set('m = '+(M1[i]<0.01?M1[i].toExponential(0).replace('e-','·10⁻'):fmt(M1[i],M1[i]<1?2:0)));
+  }
+  const {c,W,H}=fit2d(graph1); c.clearRect(0,0,W,H);
+  if(!ghostOn){ c.fillStyle='#9ba4b6'; c.font='10px system-ui,sans-serif'; c.fillText('switch on the shadow system',10,20); return; }
+  const Lm=28,Rm=8,Tm=16,Bm=18, tw=Math.max(20,st1.t), X=t=>Lm+t/tw*(W-Lm-Rm), Y=v=>Tm+(1-v)/(1+7)*(H-Tm-Bm);
+  c.fillStyle='#9ba4b6'; c.font='10px system-ui,sans-serif'; c.fillText('log₁₀ distance to the shadow',Lm-22,11);
+  for(const v of [0,-3,-6]){ c.fillText(String(v).replace('-','−'),4,Y(v)+3); c.strokeStyle='#1d2538'; c.beginPath(); c.moveTo(Lm,Y(v)); c.lineTo(W-Rm,Y(v)); c.stroke(); }
+  c.fillText(fmt(tw,0),W-Rm-16,H-4);
+  c.strokeStyle='#c3a6ff'; c.lineWidth=1.6; c.beginPath(); let first=true;
+  for(let i=0;i<sep.n;i++){ if(sep.t[i]>st1.t) break; const x=X(sep.t[i]), y=Y(Math.max(-7,Math.min(1,sep.d[i]))); first?c.moveTo(x,y):c.lineTo(x,y); first=false; } c.stroke();
+};
+s1.hud=()=>{
+  const E=energy(st1.Y,M1), L=angmom(st1.Y,M1);
+  const dE=Math.abs((E-st1.E0)/st1.E0), dL=Math.abs(st1.L0)>1e-9?Math.abs((L-st1.L0)/st1.L0):Math.abs(L);
+  let d=0; for(let i=0;i<12;i++) d+=(st1.Y[i]-st1.Yg[i])**2; d=Math.sqrt(d);
+  const ex=x=>x.toExponential(1).replace('e-','·10⁻').replace('e+0','');
+  hud1.innerHTML=`<b>t</b> = ${fmt(st1.t,2)} &nbsp; (G = 1)<br>Energy: E = ${fmt(E,4)} &nbsp; |ΔE/E| = ${ex(dE+1e-16)}<br>Angular momentum: L = ${fmt(L,4)}`+
+    (ghostOn?`<br>Distance to the shadow system: ${d<1e-3?ex(d):fmt(d,3)}`:'')+
+    (ghostOn && d>0.1 ? `<div class="warn">The shadow has parted: chaos.</div>` : `<div class="msg">Newton's laws, solved numerically.</div>`);
+};
+addSim(s1);
+s1.restart();
+
+/* ================================================================
+   SIM 2 – det begrænsede trelegemeproblem: Lagrange-punkternes landskab
+   ================================================================ */
+const v2=makeView('box2',{cam:[0.5,2.5,3.5],target:[0.2,0.5,0],polar:Math.PI*0.48});
+const s2={id:'s2', view:v2, mode:'tad', reversible:false};
+const hud2=document.getElementById('hud2');
+starField(v2.scene,1200,300);
+const NG=200, XR=1.6;
+let mu2=0.000954, surf2=null, zvc=null, Ulo=0, Uhi=0, showZ=true;
+const lp=['L1','L2','L3','L4','L5'].map(n=>{ const m=new THREE.Mesh(new THREE.SphereGeometry(0.022,12,10), new THREE.MeshBasicMaterial({color:0xffffff})); v2.scene.add(m); const L=addLabel(v2,''); L.set(n); return {m,L}; });
+const prim=[0xffd27a,0xc9a97a].map((c,i)=>{ const m=new THREE.Mesh(new THREE.SphereGeometry(i?0.035:0.07,20,14), new THREE.MeshBasicMaterial({color:c})); v2.scene.add(m); return m; });
+const plbl=[addLabel(v2,'g'),addLabel(v2,'')];
+const part=new THREE.Mesh(new THREE.SphereGeometry(0.025,16,12), std(0x7fd1b9,{emissive:0x7fd1b9,emissiveIntensity:0.8})); v2.scene.add(part);
+const ptr={pos:new Float32Array(8000*3), n:0}; const ptrG=new THREE.BufferGeometry(); ptrG.setAttribute('position',new THREE.BufferAttribute(ptr.pos,3).setUsage(THREE.DynamicDrawUsage));
+const ptrL=new THREE.Line(ptrG,new THREE.LineBasicMaterial({color:0x7fd1b9})); ptrL.frustumCulled=false; v2.scene.add(ptrL);
+const cz=document.getElementById('c2zvc'); cz.onchange=()=>{ showZ=cz.checked; if(zvc) zvc.visible=showZ; };
+const Om=(x,y)=>0.5*(x*x+y*y)+(1-mu2)/Math.hypot(x+mu2,y)+mu2/Math.hypot(x-1+mu2,y);
+let Wexp=0.04;
+const hOf=U=>1.25*Math.exp(Math.min(0,U-Uhi)/Wexp);
+const W2=(x,y)=>new THREE.Vector3(x, hOf(-Om(x,y)), -y);
+function lagrangePts(){
+  const fx=x=>x-(1-mu2)*(x+mu2)/Math.abs(x+mu2)**3-mu2*(x-1+mu2)/Math.abs(x-1+mu2)**3;
+  const bis=(a,b)=>{ let fa=fx(a); for(let k=0;k<100;k++){ const m=(a+b)/2, fm=fx(m); if((fm>0)===(fa>0)){ a=m; fa=fm; } else b=m; } return (a+b)/2; };
+  return [[bis(-mu2+1e-6,1-mu2-1e-6),0],[bis(1-mu2+1e-6,2),0],[bis(-2,-mu2-1e-6),0],[0.5-mu2,Math.sqrt(3)/2],[0.5-mu2,-Math.sqrt(3)/2]];
+}
+let LP=[];
+function buildSurface(){
+  if(surf2){ v2.scene.remove(surf2); surf2.geometry.dispose(); }
+  LP=lagrangePts(); Uhi=-Om(...LP[3]); Wexp = mu2>0.005 ? 0.04 : 0.0075;
+  const g=new THREE.PlaneGeometry(2*XR,2*XR,NG,NG); g.rotateX(-Math.PI/2);
+  const pos=g.attributes.position, col=new Float32Array(pos.count*3), c=new THREE.Color();
+  for(let i=0;i<pos.count;i++){ const x=pos.getX(i), y=-pos.getZ(i), U=-Om(x,y), h=hOf(U); pos.setY(i,h);
+    const u=h/1.25; c.setHSL(0.62-0.5*u,0.5,0.16+0.4*u); col[3*i]=c.r; col[3*i+1]=c.g; col[3*i+2]=c.b; }
+  g.setAttribute('color',new THREE.BufferAttribute(col,3)); g.computeVertexNormals();
+  surf2=new THREE.Mesh(g,new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.75,side:THREE.DoubleSide,transparent:true,opacity:0.92})); v2.scene.add(surf2);
+  LP.forEach(([x,y],k)=>{ const p=W2(x,y); lp[k].m.position.copy(p).add(new THREE.Vector3(0,0.02,0)); lp[k].L.pos.copy(p).add(new THREE.Vector3(0,0.12,0)); });
+  prim[0].position.set(-mu2,0.05,0); prim[1].position.set(1-mu2,0.05,0);
+  plbl[0].pos.set(-mu2,0.2,0); plbl[1].pos.set(1-mu2,0.18,0);
+  plbl[0].set(mu2>0.005?'Earth':'Sun'); plbl[1].set(mu2>0.005?'Moon':'Jupiter');
+}
+function buildZVC(C){
+  if(zvc){ v2.scene.remove(zvc); zvc.geometry.dispose(); }
+  const n=260, h=2*XR/n, val=(i,j)=>2*Om(-XR+i*h,-XR+j*h)-C, segs=[];
+  const F=new Float64Array((n+1)*(n+1)); for(let i=0;i<=n;i++) for(let j=0;j<=n;j++) F[i*(n+1)+j]=val(i,j);
+  const P=(i,j)=>[-XR+i*h,-XR+j*h];
+  for(let i=0;i<n;i++) for(let j=0;j<n;j++){
+    const a=F[i*(n+1)+j], b=F[(i+1)*(n+1)+j], cc=F[(i+1)*(n+1)+j+1], d=F[i*(n+1)+j+1];
+    const e=[], cut=(p,q,fp,fq)=>{ if((fp<0)!==(fq<0)){ const t=fp/(fp-fq); e.push([p[0]+(q[0]-p[0])*t,p[1]+(q[1]-p[1])*t]); } };
+    cut(P(i,j),P(i+1,j),a,b); cut(P(i+1,j),P(i+1,j+1),b,cc); cut(P(i+1,j+1),P(i,j+1),cc,d); cut(P(i,j+1),P(i,j),d,a);
+    if(e.length>=2){ segs.push(e[0],e[1]); if(e.length===4) segs.push(e[2],e[3]); }
+  }
+  const arr=new Float32Array(segs.length*3); segs.forEach(([x,y],k)=>{ const p=W2(x,y); arr[3*k]=p.x; arr[3*k+1]=p.y+0.012; arr[3*k+2]=p.z; });
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(arr,3));
+  zvc=new THREE.LineSegments(g,new THREE.LineBasicMaterial({color:0xb8ffd9})); zvc.visible=showZ; v2.scene.add(zvc);
+}
+function f2(s,o){ const [x,y,vx,vy]=s, r1=Math.hypot(x+mu2,y), r2=Math.hypot(x-1+mu2,y);
+  o[0]=vx; o[1]=vy; o[2]=x-(1-mu2)*(x+mu2)/r1**3-mu2*(x-1+mu2)/r2**3+2*vy; o[3]=y-(1-mu2)*y/r1**3-mu2*y/r2**3-2*vx; }
+const q1=[0,0,0,0],q2=[0,0,0,0],q3=[0,0,0,0],q4=[0,0,0,0];
+function rk2(s,h){ f2(s,q1); const a=s.map((v,i)=>v+h/2*q1[i]); f2(a,q2); const b=s.map((v,i)=>v+h/2*q2[i]); f2(b,q3); const c=s.map((v,i)=>v+h*q3[i]); f2(c,q4);
+  for(let i=0;i<4;i++) s[i]+=h*(q1[i]+2*q2[i]+2*q3[i]+q4[i])/6; }
+let st2, rate2=8;
+s2.reset=()=>{
+  const m=s2.mode; let s;
+  mu2 = m==='horse' ? 0.000954 : 0.01215;
+  buildSurface();
+  if(m==='tad'){ const a=75*Math.PI/180; s=[Math.cos(a)-mu2,Math.sin(a),0,0]; rate2=4; }
+  else if(m==='horse'){ const r=1.01, vt=Math.sqrt((1-mu2)/r)-r; s=[-r-mu2,0,0,-vt]; rate2=24; }
+  else if(m==='l1'){ s=[LP[0][0]+1e-4,LP[0][1],0,0]; rate2=1.5; }
+  else { const r=0.32, vt=Math.sqrt((1-mu2)/r)-r; s=[-mu2+r,0,0,vt]; rate2=1.5; }
+  st2={t:0, s};
+  const [x,y,vx,vy]=s; st2.C=2*Om(x,y)-vx*vx-vy*vy; buildZVC(st2.C);
+  ptr.n=0; ptrG.setDrawRange(0,0);
+};
+s2.getState=()=>({t:st2.t, s:st2.s.slice(), C:st2.C, n:ptr.n});
+s2.setState=x=>{ st2={t:x.t, s:x.s.slice(), C:x.C}; ptr.n=x.n; ptrG.setDrawRange(0,ptr.n); };
+s2.step=dt=>{
+  const T=dt*rate2, h=0.002, n=Math.max(1,Math.round(T/h));
+  for(let k=0;k<n;k++){ rk2(st2.s,T/n); st2.t+=T/n;
+    const [x,y]=st2.s; if(Math.hypot(x,y)>XR*1.05){ break; }
+    if(k%Math.max(1,Math.floor(n/3))===0){ if(ptr.n>=8000){ ptr.pos.copyWithin(0,3); ptr.n=7999; } const p=W2(x,y); ptr.pos[3*ptr.n]=p.x; ptr.pos[3*ptr.n+1]=p.y+0.01; ptr.pos[3*ptr.n+2]=p.z; ptr.n++; } }
+  ptrG.setDrawRange(0,ptr.n); ptrG.attributes.position.needsUpdate=true;
+};
+s2.done=()=>Math.hypot(st2.s[0],st2.s[1])>XR*1.05;
+s2.draw=()=>{ const [x,y]=st2.s; part.position.copy(W2(x,y)).add(new THREE.Vector3(0,0.025,0)); };
+s2.hud=()=>{
+  const [x,y,vx,vy]=st2.s, C=2*Om(x,y)-vx*vx-vy*vy, ang=Math.atan2(y,x+mu2)*180/Math.PI;
+  const CL=LP.map(p=>2*Om(...p));
+  const names={tad:'Earth–Moon, μ = 0.01215',horse:'Sun–Jupiter, μ = 0.000954',l1:'Earth–Moon, μ = 0.01215',moon:'Earth–Moon, μ = 0.01215'};
+  hud2.innerHTML=`${names[s2.mode]}<br><b>t</b> = ${fmt(st2.t/(2*Math.PI),2)} orbits of ${mu2>0.005?'the Moon':'Jupiter'}<br>Jacobi constant C = ${fmt(C,5)} &nbsp; (C<sub>L1</sub> = ${fmt(CL[0],4)})`+
+    (s2.mode==='tad'||s2.mode==='horse'?`<br>Angle from the ${mu2>0.005?'Earth':'Sun'}: ${fmt(ang,1)}° (L4 at 60°)`:'')+
+    `<div class="msg">${s2.mode==='tad'?'The Coriolis force keeps the Trojan circling the hilltop L4.':s2.mode==='horse'?'The horseshoe turns before Jupiter and passes L3.':s2.mode==='l1'?'L1 is a saddle point: the slightest disturbance grows.':'C > C<sub>L1</sub>: the zero-velocity curve traps the particle around the Earth.'}</div>`;
+};
+addSim(s2);
+s2.restart();
+
+startLoop();
+
+</script>
+</body>
+</html>
