@@ -88,3 +88,6 @@ function clear3(group) { while (group.children.length) { const c = group.childre
     '@media print{.sim3d{border-color:#ccc;break-inside:avoid}.sim3d .info{display:none}.hint3d{display:none}}';
   document.head.appendChild(s);
 })();
+if (typeof window.chips !== 'function') {
+  window.chips = function (sel, f) { const bs = document.querySelectorAll(sel); bs.forEach(b => b.addEventListener('click', () => { bs.forEach(x => x.classList.toggle('on', x === b)); f(b); })); };
+}
