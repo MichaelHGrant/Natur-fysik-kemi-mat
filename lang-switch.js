@@ -111,6 +111,8 @@
     "maskinen-der-laerer.html": "maskinen-der-laerer-en.html",
     "astronomi-og-astrofysik.html": "astronomi-og-astrofysik-en.html",
     "atomfysik.html": "atomfysik-en.html",
+    "sandsynlighedsregning.html": "sandsynlighedsregning-en.html",
+    "logik.html": "logik-en.html",
     "statistiske-fordelinger.html": "statistiske-fordelinger-en.html",
     "boelgeoptik.html": "boelgeoptik-en.html",
     "boldens-flugt.html": "boldens-flugt-en.html",
