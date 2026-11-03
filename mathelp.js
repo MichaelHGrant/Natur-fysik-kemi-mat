@@ -36,7 +36,7 @@ function tcdf(x, v) { const n = 400, h = x / n; let s = tpdf(0, v) + tpdf(x, v);
 function tq(p, v) { let a = 0, b = 400; for (let i = 0; i < 60; i++) { const m = (a + b) / 2; tcdf(m, v) < p ? (a = m) : (b = m); } return (a + b) / 2; }
 const randn = () => { let u = 0; while (!u) u = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * Math.random()); };
 const pct = (v, d = 1) => fmt(100 * v, d) + ' %';
-function pfmt(p) { if (p >= 0.001) return fmt(p, 4); const e = Math.floor(Math.log10(p)); return fmt(p / 10 ** e, 2) + '·10' + sup(e); }
+function pfmt(p) { if (p >= 0.001) return fmt(p, 4); if (!(p > 1e-12)) return '< 10⁻¹²'; const e = Math.floor(Math.log10(p)); return fmt(p / 10 ** e, 2) + '·10' + sup(e); }
 
 // ---------- lærred ----------
 function mkcv(id, W, H) {

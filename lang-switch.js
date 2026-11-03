@@ -111,6 +111,8 @@
     "maskinen-der-laerer.html": "maskinen-der-laerer-en.html",
     "astronomi-og-astrofysik.html": "astronomi-og-astrofysik-en.html",
     "atomfysik.html": "atomfysik-en.html",
+    "bayes.html": "bayes-en.html",
+    "krydstabeller-og-traediagrammer.html": "krydstabeller-og-traediagrammer-en.html",
     "sandsynlighedsregning.html": "sandsynlighedsregning-en.html",
     "logik.html": "logik-en.html",
     "statistiske-fordelinger.html": "statistiske-fordelinger-en.html",
