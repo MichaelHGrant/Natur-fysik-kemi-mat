@@ -3,7 +3,9 @@
 const NS = 'http://www.w3.org/2000/svg';
 function el(t, a, p) { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); if (p) p.appendChild(e); return e; }
 function txt(s, x, y, cls, p, anchor) { const t = el('text', { x, y, class: cls, 'text-anchor': anchor || 'start' }, p); t.textContent = s; return t; }
-const fmt = (v, d = 2) => (v < 0 ? '−' : '') + Math.abs(v).toFixed(d).replace('.', ',');
+const LANG_EN = document.documentElement.lang === 'en';
+const DEC = s => LANG_EN ? s : s.replace('.', ',');
+const fmt = (v, d = 2) => (v < 0 ? '−' : '') + DEC(Math.abs(v).toFixed(d));
 const sup = n => String(n).replace('-', '⁻').replace(/\d/g, c => '⁰¹²³⁴⁵⁶⁷⁸⁹'[c]);
 function fmtSci(v, d = 2) {
   if (v === 0 || !isFinite(v)) return String(v);
@@ -16,8 +18,8 @@ function axes(svg, gx, gy, gw, gh, o) {
   const lx = v => o.logx ? Math.log10(v) : v, ly = v => o.logy ? Math.log10(v) : v;
   const X = v => gx + (lx(v) - lx(o.x0)) / (lx(o.x1) - lx(o.x0)) * gw;
   const Y = v => gy + gh - (ly(v) - ly(o.y0)) / (ly(o.y1) - ly(o.y0)) * gh;
-  (o.yt || []).forEach(v => { el('line', { x1: gx, y1: Y(v), x2: gx + gw, y2: Y(v), class: 'sg-grid' }, svg); txt(o.yf ? o.yf(v) : String(v).replace('.', ','), gx - 6, Y(v) + 4, 'sg-tm', svg, 'end'); });
-  (o.xt || []).forEach(v => { el('line', { x1: X(v), y1: gy, x2: X(v), y2: gy + gh, class: 'sg-grid' }, svg); txt(o.xf ? o.xf(v) : String(v).replace('.', ','), X(v), gy + gh + 16, 'sg-tm', svg, 'middle'); });
+  (o.yt || []).forEach(v => { el('line', { x1: gx, y1: Y(v), x2: gx + gw, y2: Y(v), class: 'sg-grid' }, svg); txt(o.yf ? o.yf(v) : DEC(String(v)), gx - 6, Y(v) + 4, 'sg-tm', svg, 'end'); });
+  (o.xt || []).forEach(v => { el('line', { x1: X(v), y1: gy, x2: X(v), y2: gy + gh, class: 'sg-grid' }, svg); txt(o.xf ? o.xf(v) : DEC(String(v)), X(v), gy + gh + 16, 'sg-tm', svg, 'middle'); });
   el('line', { x1: gx, y1: gy + gh, x2: gx + gw, y2: gy + gh, class: 'sg-ax' }, svg);
   el('line', { x1: gx, y1: gy, x2: gx, y2: gy + gh, class: 'sg-ax' }, svg);
   if (o.xl) txt(o.xl, gx + gw, gy + gh + 34, 'sg-tm', svg, 'end');
