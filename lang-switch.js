@@ -42,6 +42,7 @@
     "orkaner.html": "orkaner-en.html",
     "el-nino.html": "el-nino-en.html",
     "tornadoer.html": "tornadoer-en.html",
+    "polarhvirvlen.html": "polar-vortex-en.html",
     "pladetektonik.html": "pladetektonik-en.html",
     "vulkaner.html": "vulkaner-en.html",
     "tsunami.html": "tsunami-en.html",
