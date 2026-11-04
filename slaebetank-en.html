@@ -49,7 +49,7 @@ h1 em { font-style: italic; color: var(--sea); }
 .hull-name { font-family: var(--f-display); font-size: clamp(22px, 3vw, 30px); }
 .hull-note { color: #c8d4d4; font-size: 13.5px; }
 .speedbig { font-family: var(--f-mono); font-size: clamp(18px, 2.4vw, 24px); font-variant-numeric: tabular-nums; margin-top: 4px; }
-.speedbig small { color: var(--muted); font-size: 13px; }
+.speedbig small { color: #c8d4d4; font-size: 13px; }
 .hud.br { bottom: 12px; right: 16px; text-align: right; font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
 .camtabs { position: absolute; top: 12px; right: 12px; display: flex; gap: 4px; }
 .camtabs button { font: 500 11px/1 var(--f-mono); color: var(--ink); background: rgba(19,27,31,.78); border: 1px solid var(--line); border-radius: 999px; padding: 6px 10px; cursor: pointer; }
@@ -206,7 +206,7 @@ ul.refs { margin: 0; padding-left: 18px; font-size: 13.5px; } ul.refs li { margi
       <h2>Humps and hollows in the resistance</h2>
       <p>The bow and the stern each make their own wave system. When the crests fall on top of each other, the waves behind the ship are high and the resistance large. When a crest falls on a trough, they partly cancel. That is why the curve of C<sub>W</sub> has humps and hollows, with the last and largest hump around Fn ≈ 0.5. Naval architects choose the length of the hull so that the ship lies in a hollow at its normal speed.</p>
       <h2>The bulbous bow</h2>
-      <p>The round bulb below the waterline at the bow of large ships makes its own wave system, shifted by half a wavelength relative to the bow wave. At the right speed the two waves partly cancel. Try the container ship with and without the bulb and watch C<sub>W</sub> fall at Fn ≈ 0.2. Make the bulb too large, and it makes a big wave of its own instead.</p>
+      <p>The round bulb below the waterline at the bow of large ships makes its own wave system. Because it lies under water, that system begins with a trough at the surface above it. At the right speed the trough falls on top of the crest of the bow wave, and the two waves partly cancel. Try the container ship with and without the bulb and watch C<sub>W</sub> fall at Fn ≈ 0.2. Make the bulb too large, and it makes a big wave of its own instead.</p>
       <h2>The Kelvin wedge</h2>
       <p>The waves behind a ship lie inside a wedge with a half-angle of 19.47°, whatever the speed and the size of the ship. Lord Kelvin showed this in 1887 from the dispersion of deep-water waves, and it holds from ducks to aircraft carriers. Inside the wedge you see the transverse waves at right angles to the course, and along the edge the oblique diverging waves.</p>
     </section>
@@ -216,8 +216,8 @@ ul.refs { margin: 0; padding-left: 18px; font-size: 13.5px; } ul.refs li { margi
       <h3>What the page computes</h3>
       <p>The hull is described by its half-breadth f(x,z) = ½B·(1 − |2x/L|<sup>p</sup>)·(1 − |z/T|<sup>q</sup>) plus a bulb. The wave resistance is found with Michell's integral from 1898, thin-ship theory:</p>
       <div class="eq" style="font-size:16px">R<sub>W</sub> = (4ρg²/πU²) ∫<sub>1</sub><sup>∞</sup> |H(λ)|² λ²/√(λ²−1) dλ</div>
-      <p>where H(λ) = ∬ ∂f/∂x · e<sup>λ²k₀z</sup> e<sup>−iλk₀x</sup> dx dz and k₀ = g/U². The same H gives the wave pattern behind the ship by adding up waves travelling in all directions.</p>
-      <p>Friction is calculated with the ITTC-1957 line C<sub>F</sub> = 0.075/(log₁₀Re − 2)² and a form factor 1 + k = 1.1 on the wetted area.</p>
+      <p>where H(λ) = ∬ ∂f/∂x · e<sup>λ²k₀z</sup> e<sup>−iλk₀x</sup> dx dz and k₀ = g/U². The same H gives the wave pattern behind the ship by adding up waves travelling in all directions. Each part of the hull sends waves only aft, and waves shorter than the grid can show are filtered out.</p>
+      <p>Friction is calculated with the ITTC-1957 line C<sub>F</sub> = 0.075/(log₁₀Re − 2)² on the wetted area, multiplied by a form factor 1 + k = 1.1 as in the ITTC-1978 method.</p>
       <h3>Limitations</h3>
       <p>Thin-ship theory is linear and assumes a slender hull. It overestimates the wave resistance of beamy, full hulls, gives no sinkage or trim, and does not apply to planing boats that rise up over the wave at high speed. The waves right at the hull are approximate. Use the figures to compare hulls and speeds.</p>
       <h3>Sources</h3>
@@ -501,7 +501,7 @@ function drawSide(){
   const U=st.Fn*Math.sqrt(9.81*st.L),lam=2*Math.PI*U*U/9.81,r=lam/st.L;
   const Lpx=Math.min(w*0.34,260),bowX=w*0.62,sternX=bowX-Lpx,mid=h*0.55,amp=Math.min(16,h*0.12);
   // wave: crest slightly behind bow, travelling with ship
-  g.strokeStyle=sea;g.lineWidth=2;g.beginPath();for(let x=8;x<=w-8;x++){const d=bowX-x-0.08*Lpx;const y=x>bowX+0.03*Lpx?mid:mid-amp*Math.cos(2*Math.PI*d/(r*Lpx))*Math.exp(-Math.max(0,d)/(6*r*Lpx+1e-6)*0.15);x===8?g.moveTo(x,y):g.lineTo(x,y);}g.stroke();
+  g.strokeStyle=sea;g.lineWidth=2;g.beginPath();for(let x=8;x<=w-8;x++){const d=bowX-x-0.08*Lpx;const env=d<0?Math.exp(-Math.pow(d/(0.06*Lpx),2)):Math.exp(-d/(6*r*Lpx+1e-6)*0.15);const y=mid-amp*(d<0?1:Math.cos(2*Math.PI*d/(r*Lpx)))*env;x===8?g.moveTo(x,y):g.lineTo(x,y);}g.stroke();
   // hull silhouette
   const th=Math.max(10,h*0.16);g.fillStyle=crest;g.globalAlpha=0.9;g.beginPath();g.moveTo(sternX,mid-th*0.55);g.lineTo(bowX+0.03*Lpx,mid-th*0.6);g.quadraticCurveTo(bowX+0.02*Lpx,mid+th*0.3,bowX-0.1*Lpx,mid+th*0.45);g.lineTo(sternX+0.06*Lpx,mid+th*0.45);g.quadraticCurveTo(sternX,mid+th*0.2,sternX,mid-th*0.55);g.fill();g.globalAlpha=1;
   // λ bracket
