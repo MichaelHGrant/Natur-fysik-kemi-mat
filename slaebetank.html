@@ -284,16 +284,30 @@ function curves(H){ // resistance vs Froude number
     const Rw=waveResistance(H,U),Cf=frictionCoef(U,H.L),Rf=1.1*Cf*q;out.push({Fn,U,Cw:Rw/q,Cf:1.1*Cf,Rw,Rf,R:Rw+Rf,P:(Rw+Rf)*U});}
   return out;
 }
-// Kelvin wave field on a grid in ship frame (x forward from midship, y to port), units of L
+// Kelvin wave field on a grid in ship frame (x forward from midship, y to port), units of L.
+// Each part of the hull radiates waves only aft of itself (causal sum), so nothing appears ahead of the bow.
+// Each wave component of a source σ ∝ −∂f/∂x is ∝ σ·cos(k₀d) a distance d behind it, so the bow (σ > 0) starts with a crest.
 function waveField(H,U,nx,ny,x0,x1,y1){
-  const k0=G/(U*U),L=H.L,NTH=160,th=[],hr=[],hi=[],o=[0,0];
-  for(let k=0;k<NTH;k++){const s=(k+0.5)/NTH*2-1,t=s*Math.PI/2*0.985;th.push(t);const lam=1/Math.cos(t);kochin(H,lam,k0,o);
-    const wgt=(Math.PI*0.985/NTH)*Math.pow(lam,3)*2*k0/Math.PI;hr.push(o[0]*wgt);hi.push(o[1]*wgt);}
+  const k0=G/(U*U),L=H.L,NTH=160,del=0.015*H.T,th=new Float64Array(NTH),wg=new Float64Array(NTH);
+  // stations along the hull (and bulb), sorted from the bow aft
+  const st=[];
+  for(let i=0;i<H.xs.length;i++){const w=(i===0||i===H.xs.length-1?0.5:1)*H.dx*H.Xp[i]*H.B/2;if(w)st.push({x:H.xs[i],w,b:0});}
+  if(H.rb>0){const n=H.bx.length,ddx=8*H.sx/(n-1);for(let i=0;i<n;i++){const w=ddx*H.bXp[i]*H.rb;if(w)st.push({x:H.bx[i],w,b:1});}}
+  st.sort((a,b)=>b.x-a.x);const NS=st.length;
+  const xc=new Float64Array(nx),cnt=new Int32Array(nx);
+  for(let i=0;i<nx;i++){xc[i]=(x0+(x1-x0)*i/(nx-1))*L;let c=0;while(c<NS&&st[c].x>xc[i])c++;cnt[i]=c;}
+  const Pr=new Float64Array(NTH*nx),Pi=new Float64Array(NTH*nx);
+  for(let k=0;k<NTH;k++){const s=(k+0.5)/NTH*2-1,t=s*Math.PI/2*0.985;th[k]=t;const lam=1/Math.cos(t),a=lam*k0,b=lam*lam*k0;
+    wg[k]=(Math.PI*0.985/NTH)*Math.pow(lam,3)*2*k0/Math.PI;
+    let gz=0;for(let j=0;j<H.zs.length;j++){const w=(j===0||j===H.zs.length-1?0.5:1)*H.dz*H.Zv[j];gz+=w*Math.exp(b*(H.zs[j]-del));}
+    let bz=0;if(H.rb>0){const n=H.bz.length,ddz=6*H.sz/(n-1);for(let j=0;j<n;j++)bz+=ddz*H.bZv[j]*Math.exp(b*(H.bz[j]-del));}
+    let cr=0,ci=0,c=0;
+    for(let i=0;i<nx;i++){while(c<cnt[i]){const q=st[c],w=q.w*(q.b?bz:gz);cr+=w*Math.cos(a*q.x);ci-=w*Math.sin(a*q.x);c++;}
+      Pr[k*nx+i]=cr*wg[k];Pi[k*nx+i]=ci*wg[k];}}
   const Z=new Float32Array(nx*ny);let mx=0;
   for(let j=0;j<ny;j++){const y=(j/(ny-1)*2-1)*y1*L;
-    for(let i=0;i<nx;i++){const x=(x0+(x1-x0)*i/(nx-1))*L;let z=0;
-      if(x<0.5*L+0.04*L){for(let k=0;k<NTH;k++){const lam=1/Math.cos(th[k]);const ph=k0*lam*lam*(x*Math.cos(th[k])+y*Math.sin(th[k]));z+=hr[k]*Math.cos(ph)-hi[k]*Math.sin(ph);}
-        const tap=Math.min(1,Math.max(0,(0.54*L-x)/(0.08*L)));z*=tap;}
+    for(let i=0;i<nx;i++){const x=xc[i];let z=0;
+      if(cnt[i]>0){for(let k=0;k<NTH;k++){const lam=1/Math.cos(th[k]);const ph=k0*lam*lam*(x*Math.cos(th[k])+y*Math.sin(th[k]));const p=k*nx+i;z+=Pi[p]*Math.sin(ph)-Pr[p]*Math.cos(ph);}}
       Z[j*nx+i]=z;mx=Math.max(mx,Math.abs(z));}}
   return {Z,nx,ny,x0,x1,y1,max:mx};
 }
