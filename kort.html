@@ -171,8 +171,8 @@ button:focus-visible, input:focus-visible, a:focus-visible, .star:focus-visible 
 </div>
 
 <script>
-const CONF = { index: 'index.html', tests: 'testoversigt.html', booksPage: 'boeger.html', sussex: 'fysikstudiet.html' };
-const STR = { sussex: 'Min B.Sc. fra Sussex', sussexAll: 'Fysikstudiet – oversigten', sussexDesc: 'De fag jeg læste på University of Sussex 1975–78, genbesøgt og ajourført – med interaktive figurer, 3D og PDF.', tests: 'Test dig selv', books: 'Bøgerne', tPhoto: 'Astrofoto', tTest: 'Test', tBook: 'Bøger', tInter: 'Interaktiv', tText: 'Essay og artikel',
+const CONF = { index: 'index.html', tests: 'testoversigt.html', booksPage: 'boeger.html', sussex: 'fysikstudiet.html', dth: 'dth-kandidat.html' };
+const STR = { dth: 'Min kandidat fra DTH', dthAll: 'Kandidatstudiet – oversigten', dthDesc: 'Fagene fra min civilingeniøruddannelse på DTH, afsluttet 1989 – akustik, ultralyd, elektroteknik og eksamensarbejdet, genbesøgt og ajourført.', sussex: 'Min B.Sc. fra Sussex', sussexAll: 'Fysikstudiet – oversigten', sussexDesc: 'De fag jeg læste på University of Sussex 1975–78, genbesøgt og ajourført – med interaktive figurer, 3D og PDF.', tests: 'Test dig selv', books: 'Bøgerne', tPhoto: 'Astrofoto', tTest: 'Test', tBook: 'Bøger', tInter: 'Interaktiv', tText: 'Essay og artikel',
   page1: 'side', pages: 'sider', open: 'Åbn siden', related: 'Beslægtet', close: 'Luk', all: 'Alle', none: 'Ingen sider passer til søgningen.',
   hits: (h, n) => `${h} af ${n} sider passer`, count: (n, m) => `${n} sider · ${m} emner`,
   live: (n, m) => `Kortet bygges automatisk ud fra forsiden, testoversigten og bogsiden, så nye sider kommer med af sig selv. Lige nu: ${n} sider i ${m} emner.`,
@@ -233,10 +233,11 @@ const SNAPSHOT = {"sections": [{"id": "atomar", "title": "Atomer, molekyler og k
     });
     return out;
   }
-  function parseSussex(html) {
+  function parseSussex(html, conf) {
+    conf = conf || { all: STR.sussexAll, desc: STR.sussexDesc, href: CONF.sussex };
     const doc = new DOMParser().parseFromString(html, 'text/html'), cards = [];
     const lead = doc.querySelector('.lead');
-    cards.push({ title: STR.sussexAll, meta: '', desc: lead ? cleanT(lead.textContent) : STR.sussexDesc, links: [{ href: CONF.sussex, text: '' }] });
+    cards.push({ title: conf.all, meta: '', desc: lead ? cleanT(lead.textContent) : conf.desc, links: [{ href: conf.href, text: '' }] });
     doc.querySelectorAll('main article').forEach(art => {
       const a = art.querySelector('h3 a[href]'); if (!a) return;
       const p = art.querySelector('p');
@@ -258,6 +259,14 @@ const SNAPSHOT = {"sections": [{"id": "atomar", "title": "Atomer, molekyler og k
       let at = secs.findIndex(s => s.id === 'matematik'); at = at < 0 ? secs.findIndex(s => s.id === 'biografier') : at + 1; if (at < 0) at = secs.length;
       secs.splice(at, 0, sx);
     }
+    if (d.dth && d.dth.length) {
+      const base = h => (h || '').split('#')[0].split('?')[0];
+      const taken = new Set(); secs.forEach(s => s.cards.forEach(c => taken.add(base(c.links[0].href))));
+      const cards = d.dth.filter((c, i) => i === 0 || !taken.has(base(c.links[0].href)));
+      const dx = { id: 'dth', title: STR.dth, desc: STR.dthDesc, cards };
+      let at = secs.findIndex(s => s.id === 'sussex'); at = at < 0 ? secs.length : at + 1;
+      secs.splice(at, 0, dx);
+    }
     if (d.tests && d.tests.length) secs.push({ id: 'tests', kind: 'test', title: STR.tests, desc: '', cards: d.tests });
     if (d.books && d.books.length) secs.push({ id: 'boeger', kind: 'bog', title: STR.books, desc: '', cards: d.books });
     return secs;
@@ -275,7 +284,7 @@ const SNAPSHOT = {"sections": [{"id": "atomar", "title": "Atomer, molekyler og k
   const typeOf = (c, s) => TYPES.filter(t => t[2] && t[2].test(c.title + ' ' + c.meta + ' ' + c.desc)).map(t => t[0]).concat(s.kind ? [s.kind] : []);
 
   // ---------- colours per section ----------
-  const HUES = { atomar: '#7cf2c4', lys: '#ffe46b', lyd: '#7fd0ff', termo: '#ff8a5c', mekanik: '#39ff14', kerne: '#ff5c8a', astro: '#4cc9f0', geofysik: '#c9a46b', geometri: '#d6a8ff', matematik: '#9fb4ff', sussex: '#ffd27a', kultur: '#e6c79a', tro: '#f5c878', 'hellige-grav': '#ff7a2a', tests: '#ff7ad9', boeger: '#c6f27a' };
+  const HUES = { atomar: '#7cf2c4', lys: '#ffe46b', lyd: '#7fd0ff', termo: '#ff8a5c', mekanik: '#39ff14', kerne: '#ff5c8a', astro: '#4cc9f0', geofysik: '#c9a46b', geometri: '#d6a8ff', matematik: '#9fb4ff', sussex: '#ffd27a', dth: '#8fe3c8', kultur: '#e6c79a', tro: '#f5c878', 'hellige-grav': '#ff7a2a', tests: '#ff7ad9', boeger: '#c6f27a' };
   const EXTRA = ['#9fb4ff', '#b8f28c', '#ffb0d0'];
   const colorOf = (s, i) => HUES[s.id] || EXTRA[i % EXTRA.length];
 
@@ -586,10 +595,10 @@ const SNAPSHOT = {"sections": [{"id": "atomar", "title": "Atomer, molekyler og k
   }
   if (window.innerWidth < 520) setMode(true);
   const get = u => fetch(u, { cache: 'no-cache' }).then(r => { if (!r.ok) throw new Error(r.status); return r.text(); });
-  Promise.all([get(CONF.index), get(CONF.tests).catch(() => null), get(CONF.booksPage).catch(() => null), get(CONF.sussex).catch(() => null)])
-    .then(([ih, th, bh, sh]) => {
+  Promise.all([get(CONF.index), get(CONF.tests).catch(() => null), get(CONF.booksPage).catch(() => null), get(CONF.sussex).catch(() => null), get(CONF.dth).catch(() => null)])
+    .then(([ih, th, bh, sh, dh]) => {
       const sections = parseIndex(ih); if (total(sections) < 5) throw new Error('empty');
-      start({ sections, tests: th ? parseCards(th) : SNAPSHOT.tests, books: bh ? parseBooks(bh, CONF.booksPage) : SNAPSHOT.books, sussex: sh ? parseSussex(sh) : SNAPSHOT.sussex }, true);
+      start({ sections, tests: th ? parseCards(th) : SNAPSHOT.tests, books: bh ? parseBooks(bh, CONF.booksPage) : SNAPSHOT.books, sussex: sh ? parseSussex(sh) : SNAPSHOT.sussex, dth: dh ? parseSussex(dh, { all: STR.dthAll, desc: STR.dthDesc, href: CONF.dth }) : [] }, true);
     })
     .catch(() => start(SNAPSHOT, false));
 })();
