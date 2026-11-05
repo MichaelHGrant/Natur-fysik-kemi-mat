@@ -1801,12 +1801,12 @@
     // - When piston rises toward the TOP of its stroke (sin > 0), the magnet pulls away.
     //   Once the magnetic force becomes too weak, gravity wins and the foam drops.
     //
-    // Hysteresis thresholds:
-    //   sin(angle) < -0.7 → lift up (magnet very close)
-    //   sin(angle) > 0.7  → drop (magnet has moved away)
+    // The disc flips at the piston's turning points:
+    //   lifted at the BOTTOM of the stroke (θ = 3π/2) and held up during the whole upstroke,
+    //   dropped at the TOP of the stroke (θ = π/2) and lying down during the whole downstroke.
+    //   cos(angle) >= 0 ⇔ piston moving up (pistonY = rest − sin·stroke).
     const s = Math.sin(angle);
-    if (s < -0.7) displacerTarget = displacerTopRest;
-    else if (s > 0.7) displacerTarget = displacerBottomRest;
+    displacerTarget = (Math.cos(angle) >= 0) ? displacerTopRest : displacerBottomRest;
 
     // Smooth interpolation toward target (fast — like a snapping spring)
     const lerpRate = Math.min(1, dt * 0.025);
@@ -2092,18 +2092,17 @@
   // ===========================
   // Real motor physics with magnetic-coupled displacer:
   //   V(θ) = V_avg + V_amp · sin(θ)   (V_max at θ=π/2 — piston highest)
-  //   The displacer flips: UP when piston at bottom (sin near -1, θ ≈ 3π/2)
-  //                       DOWN when piston nears top (sin > 0.7, θ ≈ π/4)
-  //   So T_max occurs near θ=3π/2 (displacer up = air at warm bottom)
+  //   The displacer flips: UP at the piston's bottom (θ = 3π/2)
+  //                       DOWN at the piston's top (θ = π/2)
   //
   // Mapping engine angle to position in the idealized 4-leg cycle:
-  //   θ=3π/2 (V=min, T=hot)  → corner 1 → f = 0
-  //   θ=2π   (V=mid, T=hot→cold transition) → mid of leg 1→2 → f = 0.125
-  //   θ=π/2  (V=max, T=cold) → corner 3 → f = 0.5
-  //   θ=π    (V=mid, T=cold) → mid of leg 3→4 → f = 0.625
-  // Linear mapping: f = (θ + π/2) / (2π), mod 1
+  //   isochoric heating  4→1 centred on θ=3π/2 (piston bottom, disc lifted)
+  //   isothermal expansion 1→2 from θ=7π/4 to π/4 (piston rising)
+  //   isochoric cooling  2→3 centred on θ=π/2 (piston top, disc dropped)
+  //   isothermal compression 3→4 from θ=3π/4 to 5π/4 (piston falling)
+  // Linear mapping: f = (θ + π/4) / (2π), mod 1
   function getCycleFrac(eng_angle) {
-    let p = (eng_angle + Math.PI/2) / (2 * Math.PI);
+    let p = (eng_angle + Math.PI/4) / (2 * Math.PI);
     p = ((p % 1) + 1) % 1;
     return p;
   }
