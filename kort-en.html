@@ -171,8 +171,8 @@ button:focus-visible, input:focus-visible, a:focus-visible, .star:focus-visible 
 </div>
 
 <script>
-const CONF = { index: 'index-en.html', tests: 'testoversigt.html', booksPage: 'boeger-en.html', sussex: 'fysikstudiet-en.html' };
-const STR = { sussex: 'My B.Sc. from Sussex', sussexAll: 'The physics degree – overview', sussexDesc: 'The courses I took at the University of Sussex 1975–78, revisited and brought up to date – with interactive figures, 3D and PDFs.', tests: 'Self-marking tests (in Danish)', books: 'The books', tPhoto: 'Astrophoto', tTest: 'Test', tBook: 'Books', tInter: 'Interactive', tText: 'Essay and article',
+const CONF = { index: 'index-en.html', tests: 'testoversigt.html', booksPage: 'boeger-en.html', sussex: 'fysikstudiet-en.html', dth: 'dth-kandidat-en.html' };
+const STR = { dth: 'My degree from DTH', dthAll: 'The DTH degree – overview', dthDesc: 'The courses of my engineering degree at DTH, completed in 1989 – acoustics, ultrasound, electrical engineering and the thesis, revisited and brought up to date.', sussex: 'My B.Sc. from Sussex', sussexAll: 'The physics degree – overview', sussexDesc: 'The courses I took at the University of Sussex 1975–78, revisited and brought up to date – with interactive figures, 3D and PDFs.', tests: 'Self-marking tests (in Danish)', books: 'The books', tPhoto: 'Astrophoto', tTest: 'Test', tBook: 'Books', tInter: 'Interactive', tText: 'Essay and article',
   page1: 'page', pages: 'pages', open: 'Open the page', related: 'Related', close: 'Close', all: 'All', none: 'No pages match the search.',
   hits: (h, n) => `${h} of ${n} pages match`, count: (n, m) => `${n} pages · ${m} topics`,
   live: (n, m) => `The map is built automatically from the front page, the test overview and the books page, so new pages appear by themselves. Right now: ${n} pages in ${m} topics.`,
@@ -233,10 +233,11 @@ const SNAPSHOT = {"sections": [{"id": "atomar", "title": "Atoms, Molecules and C
     });
     return out;
   }
-  function parseSussex(html) {
+  function parseSussex(html, conf) {
+    conf = conf || { all: STR.sussexAll, desc: STR.sussexDesc, href: CONF.sussex };
     const doc = new DOMParser().parseFromString(html, 'text/html'), cards = [];
     const lead = doc.querySelector('.lead');
-    cards.push({ title: STR.sussexAll, meta: '', desc: lead ? cleanT(lead.textContent) : STR.sussexDesc, links: [{ href: CONF.sussex, text: '' }] });
+    cards.push({ title: conf.all, meta: '', desc: lead ? cleanT(lead.textContent) : conf.desc, links: [{ href: conf.href, text: '' }] });
     doc.querySelectorAll('main article').forEach(art => {
       const a = art.querySelector('h3 a[href]'); if (!a) return;
       const p = art.querySelector('p');
@@ -258,6 +259,14 @@ const SNAPSHOT = {"sections": [{"id": "atomar", "title": "Atoms, Molecules and C
       let at = secs.findIndex(s => s.id === 'matematik'); at = at < 0 ? secs.findIndex(s => s.id === 'biografier') : at + 1; if (at < 0) at = secs.length;
       secs.splice(at, 0, sx);
     }
+    if (d.dth && d.dth.length) {
+      const base = h => (h || '').split('#')[0].split('?')[0];
+      const taken = new Set(); secs.forEach(s => s.cards.forEach(c => taken.add(base(c.links[0].href))));
+      const cards = d.dth.filter((c, i) => i === 0 || !taken.has(base(c.links[0].href)));
+      const dx = { id: 'dth', title: STR.dth, desc: STR.dthDesc, cards };
+      let at = secs.findIndex(s => s.id === 'sussex'); at = at < 0 ? secs.length : at + 1;
+      secs.splice(at, 0, dx);
+    }
     if (d.tests && d.tests.length) secs.push({ id: 'tests', kind: 'test', title: STR.tests, desc: '', cards: d.tests });
     if (d.books && d.books.length) secs.push({ id: 'boeger', kind: 'bog', title: STR.books, desc: '', cards: d.books });
     return secs;
@@ -275,7 +284,7 @@ const SNAPSHOT = {"sections": [{"id": "atomar", "title": "Atoms, Molecules and C
   const typeOf = (c, s) => TYPES.filter(t => t[2] && t[2].test(c.title + ' ' + c.meta + ' ' + c.desc)).map(t => t[0]).concat(s.kind ? [s.kind] : []);
 
   // ---------- colours per section ----------
-  const HUES = { atomar: '#7cf2c4', lys: '#ffe46b', lyd: '#7fd0ff', termo: '#ff8a5c', mekanik: '#39ff14', kerne: '#ff5c8a', astro: '#4cc9f0', geofysik: '#c9a46b', geometri: '#d6a8ff', matematik: '#9fb4ff', sussex: '#ffd27a', kultur: '#e6c79a', tro: '#f5c878', 'hellige-grav': '#ff7a2a', tests: '#ff7ad9', boeger: '#c6f27a' };
+  const HUES = { atomar: '#7cf2c4', lys: '#ffe46b', lyd: '#7fd0ff', termo: '#ff8a5c', mekanik: '#39ff14', kerne: '#ff5c8a', astro: '#4cc9f0', geofysik: '#c9a46b', geometri: '#d6a8ff', matematik: '#9fb4ff', sussex: '#ffd27a', dth: '#8fe3c8', kultur: '#e6c79a', tro: '#f5c878', 'hellige-grav': '#ff7a2a', tests: '#ff7ad9', boeger: '#c6f27a' };
   const EXTRA = ['#9fb4ff', '#b8f28c', '#ffb0d0'];
   const colorOf = (s, i) => HUES[s.id] || EXTRA[i % EXTRA.length];
 
@@ -586,10 +595,10 @@ const SNAPSHOT = {"sections": [{"id": "atomar", "title": "Atoms, Molecules and C
   }
   if (window.innerWidth < 520) setMode(true);
   const get = u => fetch(u, { cache: 'no-cache' }).then(r => { if (!r.ok) throw new Error(r.status); return r.text(); });
-  Promise.all([get(CONF.index), get(CONF.tests).catch(() => null), get(CONF.booksPage).catch(() => null), get(CONF.sussex).catch(() => null)])
-    .then(([ih, th, bh, sh]) => {
+  Promise.all([get(CONF.index), get(CONF.tests).catch(() => null), get(CONF.booksPage).catch(() => null), get(CONF.sussex).catch(() => null), get(CONF.dth).catch(() => null)])
+    .then(([ih, th, bh, sh, dh]) => {
       const sections = parseIndex(ih); if (total(sections) < 5) throw new Error('empty');
-      start({ sections, tests: th ? parseCards(th) : SNAPSHOT.tests, books: bh ? parseBooks(bh, CONF.booksPage) : SNAPSHOT.books, sussex: sh ? parseSussex(sh) : SNAPSHOT.sussex }, true);
+      start({ sections, tests: th ? parseCards(th) : SNAPSHOT.tests, books: bh ? parseBooks(bh, CONF.booksPage) : SNAPSHOT.books, sussex: sh ? parseSussex(sh) : SNAPSHOT.sussex, dth: dh ? parseSussex(dh, { all: STR.dthAll, desc: STR.dthDesc, href: CONF.dth }) : [] }, true);
     })
     .catch(() => start(SNAPSHOT, false));
 })();
