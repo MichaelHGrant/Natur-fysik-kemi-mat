@@ -923,6 +923,21 @@
     header.hero { padding: 56px 0 32px; }
   }
 
+
+  /* REAL ENGINE VIDEO with slow-motion controls */
+  section.real-video { padding: 80px 0; border-top: 1px solid var(--rule); }
+  .rv-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; align-items: start; }
+  .rv-player { background: var(--ink); border: 1px solid var(--rule); }
+  .rv-player video { display: block; width: 100%; height: auto; aspect-ratio: 1 / 1; background: var(--ink); }
+  .rv-controls { margin-top: 14px; }
+  .rv-controls .btn-row { margin-top: 8px; flex-wrap: wrap; }
+  .rv-controls .btn { min-width: 0; }
+  .rv-status { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.08em; color: var(--ink-soft); margin-top: 10px; display: flex; justify-content: space-between; gap: 12px; }
+  .rv-scrub { width: 100%; margin-top: 10px; }
+  .rv-text h2 { margin-top: 0; }
+  .rv-text ol { margin: 14px 0 0 1.2em; line-height: 1.6; }
+  @media (max-width: 900px) { .rv-layout { grid-template-columns: 1fr; gap: 28px; } section.real-video { padding: 56px 0; } }
+
   /* Subtle entrance */
   @keyframes fadeUp {
     from { opacity: 0; transform: translateY(20px); }
@@ -1138,6 +1153,87 @@
         </div>
       </div>
     </div>
+  </section>
+
+  <!-- REAL ENGINE VIDEO -->
+  <section class="real-video" id="video">
+    <div class="rv-layout">
+      <div>
+        <div class="rv-player">
+          <video id="rvVideo" src="video/stirling-motor.mp4" poster="video/stirling-motor.jpg" muted loop playsinline preload="metadata" aria-label="Video af en lavtemperatur-Stirlingmotor på et glas varmt vand"></video>
+        </div>
+        <div class="rv-controls">
+          <input type="range" class="rv-scrub" id="rvScrub" min="0" max="1000" value="0" aria-label="Position">
+          <div class="rv-status"><span id="rvTime">0,00 s</span><span id="rvRate">1×</span></div>
+          <div class="btn-row">
+            <button class="btn" id="rvBack" type="button">◀ Billede</button>
+            <button class="btn active" id="rvPlay" type="button">Afspil</button>
+            <button class="btn" id="rvFwd" type="button">Billede ▶</button>
+          </div>
+          <div class="label" style="margin-top:14px"><span>Hastighed</span></div>
+          <div class="btn-row" id="rvRates">
+            <button class="btn active" type="button" data-rate="1">1×</button>
+            <button class="btn" type="button" data-rate="0.5">½×</button>
+            <button class="btn" type="button" data-rate="0.25">¼×</button>
+            <button class="btn" type="button" data-rate="0.125">⅛×</button>
+            <button class="btn" type="button" data-rate="0.0625">1/16×</button>
+          </div>
+        </div>
+      </div>
+      <div class="rv-text">
+        <h2>Se den rigtige motor — i slowmotion</h2>
+        <p>Her er min egen lavtemperatur-Stirlingmotor, stillet på et glas varmt vand. I fuld fart går det for hurtigt til at øjet kan følge med, så sæt farten ned og se på det lille stempel i glascylinderen og krumtappen på svinghjulet.</p>
+        <p style="margin-top:14px"><strong>Læg mærke til:</strong></p>
+        <ol>
+          <li><strong>Stempel og krumtap følger hinanden.</strong> Når krumtappen er øverst på svinghjulet, er stemplet øverst i cylinderen — præcis som i animationen ovenfor.</li>
+          <li><strong>Fordriveren kan ikke ses.</strong> Den sorte skumskive sidder skjult i det flade kammer under metallåget. Den løftes af magneten, når stemplet er nede, og falder, når stemplet er oppe.</li>
+          <li><strong>Svinghjulet kører jævnt.</strong> Luften skubber kun i en del af omdrejningen; resten af tiden er det svinghjulets inerti, der bærer motoren gennem vendepunkterne.</li>
+        </ol>
+        <p style="margin-top:14px; font-size:0.92em; color:var(--ink-soft)">Brug ◀ og ▶ for at gå et enkelt billede frem eller tilbage, når videoen står stille.</p>
+      </div>
+    </div>
+    <script>
+    (function(){
+      var v = document.getElementById('rvVideo');
+      if (!v) return;
+      var FPS = 45000/1529, dec = ',';
+      var play = document.getElementById('rvPlay'), scrub = document.getElementById('rvScrub');
+      var timeEl = document.getElementById('rvTime'), rateEl = document.getElementById('rvRate');
+      var rate = 1, dragging = false;
+      function fmt(x) { return x.toFixed(2).replace('.', dec) + ' s · billede ' + (Math.round(x * FPS) + 1); }
+      function show() {
+        if (v.duration && !dragging) scrub.value = Math.round(1000 * v.currentTime / v.duration);
+        timeEl.textContent = fmt(v.currentTime || 0);
+        play.textContent = v.paused ? 'Afspil' : 'Pause';
+        play.classList.toggle('active', v.paused);
+      }
+      function go() { v.playbackRate = rate; var p = v.play(); if (p && p.catch) p.catch(function(){}); }
+      play.addEventListener('click', function(){ if (v.paused) go(); else v.pause(); });
+      v.addEventListener('click', function(){ if (v.paused) go(); else v.pause(); });
+      function step(n) {
+        v.pause();
+        var d = v.duration || 0, t = (v.currentTime || 0) + n / FPS;
+        if (d) t = (t % d + d) % d;
+        v.currentTime = Math.max(0, t);
+      }
+      document.getElementById('rvBack').addEventListener('click', function(){ step(-1); });
+      document.getElementById('rvFwd').addEventListener('click', function(){ step(1); });
+      document.querySelectorAll('#rvRates .btn').forEach(function(b){
+        b.addEventListener('click', function(){
+          rate = parseFloat(b.dataset.rate);
+          document.querySelectorAll('#rvRates .btn').forEach(function(x){ x.classList.toggle('active', x === b); });
+          rateEl.textContent = b.textContent;
+          go();
+        });
+      });
+      scrub.addEventListener('input', function(){ dragging = true; v.pause(); if (v.duration) v.currentTime = v.duration * scrub.value / 1000; });
+      scrub.addEventListener('change', function(){ dragging = false; });
+      ['timeupdate','seeked','play','pause','loadedmetadata','ratechange'].forEach(function(e){ v.addEventListener(e, show); });
+      // Smooth position readout in slow motion (timeupdate fires only ~4 times a second)
+      (function tick(){ if (!v.paused) show(); requestAnimationFrame(tick); })();
+      show();
+    })();
+    </script>
   </section>
 
   <!-- THE FOUR PHASES -->
