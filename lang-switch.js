@@ -123,6 +123,7 @@
     "faststoffysik.html": "faststoffysik-en.html",
     "fluidmekanik.html": "fluidmekanik-en.html",
     "fysikstudiet.html": "fysikstudiet-en.html",
+    "tank-og-vaeskebelastning.html": "tank-og-vaeskebelastning-en.html",
     "akustik-grundkursus.html": "akustik-grundkursus-en.html",
     "akustisk-kommunikation.html": "akustisk-kommunikation-en.html",
     "digitalelektronik.html": "digitalelektronik-en.html",
