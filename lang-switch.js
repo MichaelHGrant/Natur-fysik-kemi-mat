@@ -130,6 +130,7 @@
     "komplekse-funktioner.html": "komplekse-funktioner-en.html",
     "numerisk-matematik.html": "numerisk-matematik-en.html",
     "minoerne.html": "minoerne-en.html",
+    "videregaaende-matematik.html": "videregaaende-matematik-en.html",
     "akustik-grundkursus.html": "akustik-grundkursus-en.html",
     "akustisk-kommunikation.html": "akustisk-kommunikation-en.html",
     "digitalelektronik.html": "digitalelektronik-en.html",
