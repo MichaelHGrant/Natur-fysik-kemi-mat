@@ -1660,7 +1660,7 @@
   const wheelCx = 150, wheelCy = 110, crankR = 12;
   const pistonX = 150;       // piston rod's top attachment, centered
   const pistonRest = 247;    // y of piston top at mid stroke
-  const pistonStroke = 6;    // amplitude
+  const pistonStroke = 12;   // amplitude = crank radius, so the rod keeps its length
   // Displacer is bistable in a very shallow chamber.
   // Foam disc rests at y=305-312 (thin). Lifted, it rises against the lid (y~292).
   // Travel distance: ~13 pixels.
@@ -1683,7 +1683,7 @@
 
     // Flywheel rotation
     const deg = angle * 180 / Math.PI;
-    flywheel.setAttribute('transform', `rotate(${deg} ${wheelCx} ${wheelCy})`);
+    flywheel.setAttribute('transform', `rotate(${-deg} ${wheelCx} ${wheelCy})`);
 
     // Piston: SHM. pistonY = rest - sin(angle)*stroke
     // Top of stroke at angle=π/2 (pistonY = pistonRest - stroke = 246, highest in SVG)
@@ -1693,7 +1693,7 @@
 
     // Piston rod: from piston bottom (where rod attaches) to crank pin
     const pCrankX = wheelCx + crankR * Math.cos(angle);
-    const pCrankY = wheelCy + crankR * Math.sin(angle);
+    const pCrankY = wheelCy - crankR * Math.sin(angle);  // crank pin top when piston top
     pistonRod.setAttribute('x1', pistonX);
     pistonRod.setAttribute('y1', pistonY);
     pistonRod.setAttribute('x2', pCrankX);
@@ -1709,11 +1709,11 @@
     //   Once the magnetic force becomes too weak, gravity wins and the foam drops.
     //
     // Hysteresis thresholds:
-    //   sin(angle) < -0.6 → lift up (magnet very close)
-    //   sin(angle) > 0.2  → drop (magnet has moved away)
+    //   sin(angle) < -0.7 → lift up (magnet very close)
+    //   sin(angle) > 0.7  → drop (magnet has moved away)
     const s = Math.sin(angle);
-    if (s < -0.6) displacerTarget = displacerTopRest;
-    else if (s > 0.2) displacerTarget = displacerBottomRest;
+    if (s < -0.7) displacerTarget = displacerTopRest;
+    else if (s > 0.7) displacerTarget = displacerBottomRest;
 
     // Smooth interpolation toward target (fast — like a snapping spring)
     const lerpRate = Math.min(1, dt * 0.025);
@@ -2000,7 +2000,7 @@
   // Real motor physics with magnetic-coupled displacer:
   //   V(θ) = V_avg + V_amp · sin(θ)   (V_max at θ=π/2 — piston highest)
   //   The displacer flips: UP when piston at bottom (sin near -1, θ ≈ 3π/2)
-  //                       DOWN when piston rising (sin > 0.2, after θ=0)
+  //                       DOWN when piston nears top (sin > 0.7, θ ≈ π/4)
   //   So T_max occurs near θ=3π/2 (displacer up = air at warm bottom)
   //
   // Mapping engine angle to position in the idealized 4-leg cycle:
