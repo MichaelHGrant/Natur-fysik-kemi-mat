@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Månen – fødsel, kratere, tidevand og liv | mhgfysik.dk</title>
+<meta name="description" content="Interaktiv 3D-animation: Hvordan Månen blev dannet ved et kæmpenedslag, hvorfor skiven ikke blev til en ring, hvordan kratere dannes, hvordan Månen holder Jordens akse stabil, og hvordan tidevand og måneskin hænger sammen med livets vej fra havet op på land.">
+<link rel="alternate" hreflang="da" href="https://mhgfysik.dk/maanens-dannelse.html">
+<link rel="alternate" hreflang="en" href="https://mhgfysik.dk/maanens-dannelse-en.html">
+<style>
+:root{
+  --bg:#06080d; --panel:#0e1320; --panel2:#141b2b; --ink:#e7e9ef; --muted:#9ba4b6;
+  --gold:#d8b46a; --gold2:#f2d590; --ice:#9fd0ff; --line:#252f47; --green:#7fd1b9;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;line-height:1.6}
+a{color:var(--gold2)}
+.wrap{max-width:1180px;margin:0 auto;padding:0 16px}
+header{padding:18px 0 8px;border-bottom:1px solid var(--line)}
+.crumb{font-size:.85rem;color:var(--muted)}
+.crumb a{color:var(--muted);text-decoration:none}
+.crumb a:hover{color:var(--gold2)}
+h1{font-family:Georgia,"Times New Roman",serif;font-weight:normal;color:var(--gold2);
+  font-size:clamp(1.6rem,4.2vw,2.5rem);margin:.3em 0 .2em;letter-spacing:.01em}
+h2{font-family:Georgia,serif;font-weight:normal;color:var(--gold);font-size:1.45rem;
+  margin:1.8em 0 .5em;border-bottom:1px solid var(--line);padding-bottom:.25em}
+h3{color:var(--gold2);font-size:1.08rem;margin:1.3em 0 .3em}
+.lead{color:#cfd4df;font-size:1.05rem;max-width:860px}
+
+/* ---------- simulation ---------- */
+#simbox{position:relative;margin:16px 0 0;border:1px solid var(--line);border-radius:12px;
+  overflow:hidden;background:#000;height:min(72vh,680px);min-height:380px;touch-action:none}
+#simbox canvas{display:block;width:100%;height:100%}
+#hud{position:absolute;left:12px;top:10px;pointer-events:none;max-width:60%}
+#hud .st{font-family:Georgia,serif;color:var(--gold2);font-size:1.12rem;text-shadow:0 1px 3px #000}
+#hud .tm{color:var(--ice);font-size:.88rem;text-shadow:0 1px 3px #000}
+#gauge{position:absolute;right:12px;top:10px;background:rgba(10,14,24,.78);border:1px solid var(--line);
+  border-radius:8px;padding:6px 10px;font-size:.8rem;min-width:150px;pointer-events:none}
+#gauge .bar{height:6px;background:#1d2538;border-radius:3px;margin-top:4px;overflow:hidden}
+#gauge .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#9fd0ff,#e8dcc2)}
+#labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.lbl{position:absolute;transform:translate(-50%,-120%);font-size:11px;color:#dfe5f2;white-space:nowrap;
+  text-shadow:0 0 3px #000,0 0 6px #000;opacity:.92}
+.lbl.g{color:var(--gold2)} .lbl.b{color:var(--ice)} .lbl.gr{color:var(--green)}
+#hint{position:absolute;left:12px;bottom:8px;font-size:.75rem;color:#7d879b;pointer-events:none}
+
+/* ---------- controls ---------- */
+.controls{background:var(--panel);border:1px solid var(--line);border-top:none;border-radius:0 0 12px 12px;
+  padding:10px 12px 12px;margin-top:-6px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0}
+button{background:var(--panel2);color:var(--ink);border:1px solid #33405e;border-radius:8px;
+  padding:6px 11px;font-size:.9rem;cursor:pointer;font-family:inherit}
+button:hover{border-color:var(--gold)}
+button.on{background:#3a2f17;border-color:var(--gold);color:var(--gold2)}
+button.chip{font-size:.8rem;padding:4px 9px;border-radius:14px}
+#tl{flex:1;min-width:200px;accent-color:var(--gold)}
+input[type=range]{accent-color:var(--gold)}
+.spd{display:flex;align-items:center;gap:6px;font-size:.85rem;color:var(--muted)}
+.spd input{width:110px}
+label.tg{font-size:.85rem;color:#c9cfdb;display:flex;align-items:center;gap:4px;cursor:pointer;user-select:none}
+.sep{width:1px;height:22px;background:var(--line);margin:0 4px}
+#stagebox{background:var(--panel2);border-left:3px solid var(--gold);border-radius:6px;padding:10px 14px;margin:12px 0 4px}
+#stagebox h3{margin:0 0 .2em}
+#stagebox p{margin:.2em 0}
+.note{font-size:.85rem;color:var(--muted)}
+
+/* ---------- article ---------- */
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+@media(max-width:820px){.cols{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 16px}
+.formula{font-family:"Cambria Math",Cambria,Georgia,serif;font-size:1.12rem;text-align:center;margin:.6em 0;color:#fff}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+th,td{border-bottom:1px solid var(--line);padding:5px 6px;text-align:right}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--gold);font-weight:normal}
+.calc .out{background:#0a0f1a;border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-top:8px;font-size:.95rem}
+.calc label{display:block;font-size:.88rem;color:#c9cfdb;margin-top:6px}
+.calc input[type=range]{width:100%}
+.calc select{background:var(--panel2);color:var(--ink);border:1px solid #33405e;border-radius:6px;padding:4px}
+.big{color:var(--gold2);font-size:1.15rem}
+ul.src{font-size:.86rem;color:#b9c0cf}
+footer{margin:40px 0 0;padding:16px 0 30px;border-top:1px solid var(--line);color:var(--muted);font-size:.85rem}
+@media(max-width:600px){
+  #hud{max-width:58%} #hud .st{font-size:.95rem} #hud .tm{font-size:.78rem}
+  #gauge{min-width:120px;font-size:.72rem} .lbl{font-size:10px}
+  button{padding:6px 9px}
+}
+.modes{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0}
+.modes button{font-size:.95rem;padding:8px 13px}
+#simbox #inset{position:absolute;right:10px;bottom:44px;width:min(46%,380px);height:120px;border:1px solid var(--line);border-radius:8px;pointer-events:none}
+.mpanel{margin-top:8px;border-top:1px dashed var(--line);padding-top:8px}
+.mpanel label.sl{display:flex;align-items:center;gap:8px;font-size:.88rem;color:#c9cfdb;margin:4px 0;flex-wrap:wrap}
+.mpanel label.sl input[type=range]{flex:1;min-width:140px}
+.mpanel select{background:var(--panel2);color:var(--ink);border:1px solid #33405e;border-radius:6px;padding:4px}
+.mpanel .val{min-width:70px;color:var(--gold2)}
+#rlMsg{background:#0a0f1a;border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-top:8px;font-size:.92rem}
+#crOut td{text-align:left} #crOut td:last-child{text-align:right;color:var(--gold2)}
+.cv2{width:100%;height:300px;border:1px solid var(--line);border-radius:10px;display:block;background:#0a1020}
+.toc{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.9rem;margin:10px 0 0}
+.toc a{text-decoration:none}
+.meta{font-size:.88rem;color:var(--muted);margin-top:6px}
+.meta a{margin-right:14px}
+blockquote{border-left:3px solid var(--gold);margin:.8em 0;padding:.2em 0 .2em 14px;color:#cfd4df}
+</style>
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+
+<!-- app (PWA) -->
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/app/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="mhgfysik">
+<script src="/app/app.js" defer></script>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="crumb"><a href="index.html#astro">← Forsiden</a> · Astronomi og rumfart · <a href="maanens-dannelse-en.html">🇬🇧 English</a></div>
+    <h1>Månen – fødsel, kratere, tidevand og liv</h1>
+    <p class="lead">For 4,5 milliarder år siden blev den unge Jord ramt af en planet på størrelse med Mars. Af vraggodset blev Månen til – men hvorfor ikke en ring, som om Saturn? Følg nedslaget i 3D, byg selv en måne eller en ring, se et krater blive til i slowmotion, og se, hvordan Månen holder Jordens akse rolig og skaber det tidevand, der måske lokkede de første firbenede dyr op på land.</p>
+    <div class="meta"><a href="maanens-dannelse.pdf">PDF-udgave</a> <span>Opdateret 5. november 2026</span></div>
+    <nav class="toc">
+      <a href="#dannelse" data-goto="dannelse">1 · Dannelsen</a>
+      <a href="#ring" data-goto="ring">2 · Ring eller måne?</a>
+      <a href="#krater" data-goto="krater">3 · Kratere</a>
+      <a href="#aksen" data-goto="aksen">4 · Jordens akse</a>
+      <a href="#tidevand" data-goto="tidevand">5 · Tidevand</a>
+      <a href="#liv">6 · Livet går i land</a>
+      <a href="#maaneskin">7 · Måneskin</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="modes" role="tablist">
+    <button data-mode="dannelse">🌑 Dannelsen</button>
+    <button data-mode="ring">💍 Ring eller måne?</button>
+    <button data-mode="krater">☄️ Krater</button>
+    <button data-mode="aksen">🌍 Aksen</button>
+    <button data-mode="tidevand">🌊 Tidevand</button>
+  </div>
+  <div id="simbox">
+    <div id="labels"></div>
+    <div id="hud"><div class="st" id="hudSt">–</div><div class="tm" id="hudTm">–</div></div>
+    <canvas id="inset"></canvas>
+    <div id="hint">Træk for at dreje · knib/rul for zoom</div>
+  </div>
+  <div class="controls">
+    <div class="row">
+      <button id="bPlay">❚❚ Pause</button>
+      <button id="bRev" title="Kør tiden baglæns">⏪ Baglæns</button>
+      <button id="bStep" title="Ét billede frem">⏯ Trin</button>
+      <div class="spd">Fart <input id="spd" type="range" min="-5" max="2" step="0.1" value="0"><span id="spdT">1×</span></div>
+      <input id="tl" type="range" min="0" max="1" step="0.0005" value="0" aria-label="Tidslinje">
+      <label class="tg" id="autoZoomL"><input type="checkbox" id="autoZoom" checked> Auto-zoom</label>
+    </div>
+    <div class="row" id="chips"></div>
+
+    <div class="mpanel" data-for="ring">
+      <label class="sl">Afstand fra Jorden <input id="rlD" type="range" min="1.5" max="7" step="0.05" value="3.8"><span class="val" id="rlDv"></span></label>
+      <label class="sl">Jordens døgn <input id="rlDay" type="range" min="3" max="24" step="0.5" value="5"><span class="val" id="rlDayv"></span></label>
+      <div class="row">
+        <label class="tg">Materiale <select id="rlRho"><option value="3.34">Sten (som Månen), 3,34 g/cm³</option><option value="0.93">Is, 0,93 g/cm³</option></select></label>
+        <label class="tg"><input type="checkbox" id="rlDrift" checked> Tidevandsvandring</label>
+        <button id="rlGo">↺ Slip igen</button>
+      </div>
+      <div class="row">
+        <button class="chip" data-rl="young">Den unge Måne</button>
+        <button class="chip" data-rl="inside">Inden for synkronbanen (Phobos)</button>
+        <button class="chip" data-rl="roche">Født inden for Roche-grænsen</button>
+        <button class="chip" data-rl="ice">En ismåne</button>
+      </div>
+      <div id="rlMsg"></div>
+    </div>
+
+    <div class="mpanel" data-for="krater">
+      <label class="sl">Nedslagslegemets diameter <input id="crL" type="range" min="-1.5" max="1.2" step="0.01" value="0"><span class="val" id="crLv"></span></label>
+      <label class="sl">Fart <input id="crV" type="range" min="3" max="40" step="0.5" value="17"><span class="val" id="crVv"></span></label>
+      <label class="sl">Vinkel over vandret <input id="crA" type="range" min="15" max="90" step="1" value="45"><span class="val" id="crAv"></span></label>
+      <div class="row">
+        <label class="tg">Mål <select id="crBody"><option value="moon">Månen (g = 1,62 m/s²)</option><option value="earth">Jorden (g = 9,81 m/s²)</option></select></label>
+        <label class="tg"><input type="checkbox" id="crCut" checked> Tværsnit</label>
+      </div>
+      <div class="row">
+        <button class="chip" data-crp="small">Lille månekrater</button>
+        <button class="chip" data-crp="copernicus">Copernicus-agtigt (Månen)</button>
+        <button class="chip" data-crp="meteor">Meteor Crater (Arizona)</button>
+        <button class="chip" data-crp="chicxulub">Chicxulub (Jorden)</button>
+      </div>
+      <table id="crOut"></table>
+      <p class="note">Tip: sæt farten ned til 1/32× og brug „Trin“ for at følge chokbølgen og udkastningsgardinet billede for billede. Tværsnittet viser lagene i undergrunden, chokbølgen (blå), smeltet sten (orange) og den knuste breccie.</p>
+    </div>
+
+    <div class="mpanel" data-for="aksen">
+      <div class="row">
+        <button data-ax="moon" class="on">Med Månen</button>
+        <button data-ax="laskar">Uden Måne – Laskar 1993</button>
+        <button data-ax="lissauer">Uden Måne – Lissauer m.fl. 2012</button>
+      </div>
+      <p class="note">Kurverne er illustrationer af beregningernes karakter, ikke selve beregningerne. Blå: med Månen (22,1–24,5°). Rød: uden Måne efter Laskar m.fl. (kaotisk, 0–85° over lang tid). Gul: Lissauer m.fl. fandt mere beherskede udsving for en Jord, der roterer i samme retning som sin bane.</p>
+    </div>
+
+    <div class="mpanel" data-for="tidevand">
+      <div class="row">
+        <button data-era="today" class="on">I dag</button>
+        <button data-era="devon">Devon (380 mio. år)</button>
+        <button data-era="arch">Arkæikum (3,2 mia. år)</button>
+        <button data-era="hade">Hadæikum (4,4 mia. år)</button>
+      </div>
+      <p class="note">1 sekund i animationen = 5 timer ved 1×. Kurven viser ligevægtstidevandet (Månens + Solens) ved Grenaa; det virkelige tidevand formes også af havbassinernes resonanser. Månens afstand er ikke i skala, men tidevandskraften følger 1/d³.</p>
+    </div>
+  </div>
+
+  <div id="stagebox"><h3 id="stageTitle">–</h3><p id="stageText"></p></div>
+  <p class="note">Om modellen: Tidsaksen er komprimeret og ikke lineær. I dannelsesscenen er Jord og Måne tegnet i rigtigt størrelsesforhold, og omløbshastighederne følger Keplers 3. lov (T ∝ r<sup>3/2</sup>), men sat ned. Partiklernes antal og skivens tykkelse er stiliseret. Kraterscenen bruger skalalovene fra Collins, Melosh &amp; Marcus (2005).</p>
+
+  <h2 id="s-dannelse">1 · Et kæmpenedslag skabte Månen</h2>
+  <div class="cols">
+    <div>
+      <p>Før Apollo-programmet var der tre gamle forklaringer: Månen var spaltet af fra en hurtigt roterende Jord (George Darwin, 1879), indfanget, eller dannet ved siden af Jorden. Ingen af dem holdt, da astronauterne kom hjem med 382 kg månesten. I 1975–76 foreslog William Hartmann og Donald Davis og uafhængigt Alastair Cameron og William Ward, at Jorden var blevet ramt af en anden protoplanet. Den fik senere navnet <b>Theia</b> efter titanen, der i græsk mytologi er mor til månegudinden Selene.</p>
+      <p>Teorien forklarer fire ting på én gang:</p>
+      <ul>
+        <li><b>Den lille jernkerne.</b> Månens kerne er kun ca. 1–2 % af dens masse (Jordens: 32 %). Ved nedslaget sank jernet ind i Jorden; det, der blev slynget ud, var mest kappesten.</li>
+        <li><b>Det tørre, „kogte“ indhold.</b> Månesten mangler flygtige stoffer som vand, kalium og zink – de er kogt bort i den varme skive.</li>
+        <li><b>Impulsmomentet.</b> Jord-Måne-systemet har et usædvanligt stort impulsmoment – det, et skråt stød netop giver.</li>
+        <li><b>Magmahavet.</b> Månens lyse højland er bjergarten anortosit, som flød op til overfladen af et hav af smeltet sten – Månen var altså smeltet, da den blev dannet.</li>
+      </ul>
+    </div>
+    <div>
+      <p>Én ting drillede: Jord og Måne har næsten identiske isotopsammensætninger (ilt, titan, krom, jern), selv om simuleringerne siger, at Månen mest skulle være lavet af Theia. Det har givet varianter: et voldsommere stød, der blandede alt til en snurrende sky af damp – en <b>synestia</b> (Lock &amp; Stewart, 2018) – eller at Månen blev dannet direkte på få timer (Kegerreis m.fl., 2022). En nyere løsning er, at Theia simpelthen var Jordens nabo: jernisotoper peger på, at Theia blev dannet i det indre Solsystem, måske endnu tættere på Solen end Jorden (Hopp m.fl., <i>Science</i>, november 2025).</p>
+      <p>Rester af Theia kan stadig ligge dybt i Jorden: to kæmpe områder i den nederste kappe under Afrika og Stillehavet, hvor seismiske bølger går langsomt, er blevet foreslået som Theias begravede kappe (Yuan m.fl., <i>Nature</i>, 2023).</p>
+      <div class="card">
+        <table>
+          <tr><th>Månen i tal</th><th></th></tr>
+          <tr><td>Radius</td><td>1&nbsp;737 km (0,273 R⊕)</td></tr>
+          <tr><td>Masse</td><td>7,35·10²² kg (1/81 af Jordens)</td></tr>
+          <tr><td>Middeldensitet</td><td>3,34 g/cm³</td></tr>
+          <tr><td>Middelafstand</td><td>384&nbsp;400 km (60,3 R⊕)</td></tr>
+          <tr><td>Fjerner sig</td><td>3,8 cm/år</td></tr>
+          <tr><td>Siderisk / synodisk måned</td><td>27,32 / 29,53 døgn</td></tr>
+          <tr><td>Alder</td><td>ca. 4,5 mia. år</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <h2 id="s-ring">2 · Hvorfor blev Månen ikke en ring om Jorden?</h2>
+  <div class="cols">
+    <div>
+      <p>Lige efter nedslaget lå vraggodset faktisk som en ring – en flad skive af smeltet sten og damp om Jorden. Saturns ringe viser, at en sådan ring godt kan holde sig. Så hvorfor blev Jordens til en måne? Svaret ligger i to afstande.</p>
+      <p><b>Roche-grænsen.</b> Jorden trækker hårdere i den side af en klump, der vender ind mod Jorden, end i den side, der vender væk. Forskellen – tidevandskraften – river klumpen fra hinanden, hvis den er stærkere end klumpens egen tyngde. For et flydende eller løst sammenhængende legeme fandt Édouard Roche i 1849:</p>
+      <div class="formula"><i>d</i><sub>R</sub> = 2,44 · <i>R</i>⊕ · (ρ⊕ / ρ<sub>m</sub>)<sup>1/3</sup> = 2,44 · (5,51 / 3,34)<sup>1/3</sup> <i>R</i>⊕ ≈ 2,9 <i>R</i>⊕ ≈ 18&nbsp;400 km</div>
+      <p>Inden for denne afstand kan stenstumper kun være en ring; uden for kan de klumpe sig sammen.</p>
+      <p><b>Synkronbanen.</b> Hvor et omløb varer lige så længe som et døgn. Med Keplers 3. lov og Jordens døgn på ca. 5 timer lige efter nedslaget:</p>
+      <div class="formula"><i>a</i><sub>s</sub> = (<i>GM</i>⊕ <i>T</i>² / 4π²)<sup>1/3</sup> ≈ 14&nbsp;900 km ≈ 2,3 <i>R</i>⊕</div>
+    </div>
+    <div>
+      <p>Simuleringer (Ida, Canup &amp; Stewart, 1997; Salmon &amp; Canup, 2012) viser så forløbet:</p>
+      <ol>
+        <li><b>Det meste af massen lå uden for Roche-grænsen.</b> Et skråt stød sender materialet ud til 3–6 R⊕. Der voksede småmåner frem på måneder til år.</li>
+        <li><b>Den indre ring var ustabil.</b> Den var varm, tæt og fuld af stød. Den bredte sig: den inderste del regnede ned på Jorden, mens den yderste blev skubbet ud over Roche-grænsen og fodrede småmånerne. En ring af smeltet sten og damp lever meget kortere end Saturns iskolde ringe – måske kun ~100 år.</li>
+        <li><b>Månen blev født uden for synkronbanen.</b> Så roterede Jorden hurtigere, end Månen kredsede, og tidevandsbulen lå foran Månen og trak den <i>udad</i> – væk fra Roche-grænsen. Var Månen født inden for synkronbanen, var den i stedet spiraleret indad og blevet revet over til en ring. Det er præcis Mars-månen Phobos’ skæbne: den kredser inden for Mars’ synkronbane og ventes at blive en ring om 30–50 mio. år.</li>
+        <li><b>Sten er tung.</b> Is har lav densitet og en Roche-grænse langt ude (ca. 4,4 R⊕ ved Jorden). Saturns ringe er is og ligger inden for Saturns Roche-grænse. Prøv „En ismåne“ i laboratoriet.</li>
+      </ol>
+      <p>Se også <a href="saturns-ringe.html">Saturns ringe – fødsel, liv og død</a> og <a href="maanens-bane-3d.html">Månens bane i 3D</a>.</p>
+    </div>
+  </div>
+
+  <h2 id="s-krater">3 · Sådan dannes et krater</h2>
+  <div class="cols">
+    <div>
+      <p>Månens forside er dækket af omkring en million kratere over 1 km. Længe troede mange, at de var vulkaner; Grove Karl Gilbert argumenterede i 1893 for nedslag, men først i 1960’erne – med Eugene Shoemakers studier af Meteor Crater i Arizona og atomprøvesprængningernes kratere – blev det almindeligt accepteret. Et nedslag med 15–20 km/s opfører sig som en eksplosion. Det foregår i tre faser, som du kan følge i 3D-scenen „Krater“:</p>
+      <ol>
+        <li><b>Kontakt og kompression</b> – brøkdele af et sekund. En chokbølge med millioner af atmosfærers tryk går ned i undergrunden; nedslagslegemet fordamper.</li>
+        <li><b>Udgravning</b> – sekunder til minutter. Bag chokbølgen strømmer klippen udad og opad. Et skålformet transient krater åbner sig, og et kegleformet gardin af udkast flyver ud.</li>
+        <li><b>Modifikation</b> – minutter. Tyngden tager over. Små kratere bliver til skåle med en linse af knust sten; store får terrasser og en centraltop.</li>
+      </ol>
+    </div>
+    <div>
+      <p>Kraterets størrelse kan forudsiges med en skalalov. For det transiente krater (Collins, Melosh &amp; Marcus, 2005):</p>
+      <div class="formula"><i>D</i><sub>tc</sub> = 1,161 (ρ<sub>i</sub>/ρ<sub>t</sub>)<sup>1/3</sup> <i>L</i><sup>0,78</sup> <i>v</i><sup>0,44</sup> <i>g</i><sup>−0,22</sup> sin<sup>1/3</sup>θ</div>
+      <p>Her er <i>L</i> legemets diameter, <i>v</i> farten, <i>g</i> tyngdeaccelerationen og θ vinklen over vandret (SI-enheder). Bemærk, at <i>g</i> indgår: samme nedslag giver et større krater på Månen end på Jorden. Et 1 km stort stenlegeme med 17 km/s giver et ca. 18 km bredt krater på Månen – omkring 18 gange legemets diameter. Udgravningen varer omkring 0,8·√(<i>D</i><sub>tc</sub>/<i>g</i>), altså godt et minut.</p>
+      <p>Kratere er næsten altid runde, også ved skrå nedslag; først under ca. 15° bliver de aflange og får sommerfugleformede udkast. Kendte eksempler: Tycho (85 km) med sine lyse stråler, Copernicus (93 km) med centraltoppe og terrasser, Meteor Crater (1,2 km, ca. 50&nbsp;000 år gammel) og Chicxulub (ca. 180 km), der gjorde det af med dinosaurerne for 66 mio. år siden.</p>
+    </div>
+  </div>
+
+  <h2 id="s-aksen">4 · Beskytter Månen Jorden?</h2>
+  <div class="cols">
+    <div>
+      <p><b>Ja – mod et vaklende klima.</b> Jordens akse hælder 23,4°, og det giver årstiderne. Solens og Månens træk i ækvatorbulen får aksen til at præcessere med en periode på ca. 26&nbsp;000 år. De andre planeter forstyrrer langsomt Jordens baneplan. Hvis præcessionen faldt i takt med disse forstyrrelser, ville hældningen kunne svinge voldsomt. Månen gør præcessionen så hurtig, at resonansen undgås, og hældningen svinger kun mellem ca. 22,1° og 24,5° over 41&nbsp;000 år – nok til at styre istiderne, men ikke nok til at vende klimaet på hovedet.</p>
+      <p>Jacques Laskar og kolleger beregnede i 1993, at hældningen uden Månen ville vandre kaotisk mellem 0° og 85°. Ved 85° ville polerne skiftevis have halvt års stegende midnatssol og halvt års mørke. Mars, der ikke har en stor måne, har netop en kaotisk hældning, som har svinget mellem ca. 0° og 60°. Lissauer, Barnes &amp; Chambers (2012) fandt dog, at en månefri Jord, der roterer samme vej som i dag, ville få mere beherskede udsving – typisk 10–20° over en milliard år. Konklusionen er: Månen gør Jordens klima mere stabilt, men hvor afgørende det har været for livet, er stadig til debat.</p>
+    </div>
+    <div>
+      <p><b>Nej – ikke som skjold mod asteroider.</b> Det er en udbredt myte. Månen dækker kun en lille brøkdel af himlen set fra Jorden. Sandsynligheden for, at en tilfældig asteroide på vej mod Jorden rammer Månen i stedet, er groft sagt forholdet mellem Månens tværsnit og en kugleflade med radius lig med Månens afstand:</p>
+      <div class="formula">π<i>R</i><sub>M</sub>² / (4π<i>d</i>²) = (1737 / 384&nbsp;400)² / 4 ≈ 5·10<sup>−6</sup></div>
+      <p>Månens kratere er ikke ar efter slag, den har taget for os; de er et <i>arkiv</i> over de slag, der også har ramt Jorden, men som vejr, vand og pladetektonik har visket ud her.</p>
+      <p><b>Og så har Månen bremset Jorden.</b> Tidevandet har trukket døgnet ud fra ca. 5 til 24 timer. En planet med 5-timers døgn ville have kraftigere vinde og andre vejrsystemer.</p>
+    </div>
+  </div>
+
+  <h2 id="s-tidevand">5 · Tidevandet</h2>
+  <div class="cols">
+    <div>
+      <p>Tidevandskraften er forskellen mellem Månens tiltrækning på Jordens overflade og i Jordens centrum. Med Jordens radius <i>R</i> og Månens afstand <i>d</i> er den ca.</p>
+      <div class="formula"><i>a</i><sub>tid</sub> ≈ 2<i>GMR</i> / <i>d</i>³ = 1,1·10<sup>−6</sup> m/s² (Månen), 0,5·10<sup>−6</sup> m/s² (Solen)</div>
+      <p>Bemærk <i>d</i>³: halveret afstand giver otte gange så stort tidevand. Solen er 27 millioner gange tungere end Månen, men 390 gange længere væk, så dens tidevand er kun 46 % af Månens. At de to er af samme størrelsesorden, hænger sammen med, at Sol og Måne ser lige store ud på himlen – som ved en total solformørkelse.</p>
+    </div>
+    <div>
+      <p>Ved ny- og fuldmåne trækker Sol og Måne på linje: <b>springflod</b>. Ved halvmåne står de vinkelret: <b>nipflod</b>. Tidevandet svæver altså med en periode på en halv synodisk måned, 14,8 døgn – se kurven i 3D-scenen „Tidevand“.</p>
+      <p>I fortiden var Månen nærmere. Tidevandsaflejringer fra Moodies-gruppen i Sydafrika viser, at Månen for 3,2 mia. år siden var ca. 70 % af den nuværende afstand væk, og at døgnet var ca. 13 timer (Eulenfeld &amp; Heubeck, 2023). Tidevandskraften var da (1/0,7)³ ≈ 3 gange større. I Devon for ca. 380 mio. år siden var Månen kun 2–3 % nærmere end i dag, og året havde ca. 400 døgn, som John Wells (1963) talte i koralfossilers daglige vækstlinjer.</p>
+    </div>
+  </div>
+
+  <h2 id="liv">6 · Tidevandet og livets vej op på land</h2>
+  <div class="cols">
+    <div>
+      <p>Livet opstod i havet. De første planter og leddyr begyndte at gå i land i ordovicium og silur for ca. 470–420 mio. år siden, og i sen-devon for ca. 375 mio. år siden kravlede fisk med kraftige finner – som <i>Tiktaalik</i> – op i lavt vand og ud på land. Her spiller tidevandszonen en særlig rolle: et bælte, der to gange i døgnet skifter mellem hav og land, og hvor man kan tilpasse sig luft lidt ad gangen.</p>
+      <p>Astrofysikeren Steven Balbus (Oxford, 2014) foreslog, at netop Månens tidevand var drivkraften. Fordi Solens og Månens tidevand er næsten lige store, men har lidt forskellige perioder, svæver de kraftigt. Ved springflod når havet langt op; ved nipflod kan det gå dage, før det vender tilbage. I de lange smalle havstræder i Devon gav det et net af tidevandsbassiner, som blev afskåret fra havet og tørrede ind. En fisk, der kunne kravle fra et udtørrende bassin til det næste eller tilbage til havet, overlevede. Detaljerede computermodeller af Devons have (Byrne m.fl., 2020) fandt tidevand på over 4 meter netop der, hvor de tidligste benfisk og firbenede dyr er fundet.</p>
+      <p class="note">Det er en hypotese, ikke en vedtaget sandhed. Andre peger på tørke, iltfattigt vand eller jagt på føde i lavvandede sumpe. Men en verden uden Måne ville have små, regelmæssige soltidevand og langt færre sådanne bassiner.</p>
+    </div>
+    <div>
+      <h3>Prøv selv: tidevandsbassiner</h3>
+      <canvas id="poolCanvas" class="cv2"></canvas>
+      <div class="row">
+        <button id="poolPlay">❚❚</button>
+        <label class="tg">Tidevand <select id="poolEra"><option value="today">Lille (som i dag)</option><option value="devon" selected>Stort (Devons havstræder)</option><option value="arch">Meget stort (Månen tæt på)</option></select></label>
+        <div class="spd">Fart <input id="poolSpd" type="range" min="-2" max="3" step="0.1" value="0"></div>
+        <button id="poolReset">↺</button>
+      </div>
+      <p class="note">Stranden stiger mod højre. Havet følger Månens og Solens tidevand (springflod og nipflod). Bassinerne fyldes, når havet når op til dem; ellers fordamper de. Fisk i et bassin, der tørrer ud, kravler (med ben!) mod nærmeste vand. Er der for langt, strander de. Med lille tidevand bliver de øverste bassiner aldrig fyldt igen.</p>
+    </div>
+  </div>
+
+  <h2 id="maaneskin">7 · Måneskin – et ur for livet i havet</h2>
+  <div class="cols">
+    <div>
+      <p>Fuldmånen giver kun ca. 0,25 lux – omkring 400&nbsp;000 gange mindre end fuldt sollys. Alligevel er det nok til at stille et biologisk ur. Mange havdyr har et <b>circalunart</b> ur med en periode på ca. 29,5 døgn, styret af lysfølsomme proteiner (kryptokromer), som kan mærke selv svagt måneskin.</p>
+      <ul>
+        <li><b>Koraller</b> gyder i synkrone masseudslip få nætter efter fuldmåne. Forsøg viser, at signalet er den mørke periode mellem solnedgang og måneopgang, der opstår efter fuldmåne, fordi Månen står ca. 50 minutter senere op hver aften (Lin m.fl., PNAS 2021).</li>
+        <li><b>Dolkhaler</b> (hesteskokrabber) – en slægt, der er over 440 mio. år gammel – kravler op på strandene ved højvande nær ny- og fuldmåne for at lægge æg, højest muligt på stranden. Et levende billede af grænsen mellem hav og land.</li>
+        <li><b>Grunion-fisk</b> i Californien springer op på stranden og gyder i sandet om natten lige efter springflod – æggene klækkes ved næste springflod to uger senere.</li>
+        <li><b>Strandlopper</b> (tanglopper) og <b>gødningsbiller</b> navigerer efter Månen og månelysets polarisation.</li>
+      </ul>
+      <p class="note">Måneskin og tidevand følger samme kalender, og for dyr i tidevandszonen hænger de tæt sammen. At måneskinnet i sig selv drev livet op på land, er der dog ikke direkte belæg for; det er tidevandet, der er den stærkeste kandidat.</p>
+    </div>
+    <div>
+      <canvas id="lightCanvas" class="cv2" style="height:320px"></canvas>
+      <div class="row"><button id="lightPlay">❚❚</button><label class="sl" style="flex:1;display:flex;gap:8px;align-items:center;font-size:.88rem;color:#c9cfdb">Døgn efter nymåne <input id="lightDay" type="range" min="0" max="29.5" step="0.05" value="14.8" style="flex:1"></label></div>
+      <p class="note">Belysningsstyrken er beregnet ud fra Månens lysstyrke som funktion af fasevinklen (fuldmåne −12,7 mag). Fuldmånen er over 10 gange lysere end halvmånen, fordi skygger forsvinder, når Solen står lige bag os („oppositionseffekten“).</p>
+    </div>
+  </div>
+
+  <h2>Kilder og videre læsning</h2>
+  <ul class="src">
+    <li>Hartmann, W. K. &amp; Davis, D. R. (1975): Satellite-sized planetesimals and lunar origin. <i>Icarus</i> 24. – Cameron, A. G. W. &amp; Ward, W. R. (1976), <i>Lunar Science</i> VII.</li>
+    <li>Canup, R. M. &amp; Asphaug, E. (2001): Origin of the Moon in a giant impact near the end of the Earth’s formation. <i>Nature</i> 412.</li>
+    <li>Ida, S., Canup, R. M. &amp; Stewart, G. R. (1997): Lunar accretion from an impact-generated disk. <i>Nature</i> 389. – Salmon, J. &amp; Canup, R. M. (2012): Lunar accretion from a Roche-interior fluid disk. <i>ApJ</i> 760.</li>
+    <li>Lock, S. J. m.fl. (2018): The origin of the Moon within a terrestrial synestia. <i>JGR Planets</i> 123. – Kegerreis, J. A. m.fl. (2022): Immediate origin of the Moon as a post-impact satellite. <i>ApJL</i> 937.</li>
+    <li>Yuan, Q. m.fl. (2023): Moon-forming impactor as a source of Earth’s basal mantle anomalies. <i>Nature</i> 623.</li>
+    <li>Hopp, T., Dauphas, N., Boyet, M., Jacobson, S. A. &amp; Kleine, T. (2025): The Moon-forming impactor Theia originated from the inner Solar System. <i>Science</i> 390, 819–823.</li>
+    <li>Melosh, H. J. (1989): <i>Impact Cratering: A Geologic Process</i>. Oxford UP. – Collins, G. S., Melosh, H. J. &amp; Marcus, R. A. (2005): Earth Impact Effects Program. <i>Meteoritics &amp; Planetary Science</i> 40.</li>
+    <li>Laskar, J., Joutel, F. &amp; Robutel, P. (1993): Stabilization of the Earth’s obliquity by the Moon. <i>Nature</i> 361. – Lissauer, J. J., Barnes, J. W. &amp; Chambers, J. E. (2012): Obliquity variations of a moonless Earth. <i>Icarus</i> 217.</li>
+    <li>Eulenfeld, T. &amp; Heubeck, C. (2023): Constraints on Moon’s orbit 3.2 billion years ago from tidal bundle data. <i>JGR Planets</i> 128. – Wells, J. W. (1963): Coral growth and geochronometry. <i>Nature</i> 197.</li>
+    <li>Balbus, S. A. (2014): Dynamical, biological and anthropic consequences of equal lunar and solar angular radii. <i>Proc. R. Soc. A</i> 470. – Byrne, H. M. m.fl. (2020): Tides: a key environmental driver of osteichthyan evolution and the fish–tetrapod transition? <i>Proc. R. Soc. A</i> 476.</li>
+    <li>Lin, C.-H., Takahashi, S., Mulla, A. J. &amp; Nozawa, Y. (2021): Moonrise timing is key for synchronized spawning in coral <i>Dipsastraea speciosa</i>. <i>PNAS</i> 118.</li>
+    <li>Teksturer: Månen og Jorden fra three.js-eksemplerne (NASA-data).</li>
+  </ul>
+</main>
+
+<footer>
+  <div class="wrap">
+    <a href="index.html#astro">← Til forsiden</a> · Michael H. Grant, lektor emeritus i fysik &amp; matematik · mhgfysik.dk ·
+    Indholdet er udgivet under <a href="https://creativecommons.org/licenses/by/4.0/deed.da" rel="license">CC BY 4.0</a>.
+  </div>
+</footer>
+
+<noscript><p class="wrap">Animationen kræver JavaScript og WebGL.</p></noscript>
+<script type="module" src="maanens-dannelse.js"></script>
+<script src="lang-switch.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Moon – birth, craters, tides and life | mhgfysik.dk</title>
+<meta name="description" content="Interactive 3D animation: how the Moon formed in a giant impact, why the debris disk did not stay a ring, how craters form, how the Moon keeps Earth’s axis steady, and how tides and moonlight are tied to life’s move from the sea onto land.">
+<link rel="alternate" hreflang="da" href="https://mhgfysik.dk/maanens-dannelse.html">
+<link rel="alternate" hreflang="en" href="https://mhgfysik.dk/maanens-dannelse-en.html">
+<style>
+:root{
+  --bg:#06080d; --panel:#0e1320; --panel2:#141b2b; --ink:#e7e9ef; --muted:#9ba4b6;
+  --gold:#d8b46a; --gold2:#f2d590; --ice:#9fd0ff; --line:#252f47; --green:#7fd1b9;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;line-height:1.6}
+a{color:var(--gold2)}
+.wrap{max-width:1180px;margin:0 auto;padding:0 16px}
+header{padding:18px 0 8px;border-bottom:1px solid var(--line)}
+.crumb{font-size:.85rem;color:var(--muted)}
+.crumb a{color:var(--muted);text-decoration:none}
+.crumb a:hover{color:var(--gold2)}
+h1{font-family:Georgia,"Times New Roman",serif;font-weight:normal;color:var(--gold2);
+  font-size:clamp(1.6rem,4.2vw,2.5rem);margin:.3em 0 .2em;letter-spacing:.01em}
+h2{font-family:Georgia,serif;font-weight:normal;color:var(--gold);font-size:1.45rem;
+  margin:1.8em 0 .5em;border-bottom:1px solid var(--line);padding-bottom:.25em}
+h3{color:var(--gold2);font-size:1.08rem;margin:1.3em 0 .3em}
+.lead{color:#cfd4df;font-size:1.05rem;max-width:860px}
+
+/* ---------- simulation ---------- */
+#simbox{position:relative;margin:16px 0 0;border:1px solid var(--line);border-radius:12px;
+  overflow:hidden;background:#000;height:min(72vh,680px);min-height:380px;touch-action:none}
+#simbox canvas{display:block;width:100%;height:100%}
+#hud{position:absolute;left:12px;top:10px;pointer-events:none;max-width:60%}
+#hud .st{font-family:Georgia,serif;color:var(--gold2);font-size:1.12rem;text-shadow:0 1px 3px #000}
+#hud .tm{color:var(--ice);font-size:.88rem;text-shadow:0 1px 3px #000}
+#gauge{position:absolute;right:12px;top:10px;background:rgba(10.14.24,.78);border:1px solid var(--line);
+  border-radius:8px;padding:6px 10px;font-size:.8rem;min-width:150px;pointer-events:none}
+#gauge .bar{height:6px;background:#1d2538;border-radius:3px;margin-top:4px;overflow:hidden}
+#gauge .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#9fd0ff,#e8dcc2)}
+#labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.lbl{position:absolute;transform:translate(-50%,-120%);font-size:11px;color:#dfe5f2;white-space:nowrap;
+  text-shadow:0 0 3px #000.0 0 6px #000;opacity:.92}
+.lbl.g{color:var(--gold2)} .lbl.b{color:var(--ice)} .lbl.gr{color:var(--green)}
+#hint{position:absolute;left:12px;bottom:8px;font-size:.75rem;color:#7d879b;pointer-events:none}
+
+/* ---------- controls ---------- */
+.controls{background:var(--panel);border:1px solid var(--line);border-top:none;border-radius:0 0 12px 12px;
+  padding:10px 12px 12px;margin-top:-6px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0}
+button{background:var(--panel2);color:var(--ink);border:1px solid #33405e;border-radius:8px;
+  padding:6px 11px;font-size:.9rem;cursor:pointer;font-family:inherit}
+button:hover{border-color:var(--gold)}
+button.on{background:#3a2f17;border-color:var(--gold);color:var(--gold2)}
+button.chip{font-size:.8rem;padding:4px 9px;border-radius:14px}
+#tl{flex:1;min-width:200px;accent-color:var(--gold)}
+input[type=range]{accent-color:var(--gold)}
+.spd{display:flex;align-items:center;gap:6px;font-size:.85rem;color:var(--muted)}
+.spd input{width:110px}
+label.tg{font-size:.85rem;color:#c9cfdb;display:flex;align-items:center;gap:4px;cursor:pointer;user-select:none}
+.sep{width:1px;height:22px;background:var(--line);margin:0 4px}
+#stagebox{background:var(--panel2);border-left:3px solid var(--gold);border-radius:6px;padding:10px 14px;margin:12px 0 4px}
+#stagebox h3{margin:0 0 .2em}
+#stagebox p{margin:.2em 0}
+.note{font-size:.85rem;color:var(--muted)}
+
+/* ---------- article ---------- */
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+@media(max-width:820px){.cols{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 16px}
+.formula{font-family:"Cambria Math",Cambria,Georgia,serif;font-size:1.12rem;text-align:center;margin:.6em 0;color:#fff}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+th,td{border-bottom:1px solid var(--line);padding:5px 6px;text-align:right}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--gold);font-weight:normal}
+.calc .out{background:#0a0f1a;border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-top:8px;font-size:.95rem}
+.calc label{display:block;font-size:.88rem;color:#c9cfdb;margin-top:6px}
+.calc input[type=range]{width:100%}
+.calc select{background:var(--panel2);color:var(--ink);border:1px solid #33405e;border-radius:6px;padding:4px}
+.big{color:var(--gold2);font-size:1.15rem}
+ul.src{font-size:.86rem;color:#b9c0cf}
+footer{margin:40px 0 0;padding:16px 0 30px;border-top:1px solid var(--line);color:var(--muted);font-size:.85rem}
+@media(max-width:600px){
+  #hud{max-width:58%} #hud .st{font-size:.95rem} #hud .tm{font-size:.78rem}
+  #gauge{min-width:120px;font-size:.72rem} .lbl{font-size:10px}
+  button{padding:6px 9px}
+}
+.modes{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0}
+.modes button{font-size:.95rem;padding:8px 13px}
+#simbox #inset{position:absolute;right:10px;bottom:44px;width:min(46%,380px);height:120px;border:1px solid var(--line);border-radius:8px;pointer-events:none}
+.mpanel{margin-top:8px;border-top:1px dashed var(--line);padding-top:8px}
+.mpanel label.sl{display:flex;align-items:center;gap:8px;font-size:.88rem;color:#c9cfdb;margin:4px 0;flex-wrap:wrap}
+.mpanel label.sl input[type=range]{flex:1;min-width:140px}
+.mpanel select{background:var(--panel2);color:var(--ink);border:1px solid #33405e;border-radius:6px;padding:4px}
+.mpanel .val{min-width:70px;color:var(--gold2)}
+#rlMsg{background:#0a0f1a;border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-top:8px;font-size:.92rem}
+#crOut td{text-align:left} #crOut td:last-child{text-align:right;color:var(--gold2)}
+.cv2{width:100%;height:300px;border:1px solid var(--line);border-radius:10px;display:block;background:#0a1020}
+.toc{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.9rem;margin:10px 0 0}
+.toc a{text-decoration:none}
+.meta{font-size:.88rem;color:var(--muted);margin-top:6px}
+.meta a{margin-right:14px}
+blockquote{border-left:3px solid var(--gold);margin:.8em 0;padding:.2em 0 .2em 14px;color:#cfd4df}
+</style>
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+
+<!-- app (PWA) -->
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/app/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="mhgfysik">
+<script src="/app/app.js" defer></script>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="crumb"><a href="index-en.html#astro">← Home</a> · Astronomy and space · <a href="maanens-dannelse.html">🇩🇰 Dansk</a></div>
+    <h1>The Moon – birth, craters, tides and life</h1>
+    <p class="lead">4.5 billion years ago the young Earth was struck by a planet the size of Mars. The Moon formed from the wreckage – but why not a ring, like Saturn’s? Follow the impact in 3D, build a moon or a ring yourself, watch a crater form in slow motion, and see how the Moon keeps Earth’s axis steady and raises the tides that may have coaxed the first four-legged animals onto land.</p>
+    <div class="meta"><a href="maanens-dannelse-en.pdf">PDF edition</a> <span>Updated 5 November 2026</span></div>
+    <nav class="toc">
+      <a href="#dannelse" data-goto="dannelse">1 · Formation</a>
+      <a href="#ring" data-goto="ring">2 · Ring or moon?</a>
+      <a href="#krater" data-goto="krater">3 · Craters</a>
+      <a href="#aksen" data-goto="aksen">4 · Earth’s axis</a>
+      <a href="#tidevand" data-goto="tidevand">5 · Tides</a>
+      <a href="#liv">6 · Life comes ashore</a>
+      <a href="#maaneskin">7 · Moonlight</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="modes" role="tablist">
+    <button data-mode="dannelse">🌑 Formation</button>
+    <button data-mode="ring">💍 Ring or moon?</button>
+    <button data-mode="krater">☄️ Crater</button>
+    <button data-mode="aksen">🌍 The axis</button>
+    <button data-mode="tidevand">🌊 Tides</button>
+  </div>
+  <div id="simbox">
+    <div id="labels"></div>
+    <div id="hud"><div class="st" id="hudSt">–</div><div class="tm" id="hudTm">–</div></div>
+    <canvas id="inset"></canvas>
+    <div id="hint">Drag to rotate · pinch/scroll to zoom</div>
+  </div>
+  <div class="controls">
+    <div class="row">
+      <button id="bPlay">❚❚ Pause</button>
+      <button id="bRev" title="Run time backwards">⏪ Reverse</button>
+      <button id="bStep" title="One frame forward">⏯ Step</button>
+      <div class="spd">Speed <input id="spd" type="range" min="-5" max="2" step="0.1" value="0"><span id="spdT">1×</span></div>
+      <input id="tl" type="range" min="0" max="1" step="0.0005" value="0" aria-label="Timeline">
+      <label class="tg" id="autoZoomL"><input type="checkbox" id="autoZoom" checked> Auto-zoom</label>
+    </div>
+    <div class="row" id="chips"></div>
+
+    <div class="mpanel" data-for="ring">
+      <label class="sl">Distance from Earth <input id="rlD" type="range" min="1.5" max="7" step="0.05" value="3.8"><span class="val" id="rlDv"></span></label>
+      <label class="sl">Earth’s day <input id="rlDay" type="range" min="3" max="24" step="0.5" value="5"><span class="val" id="rlDayv"></span></label>
+      <div class="row">
+        <label class="tg">Material <select id="rlRho"><option value="3.34">Rock (like the Moon), 3.34 g/cm³</option><option value="0.93">Ice, 0.93 g/cm³</option></select></label>
+        <label class="tg"><input type="checkbox" id="rlDrift" checked> Tidal migration</label>
+        <button id="rlGo">↺ Release again</button>
+      </div>
+      <div class="row">
+        <button class="chip" data-rl="young">The young Moon</button>
+        <button class="chip" data-rl="inside">Inside the synchronous orbit (Phobos)</button>
+        <button class="chip" data-rl="roche">Born inside the Roche limit</button>
+        <button class="chip" data-rl="ice">An icy moon</button>
+      </div>
+      <div id="rlMsg"></div>
+    </div>
+
+    <div class="mpanel" data-for="krater">
+      <label class="sl">Impactor diameter <input id="crL" type="range" min="-1.5" max="1.2" step="0.01" value="0"><span class="val" id="crLv"></span></label>
+      <label class="sl">Speed <input id="crV" type="range" min="3" max="40" step="0.5" value="17"><span class="val" id="crVv"></span></label>
+      <label class="sl">Angle above horizontal <input id="crA" type="range" min="15" max="90" step="1" value="45"><span class="val" id="crAv"></span></label>
+      <div class="row">
+        <label class="tg">Target <select id="crBody"><option value="moon">The Moon (g = 1.62 m/s²)</option><option value="earth">Earth (g = 9.81 m/s²)</option></select></label>
+        <label class="tg"><input type="checkbox" id="crCut" checked> Cross-section</label>
+      </div>
+      <div class="row">
+        <button class="chip" data-crp="small">Small lunar crater</button>
+        <button class="chip" data-crp="copernicus">Copernicus-like (Moon)</button>
+        <button class="chip" data-crp="meteor">Meteor Crater (Arizona)</button>
+        <button class="chip" data-crp="chicxulub">Chicxulub (Earth)</button>
+      </div>
+      <table id="crOut"></table>
+      <p class="note">Tip: turn the speed down to 1/32× and use “Step” to follow the shock wave and the ejecta curtain frame by frame. The cross-section shows the layers underground, the shock wave (blue), melted rock (orange) and the crushed breccia.</p>
+    </div>
+
+    <div class="mpanel" data-for="aksen">
+      <div class="row">
+        <button data-ax="moon" class="on">With the Moon</button>
+        <button data-ax="laskar">Without the Moon – Laskar 1993</button>
+        <button data-ax="lissauer">Without the Moon – Lissauer et al. 2012</button>
+      </div>
+      <p class="note">The curves illustrate the character of the calculations, not the calculations themselves. Blue: with the Moon (22.1–24.5°). Red: without the Moon after Laskar et al. (chaotic, 0–85° over long times). Yellow: Lissauer et al. found milder swings for an Earth spinning in the same sense as its orbit.</p>
+    </div>
+
+    <div class="mpanel" data-for="tidevand">
+      <div class="row">
+        <button data-era="today" class="on">Today</button>
+        <button data-era="devon">Devonian (380 Myr)</button>
+        <button data-era="arch">Archean (3.2 Gyr)</button>
+        <button data-era="hade">Hadean (4.4 Gyr)</button>
+      </div>
+      <p class="note">1 second of animation = 5 hours at 1×. The curve shows the equilibrium tide (Moon + Sun) at Grenaa, Denmark; real tides are also shaped by the resonances of ocean basins. The Moon’s distance is not to scale, but the tidal force follows 1/d³.</p>
+    </div>
+  </div>
+
+  <div id="stagebox"><h3 id="stageTitle">–</h3><p id="stageText"></p></div>
+  <p class="note">About the model: the time axis is compressed and non-linear. In the formation scene Earth and Moon are drawn to the correct relative size, and orbital speeds follow Kepler’s third law (T ∝ r<sup>3/2</sup>), but slowed down. The number of particles and the thickness of the disk are stylised. The crater scene uses the scaling laws of Collins, Melosh &amp; Marcus (2005).</p>
+
+  <h2 id="s-dannelse">1 · A giant impact made the Moon</h2>
+  <div class="cols">
+    <div>
+      <p>Before the Apollo programme there were three old explanations: the Moon split off from a rapidly spinning Earth (George Darwin, 1879), was captured, or formed alongside Earth. None survived once the astronauts brought home 382 kg of moon rock. In 1975–76 William Hartmann and Donald Davis, and independently Alastair Cameron and William Ward, proposed that Earth had been struck by another protoplanet. It was later named <b>Theia</b>, after the Titan who in Greek mythology is the mother of the moon goddess Selene.</p>
+      <p>The theory explains four things at once:</p>
+      <ul>
+        <li><b>The small iron core.</b> The Moon’s core is only about 1–2 % of its mass (Earth’s: 32 %). In the impact the iron sank into Earth; what was flung out was mostly mantle rock.</li>
+        <li><b>The dry, “boiled” composition.</b> Moon rocks lack volatile substances such as water, potassium and zinc – they boiled away in the hot disk.</li>
+        <li><b>The angular momentum.</b> The Earth–Moon system has an unusually large angular momentum – just what an oblique blow provides.</li>
+        <li><b>The magma ocean.</b> The Moon’s bright highlands are made of anorthosite, which floated to the top of an ocean of molten rock – so the Moon was molten when it formed.</li>
+      </ul>
+    </div>
+    <div>
+      <p>One thing was puzzling: Earth and Moon have almost identical isotopic compositions (oxygen, titanium, chromium, iron), even though the simulations say the Moon should be made mostly of Theia. That has led to variants: a more violent impact that mixed everything into a spinning cloud of vapour – a <b>synestia</b> (Lock &amp; Stewart, 2018) – or that the Moon formed directly within hours (Kegerreis et al., 2022). A newer answer is that Theia was simply Earth’s neighbour: iron isotopes indicate that Theia formed in the inner Solar System, perhaps even closer to the Sun than Earth (Hopp et al., <i>Science</i>, November 2025).</p>
+      <p>Remnants of Theia may still lie deep inside Earth: two huge regions in the lowermost mantle beneath Africa and the Pacific, where seismic waves travel slowly, have been proposed as Theia’s buried mantle (Yuan et al., <i>Nature</i>, 2023).</p>
+      <div class="card">
+        <table>
+          <tr><th>The Moon in numbers</th><th></th></tr>
+          <tr><td>Radius</td><td>1&nbsp;737 km (0.273 R⊕)</td></tr>
+          <tr><td>Mass</td><td>7.35·10²² kg (1/81 of Earth’s)</td></tr>
+          <tr><td>Mean density</td><td>3.34 g/cm³</td></tr>
+          <tr><td>Mean distance</td><td>384&nbsp;400 km (60.3 R⊕)</td></tr>
+          <tr><td>Receding</td><td>3.8 cm/year</td></tr>
+          <tr><td>Sidereal / synodic month</td><td>27.32 / 29.53 days</td></tr>
+          <tr><td>Age</td><td>about 4.5 billion years</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <h2 id="s-ring">2 · Why didn’t the Moon end up as a ring around Earth?</h2>
+  <div class="cols">
+    <div>
+      <p>Right after the impact the debris really was a ring – a flat disk of molten rock and vapour around Earth. Saturn’s rings show that such a ring can survive. So why did Earth’s become a moon? The answer lies in two distances.</p>
+      <p><b>The Roche limit.</b> Earth pulls harder on the side of a clump facing Earth than on the side facing away. The difference – the tidal force – tears the clump apart if it is stronger than the clump’s own gravity. For a fluid or loosely bound body Édouard Roche found in 1849:</p>
+      <div class="formula"><i>d</i><sub>R</sub> = 2.44 · <i>R</i>⊕ · (ρ⊕ / ρ<sub>m</sub>)<sup>1/3</sup> = 2.44 · (5.51 / 3.34)<sup>1/3</sup> <i>R</i>⊕ ≈ 2.9 <i>R</i>⊕ ≈ 18&nbsp;400 km</div>
+      <p>Inside this distance, rock fragments can only form a ring; outside it they can clump together.</p>
+      <p><b>The synchronous orbit.</b> Where one orbit lasts exactly one day. With Kepler’s third law and Earth’s day of about 5 hours just after the impact:</p>
+      <div class="formula"><i>a</i><sub>s</sub> = (<i>GM</i>⊕ <i>T</i>² / 4π²)<sup>1/3</sup> ≈ 14&nbsp;900 km ≈ 2.3 <i>R</i>⊕</div>
+    </div>
+    <div>
+      <p>Simulations (Ida, Canup &amp; Stewart, 1997; Salmon &amp; Canup, 2012) then show what happened:</p>
+      <ol>
+        <li><b>Most of the mass lay outside the Roche limit.</b> An oblique blow sends material out to 3–6 R⊕. Moonlets grew there within months to years.</li>
+        <li><b>The inner ring was unstable.</b> It was hot, dense and full of collisions. It spread out: its innermost part rained down on Earth, while the outermost part was pushed across the Roche limit and fed the moonlets. A ring of molten rock and vapour lives far shorter than Saturn’s ice-cold rings – perhaps only ~100 years.</li>
+        <li><b>The Moon was born outside the synchronous orbit.</b> Earth then spun faster than the Moon orbited, and the tidal bulge ran ahead of the Moon and pulled it <i>outwards</i> – away from the Roche limit. Had the Moon been born inside the synchronous orbit, it would instead have spiralled inwards and been torn into a ring. That is exactly the fate of Mars’ moon Phobos: it orbits inside Mars’ synchronous orbit and is expected to become a ring in 30–50 million years.</li>
+        <li><b>Rock is dense.</b> Ice has a low density and a Roche limit far out (about 4.4 R⊕ at Earth). Saturn’s rings are ice and lie inside Saturn’s Roche limit. Try “An icy moon” in the laboratory.</li>
+      </ol>
+      <p>See also <a href="saturns-ringe-en.html">Saturn’s rings – birth, life and death</a> and <a href="maanens-bane-3d-en.html">The Moon’s orbit in 3D</a>.</p>
+    </div>
+  </div>
+
+  <h2 id="s-krater">3 · How a crater forms</h2>
+  <div class="cols">
+    <div>
+      <p>The Moon’s near side is covered by around a million craters larger than 1 km. For a long time many thought they were volcanoes; Grove Karl Gilbert argued for impacts in 1893, but only in the 1960s – with Eugene Shoemaker’s studies of Meteor Crater in Arizona and the craters of nuclear tests – did this become widely accepted. An impact at 15–20 km/s behaves like an explosion. It happens in three stages, which you can follow in the 3D scene “Crater”:</p>
+      <ol>
+        <li><b>Contact and compression</b> – fractions of a second. A shock wave with pressures of millions of atmospheres runs into the ground; the impactor vaporises.</li>
+        <li><b>Excavation</b> – seconds to minutes. Behind the shock wave the rock flows outwards and upwards. A bowl-shaped transient crater opens and a cone-shaped curtain of ejecta flies out.</li>
+        <li><b>Modification</b> – minutes. Gravity takes over. Small craters become bowls with a lens of crushed rock; large ones get terraces and a central peak.</li>
+      </ol>
+    </div>
+    <div>
+      <p>The crater size can be predicted with a scaling law. For the transient crater (Collins, Melosh &amp; Marcus, 2005):</p>
+      <div class="formula"><i>D</i><sub>tc</sub> = 1.161 (ρ<sub>i</sub>/ρ<sub>t</sub>)<sup>1/3</sup> <i>L</i><sup>0.78</sup> <i>v</i><sup>0.44</sup> <i>g</i><sup>−0.22</sup> sin<sup>1/3</sup>θ</div>
+      <p>Here <i>L</i> is the impactor diameter, <i>v</i> the speed, <i>g</i> the gravitational acceleration and θ the angle above horizontal (SI units). Note that <i>g</i> appears: the same impact makes a larger crater on the Moon than on Earth. A 1 km rocky body at 17 km/s gives a crater about 18 km across on the Moon – roughly 18 times its own diameter. Excavation lasts about 0.8·√(<i>D</i><sub>tc</sub>/<i>g</i>), i.e. a little over a minute.</p>
+      <p>Craters are almost always round, even for oblique impacts; only below about 15° do they become elongated with butterfly-shaped ejecta. Well-known examples: Tycho (85 km) with its bright rays, Copernicus (93 km) with central peaks and terraces, Meteor Crater (1.2 km, about 50,000 years old) and Chicxulub (about 180 km), which ended the dinosaurs 66 million years ago.</p>
+    </div>
+  </div>
+
+  <h2 id="s-aksen">4 · Does the Moon protect Earth?</h2>
+  <div class="cols">
+    <div>
+      <p><b>Yes – against a wobbling climate.</b> Earth’s axis is tilted 23.4°, which gives the seasons. The pull of the Sun and the Moon on the equatorial bulge makes the axis precess with a period of about 26,000 years. The other planets slowly perturb the plane of Earth’s orbit. If the precession fell into step with those perturbations, the tilt could swing wildly. The Moon makes the precession fast enough to avoid the resonance, and the tilt only varies between about 22.1° and 24.5° over 41,000 years – enough to pace the ice ages, but not to turn the climate upside down.</p>
+      <p>Jacques Laskar and colleagues calculated in 1993 that without the Moon the tilt would wander chaotically between 0° and 85°. At 85° the poles would alternate half a year of scorching midnight sun with half a year of darkness. Mars, which has no large moon, has precisely such a chaotic tilt, which has swung between about 0° and 60°. Lissauer, Barnes &amp; Chambers (2012), however, found that a moonless Earth spinning the same way as today would see more modest swings – typically 10–20° over a billion years. The conclusion: the Moon makes Earth’s climate more stable, but how decisive that has been for life is still debated.</p>
+    </div>
+    <div>
+      <p><b>No – not as a shield against asteroids.</b> This is a widespread myth. The Moon covers only a tiny fraction of the sky as seen from Earth. The chance that a random asteroid heading for Earth hits the Moon instead is roughly the ratio between the Moon’s cross-section and a sphere with a radius equal to the Moon’s distance:</p>
+      <div class="formula">π<i>R</i><sub>M</sub>² / (4π<i>d</i>²) = (1737 / 384&nbsp;400)² / 4 ≈ 5·10<sup>−6</sup></div>
+      <p>The Moon’s craters are not scars from blows it took on our behalf; they are an <i>archive</i> of the blows that also hit Earth, but which weather, water and plate tectonics have erased here.</p>
+      <p><b>And the Moon has slowed Earth down.</b> Tidal friction has lengthened the day from about 5 to 24 hours. A planet with a 5-hour day would have stronger winds and different weather systems.</p>
+    </div>
+  </div>
+
+  <h2 id="s-tidevand">5 · The tides</h2>
+  <div class="cols">
+    <div>
+      <p>The tidal force is the difference between the Moon’s attraction at Earth’s surface and at Earth’s centre. With Earth’s radius <i>R</i> and the Moon’s distance <i>d</i> it is about</p>
+      <div class="formula"><i>a</i><sub>tid</sub> ≈ 2<i>GMR</i> / <i>d</i>³ = 1.1·10<sup>−6</sup> m/s² (Moon), 0.5·10<sup>−6</sup> m/s² (Sun)</div>
+      <p>Note the <i>d</i>³: halving the distance gives tides eight times larger. The Sun is 27 million times more massive than the Moon, but 390 times farther away, so its tide is only 46 % of the Moon’s. That the two are of the same order is connected with the Sun and Moon appearing the same size in the sky – as in a total solar eclipse.</p>
+    </div>
+    <div>
+      <p>At new and full moon the Sun and Moon pull in line: <b>spring tides</b>. At half moon they are at right angles: <b>neap tides</b>. So the tide beats with a period of half a synodic month, 14.8 days – see the curve in the 3D scene “Tides”.</p>
+      <p>In the past the Moon was closer. Tidal deposits from the Moodies Group in South Africa show that 3.2 billion years ago the Moon was about 70 % of its present distance away, and that the day was about 13 hours (Eulenfeld &amp; Heubeck, 2023). The tidal force was then (1/0.7)³ ≈ 3 times larger. In the Devonian, about 380 million years ago, the Moon was only 2–3 % closer than today, and the year had about 400 days, as John Wells (1963) counted in the daily growth lines of fossil corals.</p>
+    </div>
+  </div>
+
+  <h2 id="liv">6 · The tides and life’s path onto land</h2>
+  <div class="cols">
+    <div>
+      <p>Life began in the sea. The first plants and arthropods started moving onto land in the Ordovician and Silurian, about 470–420 million years ago, and in the Late Devonian, about 375 million years ago, fish with sturdy fins – like <i>Tiktaalik</i> – crawled into shallow water and out onto land. Here the intertidal zone plays a special role: a belt that switches between sea and land twice a day, where one can adapt to air a little at a time.</p>
+      <p>The astrophysicist Steven Balbus (Oxford, 2014) suggested that the Moon’s tides were the driving force. Because the solar and lunar tides are almost equal but have slightly different periods, they beat strongly. At spring tides the sea reaches far up; at neap tides it can be days before it returns. In the long, narrow seaways of the Devonian this created a network of tidal pools that were cut off from the sea and dried up. A fish that could crawl from a drying pool to the next one, or back to the sea, survived. Detailed computer models of the Devonian oceans (Byrne et al., 2020) found tides of over 4 metres exactly where the earliest bony fish and four-legged animals have been found.</p>
+      <p class="note">This is a hypothesis, not settled fact. Others point to drought, oxygen-poor water, or hunting for food in shallow swamps. But a world without the Moon would have small, regular solar tides and far fewer such pools.</p>
+    </div>
+    <div>
+      <h3>Try it: tidal pools</h3>
+      <canvas id="poolCanvas" class="cv2"></canvas>
+      <div class="row">
+        <button id="poolPlay">❚❚</button>
+        <label class="tg">Tides <select id="poolEra"><option value="today">Small (like today)</option><option value="devon" selected>Large (Devonian seaways)</option><option value="arch">Very large (Moon close by)</option></select></label>
+        <div class="spd">Speed <input id="poolSpd" type="range" min="-2" max="3" step="0.1" value="0"></div>
+        <button id="poolReset">↺</button>
+      </div>
+      <p class="note">The beach rises to the right. The sea follows the lunar and solar tides (springs and neaps). Pools fill when the sea reaches them; otherwise they evaporate. Fish in a pool that dries up crawl (with legs!) towards the nearest water. If it is too far, they are stranded. With small tides the uppermost pools are never refilled.</p>
+    </div>
+  </div>
+
+  <h2 id="maaneskin">7 · Moonlight – a clock for life in the sea</h2>
+  <div class="cols">
+    <div>
+      <p>The full Moon gives only about 0.25 lux – some 400,000 times less than full sunlight. Even so, it is enough to set a biological clock. Many marine animals have a <b>circalunar</b> clock with a period of about 29.5 days, governed by light-sensitive proteins (cryptochromes) that can sense even faint moonlight.</p>
+      <ul>
+        <li><b>Corals</b> spawn in synchronised mass releases a few nights after full moon. Experiments show that the cue is the dark period between sunset and moonrise that appears after full moon, because the Moon rises about 50 minutes later each evening (Lin et al., PNAS 2021).</li>
+        <li><b>Horseshoe crabs</b> – a lineage over 440 million years old – crawl up the beaches at high tide near new and full moon to lay their eggs as high up the beach as possible. A living picture of the border between sea and land.</li>
+        <li><b>Grunion</b> in California leap onto the beach and spawn in the sand at night just after spring tides – the eggs hatch at the next spring tide two weeks later.</li>
+        <li><b>Sandhoppers</b> and <b>dung beetles</b> navigate by the Moon and the polarisation of moonlight.</li>
+      </ul>
+      <p class="note">Moonlight and tides follow the same calendar, and for animals in the intertidal zone they are closely linked. There is no direct evidence, though, that moonlight itself drove life onto land; the tides are the stronger candidate.</p>
+    </div>
+    <div>
+      <canvas id="lightCanvas" class="cv2" style="height:320px"></canvas>
+      <div class="row"><button id="lightPlay">❚❚</button><label class="sl" style="flex:1;display:flex;gap:8px;align-items:center;font-size:.88rem;color:#c9cfdb">Days after new moon <input id="lightDay" type="range" min="0" max="29.5" step="0.05" value="14.8" style="flex:1"></label></div>
+      <p class="note">The illuminance is calculated from the Moon’s brightness as a function of phase angle (full moon −12.7 mag). The full Moon is over 10 times brighter than the half Moon, because shadows vanish when the Sun is directly behind us (the “opposition effect”).</p>
+    </div>
+  </div>
+
+  <h2>Sources and further reading</h2>
+  <ul class="src">
+    <li>Hartmann, W. K. &amp; Davis, D. R. (1975): Satellite-sized planetesimals and lunar origin. <i>Icarus</i> 24. – Cameron, A. G. W. &amp; Ward, W. R. (1976), <i>Lunar Science</i> VII.</li>
+    <li>Canup, R. M. &amp; Asphaug, E. (2001): Origin of the Moon in a giant impact near the end of the Earth’s formation. <i>Nature</i> 412.</li>
+    <li>Ida, S., Canup, R. M. &amp; Stewart, G. R. (1997): Lunar accretion from an impact-generated disk. <i>Nature</i> 389. – Salmon, J. &amp; Canup, R. M. (2012): Lunar accretion from a Roche-interior fluid disk. <i>ApJ</i> 760.</li>
+    <li>Lock, S. J. m.fl. (2018): The origin of the Moon within a terrestrial synestia. <i>JGR Planets</i> 123. – Kegerreis, J. A. m.fl. (2022): Immediate origin of the Moon as a post-impact satellite. <i>ApJL</i> 937.</li>
+    <li>Yuan, Q. m.fl. (2023): Moon-forming impactor as a source of Earth’s basal mantle anomalies. <i>Nature</i> 623.</li>
+    <li>Hopp, T., Dauphas, N., Boyet, M., Jacobson, S. A. &amp; Kleine, T. (2025): The Moon-forming impactor Theia originated from the inner Solar System. <i>Science</i> 390, 819–823.</li>
+    <li>Melosh, H. J. (1989): <i>Impact Cratering: A Geologic Process</i>. Oxford UP. – Collins, G. S., Melosh, H. J. &amp; Marcus, R. A. (2005): Earth Impact Effects Program. <i>Meteoritics &amp; Planetary Science</i> 40.</li>
+    <li>Laskar, J., Joutel, F. &amp; Robutel, P. (1993): Stabilization of the Earth’s obliquity by the Moon. <i>Nature</i> 361. – Lissauer, J. J., Barnes, J. W. &amp; Chambers, J. E. (2012): Obliquity variations of a moonless Earth. <i>Icarus</i> 217.</li>
+    <li>Eulenfeld, T. &amp; Heubeck, C. (2023): Constraints on Moon’s orbit 3.2 billion years ago from tidal bundle data. <i>JGR Planets</i> 128. – Wells, J. W. (1963): Coral growth and geochronometry. <i>Nature</i> 197.</li>
+    <li>Balbus, S. A. (2014): Dynamical, biological and anthropic consequences of equal lunar and solar angular radii. <i>Proc. R. Soc. A</i> 470. – Byrne, H. M. m.fl. (2020): Tides: a key environmental driver of osteichthyan evolution and the fish–tetrapod transition? <i>Proc. R. Soc. A</i> 476.</li>
+    <li>Lin, C.-H., Takahashi, S., Mulla, A. J. &amp; Nozawa, Y. (2021): Moonrise timing is key for synchronized spawning in coral <i>Dipsastraea speciosa</i>. <i>PNAS</i> 118.</li>
+    <li>Textures: Moon and Earth from the three.js examples (NASA data).</li>
+  </ul>
+</main>
+
+<footer>
+  <div class="wrap">
+    <a href="index-en.html#astro">← Back to the home page</a> · Michael H. Grant, lektor emeritus in physics &amp; mathematics · mhgfysik.dk ·
+    Content published under <a href="https://creativecommons.org/licenses/by/4.0/" rel="license">CC BY 4.0</a>.
+  </div>
+</footer>
+
+<noscript><p class="wrap">The animation requires JavaScript and WebGL.</p></noscript>
+<script type="module" src="maanens-dannelse.js"></script>
+<script src="lang-switch.js" defer></script>
+</body>
+</html>

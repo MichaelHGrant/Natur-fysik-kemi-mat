@@ -166,6 +166,7 @@
     "principia.html": "principia-en.html",
     "relativitetsteori.html": "relativitetsteori-en.html",
     "saturns-ringe.html": "saturns-ringe-en.html",
+    "maanens-dannelse.html": "maanens-dannelse-en.html",
     "slaebetank.html": "slaebetank-en.html",
     "sort-sol.html": "sort-sol-en.html",
     "statistisk-mekanik.html": "statistisk-mekanik-en.html",
