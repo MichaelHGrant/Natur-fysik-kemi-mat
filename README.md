@@ -87,10 +87,10 @@ python3 -m http.server 8000
 
 Indholdet er udgivet under [Creative Commons Kreditering 4.0 (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/deed.da). Du må frit kopiere, dele og tilpasse siderne, også i undervisning og kompendier, når du krediterer: **Michael Grant, mhgfysik.dk — CC BY 4.0**. Billeder og tekster fra andre ophavspersoner er ikke omfattet; se [LICENSE](LICENSE).
 
-Hele sitet kan hentes som zip-fil med **Code → Download ZIP** på GitHub, eller med fuld historik:
+Hele sitet kan hentes som zip-fil fra [mhgfysik.dk/hent-sitet.html](https://mhgfysik.dk/hent-sitet.html) (vejledning til skoler) eller med **Code → Download ZIP** på GitHub, eller med fuld historik:
 
 ```bash
-git clone https://github.com/michaelhgrant/natur-fysik-kemi-mat.git
+git clone https://github.com/MichaelHGrant/Natur-fysik-kemi-mat.git
 ```
 
 Mange sider indlæser three.js og skrifttyper fra nettet, så en lokal kopi kræver internetforbindelse.
