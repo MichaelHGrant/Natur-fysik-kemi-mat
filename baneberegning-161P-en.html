@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comet 161P/Hartley–IRAS – orbit determination from three eVscope2 images</title>
+<meta name="description" content="Orbit determination of comet 161P/Hartley–IRAS by Gauss’s method from three eVscope2 images taken in Denmark in October 2026: plate solving, astrometry, a check against the MPC orbit and an uncertainty analysis. By Michael Howard Grant.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Spectral:ital,wght@0,300;0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+    :root{
+        --space-black:#0b0d17;
+        --space-deep:#050608;
+        --ink:#070810;
+        --aurora-green:#39ff14;
+        --aurora-purple:#a020f0;
+        --aurora-blue:#4cc9f0;
+        --comet-cyan:#6fd8ff;
+        --gold:#f5c878;
+        --gold-bright:#ffe0a0;
+        --text-light:#e6e6ea;
+        --text-dim:#9aa0ad;
+        --text-faint:#6b7080;
+        --hair:rgba(255,255,255,0.10);
+        --card-bg:rgba(255,255,255,0.025);
+    }
+
+    *{box-sizing:border-box;}
+    html{scroll-behavior:smooth;scroll-padding-top:64px;}
+
+    body{
+        margin:0;
+        background:var(--space-deep);
+        color:var(--text-light);
+        font-family:'Spectral',Georgia,serif;
+        font-weight:400;
+        font-size:1.08rem;
+        line-height:1.75;
+        -webkit-font-smoothing:antialiased;
+        overflow-x:hidden;
+    }
+
+    /* ---- starfield ---- */
+    #stars{
+        position:fixed;
+        inset:0;
+        z-index:-2;
+        background:
+            radial-gradient(ellipse at 18% 8%, rgba(160,32,240,0.13), transparent 45%),
+            radial-gradient(ellipse at 85% 70%, rgba(76,201,240,0.09), transparent 50%),
+            radial-gradient(ellipse at 50% 110%, rgba(57,255,20,0.06), transparent 55%),
+            var(--space-deep);
+    }
+    #stars canvas{position:absolute;inset:0;width:100%;height:100%;}
+
+    a{color:var(--aurora-blue);}
+
+    /* ===== TOP BAR ===== */
+    .topbar{
+        position:sticky;top:0;z-index:90;
+        display:flex;align-items:center;justify-content:space-between;
+        padding:0.55rem 1.4rem;
+        background:rgba(7,8,16,0.82);
+        backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+        border-bottom:1px solid var(--hair);
+        font-family:'IBM Plex Mono',monospace;
+        font-size:0.74rem;letter-spacing:0.06em;
+    }
+    .topbar a{color:var(--text-dim);text-decoration:none;transition:color .2s;}
+    .topbar a:hover{color:var(--aurora-green);}
+    .topbar .crumb{color:var(--text-faint);}
+    .topbar .crumb b{color:var(--comet-cyan);font-weight:500;}
+
+    /* ===== HERO ===== */
+    .hero{
+        position:relative;
+        max-width:1180px;margin:0 auto;
+        padding:5.5rem 1.6rem 3rem;
+        display:grid;grid-template-columns:1.05fr 0.95fr;gap:3rem;align-items:center;
+    }
+    .hero-text{position:relative;z-index:2;}
+    .eyebrow{
+        font-family:'IBM Plex Mono',monospace;
+        font-size:0.72rem;letter-spacing:0.34em;text-transform:uppercase;
+        color:var(--aurora-green);
+        display:flex;align-items:center;gap:0.8rem;margin-bottom:1.5rem;
+    }
+    .eyebrow::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,rgba(57,255,20,0.5),transparent);}
+
+    .hero h1{
+        font-family:'Fraunces',serif;
+        font-weight:500;
+        font-size:clamp(2.7rem,6.5vw,5rem);
+        line-height:0.98;
+        letter-spacing:-0.015em;
+        margin:0 0 0.7rem;
+        color:#fff;
+    }
+    .hero h1 em{
+        font-style:italic;font-weight:400;
+        background:linear-gradient(120deg,var(--comet-cyan),var(--aurora-purple));
+        -webkit-background-clip:text;background-clip:text;color:transparent;
+    }
+    .hero .deck{
+        font-size:1.18rem;color:var(--text-dim);
+        font-weight:300;line-height:1.6;max-width:36ch;
+        margin:0 0 1.8rem;
+    }
+    .byline{
+        display:flex;flex-direction:column;gap:0.15rem;
+        border-left:2px solid var(--aurora-purple);
+        padding-left:1rem;
+    }
+    .byline .name{
+        font-family:'Fraunces',serif;font-size:1.05rem;color:var(--text-light);
+        font-variant:small-caps;letter-spacing:0.05em;
+    }
+    .byline .role{
+        font-family:'IBM Plex Mono',monospace;font-size:0.72rem;
+        color:var(--text-faint);letter-spacing:0.04em;
+    }
+
+    /* hero comet image */
+    .hero-figure{
+        position:relative;z-index:1;
+        aspect-ratio:1/1;
+        border-radius:50%;
+        overflow:hidden;
+        border:1px solid rgba(111,216,255,0.25);
+        box-shadow:
+            0 0 0 1px rgba(0,0,0,0.6),
+            0 30px 80px rgba(0,0,0,0.7),
+            0 0 90px rgba(76,201,240,0.13);
+        animation:floaty 9s ease-in-out infinite;
+    }
+    .hero-figure img{width:100%;height:100%;object-fit:cover;display:block;}
+    .hero-figure .ring{
+        position:absolute;inset:-14px;border-radius:50%;
+        border:1px solid rgba(111,216,255,0.18);
+        pointer-events:none;
+    }
+    @keyframes floaty{
+        0%,100%{transform:translateY(0);}
+        50%{transform:translateY(-14px);}
+    }
+    .hero-tag{
+        position:absolute;left:50%;bottom:-12px;transform:translateX(-50%);
+        font-family:'IBM Plex Mono',monospace;font-size:0.66rem;
+        letter-spacing:0.05em;color:var(--text-faint);
+        background:var(--ink);padding:0.35rem 0.9rem;border-radius:20px;
+        border:1px solid var(--hair);white-space:nowrap;
+    }
+
+    /* ===== ARTICLE WRAP ===== */
+    article{max-width:760px;margin:0 auto;padding:1.5rem 1.6rem 4rem;}
+
+    .section{margin:4.2rem 0;}
+    .kicker{
+        font-family:'IBM Plex Mono',monospace;
+        font-size:0.7rem;letter-spacing:0.22em;text-transform:uppercase;
+        color:var(--aurora-purple);margin-bottom:0.6rem;
+        display:flex;align-items:baseline;gap:0.7rem;
+    }
+    .kicker .n{color:var(--text-faint);}
+    h2{
+        font-family:'Fraunces',serif;font-weight:500;
+        font-size:clamp(1.7rem,3.6vw,2.4rem);
+        line-height:1.12;letter-spacing:-0.01em;
+        color:#fff;margin:0 0 1rem;
+    }
+    h3{
+        font-family:'Fraunces',serif;font-weight:500;
+        font-size:1.25rem;color:var(--comet-cyan);
+        margin:2rem 0 0.5rem;
+    }
+    p{margin:0 0 1.15rem;}
+    article p strong{color:#fff;font-weight:600;}
+    .lead{
+        font-size:1.28rem;line-height:1.6;font-weight:300;
+        color:var(--text-light);
+    }
+    .lead::first-letter{
+        font-family:'Fraunces',serif;
+        float:left;font-size:4.6rem;line-height:0.74;
+        font-weight:600;margin:0.32rem 0.6rem 0 0;
+        color:var(--aurora-green);
+    }
+
+    /* ===== OBSERVATION GRID ===== */
+    .obs-grid{
+        display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;
+        margin:1.8rem 0 1rem;
+    }
+    .obs{
+        background:var(--card-bg);
+        border:1px solid var(--hair);
+        border-radius:12px;overflow:hidden;
+        transition:transform .35s ease,border-color .35s ease,box-shadow .35s ease;
+    }
+    .obs:hover{
+        transform:translateY(-6px);
+        border-color:rgba(111,216,255,0.4);
+        box-shadow:0 18px 40px rgba(0,0,0,0.55);
+    }
+    .obs .frame{position:relative;aspect-ratio:1/1;background:#000;}
+    .obs .frame img{width:100%;height:100%;object-fit:cover;display:block;}
+    .obs .num{
+        position:absolute;top:8px;left:8px;
+        width:26px;height:26px;border-radius:50%;
+        background:rgba(7,8,16,0.85);border:1px solid var(--aurora-green);
+        color:var(--aurora-green);
+        font-family:'IBM Plex Mono',monospace;font-size:0.82rem;
+        display:flex;align-items:center;justify-content:center;
+    }
+    .obs .meta{padding:0.75rem 0.85rem 0.9rem;}
+    .obs .date{
+        font-family:'Fraunces',serif;font-size:1rem;color:#fff;font-weight:500;
+    }
+    .obs .exp{
+        font-family:'IBM Plex Mono',monospace;font-size:0.68rem;
+        color:var(--aurora-blue);margin:0.15rem 0 0.5rem;
+    }
+    .obs .coord{
+        font-family:'IBM Plex Mono',monospace;font-size:0.66rem;
+        color:var(--text-dim);line-height:1.5;
+        border-top:1px dashed var(--hair);padding-top:0.5rem;
+    }
+    .obs .coord span{color:var(--text-faint);}
+    .obs.blurry .frame::after{
+        content:"DISET · 36 SEK";
+        position:absolute;bottom:8px;right:8px;
+        font-family:'IBM Plex Mono',monospace;font-size:0.58rem;
+        color:var(--gold);background:rgba(7,8,16,0.8);
+        padding:0.2rem 0.5rem;border-radius:10px;
+        border:1px solid rgba(245,200,120,0.35);
+    }
+
+    /* ===== CALLOUT ===== */
+    .callout{
+        margin:2rem 0;padding:1.5rem 1.6rem;
+        background:linear-gradient(135deg,rgba(76,201,240,0.07),rgba(160,32,240,0.04));
+        border:1px solid rgba(76,201,240,0.22);
+        border-radius:14px;
+        display:flex;gap:1.3rem;align-items:center;
+    }
+    .callout .big{
+        font-family:'Fraunces',serif;font-weight:600;
+        font-size:2.7rem;line-height:1;color:var(--comet-cyan);
+        white-space:nowrap;
+    }
+    .callout .big small{
+        display:block;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;
+        font-weight:400;color:var(--text-faint);letter-spacing:0.05em;
+        margin-top:0.3rem;
+    }
+    .callout p{margin:0;font-size:0.98rem;color:var(--text-dim);}
+
+    /* ===== GAUSS STEPS ===== */
+    .steps{counter-reset:gs;margin:1.6rem 0;}
+    .step{
+        position:relative;padding:0 0 1.3rem 3.4rem;
+        border-left:1px solid var(--hair);margin-left:1.1rem;
+    }
+    .step:last-child{border-left-color:transparent;}
+    .step::before{
+        counter-increment:gs;content:counter(gs);
+        position:absolute;left:-1.1rem;top:-0.15rem;
+        width:2.2rem;height:2.2rem;border-radius:50%;
+        background:var(--ink);border:1px solid var(--aurora-purple);
+        color:var(--aurora-purple);
+        font-family:'IBM Plex Mono',monospace;font-size:0.95rem;
+        display:flex;align-items:center;justify-content:center;
+    }
+    .step h4{
+        font-family:'Fraunces',serif;font-weight:500;font-size:1.12rem;
+        color:#fff;margin:0 0 0.25rem;
+    }
+    .step p{font-size:0.97rem;color:var(--text-dim);margin:0;}
+
+    /* ===== GAUSS DIAGRAM ===== */
+    .diagram{
+        background:radial-gradient(ellipse at 50% 40%,rgba(20,22,38,0.9),var(--ink));
+        border:1px solid var(--hair);border-radius:14px;
+        padding:1.2rem;margin:1.8rem 0;
+    }
+    .diagram svg{width:100%;height:auto;display:block;}
+    .diagram .cap{
+        font-family:'IBM Plex Mono',monospace;font-size:0.68rem;
+        color:var(--text-faint);text-align:center;margin-top:0.7rem;
+        letter-spacing:0.03em;
+    }
+
+    /* ===== STAT CARDS ===== */
+    .stats{
+        display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;
+        margin:1.8rem 0;
+    }
+    .stat{
+        background:var(--card-bg);border:1px solid var(--hair);
+        border-radius:12px;padding:1.3rem 1rem;text-align:center;
+        position:relative;overflow:hidden;
+    }
+    .stat::before{
+        content:"";position:absolute;top:0;left:0;right:0;height:2px;
+        background:linear-gradient(90deg,transparent,var(--aurora-green),transparent);
+        opacity:0.6;
+    }
+    .stat .v{
+        font-family:'Fraunces',serif;font-weight:600;
+        font-size:2.2rem;color:#fff;line-height:1;
+    }
+    .stat .v small{font-size:1rem;color:var(--text-dim);}
+    .stat .l{
+        font-family:'IBM Plex Mono',monospace;font-size:0.66rem;
+        letter-spacing:0.08em;text-transform:uppercase;
+        color:var(--aurora-green);margin-top:0.5rem;
+    }
+    .stat .sub{font-size:0.78rem;color:var(--text-faint);margin-top:0.2rem;}
+
+    /* ===== COMPARISON ===== */
+    .compare{
+        display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1.8rem 0;
+    }
+    .col{
+        border-radius:14px;padding:1.3rem 1.4rem;
+        border:1px solid var(--hair);background:var(--card-bg);
+    }
+    .col.official{
+        border-color:rgba(57,255,20,0.28);
+        background:linear-gradient(160deg,rgba(57,255,20,0.06),transparent);
+    }
+    .col.backyard{
+        border-color:rgba(245,200,120,0.28);
+        background:linear-gradient(160deg,rgba(245,200,120,0.06),transparent);
+    }
+    .col .tag{
+        font-family:'IBM Plex Mono',monospace;font-size:0.66rem;
+        letter-spacing:0.12em;text-transform:uppercase;margin-bottom:0.6rem;
+    }
+    .col.official .tag{color:var(--aurora-green);}
+    .col.backyard .tag{color:var(--gold);}
+    .col h4{
+        font-family:'Fraunces',serif;font-weight:500;font-size:1.1rem;
+        color:#fff;margin:0 0 0.7rem;
+    }
+    .col dl{margin:0;font-size:0.86rem;}
+    .col dl div{
+        display:flex;justify-content:space-between;gap:0.6rem;
+        padding:0.4rem 0;border-bottom:1px dashed var(--hair);
+    }
+    .col dl div:last-child{border-bottom:none;}
+    .col dt{color:var(--text-dim);}
+    .col dd{
+        margin:0;font-family:'IBM Plex Mono',monospace;
+        color:#fff;text-align:right;
+    }
+
+    /* eccentricity number line */
+    .eline{
+        margin:1.6rem 0;padding:1.4rem 1.5rem 1.1rem;
+        background:var(--ink);border:1px solid var(--hair);border-radius:14px;
+    }
+    .eline .track{
+        position:relative;height:4px;border-radius:2px;
+        background:linear-gradient(90deg,var(--aurora-blue),#444 49%,#444 51%,var(--aurora-purple));
+        margin:2.4rem 0.5rem 0.4rem;
+    }
+    .eline .pt{
+        position:absolute;top:50%;width:13px;height:13px;border-radius:50%;
+        transform:translate(-50%,-50%);
+    }
+    .eline .pt.boundary{
+        background:#fff;width:3px;height:24px;border-radius:1px;
+        transform:translate(-50%,-50%);
+    }
+    .eline .pt.official{
+        background:var(--gold);box-shadow:0 0 14px var(--gold);
+    }
+    .eline .lab{
+        position:absolute;font-family:'IBM Plex Mono',monospace;
+        font-size:0.64rem;white-space:nowrap;transform:translateX(-50%);
+    }
+    .eline .lab.top{top:-2.1rem;}
+    .eline .lab.bot{top:0.7rem;color:var(--text-faint);}
+    .eline .scale{
+        display:flex;justify-content:space-between;
+        font-family:'IBM Plex Mono',monospace;font-size:0.62rem;
+        color:var(--text-faint);margin:0.3rem 0.3rem 0;
+    }
+    .eline .note{
+        font-size:0.82rem;color:var(--text-dim);margin:0.9rem 0 0;text-align:center;
+    }
+
+    /* uncertainty bars */
+    .errbar{margin:1.1rem 0;}
+    .errbar .head{
+        display:flex;justify-content:space-between;align-items:baseline;
+        margin-bottom:0.4rem;
+    }
+    .errbar .head .name{
+        font-family:'Fraunces',serif;font-size:1rem;color:#fff;
+    }
+    .errbar .head .pct{
+        font-family:'IBM Plex Mono',monospace;font-size:0.78rem;
+    }
+    .errbar .rail{
+        position:relative;height:14px;border-radius:7px;
+        background:rgba(255,255,255,0.05);overflow:hidden;
+    }
+    .errbar .fill{
+        position:absolute;top:0;bottom:0;left:50%;
+        background:repeating-linear-gradient(45deg,
+            rgba(245,200,120,0.55),rgba(245,200,120,0.55) 6px,
+            rgba(245,200,120,0.25) 6px,rgba(245,200,120,0.25) 12px);
+        transform:translateX(-50%);
+        width:0;transition:width 1.1s cubic-bezier(.2,.7,.2,1);
+    }
+    .errbar .mid{
+        position:absolute;left:50%;top:-3px;bottom:-3px;width:2px;
+        background:var(--comet-cyan);transform:translateX(-50%);
+    }
+    .errbar .cap{
+        font-family:'IBM Plex Mono',monospace;font-size:0.68rem;
+        color:var(--text-faint);margin-top:0.35rem;
+    }
+
+    /* pull quote */
+    .pull{
+        margin:2.6rem 0;padding:0.4rem 0 0.4rem 1.6rem;
+        border-left:3px solid var(--aurora-green);
+    }
+    .pull p{
+        font-family:'Fraunces',serif;font-style:italic;font-weight:400;
+        font-size:1.45rem;line-height:1.4;color:#fff;margin:0;
+    }
+
+    /* anecdote / risø */
+    .anecdote{
+        margin:2.4rem 0;display:grid;grid-template-columns:1fr;gap:1.2rem;
+        background:linear-gradient(160deg,rgba(255,122,42,0.05),transparent);
+        border:1px solid rgba(245,200,120,0.2);border-radius:14px;
+        overflow:hidden;
+    }
+    .anecdote figure{margin:0;}
+    .anecdote img{
+        width:100%;display:block;
+        max-height:380px;object-fit:cover;object-position:center 32%;
+    }
+    .anecdote .body{padding:0 1.5rem 1.5rem;}
+    .anecdote figcaption{
+        font-family:'IBM Plex Mono',monospace;font-size:0.66rem;
+        color:var(--text-faint);padding:0.6rem 1.5rem 0;
+    }
+    .anecdote h3{margin-top:0.6rem;color:var(--gold-bright);}
+    .anecdote p{font-size:0.95rem;color:var(--text-dim);}
+
+    /* score / conclusion */
+    .score{
+        text-align:center;margin:2.6rem 0;padding:2.4rem 1.5rem;
+        background:radial-gradient(ellipse at 50% 0%,rgba(57,255,20,0.08),transparent 70%);
+        border:1px solid rgba(57,255,20,0.22);border-radius:18px;
+    }
+    .score .ring-wrap{position:relative;width:170px;height:170px;margin:0 auto 1rem;}
+    .score svg{transform:rotate(-90deg);}
+    .score .pctnum{
+        position:absolute;inset:0;display:flex;flex-direction:column;
+        align-items:center;justify-content:center;
+    }
+    .score .pctnum b{
+        font-family:'Fraunces',serif;font-size:2.8rem;color:#fff;font-weight:600;
+        line-height:1;
+    }
+    .score .pctnum span{
+        font-family:'IBM Plex Mono',monospace;font-size:0.62rem;
+        letter-spacing:0.14em;color:var(--aurora-green);text-transform:uppercase;
+        margin-top:0.3rem;
+    }
+    .score p{max-width:46ch;margin:0.6rem auto 0;color:var(--text-dim);}
+
+    /* footer nav */
+    .endnav{
+        max-width:760px;margin:0 auto;padding:0 1.6rem 2rem;
+        display:grid;grid-template-columns:1fr 1fr;gap:1rem;
+    }
+    .endnav a{
+        display:block;padding:1rem 1.2rem;border-radius:12px;
+        border:1px solid var(--hair);background:var(--card-bg);
+        text-decoration:none;transition:border-color .25s,transform .25s;
+    }
+    .endnav a:hover{border-color:rgba(57,255,20,0.4);transform:translateY(-3px);}
+    .endnav .t{
+        font-family:'IBM Plex Mono',monospace;font-size:0.62rem;
+        letter-spacing:0.1em;text-transform:uppercase;color:var(--text-faint);
+    }
+    .endnav .d{
+        font-family:'Fraunces',serif;font-size:1.05rem;color:var(--comet-cyan);
+        margin-top:0.2rem;
+    }
+
+    footer{
+        text-align:center;padding:2.5rem 1.5rem;
+        border-top:1px solid var(--hair);
+        font-family:'IBM Plex Mono',monospace;font-size:0.72rem;
+        color:var(--text-faint);line-height:1.9;
+    }
+    footer a{color:var(--text-dim);text-decoration:none;}
+    footer a:hover{color:var(--aurora-green);}
+
+    .refs{
+        max-width:760px;margin:0 auto;padding:0 1.6rem;
+        font-size:0.8rem;color:var(--text-faint);
+    }
+    .refs h4{
+        font-family:'IBM Plex Mono',monospace;font-size:0.66rem;
+        letter-spacing:0.14em;text-transform:uppercase;color:var(--text-dim);
+        margin:0 0 0.5rem;
+    }
+
+    /* reveal */
+    .reveal{opacity:0;transform:translateY(26px);
+        transition:opacity .8s ease,transform .8s ease;}
+    .reveal.in{opacity:1;transform:none;}
+
+    /* ===== RESPONSIVE ===== */
+    @media(max-width:760px){
+        body{font-size:1.02rem;}
+        .hero{grid-template-columns:1fr;padding:3.5rem 1.3rem 2rem;gap:2.4rem;}
+        .hero-figure{max-width:340px;margin:0 auto;}
+        .obs-grid{grid-template-columns:1fr;}
+        .stats{grid-template-columns:1fr;}
+        .compare{grid-template-columns:1fr;}
+        .callout{flex-direction:column;align-items:flex-start;gap:0.6rem;}
+        .anecdote{grid-template-columns:1fr;}
+        .endnav{grid-template-columns:1fr;}
+        .topbar .crumb{display:none;}
+    }
+    @media(prefers-reduced-motion:reduce){
+        .hero-figure{animation:none;}
+        .reveal{transition:none;opacity:1;transform:none;}
+    }
+</style>
+
+
+<style>
+    .fig{margin:2rem 0 2.2rem;}
+    .fig img{width:100%;height:auto;display:block;border-radius:12px;border:1px solid var(--hair);}
+    .fig figcaption{font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:var(--text-faint);
+        margin-top:0.6rem;line-height:1.55;letter-spacing:0.02em;}
+    .fig figcaption b{color:var(--comet-cyan);font-weight:500;}
+    .wide{width:min(1100px,calc(100vw - 2.4rem));position:relative;left:50%;transform:translateX(-50%);}
+    .tablewrap{overflow-x:auto;margin:1.6rem 0 2rem;border:1px solid var(--hair);border-radius:12px;background:var(--card-bg);}
+    table.data{border-collapse:collapse;width:100%;font-size:0.9rem;}
+    table.data th{font-family:'IBM Plex Mono',monospace;font-size:0.66rem;letter-spacing:0.1em;text-transform:uppercase;
+        color:var(--aurora-green);font-weight:500;text-align:left;padding:0.75rem 0.9rem;border-bottom:1px solid var(--hair);white-space:nowrap;}
+    table.data td{padding:0.55rem 0.9rem;border-bottom:1px solid rgba(255,255,255,0.05);color:var(--text-light);}
+    table.data tr:last-child td{border-bottom:none;}
+    table.data td:not(:first-child){font-family:'IBM Plex Mono',monospace;font-size:0.8rem;white-space:nowrap;}
+    .tablewrap.wide th{white-space:normal;vertical-align:bottom;}
+    .formula{font-family:'Spectral',Georgia,serif;font-size:1.12rem;text-align:center;color:#fff;
+        background:var(--card-bg);border:1px solid var(--hair);border-radius:12px;padding:1rem 1.2rem;margin:1.2rem 0 1.4rem;overflow-x:auto;}
+    article ul{padding-left:1.2rem;margin:0 0 1.2rem;}
+    article li{margin:0 0 0.7rem;}
+    article li::marker{color:var(--aurora-green);}
+    .small{font-size:0.86rem;color:var(--text-faint);}
+    .sources{font-size:0.92rem;}
+    .sources li{margin-bottom:0.35rem;}
+    footer{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:var(--text-faint);
+        padding:2.5rem 1rem 3rem;border-top:1px solid var(--hair);line-height:1.8;}
+    .obs-grid{grid-template-columns:repeat(2,1fr);gap:1rem;}
+    @media(max-width:760px){.wide{width:100%;left:0;transform:none;}.obs-grid{grid-template-columns:repeat(2,1fr);}}
+</style>
+
+
+<!-- app (PWA) -->
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/app/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="mhgfysik">
+<script src="/app/app.js" defer></script>
+</head>
+<body>
+<div id="stars"><canvas></canvas></div>
+
+<nav class="topbar">
+    <a href="index-en.html">← Physics, mathematics &amp; chemistry</a>
+    <span class="crumb">Astronomy / <b>Comet 161P</b></span>
+    <a href="#gauss">Gauss’s method ↓</a>
+</nav>
+
+<header class="hero">
+    <div class="hero-text">
+        <div class="eyebrow">Astrometry · October–November 2026</div>
+        <h1>Comet 161P: <em>orbit determination</em></h1>
+        <p class="deck">Four evenings with an eVscope2 in Djursland, a plate solution against Tycho-2 and Gauss’s method – and why the length of the arc and a single centring decide the result.</p>
+        <div class="byline">
+            <span class="name">Michael Howard Grant</span>
+            <span class="role">Senior lecturer emeritus · Grenaa Gymnasium · updated 4 November 2026</span>
+        </div>
+    </div>
+    <div class="hero-figure">
+        <div class="ring"></div>
+        <img src="161P-hero-v2.jpg" alt="161P/Hartley–IRAS · 3 Nov 2026 · eVscope2">
+        <span class="hero-tag">161P/Hartley–IRAS · 3 Nov 2026 · eVscope2</span>
+    </div>
+</header>
+
+<article>
+<section class="section reveal" id="resume">
+<div class="kicker"><span class="n">01</span> Summary</div>
+<h2>The main results</h2>
+<p class="lead">Four eVscope2 images from 18, 19 and 26 October and 3 November 2026 were plate-solved against Tycho-2 with 25–49 reference stars and a residual scatter of 1.0–1.4″. Across the comet’s track the positions lie 0.4–3″ from the MPC orbit on three of the nights; on 26 October the offset is 13″.</p>
+<div class="stats"><div class="stat"><div class="v">16<small> days</small></div><div class="l">Arc with 3 November</div><div class="sub">previously 8 days</div></div><div class="stat"><div class="v">−7<small> %</small></div><div class="l">Error in distance</div><div class="sub">18 · 19 Oct · 3 Nov (was −19 %)</div></div><div class="stat"><div class="v">e = 0.85</div><div class="l">Check, 26 Oct corrected</div><div class="sub">MPC: 0.836</div></div></div>
+<p>With the three October images alone, Gauss’s method gave a distance 19 % too small and e = 0.41 against 0.836. The image from 3 November doubles the arc to 16 days. The nights of 18 and 19 October and 3 November now give a distance only 7 % too small and e = 0.62.</p>
+<p>With 26 October as the middle night the solution is very stable, but it lands 10 % too far out, because the comet’s centre that evening is measured 13″ off. Remove those 13″ and Gauss gives e = 0.852, q = 1.270 AU and i = 96.1° – almost exactly the MPC orbit.</p>
+</section>
+<section class="section reveal" id="obs">
+<div class="kicker"><span class="n">02</span> The observations</div>
+<h2>Four evenings in October and November</h2>
+<p>All four images are eVscope2 stacks from Djursland, Denmark (56.5° N, 10.8° E), saved as the app’s annotated 2800 × 2800 pixel export. For the October images the time in the file name (UTC) is taken to be the end of the stack, so the mid-time is the file name minus half the integration time.</p>
+<p>The image from 3 November came without a file name. Its time is taken from the image’s EXIF data (17:43 UTC) plus half a minute. On the October images the EXIF time was within 0–2 minutes of the middle of the stack.</p>
+<div class="obs-grid"><figure class="obs"><div class="frame"><img src="161P-18okt.jpg" alt="161P/Hartley–IRAS, 18 October" loading="lazy"><span class="num">1</span></div><div class="meta"><div class="date">18 October</div><div class="exp">17:56:43 UTC · 7 min</div><div class="coord">RA 20h 47m 30.57s<br>Dec +8° 28′ 10.1″</div></div></figure><figure class="obs"><div class="frame"><img src="161P-19okt.jpg" alt="161P/Hartley–IRAS, 19 October" loading="lazy"><span class="num">2</span></div><div class="meta"><div class="date">19 October</div><div class="exp">19:09:06 UTC · 6 min</div><div class="coord">RA 20h 41m 40.79s<br>Dec +9° 02′ 05.5″</div></div></figure><figure class="obs"><div class="frame"><img src="161P-26okt.jpg" alt="161P/Hartley–IRAS, 26 October" loading="lazy"><span class="num">3</span></div><div class="meta"><div class="date">26 October</div><div class="exp">18:11:07 UTC · 8 min</div><div class="coord">RA 20h 11m 02.58s<br>Dec +12° 03′ 57.6″</div></div></figure><figure class="obs"><div class="frame"><img src="161P-03nov.jpg" alt="161P/Hartley–IRAS, 3 November" loading="lazy"><span class="num">4</span></div><div class="meta"><div class="date">3 November</div><div class="exp">17:43:30 UTC · 6 min</div><div class="coord">RA 19h 48m 12.63s<br>Dec +14° 29′ 49.3″</div></div></figure></div>
+<p>In October the comet is a diffuse, bluish coma about 1′ across. On 26 October four stars lie on top of the coma, which makes centring harder. On 3 November it is clearly cyan: the greenish gas glow of C₂ grows as the comet approaches the Sun.</p>
+<figure class="fig"><img src="161P-baneberegning-fig1-en-v2.jpg" alt="Crops around the comet on the four evenings. Green rings are Tycho-2 stars used in the plate solution; the arrow marks the comet’s head." loading="lazy"><figcaption><b>Figure 1.</b> Crops around the comet on the four evenings. Green rings are Tycho-2 stars used in the plate solution; the arrow marks the comet’s head.</figcaption></figure>
+</section>
+<section class="section reveal" id="astrometri">
+<div class="kicker"><span class="n">03</span> Astrometry</div>
+<h2>Plate solution against Tycho-2</h2>
+<p>The coordinates in the app’s file names cannot be used: on 18 and 19 October they lie 0.7–1.0° from the comet, outside the field of view. All positions were therefore measured with an independent plate solution against Tycho-2 (the Big Sky catalogue), with the stars’ proper motions carried forward to 2026.8.</p>
+<div class="steps"><div class="step"><h4>Find the stars</h4><p>DAOStarFinder finds 850–3300 stars in each image, out to a radius of 0.44 of the image width, which avoids the text around the edge.</p></div><div class="step"><h4>Match the pattern</h4><p>The brightest stars are matched against the catalogue by searching over scale, rotation and offset. The scale came out at 0.849″ per pixel on all four nights.</p></div><div class="step"><h4>Fit the transformation</h4><p>A six-parameter affine transformation is fitted by least squares to 25–49 stars. The residual scatter is 1.0–1.4″.</p></div><div class="step"><h4>Measure the coma</h4><p>Stars are masked and an elliptical 2D Gaussian with background is fitted to the coma. On 3 November the blue-minus-red channel is used, so the red halo of a neighbouring star does not pull the centre aside.</p></div></div>
+<div class="tablewrap"><table class="data"><thead><tr><th>Date 2026</th><th>Mid-time (UTC)</th><th>RA (J2000)</th><th>Dec (J2000)</th><th>Stars</th><th>rms</th></tr></thead><tbody><tr><td>18 Oct</td><td>17:56:43</td><td>20h 47m 30.57s</td><td>+8° 28′ 10.1″</td><td>25</td><td>1.0″</td></tr><tr><td>19 Oct</td><td>19:09:06</td><td>20h 41m 40.79s</td><td>+9° 02′ 05.5″</td><td>25</td><td>1.4″</td></tr><tr><td>26 Oct</td><td>18:11:07</td><td>20h 11m 02.58s</td><td>+12° 03′ 57.6″</td><td>30</td><td>1.2″</td></tr><tr><td>3 Nov</td><td>17:43:30</td><td>19h 48m 12.63s</td><td>+14° 29′ 49.3″</td><td>49</td><td>1.0″</td></tr></tbody></table></div>
+<figure class="fig"><img src="161P-baneberegning-fig2-en-v2.png" alt="The measured positions (orange) lie on the MPC ephemeris (blue). The grey crosses are the coordinates from the app." loading="lazy"><figcaption><b>Figure 2.</b> The measured positions (orange) lie on the MPC ephemeris (blue). The grey crosses are the coordinates from the app.</figcaption></figure>
+<p class="small">The field is about 35′ across. It rotates by up to 21° from night to night, because the eVscope2 is on an alt-azimuth mount with no field derotator.</p>
+</section>
+<section class="section reveal" id="oc">
+<div class="kicker"><span class="n">04</span> Check</div>
+<h2>Measured against computed: O − C</h2>
+<p>The measured positions were compared with a topocentric ephemeris computed from the MPC orbital elements (MPEC 2026-TP0, epoch 23 October 2026), with light-time correction. The difference O − C is split into components along and across the comet’s motion.</p>
+<figure class="fig"><img src="161P-baneberegning-fig3-en-v2.png" alt="O − C along the track (blue) and across the track (orange) on the four evenings." loading="lazy"><figcaption><b>Figure 3.</b> O − C along the track (blue) and across the track (orange) on the four evenings.</figcaption></figure>
+<ul><li><strong>Across the track</strong> the difference is 0.4″, 3.1″ and 0.6″ on 18 and 19 October and 3 November. That matches the accuracy of the plate solution and shows that the astrometry is sound.</li><li><strong>Along the track</strong> the comet lags by 28″, 17″, 7″ and 8″. Given the comet’s rate of motion, the effective times are 7.4, 4.7, 2.9 and 5.5 minutes earlier than assumed. It is the time stamp of the stack, not the measurement, that is uncertain.</li><li><strong>On 26 October</strong> there is a 13″ offset across the track. It is probably caused by the stars on top of the coma or by an asymmetric coma; it persists with four different centring methods, including the blue channel alone.</li></ul>
+</section>
+<section class="section reveal" id="gauss">
+<div class="kicker"><span class="n">05</span> The method</div>
+<h2>Gauss’s method</h2>
+<p>Gauss’s method finds the comet’s distance ρ at the three times from the direction vectors L̂<sub>i</sub> and the observer’s heliocentric position R<sub>i</sub> (the Earth plus the geocentric position of Marshøj). The middle distance r<sub>2</sub> from the Sun is a root of Gauss’s equation of eighth degree:</p>
+<div class="formula"><i>r</i><sub>2</sub><sup>8</sup> − (<i>A</i><sup>2</sup> + 2<i>AE</i> + <i>R</i><sub>2</sub><sup>2</sup>) <i>r</i><sub>2</sub><sup>6</sup> − 2<i>μB</i>(<i>A</i> + <i>E</i>) <i>r</i><sub>2</sub><sup>3</sup> − <i>μ</i><sup>2</sup><i>B</i><sup>2</sup> = 0,&nbsp;&nbsp; <i>E</i> = L̂<sub>2</sub> · <b>R</b><sub>2</sub></div>
+<p>Lagrange’s f and g functions are then refined with universal variables and light-time correction until the solution stops changing. The velocity follows from</p>
+<div class="formula"><b>v</b><sub>2</sub> = (−<i>f</i><sub>3</sub> <b>r</b><sub>1</sub> + <i>f</i><sub>1</sub> <b>r</b><sub>3</sub>) / (<i>f</i><sub>1</sub><i>g</i><sub>3</sub> − <i>f</i><sub>3</sub><i>g</i><sub>1</sub>)</div>
+<p>The code was checked by feeding it the MPC ephemeris’ own directions at the same times. It recovers the MPC orbit to every decimal (q = 1.26511 AU, e = 0.83618, i = 95.7919°).</p>
+</section>
+<section class="section reveal" id="resultat">
+<div class="kicker"><span class="n">06</span> The result</div>
+<h2>The orbit from the three October nights</h2>
+<p>With the first three nights (18, 19 and 26 October, an 8-day arc), Gauss’s method gives:</p>
+<div class="tablewrap"><table class="data"><thead><tr><th>Quantity</th><th>Gauss, own images</th><th>MPC (MPEC 2026-TP0)</th></tr></thead><tbody><tr><td>Earth–comet distance ρ<sub>1</sub> / ρ<sub>2</sub> / ρ<sub>3</sub> (AU)</td><td>0.543 / 0.557 / 0.662</td><td>0.674 / 0.692 / 0.822</td></tr><tr><td>Sun–comet distance r<sub>2</sub> (AU)</td><td>1.279</td><td>1.373</td></tr><tr><td>Heliocentric speed v<sub>2</sub> (km/s)</td><td>29.0</td><td>34.3</td></tr><tr><td>Perihelion distance q (AU)</td><td>0.95</td><td>1.265</td></tr><tr><td>Semi-major axis a (AU)</td><td>1.62</td><td>7.72</td></tr><tr><td>Eccentricity e</td><td>0.41</td><td>0.836</td></tr><tr><td>Inclination i</td><td>82.8°</td><td>95.79°</td></tr><tr><td>Ascending node Ω</td><td>2.6°</td><td>1.47°</td></tr><tr><td>Argument of perihelion ω</td><td>94.4°</td><td>47.07°</td></tr><tr><td>Perihelion time T</td><td>9 Jan 2027</td><td>27 Nov 2026, 04:16 TT</td></tr><tr><td>Period P (years)</td><td>2.1</td><td>21.46</td></tr></tbody></table></div>
+<p>The orientation of the orbital plane (Ω and i) is roughly right, so the comet’s motion almost perpendicular to the ecliptic shows up clearly. The distance, however, is 19 % too small. The speed then comes out too low, and the orbit becomes a short, nearly circular ellipse instead of the long Halley-type orbit.</p>
+</section>
+<section class="section reveal" id="usikkerhed">
+<div class="kicker"><span class="n">07</span> Uncertainty</div>
+<h2>Why 8 days is not enough</h2>
+<p>A Monte Carlo run with 3000 repetitions, shaking each position by ±2″ and each time by ±4 min, gives ρ<sub>2</sub> = 0.44–0.63 AU and e = 0.39–0.59 (68 % intervals). The true ρ<sub>2</sub> = 0.692 AU lies just outside the interval, because the systematic 13″ offset on 26 October is larger than the assumed 2″.</p>
+<figure class="fig wide"><img src="161P-baneberegning-fig5-en.png" alt="Left: the spread in the distance ρ2. Right: simulated precision of e for different arc lengths with ±2″ and ±1 min." loading="lazy"><figcaption><b>Figure 4.</b> Left: the spread in the distance ρ<sub>2</sub>. Right: simulated precision of e for different arc lengths with ±2″ and ±1 min.</figcaption></figure>
+<p>The right panel is a simulation with perfect MPC positions plus ±2″ and ±1 min. Even with data that good, 8 days give e = 0.55–1.19, so an ellipse cannot be told from a hyperbola. A 16-day arc (an image around 3 November) gives 0.75–0.92 and ρ<sub>2</sub> within ±2.5 %. That image arrived – see the next section.</p>
+<div class="callout"><div class="big">105″<small>ARCSECONDS FROM THE GREAT CIRCLE</small></div><p>In practice Gauss’s method measures the curvature of the track. According to the MPC orbit, the position on 19 October lies only 100″ from the great circle through the other two, and according to my measurements 105″. <strong>Those 5″ are what shift the distance by 19 %.</strong></p></div>
+</section>
+<section class="section reveal" id="fjerde">
+<div class="kicker"><span class="n">08</span> Fourth night</div>
+<h2>3 November: a 16-day arc</h2>
+<p>With the image from 3 November, Gauss’s method can use a first and last night 16 days apart. There are two natural choices of middle night, and they err in opposite directions:</p>
+<div class="tablewrap wide"><table class="data"><thead><tr><th>Quantity</th><th>8 days: 18 · 19 · 26 Oct</th><th>16 days: 18 · 19 Oct · 3 Nov</th><th>16 days: 18 · 26 Oct · 3 Nov</th><th>Check: 26 Oct corrected 13″</th><th>MPC</th></tr></thead><tbody><tr><td>ρ<sub>2</sub> (AU), error</td><td>0.557 (−19 %)</td><td>0.641 (−7 %)</td><td>0.907 (+10 %)</td><td>0.825 (+0.4 %)</td><td>0.692 / 0.822</td></tr><tr><td>Perihelion distance q (AU)</td><td>0.95</td><td>1.17</td><td>1.37</td><td>1.270</td><td>1.265</td></tr><tr><td>Semi-major axis a (AU)</td><td>1.62</td><td>3.05</td><td>−5.2</td><td>8.56</td><td>7.72</td></tr><tr><td>Eccentricity e</td><td>0.41</td><td>0.62</td><td>1.26</td><td>0.852</td><td>0.836</td></tr><tr><td>Inclination i</td><td>82.8°</td><td>91.7°</td><td>100.8°</td><td>96.1°</td><td>95.79°</td></tr><tr><td>Ascending node Ω</td><td>2.6°</td><td>1.9°</td><td>0.97°</td><td>1.47°</td><td>1.47°</td></tr><tr><td>Argument of perihelion ω</td><td>94.4°</td><td>59.4°</td><td>35.8°</td><td>46.3°</td><td>47.07°</td></tr><tr><td>Perihelion time T</td><td>9 Jan 2027</td><td>11 Dec 2026</td><td>–</td><td>26 Nov 2026</td><td>27 Nov 2026</td></tr><tr><td>Period P (years)</td><td>2.1</td><td>5.3</td><td>hyperbola</td><td>25</td><td>21.46</td></tr></tbody></table></div>
+<figure class="fig wide"><img src="161P-baneberegning-fig6-en-v2.png" alt="The error in the distance ρ2 and the eccentricity e for each choice of nights. The dot is Gauss with the measured data, the bar the 68 % interval with ±2″ and ±4 min." loading="lazy"><figcaption><b>Figure 5.</b> The error in the distance ρ<sub>2</sub> and the eccentricity e for each choice of nights. The dot is Gauss with the measured data, the bar the 68 % interval with ±2″ and ±4 min.</figcaption></figure>
+<ul><li><strong>18 · 19 Oct · 3 Nov</strong> avoids the bad night. The distance is 7 % too small, and the MPC value sits right at the edge of the 68 % interval. But two nights close together make a weak middle point, so the spread is large.</li><li><strong>18 · 26 Oct · 3 Nov</strong> has a well-placed middle night, and the spread is only ±0.013 AU. Timing errors of ±4 min hardly matter over 16 days. Instead, the 13″ on 26 October comes straight through: the distance is 10 % too large and the orbit becomes a hyperbola.</li><li><strong>The check</strong> removes the 13″ across the track on 26 October. Gauss then lands almost exactly on the MPC orbit. It is not an independent measurement, since the correction is taken from the MPC orbit, but it shows that the method works and that the result hinges on one centring.</li></ul>
+<figure class="fig wide"><img src="161P-baneberegning-fig4-en-v2.png" alt="The orbits seen from the ecliptic north pole and edge-on: MPC (blue), 8 days (violet) and the two 16-day solutions (orange and green). The Sun is yellow, the Earth grey." loading="lazy"><figcaption><b>Figure 6.</b> The orbits seen from the ecliptic north pole and edge-on: MPC (blue), 8 days (violet) and the two 16-day solutions (orange and green). The Sun is yellow, the Earth grey.</figcaption></figure>
+<div class="callout"><div class="big">13″<small>ONE CENTRING, 10 % OF THE DISTANCE</small></div><p>With a 16-day arc the times are no longer the problem. <strong>It is the precision of the middle point across the track that fixes the distance</strong>, and 13″ on 26 October shifts it by 10 %.</p></div>
+</section>
+<section class="section reveal" id="videre">
+<div class="kicker"><span class="n">09</span> Conclusion</div>
+<h2>Next steps</h2>
+<p>The eVscope2 astrometry is good enough for orbit determination: the plate solutions hold to 1–1.4″, and the positions are only 0.4–3″ off across the track on three of four nights. With a 16-day arc Gauss’s method works; the remaining error comes from one poor centring on 26 October.</p>
+<ul><li><strong>Take an image around 12 November</strong>, preferably several in a row. The comet will then be at RA 19h 32m, Dec +16.6°, 73° from the Sun. With five nights the orbit can be fitted by least squares over all points, and a single bad point will give itself away.</li><li><strong>Avoid fields where stars cover the coma</strong>, or take two stacks half an hour apart so that the comet has moved off the stars.</li><li><strong>Download the raw data from the app</strong> (manifest.json with obs_start and obs_end). The stack’s mid-time is then known to the second. With a long arc it matters less, but it removes the 7–28″ offset along the track.</li><li><strong>Use the EXIF time</strong> when the file name is missing: on these images it was within 2 minutes of the middle of the stack.</li></ul>
+</section>
+<section class="section reveal"><h3>Sources</h3><ul class="sources"><li><a href="https://www.cobs.si/comet/393/">MPC orbital elements, MPEC 2026-TP0, via COBS (comet 393)</a></li><li><a href="https://en.wikipedia.org/wiki/161P/Hartley%E2%80%93IRAS">Perihelion date and background: Wikipedia, 161P/Hartley–IRAS</a></li><li><a href="https://github.com/steveberardi/starplot-bigsky">Star catalogue: Big Sky (Tycho-2 + Hipparcos)</a></li><li><a href="kometbane-161P-en.html">Interactive 3D model of the comet’s orbit</a></li></ul></section>
+</article>
+
+<footer>
+    Comet 161P/Hartley–IRAS · orbit determination · Michael Howard Grant<br>
+    Part of <a href="index-en.html">Physics, mathematics and chemistry</a> ·
+    <a href="mailto:michael.h.grant@gmail.com">michael.h.grant@gmail.com</a>
+</footer>
+
+<script>
+/* ---------- starfield ---------- */
+(function(){
+    var c=document.querySelector('#stars canvas'),x=c.getContext('2d'),stars=[];
+    function size(){
+        c.width=innerWidth;c.height=innerHeight;
+        stars=[];
+        var n=Math.min(160,Math.round(innerWidth*innerHeight/9000));
+        for(var i=0;i<n;i++){
+            stars.push({
+                x:Math.random()*c.width,y:Math.random()*c.height,
+                r:Math.random()*1.3+0.2,
+                a:Math.random(),s:Math.random()*0.018+0.004
+            });
+        }
+    }
+    function draw(){
+        x.clearRect(0,0,c.width,c.height);
+        for(var i=0;i<stars.length;i++){
+            var st=stars[i];
+            st.a+=st.s;
+            var tw=0.45+0.55*Math.abs(Math.sin(st.a));
+            x.globalAlpha=tw;
+            x.fillStyle= i%9===0 ? '#9fdcff' : '#ffffff';
+            x.beginPath();x.arc(st.x,st.y,st.r,0,6.283);x.fill();
+        }
+        x.globalAlpha=1;
+        requestAnimationFrame(draw);
+    }
+    size();draw();
+    addEventListener('resize',size);
+})();
+
+/* ---------- scroll reveal ---------- */
+(function(){
+    var io=new IntersectionObserver(function(es){
+        es.forEach(function(e){
+            if(e.isIntersecting){
+                e.target.classList.add('in');
+                if(e.target.classList.contains('score')){
+                    var arc=document.getElementById('scoreArc');
+                    if(arc) arc.style.strokeDashoffset = 465*(1-0.94);
+                }
+                e.target.querySelectorAll('.errbar').forEach(function(b){
+                    var w=b.getAttribute('data-w');
+                    if(w) b.querySelector('.fill').style.width=w+'%';
+                });
+                io.unobserve(e.target);
+            }
+        });
+    },{threshold:0.18});
+    document.querySelectorAll('.reveal').forEach(function(el){io.observe(el);});
+})();
+</script>
+<script src="lang-switch.js" defer></script>
+</body>
+</html>

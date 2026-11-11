@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slaget ved Dybbøl - Interaktivt Rollespil</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚔️</text></svg>">
+    <style>
+...
+        body {
+            font-family: 'Georgia', serif;
+            background-color: #2c251d;
+            color: #2b2b2b;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        #game-container {
+            background-color: #fffaf0;
+            border: 4px solid #5a4b3c;
+            border-radius: 8px;
+            padding: 40px;
+            max-width: 650px;
+            width: 100%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            text-align: center;
+            position: relative;
+            transition: all 0.3s ease;
+            margin: auto;
+            overflow: hidden; 
+        }
+        
+        #show-map-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background-color: #3a2b1c;
+            color: #fffaf0;
+            border: 1px solid #1a1005;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Georgia', serif;
+            font-size: 0.9em;
+            z-index: 5;
+            transition: background-color 0.2s;
+        }
+        #show-map-btn:hover {
+            background-color: #8b0000;
+        }
+
+        h1 {
+            color: #8b0000;
+            border-bottom: 2px solid #8b0000;
+            padding-bottom: 10px;
+            margin-top: 20px;
+        }
+        #story-text {
+            font-size: 1.3em;
+            line-height: 1.6;
+            margin-bottom: 25px;
+            min-height: 120px;
+        }
+        .btn {
+            background-color: #5a4b3c;
+            color: white;
+            border: 2px solid #3a2b1c;
+            padding: 12px 20px;
+            margin: 8px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.2s;
+            width: 90%;
+            max-width: 450px;
+            font-family: 'Georgia', serif;
+        }
+        .btn:hover {
+            background-color: #8b0000;
+            transform: scale(1.02);
+        }
+        #historical-note {
+            margin-top: 25px;
+            font-size: 0.9em;
+            font-style: italic;
+            color: #666;
+            border-top: 1px dashed #ccc;
+            padding-top: 15px;
+        }
+
+        #map-modal {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+            z-index: 20;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        #map-modal.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .map-content {
+            background-color: #f4ecd8;
+            width: 90%;
+            max-height: 90%;
+            border: 3px solid #5a4b3c;
+            border-radius: 6px;
+            padding: 20px;
+            overflow-y: auto;
+            text-align: left;
+            box-sizing: border-box;
+        }
+        .map-content h2 {
+            margin-top: 0;
+            color: #8b0000;
+            border-bottom: 1px solid #5a4b3c;
+            padding-bottom: 5px;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.8s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .shake {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-2px, 0, 0); }
+            20%, 80% { transform: translate3d(4px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-8px, 0, 0); }
+            40%, 60% { transform: translate3d(8px, 0, 0); }
+        }
+        #overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(255, 0, 0, 0.2);
+            pointer-events: none;
+            opacity: 0;
+            border-radius: 4px;
+            z-index: 10;
+        }
+        .flash-red {
+            animation: flashRed 0.5s ease-out;
+        }
+        @keyframes flashRed {
+            0% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+    </style>
+
+<!-- app (PWA) -->
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/app/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="mhgfysik">
+<script src="/app/app.js" defer></script>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="overlay"></div>
+    
+    <button id="show-map-btn">🗺️ Taktisk Kort</button>
+
+    <div id="map-modal">
+        <div class="map-content">
+            <h2>Det Taktiske Overblik</h2>
+            
+            <svg viewBox="0 0 800 400" style="width: 100%; border: 2px solid #3a2b1c; border-radius: 4px; margin-bottom: 15px; background-color: #e8ddc5;">
+                <rect x="600" y="0" width="200" height="400" fill="#a8c0d8" /> <path d="M 0 300 Q 300 350 600 300 L 600 400 L 0 400 Z" fill="#a8c0d8" /> <path d="M 0 0 L 600 0 L 600 300 Q 300 350 0 300 Z" fill="#dcd3be" />
+                
+                <line x1="580" y1="130" x2="620" y2="130" stroke="#5a4b3c" stroke-width="4" stroke-dasharray="5,5" />
+                <line x1="580" y1="150" x2="620" y2="150" stroke="#5a4b3c" stroke-width="4" stroke-dasharray="5,5" />
+                
+                <rect x="350" y="250" width="20" height="20" fill="#8b0000" /> <rect x="320" y="210" width="20" height="20" fill="#8b0000" /> <rect x="300" y="160" width="20" height="20" fill="#8b0000" /> <rect x="300" y="110" width="20" height="20" fill="#8b0000" /> <rect x="320" y="60" width="20" height="20" fill="#8b0000" /> <rect x="350" y="20" width="20" height="20" fill="#8b0000" /> <path d="M 220 280 Q 150 140 220 20" fill="none" stroke="#2b2b2b" stroke-width="3" stroke-dasharray="10,5" />
+                
+                <text x="640" y="145" font-family="Georgia" font-size="22" fill="#2b2b2b">ALS</text>
+                <text x="250" y="360" font-family="Georgia" font-size="24" fill="#2b2b2b">Vemmingbund</text>
+                <text x="30" y="150" font-family="Georgia" font-size="18" fill="#2b2b2b">Preussiske hær</text>
+                <text x="380" y="140" font-family="Georgia" font-size="18" fill="#8b0000" font-weight="bold">Dybbøl Banke</text>
+                
+                <text x="380" y="265" font-family="Georgia" font-size="14" fill="#2b2b2b">I</text>
+                <text x="350" y="225" font-family="Georgia" font-size="14" fill="#2b2b2b">II</text>
+                <text x="330" y="175" font-family="Georgia" font-size="14" fill="#2b2b2b">IV</text>
+                <text x="330" y="125" font-family="Georgia" font-size="14" fill="#2b2b2b">VI</text>
+                <text x="350" y="75" font-family="Georgia" font-size="14" fill="#2b2b2b">VIII</text>
+                <text x="380" y="35" font-family="Georgia" font-size="14" fill="#2b2b2b">X</text>
+            </svg>
+            
+            <h3>1. De 10 Skanser</h3>
+            <p>Forsvarslinjen består af 10 jordskanser, nummereret fra syd (skanse I ved Vemmingbund) til nord (skanse X ved Alssund). Skanse II, IV og VI på selve Dybbøl Banke er under hårdest pres.</p>
+            
+            <h3>2. Troppepositioner</h3>
+            <p><strong>Danske styrker:</strong> 11.000 trætte mand i de forreste linjer. Reserverne (8. Brigade) står tilbage mod broerne.<br>
+            <strong>Preussiske styrker:</strong> 37.000 mand under Prins Friedrich Karl, klar i de stiplede løbegrave kun 150-200 meter væk.</p>
+            
+            <h3>3. Terræn & Flåde</h3>
+            <p>Vemmingbund i syd tillader flådestøtte fra panserskibet <i>Rolf Krake</i>. I ryggen har du pontonbroerne over Alssund. Bliver broerne taget, er hæren fanget.</p>
+
+            <button class="btn" id="close-map-btn" style="width: 100%; margin: 15px 0 0 0;">Luk Kort</button>
+        </div>
+    </div>
+
+    <h1>Slaget ved Dybbøl</h1>
+    <p><i>18. april 1864 - Generalens Telt</i></p>
+    <div id="story-content" class="fade-in">
+        <div id="story-text">
+            Forbered dig, General. Tryk på start for at begynde.
+        </div>
+        <div id="choices-container">
+            <button class="btn" id="start-btn">Start Spillet</button>
+        </div>
+        <p id="historical-note">Dette spil bruger browserens indbyggede lyd. Sørg for at din lyd er skruet op.</p>
+    </div>
+</div>
+
+<script>
+    let audioCtx;
+
+    function initAudio() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+    }
+
+    function playCannonSound() {
+        if (!audioCtx) return;
+        const bufferSize = audioCtx.sampleRate * 1; 
+        const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const data = buffer.getChannelData(0);
+        
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = Math.random() * 2 - 1; 
+        }
+        
+        const noise = audioCtx.createBufferSource();
+        noise.buffer = buffer;
+        
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 400; 
+        
+        const gainNode = audioCtx.createGain();
+        gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1);
+        
+        noise.connect(filter);
+        filter.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        
+        noise.start();
+    }
+
+    function playClickSound() {
+        if (!audioCtx) return;
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        
+        oscillator.type = 'triangle'; 
+        oscillator.frequency.setValueAtTime(300, audioCtx.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.1);
+        
+        gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.1);
+    }
+
+    function triggerShake() {
+        const container = document.getElementById('game-container');
+        const overlay = document.getElementById('overlay');
+        
+        container.classList.remove('shake');
+        overlay.classList.remove('flash-red');
+        
+        void container.offsetWidth; 
+        
+        container.classList.add('shake');
+        overlay.classList.add('flash-red');
+    }
+
+    function triggerFade() {
+        const content = document.getElementById('story-content');
+        content.classList.remove('fade-in');
+        void content.offsetWidth;
+        content.classList.add('fade-in');
+    }
+
+    const storyNodes = {
+        start: {
+            text: "Klokken nærmer sig 10:00. Den preussiske artilleriild har bombet skanserne til grus i ugevis. Der er en unaturlig stilhed... Infanteriet angriber snart! Hvad er dine ordrer?",
+            choices: [
+                { text: "Befal tropperne at holde skanserne! (Historisk)", next: "historical_hold" },
+                { text: "Send besked til Panserbatteriet Rolf Krake om at beskyde kysten!", next: "rolf_krake" },
+                { text: "Beordr et natligt flanke-angreb for at sabotere deres kanoner.", next: "sabotage" },
+                { text: "Iværksæt en general-retræte over broerne til Als.", next: "retreat_als" }
+            ],
+            note: "Preusserne har ca. 37.000 mand klar mod dine udmattede 11.000 soldater i skanserne.",
+            effect: "silence"
+        },
+        historical_hold: {
+            text: "Kanonerne brager pludselig løs igen, efterfulgt af preussiske stormkolonner! De vælter ind over de ødelagte skanser. Det 8. Brigade kæmper desperat, men bliver løbet over ende.",
+            choices: [
+                { text: "Indsæt reserverne i et modangreb!", next: "counter_attack" },
+                { text: "Det er tabt. Signalér tilbagetrækning.", next: "retreat_heavy_losses" }
+            ],
+            note: "Dette var den historiske virkelighed. Skanserne faldt en efter en i løbet af formiddagen.",
+            effect: "cannon"
+        },
+        rolf_krake: {
+            text: "Du signalerer ud til Vemmingbund. Det mægtige panserskib Rolf Krake sejler tæt under land og affyrer sine svære kanoner ind i de preussiske rækker! Fjenden tøver, og deres højre fløj bryder i panik.",
+            choices: [
+                { text: "Udnyt forvirringen! Fuld storm ud af skanserne!", next: "rolf_krake_charge" },
+                { text: "Brug tidsvinduet til at forstærke vores svageste punkter.", next: "rolf_krake_defend" }
+            ],
+            note: "Rolf Krake greb faktisk ind under slaget, men var nødt til at trække sig på grund af intens beskydning.",
+            effect: "cannon"
+        },
+        sabotage: {
+            text: "I ly af mørket inden stormen, sender du en deling snigende mod de preussiske kanonstillinger. De bliver opdaget for tidligt! Det ender i en rodet ildkamp i ingenmandsland.",
+            choices: [
+                { text: "Send forstærkninger ud for at redde dem.", next: "total_wipeout" },
+                { text: "Lad dem i stikken, vi må forsvare hovedlinjen.", next: "historical_hold" }
+            ],
+            note: "Et farligt spil. Den preussiske vagtpost-kæde var tæt og professionel.",
+            effect: "cannon"
+        },
+        counter_attack: {
+            text: "Dine reserver kaster sig ind i kampen med påplantede bajonetter. Kampen er brutal mand-mod-mand, men overmagten er massiv. Du mister dine bedste mænd forgæves.",
+            choices: [
+                { text: "Se konsekvenserne", next: "total_wipeout" }
+            ],
+            note: "8. Brigade mistede næsten halvdelen af sine mænd i et heroisk modangreb.",
+            effect: "cannon"
+        },
+        rolf_krake_charge: {
+            text: "Dine mænd stormer ud, støttet af flådens kanoner! Preusserne på højre fløj trækker sig, men de tilkalder hurtigt deres eget artilleri, som tvinger Rolf Krake væk. Du står nu uden dækning på åben mark.",
+            choices: [
+                { text: "Kæmp til sidste blodsdråbe for fædrelandet!", next: "total_wipeout" },
+                { text: "Træk jer hurtigt tilbage til Als, mens preusserne samler sig.", next: "counter_retreat" }
+            ],
+            note: "Taktisk uforudsigeligt, men offensiven gav jer initiativet for en stund.",
+            effect: "cannon"
+        },
+        rolf_krake_defend: {
+            text: "Du bruger tiden klogt. Selvom preusserne til sidst driver skibet væk og angriber, møder de et stærkt, omorganiseret forsvar. Kampen trækker ud i dagevis, hvilket tvinger en politisk våbenhvile frem!",
+            choices: [
+                { text: "Spil igen", next: "start" }
+            ],
+            note: "En diplomatisk sejr! Ved at trække tiden ud, nåede stormagterne i London at blande sig tidligere.",
+            effect: "silence"
+        },
+        retreat_als: {
+            text: "Ligesom de Meza gjorde ved Dannevirke, tager du en hård, men fornuftig beslutning. Du rømmer skanserne og sprænger broerne. Hæren er reddet, men politikerne i København er rasende.",
+            choices: [
+                { text: "Spil igen", next: "start" }
+            ],
+            note: "Hæren er reddet til at kæmpe en anden dag, men dit ry som general er ødelagt.",
+            effect: "silence"
+        },
+        retreat_heavy_losses: {
+            text: "Du blæser til retræte. Tilbagetoget til Als bliver kaotisk og blodigt. Mange tages til fange. Vi har mistet skanserne og tusindvis af mænd, men en rest af hæren overlever.",
+            choices: [
+                { text: "Spil igen", next: "start" }
+            ],
+            note: "Dette var det sande udfald den 18. april. Det danske nederlag var totalt.",
+            effect: "silence"
+        },
+        counter_retreat: {
+            text: "Dit vovede udfald købte tid. Hæren marcherer i god orden over pontonbroerne. I har tabt Dybbøl, men reddet hærens moral og mange danske liv.",
+            choices: [
+                { text: "Spil igen", next: "start" }
+            ],
+            note: "En taktisk flot manøvre under svære omstændigheder.",
+            effect: "silence"
+        },
+        total_wipeout: {
+            text: "Blodbadet er komplet. Den danske hær udslettes af det overlegne preussiske artilleri og nådesløse infanteri. Vejen til hele Jylland og Fyn står nu åben for fjenden. Danmark er knust.",
+            choices: [
+                { text: "Spil igen", next: "start" }
+            ],
+            note: "Det værst tænkelige udfald. En militær og national katastrofe.",
+            effect: "cannon"
+        }
+    };
+
+    function startGame() {
+        initAudio();
+        playClickSound();
+        showNode('start');
+    }
+
+    function showNode(nodeKey) {
+        triggerFade();
+        const node = storyNodes[nodeKey];
+        
+        if (node.effect === "cannon") {
+            setTimeout(() => {
+                playCannonSound();
+                triggerShake();
+            }, 300);
+        } else {
+            playClickSound();
+        }
+
+        const storyTextElement = document.getElementById('story-text');
+        const choicesContainer = document.getElementById('choices-container');
+        const noteElement = document.getElementById('historical-note');
+
+        storyTextElement.innerHTML = node.text;
+        noteElement.innerHTML = "<strong>Historisk note:</strong> " + (node.note || "");
+        choicesContainer.innerHTML = '';
+
+        node.choices.forEach(choice => {
+            const button = document.createElement('button');
+            button.innerText = choice.text;
+            button.classList.add('btn');
+            button.addEventListener('click', () => {
+                initAudio();
+                showNode(choice.next);
+            });
+            choicesContainer.appendChild(button);
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const startKnap = document.getElementById('start-btn');
+        const mapBtn = document.getElementById('show-map-btn');
+        const mapModal = document.getElementById('map-modal');
+        const closeMapBtn = document.getElementById('close-map-btn');
+
+        if (startKnap) {
+            startKnap.addEventListener('click', startGame);
+        }
+
+        if (mapBtn) {
+            mapBtn.addEventListener('click', () => {
+                mapModal.classList.add('active');
+            });
+        }
+
+        if (closeMapBtn) {
+            closeMapBtn.addEventListener('click', () => {
+                mapModal.classList.remove('active');
+            });
+        }
+    });
+
+</script>
+
+<script src="lang-switch.js" defer></script>
+</body>
+</html>

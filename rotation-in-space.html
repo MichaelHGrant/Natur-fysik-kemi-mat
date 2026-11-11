@@ -1,0 +1,570 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rotation in Space</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+/* Layout: tegnebord — 3D-vindue til venstre (klæber fast), trin og regninger til højre, opgaver nedenunder */
+:root{
+  --bg:#EDF1F4; --panel:#F9FBFC; --canvas:#F4F7F9; --ink:#16212B; --muted:#56646F; --line:#CAD3DB; --grid:#D3DBE2;
+  --accent:#C77A0B; --accent-ink:#8F5300; --accent-soft:#F6E7CF;
+  --ax-x:#D23B3B; --ax-y:#2B8F45; --ax-z:#2F5FCC;
+  --face-x:#F0B0AA; --face-y:#A7D8B2; --face-z:#AAC2EF; --face-n:#DCE2E8; --face-r:#D8BC92;
+  --warn:#B3261E; --ok:#2B8F45;
+  --font-display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --font-body:"STIX Two Text","Georgia","Times New Roman",serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11171D; --panel:#182028; --canvas:#141B22; --ink:#E5EBF0; --muted:#94A2AE; --line:#2B3742; --grid:#24303A;
+  --accent:#F0A531; --accent-ink:#F4B85A; --accent-soft:#3A2D18;
+  --ax-x:#FF6B6B; --ax-y:#5BCF7A; --ax-z:#7099FF;
+  --face-x:#8C4040; --face-y:#2F6D41; --face-z:#35518D; --face-n:#3A4651; --face-r:#7A6141;
+  --warn:#FF8A80; --ok:#5BCF7A; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11171D; --panel:#182028; --canvas:#141B22; --ink:#E5EBF0; --muted:#94A2AE; --line:#2B3742; --grid:#24303A;
+  --accent:#F0A531; --accent-ink:#F4B85A; --accent-soft:#3A2D18;
+  --ax-x:#FF6B6B; --ax-y:#5BCF7A; --ax-z:#7099FF;
+  --face-x:#8C4040; --face-y:#2F6D41; --face-z:#35518D; --face-n:#3A4651; --face-r:#7A6141;
+  --warn:#FF8A80; --ok:#5BCF7A; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:17px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1320px;margin:0 auto;padding-block:28px 64px;display:flex;flex-direction:column;gap:36px}
+header{display:grid;gap:10px;max-width:68ch}
+.eyebrow{font-family:var(--font-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-ink)}
+h1{font-family:var(--font-display);font-stretch:78%;font-weight:800;font-size:clamp(40px,7vw,76px);line-height:.95;margin:0;letter-spacing:-.01em;text-wrap:balance}
+h1 em{font-style:normal;color:var(--accent)}
+header p{margin:0;color:var(--muted)}
+h2{font-family:var(--font-display);font-stretch:85%;font-weight:700;font-size:28px;margin:0;line-height:1.1;text-wrap:balance}
+h3{font-family:var(--font-display);font-stretch:90%;font-weight:650;font-size:19px;margin:0;line-height:1.2}
+i.v,.v{font-style:italic}
+b.vec{font-weight:600}
+
+.lab{display:grid;gap:24px;align-items:start}
+@media (min-width:980px){.lab{grid-template-columns:minmax(0,1.12fr) minmax(0,1fr)}.viewer{position:sticky;top:max(12px,env(safe-area-inset-top,0px))}}
+.viewer{display:flex;flex-direction:column;gap:10px;min-width:0}
+.stage{position:relative;background:var(--canvas);border:1px solid var(--line);border-radius:10px;aspect-ratio:1/0.82;max-height:72vh;width:100%;overflow:hidden}
+.stage canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+.stage canvas:active{cursor:grabbing}
+.hint{position:absolute;right:10px;top:8px;font-family:var(--font-mono);font-size:11px;color:var(--muted);pointer-events:none}
+.legend{position:absolute;left:10px;bottom:8px;display:flex;flex-wrap:wrap;gap:4px 12px;font-family:var(--font-mono);font-size:11px;color:var(--muted);pointer-events:none}
+.legend span::before{content:"";display:inline-block;width:16px;height:0;border-top:2px solid currentColor;vertical-align:middle;margin-right:5px}
+.legend .g::before{border-top-style:dashed}
+.legend .a{color:var(--accent-ink)}
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.bar input[type=range]{flex:1 1 140px;min-width:0}
+.bar .pct{font-family:var(--font-mono);font-size:13px;color:var(--muted);min-width:4.5ch;font-variant-numeric:tabular-nums}
+.conv{font-size:14px;color:var(--muted);margin:0}
+
+button{font:inherit;cursor:pointer}
+.btn{font-family:var(--font-display);font-stretch:90%;font-weight:600;font-size:15px;padding:7px 14px;border-radius:7px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#1b1205}
+.btn:focus-visible,.tab:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible,.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;min-width:0}
+.tabs{display:flex;flex-wrap:wrap;gap:2px;padding:8px;border-bottom:1px solid var(--line)}
+.tab{font-family:var(--font-display);font-stretch:88%;font-weight:600;font-size:14px;border:0;background:transparent;color:var(--muted);padding:6px 10px;border-radius:6px;display:flex;gap:6px;align-items:baseline}
+.tab b{font-family:var(--font-mono);font-weight:500;font-size:12px}
+.tab[aria-selected=true]{background:var(--ink);color:var(--panel)}
+.tab:not([aria-selected=true]):hover{color:var(--ink)}
+.pbody{padding:18px 18px 22px;display:flex;flex-direction:column;gap:18px;min-width:0}
+.pbody p{margin:0;max-width:62ch}
+.controls{display:grid;gap:12px;padding:14px;border:1px dashed var(--line);border-radius:8px}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.row>label,.lbl{font-family:var(--font-mono);font-size:13px;color:var(--muted);min-width:7.5ch}
+.row input[type=range]{flex:1 1 160px;min-width:0}
+output{font-family:var(--font-mono);font-size:14px;min-width:6ch;text-align:right;font-variant-numeric:tabular-nums}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.seg button{border:0;background:transparent;color:var(--ink);padding:5px 12px;font-family:var(--font-body);font-style:italic;font-size:16px}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed=true]{background:var(--accent-soft);color:var(--accent-ink);font-weight:600}
+.seg.txt button{font-style:normal;font-family:var(--font-display);font-stretch:90%;font-size:14px}
+input[type=number],input.num,select{font-family:var(--font-mono);font-size:14px;background:var(--canvas);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:5px 6px}
+input.num{width:6.2em}
+.vin{display:inline-flex;gap:4px;align-items:center;font-family:var(--font-mono);font-size:14px;color:var(--muted)}
+input[type=range]{accent-color:var(--accent)}
+
+.read{display:grid;gap:14px;min-width:0}
+.eq{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;overflow-x:auto;padding-bottom:2px;font-size:18px}
+.eq .op{color:var(--muted)}
+.mat{position:relative;display:inline-grid;grid-template-columns:repeat(var(--c),auto);gap:2px 14px;padding:4px 11px;font-family:var(--font-body);font-variant-numeric:tabular-nums;text-align:center;justify-items:center;font-size:17px;line-height:1.35}
+.mat::before,.mat::after{content:"";position:absolute;top:0;bottom:0;width:6px;border:1.5px solid currentColor}
+.mat::before{left:0;border-right:0}.mat::after{right:0;border-left:0}
+.mat .h{color:var(--accent-ink)}
+.mat .sep{color:var(--muted)}
+.cx{color:var(--ax-x)}.cy{color:var(--ax-y)}.cz{color:var(--ax-z)}
+.note{font-size:15px;color:var(--muted);border-left:3px solid var(--accent);padding:2px 0 2px 12px;max-width:62ch}
+.note b{color:var(--ink)}
+.warn{color:var(--warn);font-weight:600}
+.okc{color:var(--ok);font-weight:600}
+table.vt{border-collapse:collapse;font-family:var(--font-mono);font-size:13.5px;font-variant-numeric:tabular-nums}
+table.vt td,table.vt th{padding:3px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+table.vt th{font-weight:500;color:var(--muted)}
+table.vt tr.on td{color:var(--accent-ink);font-weight:500}
+.scroll{overflow-x:auto;max-width:100%}
+ol.steps{margin:0;padding-left:1.3em;display:grid;gap:12px}
+ol.steps li{padding-left:4px}
+ol.steps li::marker{font-family:var(--font-mono);font-size:13px;color:var(--accent-ink)}
+.pin{display:grid;grid-template-columns:auto auto auto auto;gap:6px 6px;align-items:center;justify-content:start}
+.pin .lbl{min-width:0}
+.err{color:var(--warn);font-size:15px}
+
+.tasks{display:grid;gap:18px}
+.thead{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 20px}
+.thead p{margin:0;color:var(--muted);max-width:62ch}
+.tgrid{display:grid;gap:14px}
+@media (min-width:820px){.tgrid{grid-template-columns:1fr 1fr}}
+.task{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.task .top{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.task .no{font-family:var(--font-mono);font-size:12px;color:var(--accent-ink);letter-spacing:.08em}
+.task p{margin:0}
+.task .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto}
+details{border-top:1px solid var(--line);padding-top:8px}
+summary{font-family:var(--font-display);font-stretch:90%;font-weight:600;font-size:15px;cursor:pointer;color:var(--accent-ink)}
+details .fac{display:grid;gap:10px;padding-top:10px;min-width:0}
+details .fac p{margin:0}
+footer{font-size:14px;color:var(--muted);max-width:70ch}
+footer a{color:var(--accent-ink)}
+@media (max-width:520px){body{font-size:16px}.pbody{padding:14px}.mat{gap:2px 10px;font-size:15.5px}.eq{font-size:16px}}
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">IB Mathematics · a project on matrices</div>
+    <h1>Rotation in <em>space</em></h1>
+    <p>From the unit vectors to the matrix that turns any shape about any point. And the other way round: if you know the start and the end, you can find the axis, the angle and the centre of rotation.</p>
+  </header>
+
+  <section class="lab" id="lab">
+    <div class="viewer">
+      <div class="stage" id="stage">
+        <canvas id="cv" aria-label="3D view of the rotation. Drag to turn the camera."></canvas>
+        <div class="hint">drag = turn camera · scroll/pinch = zoom</div>
+        <div class="legend"><span class="g">start position</span><span class="a">axis of rotation and path</span></div>
+      </div>
+      <div class="bar">
+        <button class="btn primary" id="play">▶ Play</button>
+        <input type="range" id="prog" min="0" max="1000" value="1000" aria-label="Progress of the rotation">
+        <span class="pct" id="pct">100 %</span>
+        <button class="btn" id="resetcam">Reset view</button>
+      </div>
+      <p class="conv">Right-handed system with <i>z</i> up. A positive angle turns anticlockwise, seen from the tip of the axis looking back at the origin.</p>
+    </div>
+
+    <div class="panel">
+      <div class="tabs" role="tablist" id="tabs"></div>
+      <div class="pbody" id="pbody"></div>
+    </div>
+  </section>
+
+  <section class="tasks" id="opgaver">
+    <div class="thead">
+      <h2>Exercises with answers</h2>
+      <p>Work it out by hand first. The <b>Show in 3D</b> button sets up the situation in the window above, so you can check your answer.</p>
+    </div>
+    <div class="tgrid" id="tgrid"></div>
+  </section>
+
+  <footer><p style="margin:0 0 8px"><a href="index-en.html">Home</a> · Report with theory, exercises and answers: <a href="rotation-in-space.pdf">English (PDF)</a> · <a href="rotation-i-rummet.pdf">Danish (PDF)</a> · <a href="rotation-i-rummet.html">Danish version of this page</a></p>The formulae behind the page: R<sub><i>x</i></sub>, R<sub><i>y</i></sub>, R<sub><i>z</i></sub>; Rodrigues' formula R = cos θ·I + sin θ·[û]<sub>×</sub> + (1 − cos θ)·ûûᵀ; and P′ = R(P − C) + C. The number fields for the inverse problem accept fractions and square roots, e.g. <code>2/3</code> or <code>√2/2</code>.</footer>
+</div>
+
+<script>
+(function(){
+"use strict";
+const deg=Math.PI/180;
+/* ---------- vektor- og matrixregning ---------- */
+const add=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]];
+const sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]];
+const sc=(a,k)=>[a[0]*k,a[1]*k,a[2]*k];
+const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+const len=a=>Math.hypot(a[0],a[1],a[2]);
+const nrm=a=>{const l=len(a);return l<1e-12?[0,0,1]:sc(a,1/l)};
+const mv=(A,v)=>[dot(A[0],v),dot(A[1],v),dot(A[2],v)];
+const mm=(A,B)=>A.map(r=>[0,1,2].map(j=>r[0]*B[0][j]+r[1]*B[1][j]+r[2]*B[2][j]));
+const tp=A=>[0,1,2].map(i=>[0,1,2].map(j=>A[j][i]));
+const det=A=>dot(A[0],cross(A[1],A[2]));
+const I3=()=>[[1,0,0],[0,1,0],[0,0,1]];
+const fromCols=(a,b,c)=>[[a[0],b[0],c[0]],[a[1],b[1],c[1]],[a[2],b[2],c[2]]];
+const colOf=(A,j)=>[A[0][j],A[1][j],A[2][j]];
+function rotM(u,th){const[x,y,z]=nrm(u),c=Math.cos(th),s=Math.sin(th),C=1-c;
+  return [[c+x*x*C,x*y*C-z*s,x*z*C+y*s],[y*x*C+z*s,c+y*y*C,y*z*C-x*s],[z*x*C-y*s,z*y*C+x*s,c+z*z*C]];}
+const AX={x:[1,0,0],y:[0,1,0],z:[0,0,1]};
+const AXC={x:"cx",y:"cy",z:"cz"};
+
+/* segmenter: rotation om akse u gennem C med vinkel th (+ evt. forskydning h langs u) */
+function rotSeg(p,s,f){const R=rotM(s.u,f*s.th);let q=add(mv(R,sub(p,s.C)),s.C);if(s.h)q=add(q,sc(nrm(s.u),f*s.h));return q;}
+function tAt(p,segs,t){const n=segs.length;if(!n)return p;const T=t*n;let q=p;for(let k=0;k<n;k++){const f=Math.min(1,Math.max(0,T-k));if(f>0)q=rotSeg(q,segs[k],f);}return q;}
+function composite(segs){const o=tAt([0,0,0],segs,1);const R=fromCols(sub(tAt([1,0,0],segs,1),o),sub(tAt([0,1,0],segs,1),o),sub(tAt([0,0,1],segs,1),o));return{R,t:o};}
+
+/* ---------- talformatering ---------- */
+const MINUS="−";
+function gcd(a,b){a=Math.abs(a);b=Math.abs(b);while(b){[a,b]=[b,a%b]}return a||1}
+function frac(n,d,root){const g=gcd(n,d);n/=g;d/=g;const s=n<0?MINUS:"";n=Math.abs(n);
+  const num=root?(n===1?root:n+root):String(n);return s+num+(d===1?"":"/"+d);}
+function fmt(x){
+  if(Math.abs(x)<1e-9)return "0";
+  for(const d of [1,2,3,4,6,9,12,18]){const n=Math.round(x*d);if(n!==0&&Math.abs(x-n/d)<1e-7)return frac(n,d);}
+  for(const [b,r] of [[Math.SQRT2,"√2"],[Math.sqrt(3),"√3"],[Math.sqrt(6),"√6"]]){
+    for(const d of [1,2,3,4,6]){const n=Math.round(x*d/b);if(n!==0&&Math.abs(x-n*b/d)<1e-7)return frac(n,d,r);}}
+  let s=x.toFixed(3).replace(/0+$/,"").replace(/\.$/,"");return s.replace("-",MINUS);
+}
+const fdeg=a=>{const v=Math.round(a*10)/10;return (v<0?MINUS:"")+Math.abs(v)+"°";};
+function parseNum(str){
+  let s=String(str).trim().replace(/−/g,"-").replace(/,/g,".").replace(/(\d)\s*√/g,"$1*√").replace(/(\d)\s*sqrt/g,"$1*sqrt");
+  if(s==="")return NaN;
+  s=s.replace(/√\s*\(/g,"sqrt(").replace(/√\s*(\d+(\.\d+)?)/g,"sqrt($1)");
+  if(!/^[\d+\-*/().\s]*$/.test(s.replace(/sqrt/g,"")))return NaN;
+  try{const v=Function('"use strict";const sqrt=Math.sqrt;return ('+s+')')();return typeof v==="number"&&isFinite(v)?v:NaN}catch(e){return NaN}
+}
+
+/* ---------- HTML-matricer ---------- */
+function mat(A,hl){const c=A[0].length;let h=`<span class="mat" style="--c:${c}">`;
+  A.forEach((r,i)=>r.forEach((v,j)=>{const cls=hl&&hl(i,j)||"";h+=`<span class="${cls}">${typeof v==="number"?fmt(v):v}</span>`}));return h+"</span>";}
+const col=(v,cls)=>mat(v.map(x=>[x]),()=>cls||"");
+function mat4(R,t){const A=[[...R[0],t[0]],[...R[1],t[1]],[...R[2],t[2]],[0,0,0,1]];return mat(A,(i,j)=>j===3&&i<3?"h":(i===3?"sep":""));}
+const eq=(...p)=>`<div class="eq">${p.join("")}</div>`;
+const op=s=>`<span class="op">${s}</span>`;
+const sym=s=>`<span>${s}</span>`;
+const SYM={
+  x:[["1","0","0"],["0","cos θ",MINUS+"sin θ"],["0","sin θ","cos θ"]],
+  y:[["cos θ","0","sin θ"],["0","1","0"],[MINUS+"sin θ","0","cos θ"]],
+  z:[["cos θ",MINUS+"sin θ","0"],["sin θ","cos θ","0"],["0","0","1"]]};
+
+/* ---------- figurer ---------- */
+const CUBE={V:[[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]],
+  F:[{i:[0,3,2,1],c:"n"},{i:[4,5,6,7],c:"z"},{i:[0,1,5,4],c:"n"},{i:[1,2,6,5],c:"x"},{i:[2,3,7,6],c:"y"},{i:[3,0,4,7],c:"n"}],track:6};
+const HOUSE={V:[[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1],[0,.5,1.6],[1,.5,1.6]],
+  F:[{i:[0,3,2,1],c:"n"},{i:[0,1,5,4],c:"x"},{i:[2,3,7,6],c:"n"},{i:[3,0,4,8,7],c:"n"},{i:[1,2,6,9,5],c:"z"},{i:[4,5,9,8],c:"r"},{i:[7,8,9,6],c:"r"}],track:9};
+const SHAPES={cube:CUBE,house:HOUSE};
+const CORNERS=CUBE.V;
+
+/* ---------- tilstand ---------- */
+const S={step:1,t:1,
+  axis1:"z",ang1:90,
+  axis2:"x",ang2:90,vtx:6,
+  a:90,b:90,g:0,order:"xyz",
+  u4:[1,1,1],ang4:120,shape4:"cube",
+  u5:[0,0,1],C5:[1,1,0],ang5:90,shape5:"house",
+  P:[[1,-1,0],[1,0,0],[1,-1,1],[2,-1,0]].map(r=>r.map(fmt)),sol:null,err:""};
+
+const TABS=[[1,"Unit vectors"],[2,"The cube"],[3,"Composite"],[4,"Any axis"],[5,"Any point"],[6,"Inverse"]];
+
+/* ---------- løsning af det omvendte problem ---------- */
+function solve(Pn){
+  const [O,A,B,D]=Pn;const c1=sub(A,O),c2=sub(B,O),c3=sub(D,O);const R=fromCols(c1,c2,c3);
+  const RtR=mm(tp(R),R);let e=0;for(let i=0;i<3;i++)for(let j=0;j<3;j++)e=Math.max(e,Math.abs(RtR[i][j]-(i===j?1:0)));
+  const dR=det(R);
+  if(e>0.02||Math.abs(dR-1)>0.02)return{bad:true,R,RtR,dR};
+  const t=O.slice();const trc=R[0][0]+R[1][1]+R[2][2];const c=Math.max(-1,Math.min(1,(trc-1)/2));const th=Math.acos(c);const s=Math.sin(th);
+  let u;
+  if(th<1e-6){return{R,t,th:0,trc,c,s,ident:true}}
+  if(s>1e-6)u=sc([R[2][1]-R[1][2],R[0][2]-R[2][0],R[1][0]-R[0][1]],1/(2*s));
+  else{const Bm=[0,1,2].map(i=>[0,1,2].map(j=>(R[i][j]+(i===j?1:0))/2));let k=0;for(let i=1;i<3;i++)if(Bm[i][i]>Bm[k][k])k=i;u=sc(colOf(Bm,k),1/Math.sqrt(Bm[k][k]));}
+  u=nrm(u);const along=dot(t,u);const w=sub(t,sc(u,along));
+  const C=sc(add(sc(w,1-c),sc(cross(u,w),s)),1/(2*(1-c)));
+  return{R,t,th,trc,c,s,u,w,along,C};
+}
+function parsedP(){const out=[];for(const r of S.P){const v=r.map(parseNum);if(v.some(isNaN))return null;out.push(v)}return out;}
+function endVerts(Pn,V){const[O,A,B,D]=Pn;return V.map(p=>add(add(add(O,sc(sub(A,O),p[0])),sc(sub(B,O),p[1])),sc(sub(D,O),p[2])));}
+
+/* ---------- scene pr. trin ---------- */
+function segsFor(step){
+  if(step===1)return[{u:AX[S.axis1],C:[0,0,0],th:S.ang1*deg}];
+  if(step===2)return[{u:AX[S.axis2],C:[0,0,0],th:S.ang2*deg}];
+  if(step===3){const L=[{u:AX.x,C:[0,0,0],th:S.a*deg},{u:AX.y,C:[0,0,0],th:S.b*deg},{u:AX.z,C:[0,0,0],th:S.g*deg}];
+    return (S.order==="xyz"?L:L.reverse()).filter(s=>Math.abs(s.th)>1e-9);}
+  if(step===4)return[{u:S.u4,C:[0,0,0],th:S.ang4*deg}];
+  if(step===5)return[{u:S.u5,C:S.C5,th:S.ang5*deg}];
+  if(step===6&&S.sol&&!S.sol.bad&&!S.sol.ident)return[{u:S.sol.u,C:S.sol.C,th:S.sol.th,h:S.sol.along}];
+  return[];
+}
+function scene(){
+  const st=S.step,segs=segsFor(st);const sc0={segs,meshes:[],vecs:[],trails:[],labels:[],center:null,axis:null};
+  const n=segs.length;if(n){const k=Math.min(n-1,Math.floor(S.t*n));sc0.axis=segs[k];}
+  if(st===1){
+    [["x","i"],["y","j"],["z","k"]].forEach(([a,l])=>{sc0.vecs.push({p:AX[a],col:"--ax-"+a,label:l});sc0.trails.push({p:AX[a],col:"--ax-"+a});});
+  }else if(st===6){
+    const Pn=parsedP();
+    if(S.sol&&!S.sol.bad&&!S.sol.ident){sc0.meshes.push({sh:CUBE,ghost:true});sc0.meshes.push({sh:CUBE});sc0.trails.push({p:[1,1,1]});sc0.trails.push({p:[0,0,0]});
+      if(dot(S.sol.C,S.sol.C)>1e-10||true)sc0.center=S.sol.C;}
+    else{sc0.meshes.push({sh:CUBE,ghost:true});if(Pn)sc0.meshes.push({sh:CUBE,fixed:endVerts(Pn,CUBE.V)});}
+    [[0,"O"],[1,"A"],[3,"B"],[4,"D"]].forEach(([i,l])=>{sc0.labels.push({p:CUBE.V[i],text:l,ghost:true});
+      if(Pn)sc0.labels.push({p:endVerts(Pn,[CUBE.V[i]])[0],text:l+"′",fixed:true});});
+  }else{
+    const sh=st===4?SHAPES[S.shape4]:st===5?SHAPES[S.shape5]:CUBE;
+    sc0.meshes.push({sh,ghost:true});sc0.meshes.push({sh});
+    const tv=st===2?S.vtx:sh.track;sc0.trails.push({p:sh.V[tv]});
+    sc0.labels.push({p:sh.V[tv],text:"P",ghost:true});sc0.labels.push({p:sh.V[tv],text:"P′",moving:true});
+    if(st===5)sc0.center=S.C5;
+  }
+  return sc0;
+}
+
+/* ---------- 3D-tegning ---------- */
+const cv=document.getElementById("cv"),ctx=cv.getContext("2d");
+const CAM0={yaw:28*deg,pitch:24*deg,D:8,target:[.6,.6,.45]};
+let cam={...CAM0,target:CAM0.target.slice()};
+let W=0,H=0,Bs=null,focal=1,COL={};
+function readColors(){const cs=getComputedStyle(document.documentElement);const g=n=>cs.getPropertyValue(n).trim();
+  COL={};["--canvas","--ink","--muted","--grid","--line","--accent","--accent-ink","--ax-x","--ax-y","--ax-z","--face-x","--face-y","--face-z","--face-n","--face-r"].forEach(k=>COL[k]=g(k)||"#888");}
+function rgb(h){h=h.replace("#","");if(h.length===3)h=h.split("").map(c=>c+c).join("");const n=parseInt(h,16);return[(n>>16)&255,(n>>8)&255,n&255];}
+function basis(){const cp=Math.cos(cam.pitch),f=[cp*Math.cos(cam.yaw),cp*Math.sin(cam.yaw),Math.sin(cam.pitch)];
+  const right=nrm(cross([0,0,1],f)),up=cross(f,right);return{f,right,up,eye:add(cam.target,sc(f,cam.D))};}
+function P(p){const v=sub(p,Bs.eye);const z=-dot(v,Bs.f);const k=focal/Math.max(z,.05);return{x:W/2+dot(v,Bs.right)*k,y:H/2-dot(v,Bs.up)*k,z};}
+function line(a,b,c,w,dash,alpha){const A=P(a),B=P(b);ctx.save();ctx.globalAlpha=alpha??1;ctx.strokeStyle=c;ctx.lineWidth=w||1;ctx.setLineDash(dash||[]);ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B.x,B.y);ctx.stroke();ctx.restore();}
+function arrow(a,b,c,w,label,alpha){const A=P(a),B=P(b);ctx.save();ctx.globalAlpha=alpha??1;ctx.strokeStyle=c;ctx.fillStyle=c;ctx.lineWidth=w;ctx.lineCap="round";
+  const dx=B.x-A.x,dy=B.y-A.y,L=Math.hypot(dx,dy)||1,ux=dx/L,uy=dy/L,hs=Math.min(11,L*.4);
+  ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B.x-ux*hs*.7,B.y-uy*hs*.7);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(B.x,B.y);ctx.lineTo(B.x-ux*hs-uy*hs*.45,B.y-uy*hs+ux*hs*.45);ctx.lineTo(B.x-ux*hs+uy*hs*.45,B.y-uy*hs-ux*hs*.45);ctx.closePath();ctx.fill();
+  if(label){ctx.font='italic 600 17px "STIX Two Text",Georgia,serif';ctx.fillText(label,B.x+ux*9-4,B.y+uy*9+5);}
+  ctx.restore();}
+function text(p,s,c,font,dx,dy){const A=P(p);ctx.save();ctx.fillStyle=c;ctx.font=font;ctx.fillText(s,A.x+(dx||0),A.y+(dy||0));ctx.restore();}
+function dotAt(p,c,r){const A=P(p);ctx.save();ctx.fillStyle=c;ctx.beginPath();ctx.arc(A.x,A.y,r,0,7);ctx.fill();ctx.restore();}
+
+function drawMesh(V,F,ghost){
+  const L=nrm([.4,-.3,.85]);
+  const items=F.map(f=>{const pts=f.i.map(i=>V[i]);const c=pts.reduce((a,b)=>add(a,b),[0,0,0]).map(x=>x/pts.length);
+    const n=nrm(cross(sub(pts[1],pts[0]),sub(pts[2],pts[0])));return{pts,depth:P(c).z,n,c:f.c};});
+  items.sort((a,b)=>b.depth-a.depth);
+  for(const it of items){const sp=it.pts.map(P);ctx.beginPath();sp.forEach((q,k)=>k?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y));ctx.closePath();
+    if(ghost){ctx.save();ctx.setLineDash([4,4]);ctx.strokeStyle=COL["--muted"];ctx.globalAlpha=.7;ctx.lineWidth=1;ctx.stroke();ctx.restore();continue;}
+    const base=rgb(COL["--face-"+it.c]);const sh=.72+.28*Math.abs(dot(it.n,L));
+    ctx.fillStyle=`rgba(${base.map(v=>Math.round(v*sh)).join(",")},0.9)`;ctx.fill();
+    ctx.save();ctx.strokeStyle=COL["--ink"];ctx.globalAlpha=.75;ctx.lineWidth=1.2;ctx.lineJoin="round";ctx.stroke();ctx.restore();}
+}
+
+function draw(){
+  const r=cv.getBoundingClientRect();if(!r.width)return;const dpr=Math.min(2,window.devicePixelRatio||1);
+  if(cv.width!==Math.round(r.width*dpr)||cv.height!==Math.round(r.height*dpr)){cv.width=Math.round(r.width*dpr);cv.height=Math.round(r.height*dpr);}
+  W=r.width;H=r.height;ctx.setTransform(dpr,0,0,dpr,0,0);focal=1.25*Math.min(W,H);Bs=basis();
+  ctx.fillStyle=COL["--canvas"];ctx.fillRect(0,0,W,H);
+  const sc0=scene();
+  for(let i=-2;i<=3;i++){line([i,-2,0],[i,3,0],COL["--grid"],1);line([-2,i,0],[3,i,0],COL["--grid"],1);}
+  for(const a of ["x","y","z"]){const v=AX[a];line(sc(v,-2),[0,0,0],COL["--ax-"+a],1.2,[2,4],.6);arrow([0,0,0],sc(v,2.7),COL["--ax-"+a],1.6,a,.9);}
+  // akse
+  let ax=null;if(sc0.axis){const u=nrm(sc0.axis.u),C=sc0.axis.C;ax=[add(C,sc(u,-3.2)),add(C,sc(u,3.6)),u,C];
+    line(ax[0],ax[1],COL["--accent"],2.2,[10,4,2,4]);arrow(add(C,sc(u,2.6)),add(C,sc(u,3.4)),COL["--accent"],2.2,"");}
+  // spøgelser
+  for(const m of sc0.meshes)if(m.ghost)drawMesh(m.sh.V,m.sh.F,true);
+  if(S.step===1)for(const v of sc0.vecs)arrow([0,0,0],v.p,COL[v.col],1.4,"",.35);
+  // baner
+  for(const tr of sc0.trails){if(!sc0.segs.length||S.t<=0)continue;const N=Math.max(2,Math.ceil(80*S.t));ctx.save();ctx.strokeStyle=tr.col?COL[tr.col]:COL["--accent"];ctx.lineWidth=2;ctx.setLineDash([1,4]);ctx.lineCap="round";ctx.beginPath();
+    for(let k=0;k<=N;k++){const q=P(tAt(tr.p,sc0.segs,S.t*k/N));k?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y);}ctx.stroke();ctx.restore();}
+  // figurer
+  for(const m of sc0.meshes)if(!m.ghost){const V=m.fixed||m.sh.V.map(p=>tAt(p,sc0.segs,S.t));drawMesh(V,m.sh.F,false);}
+  // vektorer
+  for(const v of sc0.vecs){const q=tAt(v.p,sc0.segs,S.t);arrow([0,0,0],q,COL[v.col],3,v.label);}
+  // akse igen, svagt, så den ses gennem figuren
+  if(ax)line(ax[0],ax[1],COL["--accent"],1.5,[10,4,2,4],.45);
+  if(sc0.center){dotAt(sc0.center,COL["--accent"],5);text(sc0.center,"C",COL["--accent-ink"],'italic 600 17px "STIX Two Text",Georgia,serif',8,-6);}
+  for(const l of sc0.labels){const p=l.moving?tAt(l.p,sc0.segs,S.t):l.p;
+    dotAt(p,l.ghost?COL["--muted"]:COL["--accent-ink"],3.2);
+    text(p,l.text,l.ghost?COL["--muted"]:COL["--ink"],(l.ghost?'italic 15px':'italic 600 16px')+' "STIX Two Text",Georgia,serif',6,-6);}
+}
+let raf=0;const req=()=>{if(!raf)raf=requestAnimationFrame(()=>{raf=0;draw();});};
+
+/* kamera */
+const ptrs=new Map();let pinch0=0,D0=8;
+cv.addEventListener("pointerdown",e=>{cv.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(ptrs.size===2){const[a,b]=[...ptrs.values()];pinch0=Math.hypot(a.x-b.x,a.y-b.y);D0=cam.D;}});
+cv.addEventListener("pointermove",e=>{if(!ptrs.has(e.pointerId))return;const pr=ptrs.get(e.pointerId);
+  if(ptrs.size===1){cam.yaw-=(e.clientX-pr.x)*.009;cam.pitch=Math.max(-1.45,Math.min(1.45,cam.pitch+(e.clientY-pr.y)*.009));}
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(ptrs.size===2){const[a,b]=[...ptrs.values()];const d=Math.hypot(a.x-b.x,a.y-b.y);if(pinch0>0)cam.D=Math.max(3,Math.min(22,D0*pinch0/d));}
+  req();});
+const up=e=>{ptrs.delete(e.pointerId);if(ptrs.size<2)pinch0=0;};
+cv.addEventListener("pointerup",up);cv.addEventListener("pointercancel",up);
+cv.addEventListener("wheel",e=>{e.preventDefault();cam.D=Math.max(3,Math.min(22,cam.D*Math.exp(e.deltaY*.0012)));req();},{passive:false});
+document.getElementById("resetcam").onclick=()=>{cam={...CAM0,target:CAM0.target.slice()};if(S.step>=5){cam.D=10;cam.target=[.8,.4,.5];}req();};
+
+/* afspilning */
+const reduce=matchMedia("(prefers-reduced-motion: reduce)");
+let playing=false,t0=0,dur=1;
+const prog=document.getElementById("prog"),pct=document.getElementById("pct"),playBtn=document.getElementById("play");
+function setT(t){S.t=t;prog.value=Math.round(t*1000);pct.textContent=Math.round(t*100)+" %";req();}
+function play(){const n=segsFor(S.step).length;if(!n)return;if(reduce.matches){setT(1);return;}
+  dur=1700*n;t0=performance.now();playing=true;playBtn.textContent="❚❚ Pause";
+  const tick=now=>{if(!playing)return;const t=Math.min(1,(now-t0)/dur);setT(t);if(t<1)requestAnimationFrame(tick);else stop();};requestAnimationFrame(tick);}
+function stop(){playing=false;playBtn.textContent="▶ Play";}
+playBtn.onclick=()=>{if(playing){stop();return;}play();};
+prog.addEventListener("input",()=>{stop();setT(prog.value/1000);});
+
+/* ---------- panelet ---------- */
+const tabs=document.getElementById("tabs"),pb=document.getElementById("pbody");
+tabs.innerHTML=TABS.map(([n,l])=>`<button class="tab" role="tab" id="tab${n}" data-step="${n}"><b>${n}</b>${l}</button>`).join("");
+tabs.addEventListener("click",e=>{const b=e.target.closest(".tab");if(b)go(+b.dataset.step,true);});
+
+const seg=(p,opts,txt)=>`<span class="seg${txt?" txt":""}">${opts.map(([v,l])=>`<button type="button" data-set="${p}" data-v="${v}" aria-pressed="${S[p]===v}">${l}</button>`).join("")}</span>`;
+const slider=(p,lab,min,max,step)=>`<div class="row"><label for="in-${p}">${lab}</label><input type="range" id="in-${p}" data-p="${p}" min="${min}" max="${max}" step="${step}" value="${S[p]}"><output id="o-${p}">${fdeg(S[p])}</output></div>`;
+const vin=(p,lab)=>`<div class="row"><span class="lbl">${lab}</span>${[0,1,2].map(i=>`<span class="vin">${"xyz"[i]}<input type="number" class="num" id="in-${p}-${i}" data-p="${p}" data-i="${i}" step="0.5" value="${S[p][i]}"></span>`).join("")}</div>`;
+const shapeSel=p=>`<div class="row"><label for="in-${p}">Shape</label><select id="in-${p}" data-p="${p}"><option value="cube"${S[p]==="cube"?" selected":""}>Cube</option><option value="house"${S[p]==="house"?" selected":""}>House</option></select></div>`;
+
+const STEPS={
+1:{title:"The unit vectors",
+ intro:()=>`<p>A linear map is determined by where it sends <b class="vec">i</b>, <b class="vec">j</b> and <b class="vec">k</b>. Their images become the columns of the matrix. Turn the three unit vectors about a coordinate axis and watch the columns of R follow.</p>`,
+ controls:()=>`<div class="row"><span class="lbl">Axis</span>${seg("axis1",[["x","x"],["y","y"],["z","z"]])}</div>${slider("ang1","Angle θ",-180,180,5)}`,
+ read:()=>{const R=rotM(AX[S.axis1],S.ang1*deg);const a=S.axis1;
+  return eq(sym(`R<sub><i>${a}</i></sub>(θ) =`),mat(SYM[a]))+
+   eq(sym(`R<sub><i>${a}</i></sub>(${fdeg(S.ang1)}) =`),mat(R,(i,j)=>["cx","cy","cz"][j]))+
+   eq(sym(`R<b class="vec">i</b> =`),col(colOf(R,0),"cx"),op(","),sym(`R<b class="vec">j</b> =`),col(colOf(R,1),"cy"),op(","),sym(`R<b class="vec">k</b> =`),col(colOf(R,2),"cz"))+
+   `<p class="note">Notice the sign in R<sub><i>y</i></sub>: −sin θ sits in the bottom left. This comes from the cyclic order <i>x</i> → <i>y</i> → <i>z</i> → <i>x</i>. About the <i>y</i>-axis the positive direction turns <i>z</i> towards <i>x</i>, not <i>x</i> towards <i>z</i>.</p>`;}},
+2:{title:"The cube",
+ intro:()=>`<p>A unit cube with one corner at (0, 0, 0) and its edges along the axes. Each corner is a position vector P, and its image is P′ = R·P. The corner at the origin does not move, because the axis passes through the origin. The red face is <i>x</i> = 1, the green <i>y</i> = 1 and the blue <i>z</i> = 1.</p>`,
+ controls:()=>`<div class="row"><span class="lbl">Axis</span>${seg("axis2",[["x","x"],["y","y"],["z","z"]])}</div>${slider("ang2","Angle θ",-180,180,5)}
+   <div class="row"><label for="in-vtx">Corner P</label><select id="in-vtx" data-p="vtx">${CORNERS.map((c,i)=>`<option value="${i}"${S.vtx===i?" selected":""}>(${c.join(", ")})</option>`).join("")}</select></div>`,
+ read:()=>{const R=rotM(AX[S.axis2],S.ang2*deg);const p=CORNERS[S.vtx];
+  return eq(sym(`R<sub><i>${S.axis2}</i></sub>(${fdeg(S.ang2)})`),mat(R),col(p),op("="),col(mv(R,p),"h"))+
+   `<div class="scroll"><table class="vt"><tr><th>P</th><th>P′ = R·P</th></tr>${CORNERS.map((c,i)=>`<tr class="${i===S.vtx?"on":""}"><td>(${c.join(", ")})</td><td>(${mv(R,c).map(fmt).join(", ")})</td></tr>`).join("")}</table></div>`;}},
+3:{title:"Several rotations in a row",
+ intro:()=>`<p>Turn first about one axis, then about the next. The combined matrix is the product, and the rotation performed first stands furthest to the right. Press play to see the three turns one at a time.</p>`,
+ controls:()=>`${slider("a","α about x",-180,180,15)}${slider("b","β about y",-180,180,15)}${slider("g","γ about z",-180,180,15)}
+   <div class="row"><span class="lbl">Order</span>${seg("order",[["xyz","first x, then y, then z"],["zyx","first z, then y, then x"]],true)}</div>`,
+ read:()=>{const Rx=rotM(AX.x,S.a*deg),Ry=rotM(AX.y,S.b*deg),Rz=rotM(AX.z,S.g*deg);
+  const R=S.order==="xyz"?mm(Rz,mm(Ry,Rx)):mm(Rx,mm(Ry,Rz));const R2=S.order==="xyz"?mm(Rx,mm(Ry,Rz)):mm(Rz,mm(Ry,Rx));
+  const f=S.order==="xyz"?"R<sub><i>z</i></sub>(γ)·R<sub><i>y</i></sub>(β)·R<sub><i>x</i></sub>(α)":"R<sub><i>x</i></sub>(α)·R<sub><i>y</i></sub>(β)·R<sub><i>z</i></sub>(γ)";
+  const same=R.every((r,i)=>r.every((v,j)=>Math.abs(v-R2[i][j])<1e-9));
+  return eq(sym(`R = ${f} =`),mat(R))+
+   eq(sym(`The reverse order gives`),mat(R2))+
+   `<p class="note">${same?"Here the two orders happen to give the same result (for example when only one angle is non-zero).":"<b>The two matrices are different.</b> Matrix multiplication is not commutative, and the cube ends up in two different places."}</p>`;}},
+4:{title:"Any axis through the origin",
+ intro:()=>`<p>The axis has direction <b class="vec">u</b>, which is normalised to û. Rodrigues' formula gathers the whole rotation in one matrix. It can also be derived by a change of basis: choose an orthonormal basis with û as the third vector, rotate about it with R<sub><i>z</i></sub>(θ), and change back.</p>`,
+ controls:()=>`${vin("u4","Direction u")}${slider("ang4","Angle θ",-180,180,5)}${shapeSel("shape4")}`,
+ read:()=>{const u=nrm(S.u4),th=S.ang4*deg,R=rotM(u,th);const K=[[0,-u[2],u[1]],[u[2],0,-u[0]],[-u[1],u[0],0]];const uu=[0,1,2].map(i=>[0,1,2].map(j=>u[i]*u[j]));
+  return eq(sym(`R = cos θ·I + sin θ·[û]<sub>×</sub> + (1 − cos θ)·ûû<sup>T</sup>`))+
+   eq(sym("û ="),col(u),op(","),sym("[û]<sub>×</sub> ="),mat(K),op(","),sym("ûû<sup>T</sup> ="),mat(uu))+
+   eq(sym(`cos θ = ${fmt(Math.cos(th))}, &nbsp;sin θ = ${fmt(Math.sin(th))}`))+
+   eq(sym("R ="),mat(R))+
+   `<p class="note">Check: the trace of R is 1 + 2 cos θ = <b>${fmt(R[0][0]+R[1][1]+R[2][2])}</b>, and R·û = û, because points on the axis stay put.</p>`;}},
+5:{title:"Any centre of rotation",
+ intro:()=>`<p>Now the axis passes through a point C. Move C to the origin, rotate, and move back: P′ = R(P − C) + C = R·P + (C − R·C). With homogeneous coordinates (<i>x</i>, <i>y</i>, <i>z</i>, 1) this becomes a single 4×4 matrix M = T(C)·R·T(−C).</p>`,
+ controls:()=>`${vin("u5","Direction u")}${vin("C5","Point C")}${slider("ang5","Angle θ",-180,180,5)}${shapeSel("shape5")}`,
+ read:()=>{const R=rotM(S.u5,S.ang5*deg),C=S.C5,t=sub(C,mv(R,C));const sh=SHAPES[S.shape5],p=sh.V[sh.track];
+  return eq(sym("R ="),mat(R),op(","),sym("C − R·C ="),col(t,"h"))+
+   eq(sym("M ="),mat4(R,t))+
+   eq(sym(`P = (${p.map(fmt).join(", ")})`),op("→"),sym(`P′ = (${add(mv(R,p),t).map(fmt).join(", ")})`))+
+   `<p class="note">The last column of M is the translation C − R·C. The points on the axis through C are the only ones that do not move.</p>`;}},
+6:{title:"The inverse problem",
+ intro:()=>`<p>If you know the final positions of four corners, O = (0,0,0), A = (1,0,0), B = (0,1,0) and D = (0,0,1), you can find the rotation. The edge vectors A′ − O′, B′ − O′ and D′ − O′ are the images of <b class="vec">i</b>, <b class="vec">j</b> and <b class="vec">k</b>, that is, the columns of R.</p>`,
+ controls:()=>`<div class="pin">${["O′","A′","B′","D′"].map((l,r)=>`<span class="lbl">${l}</span>${[0,1,2].map(i=>`<input class="num" id="in-P-${r}-${i}" data-p="P" data-r="${r}" data-i="${i}" value="${S.P[r][i]}" inputmode="text" aria-label="${l} ${"xyz"[i]}">`).join("")}`).join("")}</div>
+   <div class="row"><button class="btn primary" type="button" data-act="solve">Find axis, angle and C</button><button class="btn" type="button" data-act="random">New random rotation</button></div>
+   ${S.err?`<div class="err">${S.err}</div>`:""}`,
+ read:()=>{const s=S.sol;if(!s)return `<p class="note">The dashed cube is the start, the coloured one the end. Work it out yourself first, then press the button.</p>`;
+  if(s.bad)return eq(sym("R ="),mat(s.R))+`<p class="note"><span class="warn">Not a rotation.</span> R<sup>T</sup>R must be I and det R = 1, but det R = ${fmt(s.dR)}. The edge vectors are not orthonormal, or the shape has been reflected.</p>`;
+  if(s.ident)return eq(sym("R ="),mat(s.R))+`<p class="note">R = I: no rotation. ${len(s.t)>1e-9?"The cube has only been translated, so there is no centre of rotation.":"The cube has not moved."}</p>`;
+  const IR=[0,1,2].map(i=>[0,1,2].map(j=>(i===j?1:0)-s.R[i][j]));
+  return `<ol class="steps">
+   <li>The columns are the edge vectors:${eq(sym("R ="),mat(s.R))}</li>
+   <li>Check: R<sup>T</sup>R = I and det R = ${fmt(det(s.R))}. <span class="okc">It is a rotation.</span></li>
+   <li>The angle from the trace: cos θ = (tr R − 1)/2 = (${fmt(s.trc)} − 1)/2 = ${fmt(s.c)}, so <b>θ = ${fdeg(s.th/deg)}</b>.</li>
+   <li>The axis from the antisymmetric part:${eq(sym("û ="),sym(Math.abs(s.s)>1e-6?`<span class="mat" style="--c:1"><span>R<sub>32</sub> − R<sub>23</sub></span><span>R<sub>13</sub> − R<sub>31</sub></span><span>R<sub>21</sub> − R<sub>12</sub></span></span> / (2 sin θ) =`:"(θ = 180°: read û off (R + I)/2 = ûû<sup>T</sup>) ="),col(s.u,"h"))}</li>
+   <li>The translation is the image of the origin: <b>t</b> = O′ = (${s.t.map(fmt).join(", ")}).${Math.abs(s.along)>1e-6?` <span class="warn">But t·û = ${fmt(s.along)} ≠ 0.</span> There is a shift along the axis, so the motion is a screw motion, not a pure rotation. C below is a point on the screw axis.`:" t·û = 0, so it is a pure rotation."}</li>
+   <li>The centre of rotation solves (I − R)C = t:${eq(mat(IR),sym("C ="),col(Math.abs(s.along)>1e-6?s.w:s.t))}
+     I − R is singular, because the whole axis stays fixed, so the solution is a line C₀ + <i>s</i>·û. The point closest to the origin is
+     ${eq(sym("C₀ = ((1 − cos θ)<b>t</b> + sin θ·(û × <b>t</b>)) / (2(1 − cos θ)) ="),col(s.C,"h"))}</li></ol>
+   <p class="note">Press play to see the cube turn from start to end about the axis found.</p>`;}}
+};
+
+function renderPanel(){
+  tabs.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-selected",String(+b.dataset.step===S.step)));
+  const st=STEPS[S.step];
+  pb.innerHTML=`<h3>${S.step}. ${st.title}</h3>${st.intro()}<div class="controls" id="ctrl">${st.controls()}</div><div class="read" id="read">${st.read()}</div>`;
+}
+function refreshRead(){document.getElementById("read").innerHTML=STEPS[S.step].read();}
+function refreshCtrl(){const f=document.activeElement&&document.activeElement.id;document.getElementById("ctrl").innerHTML=STEPS[S.step].controls();if(f){const el=document.getElementById(f);if(el)el.focus();}}
+
+pb.addEventListener("input",e=>{const el=e.target,p=el.dataset.p;if(!p)return;
+  if(p==="P"){S.P[+el.dataset.r][+el.dataset.i]=el.value;S.sol=null;S.err="";refreshRead();req();return;}
+  if(el.dataset.i!==undefined){const v=parseFloat(String(el.value).replace(",","."));if(isNaN(v))return;S[p][+el.dataset.i]=v;}
+  else if(el.tagName==="SELECT")S[p]=p==="vtx"?+el.value:el.value;
+  else{S[p]=+el.value;const o=document.getElementById("o-"+p);if(o)o.textContent=fdeg(S[p]);}
+  if(p==="u5"||p==="u4"){if(len(S[p])<1e-9)return;}
+  stop();setT(1);refreshRead();});
+pb.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+  if(b.dataset.set){S[b.dataset.set]=b.dataset.v;b.parentElement.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));stop();setT(1);refreshRead();}
+  if(b.dataset.act==="solve")doSolve();
+  if(b.dataset.act==="random"){randomMystery();refreshCtrl();refreshRead();req();}});
+
+function doSolve(){const Pn=parsedP();if(!Pn){S.err="One of the fields cannot be read as a number. Use e.g. 0.5, 1/2 or √2/2.";S.sol=null;refreshCtrl();refreshRead();req();return;}
+  S.err="";S.sol=solve(Pn);refreshCtrl();refreshRead();setT(0);play();}
+function randomMystery(){
+  const axes=[[0,0,1],[1,0,0],[0,1,0],[1,1,0],[1,0,1],[0,1,1],[1,1,1],[1,-1,0],[1,2,2],[2,-1,2],[1,-1,1]];
+  const angs=[60,90,120,-90,-120,45,180];
+  const r=a=>a[Math.floor(Math.random()*a.length)];
+  const u=nrm(sc(r(axes),Math.random()<.5?1:-1)),th=r(angs)*deg;
+  const C0=[0,1,2].map(()=>Math.floor(Math.random()*4)-1);const C=sub(C0,sc(u,dot(C0,u)));
+  const R=rotM(u,th),t=sub(C,mv(R,C));
+  S.P=[t,add(colOf(R,0),t),add(colOf(R,1),t),add(colOf(R,2),t)].map(v=>v.map(fmt));S.sol=null;S.err="";setT(1);
+}
+
+function go(step,userTab){stop();S.step=step;if(step!==6)S.err="";
+  cam={...CAM0,target:CAM0.target.slice()};if(step>=5){cam.D=10;cam.target=[.8,.4,.5];}
+  renderPanel();setT(1);}
+
+/* ---------- opgaver ---------- */
+const Rz90=[[0,-1,0],[1,0,0],[0,0,1]],Rx90=[[1,0,0],[0,0,-1],[0,1,0]],Ry90=[[0,0,1],[0,1,0],[-1,0,0]],CYC=[[0,0,1],[1,0,0],[0,1,0]];
+const TASKS=[
+ {t:"A quarter turn about the z-axis",q:`Write down R<sub><i>z</i></sub>(90°) and find the images of <b class="vec">i</b>, <b class="vec">j</b> and <b class="vec">k</b>.`,
+  a:()=>eq(sym("R<sub><i>z</i></sub>(90°) ="),mat(Rz90))+`<p>Read the columns off directly: <b class="vec">i</b> → <b class="vec">j</b>, <b class="vec">j</b> → −<b class="vec">i</b> and <b class="vec">k</b> → <b class="vec">k</b>.</p>`,
+  go:()=>{S.axis1="z";S.ang1=90;return 1;}},
+ {t:"Where does the corner go?",q:`The cube with a corner at the origin is turned 90° about the <i>x</i>-axis. Find the images of the corners (1, 1, 1) and (0, 1, 0).`,
+  a:()=>eq(sym("R<sub><i>x</i></sub>(90°) ="),mat(Rx90))+eq(mat(Rx90),col([1,1,1]),op("="),col([1,-1,1]),op(","),mat(Rx90),col([0,1,0]),op("="),col([0,0,1]))+`<p>(1, 1, 1) → (1, −1, 1) and (0, 1, 0) → (0, 0, 1).</p>`,
+  go:()=>{S.axis2="x";S.ang2=90;S.vtx=6;return 2;}},
+ {t:"Order matters",q:`Compute R<sub><i>x</i></sub>(90°)·R<sub><i>y</i></sub>(90°) and R<sub><i>y</i></sub>(90°)·R<sub><i>x</i></sub>(90°). Where does <b class="vec">i</b> end up in each case?`,
+  a:()=>eq(sym("R<sub><i>x</i></sub>R<sub><i>y</i></sub> ="),mat(mm(Rx90,Ry90)),op(","),sym("R<sub><i>y</i></sub>R<sub><i>x</i></sub> ="),mat(mm(Ry90,Rx90)))+`<p>R<sub><i>x</i></sub>R<sub><i>y</i></sub><b class="vec">i</b> = (0, 1, 0), but R<sub><i>y</i></sub>R<sub><i>x</i></sub><b class="vec">i</b> = (0, 0, −1). The products are different. Note the first matrix; it turns up again in exercise 4.</p>`,
+  go:()=>{S.a=90;S.b=90;S.g=0;S.order="xyz";return 3;}},
+ {t:"Rotation about the space diagonal",q:`Use Rodrigues' formula to find the matrix of a rotation of 120° about the axis <b class="vec">u</b> = (1, 1, 1).`,
+  a:()=>`<p>û = (1, 1, 1)/√3, cos θ = −1/2 and sin θ = √3/2. Then (1 − cos θ)ûû<sup>T</sup> = ½ in every entry, and sin θ·[û]<sub>×</sub> has ±½ off the diagonal. The sum gives</p>`+eq(sym("R ="),mat(CYC))+`<p>A cyclic permutation: <i>x</i> → <i>y</i> → <i>z</i> → <i>x</i>. It is exactly R<sub><i>x</i></sub>(90°)R<sub><i>y</i></sub>(90°) from exercise 3.</p>`,
+  go:()=>{S.u4=[1,1,1];S.ang4=120;S.shape4="cube";return 4;}},
+ {t:"An axis through another point",q:`Rotate 90° about an axis parallel to the <i>z</i>-axis through C = (1, 1, 0). Find the images of (2, 1, 0) and (1, 0, 3), and write down the 4×4 matrix M.`,
+  a:()=>`<p>P − C = (1, 0, 0) turns to (0, 1, 0), and adding C gives (1, 2, 0). Likewise: (0, −1, 3) → (1, 0, 3) → (2, 1, 3).</p>`+eq(sym("C − R·C ="),col([1,1,0]),op("−"),col([-1,1,0]),op("="),col([2,0,0],"h"))+eq(sym("M ="),mat4(Rz90,[2,0,0])),
+  go:()=>{S.u5=[0,0,1];S.C5=[1,1,0];S.ang5=90;S.shape5="cube";return 5;}},
+ {t:"Find the centre of rotation",q:`After a rotation the corners of the cube lie here: O′ = (2, 0, 0), A′ = (2, 1, 0), B′ = (1, 0, 0), D′ = (2, 0, 1). Find R, the angle, the axis and the centre of rotation.`,
+  a:()=>eq(sym("R ="),mat(Rz90))+`<p>The trace is 1, so cos θ = 0 and θ = 90°. The axis is (0, 0, 1). With <b>t</b> = (2, 0, 0), (I − R)C = <b>t</b> gives the equations <i>x</i> + <i>y</i> = 2 and −<i>x</i> + <i>y</i> = 0, so C = (1, 1, 0) (plus any amount along the <i>z</i>-direction).</p>`,
+  go:()=>{S.P=[[2,0,0],[2,1,0],[1,0,0],[2,0,1]].map(r=>r.map(fmt));return 6;},solve:true},
+ {t:"Read off the axis and the angle",q:`A rotation about an axis through the origin has the matrix below. Find the angle and the axis.`+eq(mat(CYC)),
+  a:()=>`<p>tr R = 0, so cos θ = (0 − 1)/2 = −1/2 and θ = 120°. The antisymmetric part gives (R<sub>32</sub> − R<sub>23</sub>, R<sub>13</sub> − R<sub>31</sub>, R<sub>21</sub> − R<sub>12</sub>) = (1, 1, 1), so û = (1, 1, 1)/√3.</p>`,
+  go:()=>{S.P=[[0,0,0],[0,1,0],[0,0,1],[1,0,0]].map(r=>r.map(fmt));return 6;},solve:true},
+ {t:"From a 4×4 matrix to the centre",q:`The map M has the rotation part from exercise 7 and the translation <b>t</b> = (1, −1, 0). Find a point C on the axis of rotation.`+eq(mat4(CYC,[1,-1,0])),
+  a:()=>`<p>The axis is (1, 1, 1)/√3 and θ = 120°. First check that <b>t</b>·û = 0, so this is a pure rotation. Solve (I − R)C = <b>t</b>:</p>`+eq(sym("<i>x</i> − <i>z</i> = 1, &nbsp;−<i>x</i> + <i>y</i> = −1, &nbsp;−<i>y</i> + <i>z</i> = 0"))+`<p>The solution is the line C = (1, 0, 0) + <i>s</i>(1, 1, 1). The point closest to the origin is C₀ = (2/3, −1/3, −1/3).</p>`,
+  go:()=>{S.P=[[1,-1,0],[1,0,0],[1,-1,1],[2,-1,0]].map(r=>r.map(fmt));return 6;},solve:true},
+ {t:"Is it a rotation at all?",q:`The final positions are O′ = (0, 0, 1), A′ = (0, 1, 1), B′ = (−1, 0, 1), D′ = (0, 0, 2). Is there a centre of rotation?`,
+  a:()=>`<p>The edge vectors give R = R<sub><i>z</i></sub>(90°), so the axis is (0, 0, 1). But <b>t</b> = (0, 0, 1) and <b>t</b>·û = 1 ≠ 0. The cube has also been pushed along the axis. The equation (I − R)C = <b>t</b> has no solution, since its third row reads 0 = 1. The motion is a screw motion: a rotation about the <i>z</i>-axis combined with a shift of 1 along it (Chasles' theorem).</p>`,
+  go:()=>{S.P=[[0,0,1],[0,1,1],[-1,0,1],[0,0,2]].map(r=>r.map(fmt));return 6;},solve:true},
+ {t:"Prove two properties",q:`Show that R<sub><i>z</i></sub>(α)·R<sub><i>z</i></sub>(β) = R<sub><i>z</i></sub>(α + β), and that R<sup>T</sup>R = I and det R = 1 for R<sub><i>z</i></sub>(θ).`,
+  a:()=>`<p>The top-left entry of the product is cos α cos β − sin α sin β = cos(α + β), and the entry below it is sin α cos β + cos α sin β = sin(α + β). The rest follows in the same way from the addition formulae.</p><p>The columns of R<sub><i>z</i></sub>(θ) are (cos θ, sin θ, 0), (−sin θ, cos θ, 0) and (0, 0, 1). They have length 1 and are mutually orthogonal, so R<sup>T</sup>R = I. The determinant is cos²θ + sin²θ = 1. A matrix with R<sup>T</sup>R = I and det R = −1 would be a reflection.</p>`}
+];
+const tg=document.getElementById("tgrid");
+tg.innerHTML=TASKS.map((k,i)=>`<article class="task"><div class="top"><h3>${k.t}</h3><span class="no">EX. ${String(i+1).padStart(2,"0")}</span></div><p>${k.q}</p>
+  <details><summary>Answer</summary><div class="fac">${k.a()}</div></details>
+  ${k.go?`<div class="acts"><button class="btn" type="button" data-task="${i}">Show in 3D</button></div>`:""}</article>`).join("");
+tg.addEventListener("click",e=>{const b=e.target.closest("[data-task]");if(!b)return;const k=TASKS[+b.dataset.task];
+  const step=k.go();S.sol=null;S.err="";go(step);
+  document.getElementById("lab").scrollIntoView({behavior:reduce.matches?"auto":"smooth",block:"start"});
+  if(k.solve){S.sol=solve(parsedP());refreshCtrl();refreshRead();}
+  setTimeout(()=>{setT(0);play();},reduce.matches?0:450);});
+
+/* ---------- start ---------- */
+readColors();
+const mo=new MutationObserver(()=>{readColors();req();});mo.observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change",()=>{readColors();req();});
+new ResizeObserver(req).observe(document.getElementById("stage"));
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(req);
+go(1);
+})();
+</script>
+
+<script src="lang-switch.js" defer></script>
+</body>
+</html>

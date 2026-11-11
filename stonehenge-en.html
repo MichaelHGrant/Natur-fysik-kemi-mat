@@ -1,0 +1,1213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stonehenge in 3D – who, when and how | mhgfysik.dk</title>
+<meta name="description" content="Interactive 3D model of Stonehenge through 5,000 years with the solstice sunrise and sunset, and a 3D animation of how the 25-tonne stones were dragged, raised and joined – when and by whom.">
+<link rel="alternate" hreflang="da" href="stonehenge.html">
+<meta name="theme-color" content="#0b1016">
+<style>
+:root{
+  --bg:#0b1016; --panel:#121a24; --panel2:#182230; --ink:#e9ecf1; --muted:#9aa6b6;
+  --amber:#e9b872; --amber2:#f6d9a4; --stone:#b9b4a8; --grass:#7fa862; --blue:#8fb2c9; --line:#263243;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+html,body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;line-height:1.62}
+a{color:var(--amber2)}
+.wrap{max-width:1180px;margin:0 auto;padding:0 16px}
+header{padding:18px 0 8px;border-bottom:1px solid var(--line)}
+.crumb{font-size:.85rem;color:var(--muted)}
+.crumb a{color:var(--muted);text-decoration:none}
+.crumb a:hover{color:var(--amber2)}
+h1{font-family:Georgia,"Times New Roman",serif;font-weight:normal;color:var(--amber2);
+  font-size:clamp(1.7rem,4.6vw,2.7rem);margin:.3em 0 .15em;letter-spacing:.01em}
+h2{font-family:Georgia,serif;font-weight:normal;color:var(--amber);font-size:1.5rem;
+  margin:2.2em 0 .5em;border-bottom:1px solid var(--line);padding-bottom:.25em;scroll-margin-top:12px}
+h3{color:var(--amber2);font-size:1.08rem;margin:1.3em 0 .3em}
+p{max-width:860px}
+.lead{color:#d3d9e2;font-size:1.08rem}
+.toc{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 4px;padding:0;list-style:none}
+.toc a{display:inline-block;padding:6px 12px;border:1px solid var(--line);border-radius:999px;
+  text-decoration:none;font-size:.9rem;color:var(--ink);background:var(--panel)}
+.toc a:hover{border-color:var(--amber);color:var(--amber2)}
+.note{color:var(--muted);font-size:.92rem}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:18px 0}
+.facts div{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.facts b{display:block;font-family:Georgia,serif;font-weight:normal;font-size:1.5rem;color:var(--amber2);line-height:1.2}
+.facts span{font-size:.86rem;color:var(--muted)}
+
+/* ---------- 3D-bokse ---------- */
+.simbox{position:relative;margin:14px 0 0;border:1px solid var(--line);border-radius:12px 12px 0 0;
+  overflow:hidden;background:#05080c}
+.simbox canvas{display:block;width:100%;height:min(68vh,620px);touch-action:none}
+.hud{position:absolute;left:10px;top:10px;background:rgba(8,12,18,.72);border:1px solid var(--line);
+  border-radius:8px;padding:7px 10px;font-size:.84rem;line-height:1.45;pointer-events:none;max-width:70%}
+.hud b{color:var(--amber2);font-weight:600}
+.lbl{position:absolute;transform:translate(-50%,-100%);font-size:.74rem;white-space:nowrap;
+  background:rgba(8,12,18,.7);border:1px solid rgba(233,184,114,.5);color:var(--amber2);
+  padding:1px 7px;border-radius:999px;pointer-events:none}
+.panel{background:var(--panel);border:1px solid var(--line);border-top:none;border-radius:0 0 12px 12px;padding:12px 14px 14px}
+[hidden]{display:none!important}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0}
+.row > label{font-size:.86rem;color:var(--muted);min-width:64px}
+button{font:inherit;font-size:.9rem;color:var(--ink);background:var(--panel2);border:1px solid var(--line);
+  border-radius:8px;padding:8px 12px;min-height:40px;cursor:pointer}
+button:hover{border-color:var(--amber)}
+button[aria-pressed="true"]{background:var(--amber);color:#1a1206;border-color:var(--amber);font-weight:600}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--amber2);outline-offset:2px}
+select{font:inherit;font-size:.9rem;color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px;min-height:40px}
+input[type=range]{flex:1;min-width:150px;accent-color:var(--amber);height:28px}
+.val{font-variant-numeric:tabular-nums;min-width:92px;font-size:.9rem}
+.cap{margin:10px 0 0;padding:10px 12px;background:var(--panel2);border-left:3px solid var(--amber);border-radius:0 8px 8px 0;min-height:5.2em}
+.cap b{color:var(--amber2)}
+.cap p{margin:.2em 0 0;max-width:none;font-size:.96rem}
+.cap .sure{display:block;margin-top:.35em;font-size:.86rem;color:var(--muted)}
+
+/* ---------- beregner ---------- */
+.calc{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;max-width:860px}
+.calc .out{font-family:Georgia,serif;font-size:1.6rem;color:var(--amber2);margin:.3em 0 0}
+.calc .out small{font-family:inherit;font-size:.9rem;color:var(--muted)}
+.formula{font-family:Georgia,serif;font-style:italic;color:#d3d9e2;margin:.4em 0}
+
+/* ---------- afstande ---------- */
+.bars{max-width:860px;margin:14px 0}
+.bar{margin:12px 0}
+.bar .t{display:flex;justify-content:space-between;gap:10px;font-size:.93rem}
+.bar .t b{color:var(--ink)}
+.bar .b{height:14px;border-radius:7px;background:var(--panel2);overflow:hidden;margin-top:4px}
+.bar .b i{display:block;height:100%;border-radius:7px}
+
+/* ---------- tidslinje ---------- */
+.tl{list-style:none;margin:14px 0;padding:0;max-width:860px;border-left:2px solid var(--line)}
+.tl li{position:relative;padding:4px 0 12px 18px}
+.tl li::before{content:"";position:absolute;left:-6px;top:11px;width:10px;height:10px;border-radius:50%;background:var(--amber)}
+.tl time{display:block;font-family:Georgia,serif;color:var(--amber2);font-size:1.05rem}
+
+/* ---------- galleri ---------- */
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;margin:14px 0}
+.gal a{display:block;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--panel)}
+.gal img{display:block;width:100%;height:200px;object-fit:cover}
+.gal a:hover{border-color:var(--amber)}
+.src{font-size:.9rem;max-width:860px;padding-left:1.2em}
+.src li{margin:.35em 0}
+footer{margin:40px 0 30px;padding-top:14px;border-top:1px solid var(--line);font-size:.88rem;color:var(--muted)}
+@media (max-width:640px){
+  .simbox canvas{height:min(58vh,440px)}
+  .hud{font-size:.76rem;max-width:82%}
+  .row > label{min-width:100%;margin-bottom:-4px}
+  .gal{grid-template-columns:1fr 1fr}
+  .gal img{height:130px}
+}
+</style>
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+<!-- app (PWA) -->
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/app/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="mhgfysik">
+<script src="/app/app.js" defer></script>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="crumb"><a href="index-en.html#kultur">← Home</a> · <a href="stonehenge.html">🇩🇰 Dansk</a> · History and culture</div>
+  <h1>Stonehenge i 3D</h1>
+  <p class="lead">Who built Stonehenge, when – and how do you raise a 25-tonne stone without wheels, metal or machines? Rotate the model, travel through 5,000 years, watch the sun rise at midsummer, and follow step by step how the stones were most likely raised.</p>
+  <ul class="toc">
+    <li><a href="#model">The 3D model</a></li>
+    <li><a href="#rejsning">How the stones were raised</a></li>
+    <li><a href="#kraft">How many people to pull?</a></li>
+    <li><a href="#hvorfra">Where did the stones come from?</a></li>
+    <li><a href="#hvem">When and by whom?</a></li>
+    <li><a href="#billeder">My photos</a></li>
+  <li><a href="#app">Download app</a></li>
+  </ul>
+</header>
+
+<div class="facts">
+  <div><b>c. 3000 BC</b><span>the first ditch and bank</span></div>
+  <div><b>c. 2500 BC</b><span>the great sarsens are raised</span></div>
+  <div><b>25 tonnes</b><span>a typical sarsen</span></div>
+  <div><b>25 · 240 · 750 km</b><span>how far the stones travelled</span></div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="model">The 3D model: Stonehenge through 5,000 years</h2>
+<p>Drag to rotate, pinch or scroll to zoom. Choose a period and let the sun run its course. The model is approximate: the number, size and position of the stones follow the excavations, but the shape of each stone is simplified.</p>
+
+<div class="simbox" id="box1">
+  <canvas id="henge" aria-label="3D model of Stonehenge"></canvas>
+  <div class="hud" id="hud1"></div>
+</div>
+<div class="panel">
+  <div class="row" role="group" aria-label="Period in history">
+    <label>Period</label>
+    <button type="button" data-phase="0">c. 3000 BC</button>
+    <button type="button" data-phase="1">c. 2500 BC</button>
+    <button type="button" data-phase="2">c. 2200 BC</button>
+    <button type="button" data-phase="3">Today</button>
+  </div>
+  <div class="cap" id="phaseCap" aria-live="polite"></div>
+  <div class="row">
+    <label for="day">Date</label>
+    <input type="range" id="day" min="1" max="365" step="1" value="172">
+    <span class="val" id="dayV"></span>
+  </div>
+  <div class="row">
+    <label for="hour">Time</label>
+    <input type="range" id="hour" min="0" max="24" step="0.0167" value="5">
+    <span class="val" id="hourV"></span>
+  </div>
+  <div class="row">
+    <label>Sun</label>
+    <button type="button" id="bSummer">Midsummer sunrise</button>
+    <button type="button" id="bWinter">Midwinter sunset</button>
+    <button type="button" id="bPlay" aria-pressed="false">▶ Run the day</button>
+    <button type="button" id="bRev" aria-pressed="false">⇄ Backwards</button>
+    <select id="spd" aria-label="Speed">
+      <option value="0.5">½×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option>
+    </select>
+  </div>
+  <div class="row">
+    <label for="skyMode">Sky</label>
+    <select id="skyMode" aria-label="Moon and eclipses">
+      <option value="none">No Moon</option><option value="moon">The Moon</option><option value="solar">Solar eclipse</option><option value="lunar">Lunar eclipse</option>
+    </select>
+    <button type="button" id="bCon" aria-pressed="false">Constellations</button>
+    <button type="button" id="bLook">Look at the Sun/Moon</button>
+  </div>
+  <div class="row" id="moonRow" hidden>
+    <label for="moonAge" id="moonAgeL">Moon phase</label>
+    <input type="range" id="moonAge" min="0" max="29.5" step="0.1" value="10">
+    <span class="val" id="moonAgeV"></span>
+  </div>
+  <div class="row" id="eclRow" hidden>
+    <label for="eclOff">Moon path</label>
+    <input type="range" id="eclOff" min="-0.9" max="0.9" step="0.005" value="0">
+    <span class="val" id="eclOffV"></span>
+  </div>
+  <div class="row" id="sizeRow" hidden>
+    <label for="moonSize">Moon distance</label>
+    <select id="moonSize"><option value="1.08">Near (large Moon)</option><option value="0.93">Far (small Moon)</option></select>
+  </div>
+  <div class="cap" id="skyCap" aria-live="polite" hidden></div>
+  <div class="row">
+    <label>Show</label>
+    <button type="button" id="bAxis" aria-pressed="true">Solstice axis</button>
+    <button type="button" id="bLbl" aria-pressed="true">Names</button>
+    <button type="button" id="bTop">View from above</button>
+    <button type="button" id="bHome">Reset camera</button>
+  </div>
+</div>
+
+<h3>Why does it point north-east?</h3>
+<p>The whole monument is built around one line: to the north-east the sun rises on the longest day of the year, and in the exactly opposite direction it sets on the shortest. The direction follows from the latitude <i>φ</i> and the sun’s declination <i>δ</i>:</p>
+<p class="formula">cos A = sin δ / cos φ</p>
+<p>With Stonehenge’s latitude φ = 51.18° and δ ≈ 24.0° (the Earth’s axis was tilted slightly more 4,500 years ago than today’s 23.44°) we get A ≈ 49.6° from north – exactly the direction in which the entrance and the Avenue point. The formula assumes a flat horizon and no refraction; in reality hills and the atmosphere shift the point a little. The model automatically uses the old axial tilt in the past and the present one today.</p>
+
+<!-- ============================================================ -->
+<h2 id="rejsning">How the stones were raised</h2>
+<p>Nobody left building instructions. What we know comes from excavating the stone holes and from full-scale experiments. Press ▶ and follow the six stages – you can pause, scrub, change speed and run backwards. Each figure in the animation stands for about ten people.</p>
+
+<div class="simbox" id="box2">
+  <canvas id="raise" aria-label="3D animation of how a stone is raised"></canvas>
+  <div class="hud" id="hud2"></div>
+</div>
+<div class="panel">
+  <div class="row" role="group" aria-label="Stages" id="stageBtns"></div>
+  <div class="row">
+    <button type="button" id="rPlay" aria-pressed="false">▶ Play</button>
+    <button type="button" id="rRev" aria-pressed="false">⇄ Backwards</button>
+    <select id="rSpd" aria-label="Speed">
+      <option value="0.5">½×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option>
+    </select>
+    <input type="range" id="rT" min="0" max="6" step="0.002" value="0" aria-label="Time in the animation">
+  </div>
+  <div class="cap" id="stageCap" aria-live="polite"></div>
+</div>
+
+<h3>Joints as in timber</h3>
+<p>Stonehenge is carpentry – in stone. On top of each upright are tenons that fit into mortice holes on the underside of the lintels, and the lintels of the outer circle interlock with tongue-and-groove joints. Joints like these are otherwise known from woodwork, and they are why the lintels have stayed in place for 4,500 years.</p>
+
+<!-- ============================================================ -->
+<h2 id="kraft">How many people to pull?</h2>
+<p>A stone on a sledge has to overcome the friction against the ground and – uphill – part of its own weight. The force is</p>
+<p class="formula">F = m · g · (μ · cos α + sin α)</p>
+<p>where <i>μ</i> is the coefficient of friction and <i>α</i> is the slope. Divide by what one person can pull and you have the size of the team.</p>
+<div class="calc">
+  <div class="row"><label for="cM">Mass</label><input type="range" id="cM" min="2" max="40" step="1" value="25"><span class="val" id="cMv"></span></div>
+  <div class="row"><label for="cMu">Friction μ</label><input type="range" id="cMu" min="0.05" max="0.7" step="0.01" value="0.15"><span class="val" id="cMuv"></span></div>
+  <div class="row"><label for="cA">Slope</label><input type="range" id="cA" min="0" max="10" step="0.1" value="0"><span class="val" id="cAv"></span></div>
+  <div class="row"><label for="cP">Per person</label><input type="range" id="cP" min="150" max="700" step="10" value="400"><span class="val" id="cPv"></span></div>
+  <div class="row">
+    <button type="button" id="cBlue">A bluestone (3 t)</button>
+    <button type="button" id="cSarsen">A sarsen (25 t)</button>
+    <button type="button" id="cExp">The 40 t experiment</button>
+  </div>
+  <p class="out" id="cOut"></p>
+  <p class="note" id="cNote"></p>
+</div>
+<p class="note">Greased timber rails give μ of about 0.1–0.2; a sledge directly on grass or soil more like 0.4–0.6. In an experiment in the 1990s about 130 volunteers pulled a 40-tonne concrete copy of the largest stone up a gentle slope on a sledge running on greased timber rails. Put in the numbers and see what friction that corresponds to.</p>
+
+<!-- ============================================================ -->
+<h2 id="hvorfra">Where did the stones come from?</h2>
+<p>Stonehenge stands on chalk, and none of the stones is local. The three kinds of stone were fetched from three widely different places.</p>
+<div class="bars">
+  <div class="bar">
+    <div class="t"><b>The sarsens</b><span>West Woods, Wiltshire · c. 25 km</span></div>
+    <div class="b"><i style="width:3.4%;background:var(--stone)"></i></div>
+    <p class="note">Hard sandstone (silcrete). A chemical analysis in 2020 showed that 50 of the 52 surviving sarsens share the same “fingerprint” and come from West Woods, north of Stonehenge.</p>
+  </div>
+  <div class="bar">
+    <div class="t"><b>The bluestones</b><span>Preseli Hills, Wales · c. 240 km</span></div>
+    <div class="b"><i style="width:32%;background:var(--blue)"></i></div>
+    <p class="note">Smaller stones of 2–5 tonnes, among others spotted dolerite and rhyolite. Two of the quarries, Carn Goedog and Craig Rhos-y-felin, have been found and excavated.</p>
+  </div>
+  <div class="bar">
+    <div class="t"><b>The Altar Stone</b><span>north-east Scotland · at least 750 km</span></div>
+    <div class="b"><i style="width:100%;background:#9fb08f"></i></div>
+    <p class="note">The six-tonne sandstone block in the middle of the monument was long thought to be Welsh. In 2024 dating of mineral grains showed that it comes from the Orcadian Basin in north-east Scotland – the longest known journey of a stone in any Stone Age monument.</p>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="hvem">When and by whom?</h2>
+<p>Stonehenge was not built by druids – they belong to the Iron Age, two thousand years later – nor by the wizard Merlin, as people believed in the Middle Ages. The builders were Stone Age farmers. Their ancestors migrated from Anatolia, followed the Mediterranean to the Iberian Peninsula and reached Britain around 4000 BC. They had no wheels, metal or writing, but they could organise hundreds of people.</p>
+<p>At Durrington Walls, three kilometres to the north-east, archaeologists have found a large settlement from around 2500 BC, interpreted as the builders’ village. Soon after, around 2450 BC, the Beaker people arrived from the continent and almost completely replaced the old population. The later rebuilding was thus done by other people than those who raised the great stones.</p>
+<ul class="tl">
+  <li><time>c. 4000 BC</time>The first farmers reach Britain.</li>
+  <li><time>c. 3500 BC</time>The three-kilometre earthwork known as the Cursus is built north of the site.</li>
+  <li><time>c. 3000 BC</time>The first Stonehenge: a circular ditch and bank with 56 holes along the inside. The site is used as a cremation cemetery for several hundred years.</li>
+  <li><time>c. 2500 BC</time>The sarsen circle and the five trilithons are raised, and the bluestones are set up between them. This is roughly when the Great Pyramid of Khufu is built in Egypt.</li>
+  <li><time>c. 2450 BC</time>The Beaker people arrive.</li>
+  <li><time>c. 2400–2200 BC</time>The Avenue is laid out, and the bluestones are rearranged into a circle and an inner oval.</li>
+  <li><time>c. 1750–1500 BC</time>Bronze Age axes and daggers are carved into four of the sarsens.</li>
+  <li><time>1900–today</time>A stone and its lintel fall in 1900; during the 20th century several stones are straightened and re-erected. Since 1986 Stonehenge has been a UNESCO World Heritage Site.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="billeder">My photos</h2>
+<p>Stonehenge is about an hour and a half by car from Woolston in Southampton, where I grew up. The photos here are my own. Tap a photo to see it full size.</p>
+<div class="gal">
+  <a href="images/stonehenge/stonehenge-01.jpg"><img loading="lazy" src="images/stonehenge/stonehenge-01.jpg" alt="Stonehenge seen from a distance in evening light under a cloudy sky"></a>
+  <a href="images/stonehenge/stonehenge-02.jpg"><img loading="lazy" src="images/stonehenge/stonehenge-02.jpg" alt="The stone circle seen across the grassy ditch and bank"></a>
+  <a href="images/stonehenge/stonehenge-03.jpg"><img loading="lazy" src="images/stonehenge/stonehenge-03.jpg" alt="The sarsen circle with lintels seen from the path"></a>
+  <a href="images/stonehenge/stonehenge-04.jpg"><img loading="lazy" src="images/stonehenge/stonehenge-04.jpg" alt="Stonehenge from another side with the tall trilithons"></a>
+  <a href="images/stonehenge/stonehenge-05.jpg"><img loading="lazy" src="images/stonehenge/stonehenge-05.jpg" alt="A trilithon close up: two uprights with a lintel"></a>
+  <a href="images/stonehenge/stonehenge-06.jpg"><img loading="lazy" src="images/stonehenge/stonehenge-06.jpg" alt="Lintels on the sarsen circle close up"></a>
+  <a href="images/stonehenge/stonehenge-07.jpg"><img loading="lazy" src="images/stonehenge/stonehenge-07.jpg" alt="Three uprights with lintels, portrait format"></a>
+  <a href="images/stonehenge/stonehenge-08.jpg"><img loading="lazy" src="images/stonehenge/stonehenge-08.jpg" alt="Uprights and fallen stones inside the circle"></a>
+  <a href="images/stonehenge/stonehenge-09.jpg"><img loading="lazy" src="images/stonehenge/stonehenge-09.jpg" alt="Sarsen uprights with lichen on the surface under a dark cloud"></a>
+</div>
+
+<h2 id="app">Download as an app</h2>
+<p>Take Stonehenge with you: a self-contained version that works offline, can be installed on a phone or tablet, and needs no internet connection. Free to use and share under CC BY 4.0.</p>
+<p><a class="dl" href="downloads/Stonehenge-3D-app.zip" download style="display:inline-block;padding:10px 16px;border:1px solid var(--amber);border-radius:10px;text-decoration:none;color:#1a1206;background:var(--amber);font-weight:600">⬇ Download the Stonehenge app (zip, 1.2 MB)</a></p>
+<p class="note">Unzip and put the folder on a web server (HTTPS) or run it locally – see README.txt inside. On a phone, open the online version and choose “Add to Home Screen”.</p>
+
+<h2 id="kilder">Sources</h2>
+<ul class="src">
+  <li>English Heritage: <a href="https://www.english-heritage.org.uk/visit/places/stonehenge/history-and-stories/building-stonehenge/">Building Stonehenge</a> and <a href="https://www.english-heritage.org.uk/visit/places/stonehenge/history-and-stories/history/">History of Stonehenge</a>.</li>
+  <li>T. Darvill et al. (2012): Stonehenge remodelled. <i>Antiquity</i> 86, 1021–1040.</li>
+  <li>D. J. Nash et al. (2020): <a href="https://doi.org/10.1126/sciadv.abc0133">Origins of the sarsen megaliths at Stonehenge</a>. <i>Science Advances</i> 6, eabc0133.</li>
+  <li>M. Parker Pearson et al. (2015): <a href="https://doi.org/10.15184/aqy.2015.177">Craig Rhos-y-felin: a Welsh bluestone megalith quarry for Stonehenge</a>. <i>Antiquity</i> 89, 1331–1352.</li>
+  <li>A. J. I. Clarke et al. (2024): <a href="https://doi.org/10.1038/s41586-024-07652-1">A Scottish provenance for the Altar Stone of Stonehenge</a>. <i>Nature</i> 632, 570–575.</li>
+  <li>S. Brace et al. (2019): Ancient genomes indicate population replacement in Early Neolithic Britain. <i>Nature Ecology &amp; Evolution</i> 3, 765–771. Reported by <a href="https://bbc.in/2KFp8N0">BBC</a>.</li>
+  <li>J. Richards &amp; M. Whitby (1997): <a href="https://www.thebritishacademy.ac.uk/documents/3921/92p231.pdf">The Engineering of Stonehenge</a>. <i>Proceedings of the British Academy</i> 92, 231–256.</li>
+</ul>
+
+<footer>
+  <a href="index-en.html#kultur">← Back to the home page</a> · <a href="alhambra-en.html">Alhambra</a> · <a href="solure-en.html">Sundials</a> · <a href="stonehenge.html">🇩🇰 Dansk</a><br>
+  © Michael Grant · mhgfysik.dk · CC BY 4.0
+</footer>
+</div>
+
+<script src="stonehenge-stars.js"></script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const RAD = Math.PI/180, BUMP = 2.5;
+const clamp = (x,a,b) => Math.min(b, Math.max(a,x));
+const lerp = (a,b,t) => a + (b-a)*t;
+const ease = t => { t = clamp(t,0,1); return t*t*(3-2*t); };
+const MOBILE = matchMedia('(max-width:640px)').matches;
+
+// ---- procedural textures (shared by both scenes) ----
+function rng(seed){ let s = seed; return () => (s = (s*16807) % 2147483647)/2147483647; }
+function canvasTex(S, draw, srgb = true){
+  const c = document.createElement('canvas'); c.width = c.height = S; draw(c.getContext('2d'), S);
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  if (srgb) t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
+}
+function blobs(x, S, R, n, r0, r1, col){          // soft patches, wrapped so the texture tiles
+  for (let i = 0; i < n; i++){
+    const px = R()*S, py = R()*S, rr = r0 + R()*(r1 - r0), c = col(R);
+    for (const ox of [-S,0,S]) for (const oy of [-S,0,S]){
+      const cx = px + ox, cy = py + oy;
+      if (cx < -rr || cx > S + rr || cy < -rr || cy > S + rr) continue;
+      const g = x.createRadialGradient(cx,cy,0,cx,cy,rr);
+      g.addColorStop(0, `rgba(${c[0]},${c[1]},${c[2]},${c[3]})`); g.addColorStop(1, `rgba(${c[0]},${c[1]},${c[2]},0)`);
+      x.fillStyle = g; x.fillRect(cx - rr, cy - rr, 2*rr, 2*rr);
+    }
+  }
+}
+const TEX = {
+  stone: canvasTex(512, (x,S) => { const R = rng(7);
+    x.fillStyle = '#e4e0d8'; x.fillRect(0,0,S,S);
+    blobs(x,S,R, 40, 40,130, R => { const v = 150 + R()*90|0; return [v, v-3, v-10, .28]; });
+    blobs(x,S,R, 26, 14,46, () => [176,186,150,.42]);                 // grey-green lichen
+    blobs(x,S,R, 10, 6,18, () => [206,168,84,.45]);                   // yellow lichen
+    blobs(x,S,R, 700, 1.5,5, R => { const v = R() < .6 ? 90 : 245; return [v,v,v-6,.22]; });
+    for (let i = 0; i < 60; i++){ x.strokeStyle = `rgba(70,66,58,${.05 + R()*.09})`; x.lineWidth = 1 + R()*2;
+      const px = R()*S, py = R()*S; x.beginPath(); x.moveTo(px,py); x.bezierCurveTo(px + R()*20 - 10, py + 30, px + R()*30 - 15, py + 60, px + R()*40 - 20, py + 80 + R()*60); x.stroke(); }
+  }),
+  bump: canvasTex(256, (x,S) => { const R = rng(19);
+    x.fillStyle = '#808080'; x.fillRect(0,0,S,S);
+    blobs(x,S,R, 60, 12,50, R => { const v = R() < .5 ? 40 : 215; return [v,v,v,.35]; });
+    blobs(x,S,R, 500, 1.5,5, R => { const v = R() < .7 ? 20 : 235; return [v,v,v,.5]; });
+  }, false),
+  grass: canvasTex(512, (x,S) => { const R = rng(3);
+    x.fillStyle = '#86a064'; x.fillRect(0,0,S,S);
+    blobs(x,S,R, 70, 30,110, R => { const k = R(); return k < .4 ? [108,140,82,.35] : k < .75 ? [146,168,100,.3] : [172,170,108,.25]; });
+    for (let i = 0; i < 9000; i++){ const g = 125 + R()*80|0; x.fillStyle = `rgba(${g*.74|0},${g},${g*.52|0},.28)`;
+      x.fillRect(R()*S, R()*S, 1 + R()*2, 2 + R()*4); }
+  }),
+  wood: canvasTex(256, (x,S) => { const R = rng(11);
+    x.fillStyle = '#e9e2d6'; x.fillRect(0,0,S,S);
+    for (let i = 0; i < 90; i++){ const v = 120 + R()*90|0; x.strokeStyle = `rgba(${v},${v-14},${v-34},${.25 + R()*.35})`; x.lineWidth = .6 + R()*2.2;
+      const px = R()*S; x.beginPath(); x.moveTo(px,0); x.bezierCurveTo(px + R()*8 - 4, S*.3, px + R()*8 - 4, S*.6, px, S); x.stroke(); }
+    blobs(x,S,R, 8, 5,11, () => [96,70,44,.5]);
+  })
+};
+// sky dome: vertical gradient plus a glow around the sun
+function makeSky(radius){
+  const u = {top:{value:new THREE.Color(0x2f72c8)}, hor:{value:new THREE.Color(0xb9d3ec)},
+    sunDir:{value:new THREE.Vector3(0,1,0)}, sunCol:{value:new THREE.Color(1,.95,.8)}, glow:{value:1},
+    moonDir:{value:new THREE.Vector3(0,-1,0)}, moonGlow:{value:0}, dark:{value:0}, gal:{value:new THREE.Matrix3()}};
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius, 32, 16), new THREE.ShaderMaterial({
+    uniforms:u, side:THREE.BackSide, depthWrite:false, fog:false,
+    vertexShader:'varying vec3 vD; void main(){ vD = position; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+    fragmentShader:`uniform vec3 top; uniform vec3 hor; uniform vec3 sunDir; uniform vec3 sunCol; uniform float glow; uniform vec3 moonDir; uniform float moonGlow; uniform float dark; uniform mat3 gal; varying vec3 vD;
+      float h3(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7)))*43758.5453); }
+      float vn(vec3 x){ vec3 i = floor(x), f = fract(x); f = f*f*(3.0 - 2.0*f);
+        return mix(mix(mix(h3(i), h3(i + vec3(1,0,0)), f.x), mix(h3(i + vec3(0,1,0)), h3(i + vec3(1,1,0)), f.x), f.y),
+                   mix(mix(h3(i + vec3(0,0,1)), h3(i + vec3(1,0,1)), f.x), mix(h3(i + vec3(0,1,1)), h3(i + vec3(1,1,1)), f.x), f.y), f.z); }
+      float fbm(vec3 p){ float a = .5, s = 0.; for (int i = 0; i < 4; i++){ s += a*vn(p); p *= 2.03; a *= .5; } return s; }
+      void main(){
+        vec3 d = normalize(vD); float h = clamp(d.y, 0.0, 1.0), low = 1.0 - h;
+        vec3 c = mix(hor, top, pow(h, 0.45));
+        float sd = max(dot(d, sunDir), 0.0);
+        c += sunCol*glow*(0.30*pow(sd, 5.0)*low*low + 0.55*pow(sd, 48.0) + 1.2*pow(sd, 700.0));
+        float md = max(dot(d, moonDir), 0.0);
+        c += vec3(.55,.62,.8)*moonGlow*(0.035*pow(md, 8.0) + 0.22*pow(md, 140.0));
+        if (dark > 0.01){
+          vec3 g = gal*d;
+          float b = asin(clamp(g.z, -1.0, 1.0)), l = atan(g.y, g.x);
+          float cen = exp(-l*l/1.1), sig = 0.13 + 0.10*cen;
+          float band = exp(-b*b/(sig*sig)), core = exp(-b*b/(0.045*0.045))*(0.4 + 0.6*cen);
+          float n = fbm(g*7.0), n2 = fbm(g*22.0 + 3.0);
+          float mw = (0.75*band + 0.55*core)*(0.5 + 0.7*cen)*(0.35 + 1.15*n)*(0.7 + 0.6*n2);
+          float rift = exp(-pow((b - 0.012)/0.028, 2.0))*smoothstep(-0.2, 0.35, l)*(1.0 - smoothstep(1.2, 1.7, l));
+          mw *= 1.0 - 0.8*rift*(0.5 + 0.5*n);
+          c += mix(vec3(.55,.62,.85), vec3(1.0,.85,.62), cen)*mw*0.10*dark;
+        }
+        gl_FragColor = vec4(c, 1.0);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }`}));
+  mesh.renderOrder = -10; mesh.frustumCulled = false;
+  return {mesh, u};
+}
+
+// irregular "stone": a box with displaced corners, foot at y = 0
+function stoneGeo(w,h,d,seed,taper=0.1){
+  const g = new THREE.BoxGeometry(w,h,d,4,8,3);
+  const p = g.attributes.position;
+  { const nr = g.attributes.normal, uv = g.attributes.uv;                 // even texture density: one tile per 3 m
+    for (let i = 0; i < p.count; i++){ const ax = Math.abs(nr.getX(i)), ay = Math.abs(nr.getY(i));
+      const su = ax > .5 ? d : w, sv = ay > .5 ? d : h;
+      uv.setXY(i, uv.getX(i)*su/3 + seed*.37, uv.getY(i)*sv/3 + seed*.61); } }
+  const n = (x,y,z,k) => { const s = Math.sin(x*12.9898 + y*78.233 + z*37.719 + seed*1.37 + k*5.1)*43758.5453; return s - Math.floor(s) - .5; };
+  for (let i = 0; i < p.count; i++){
+    const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
+    const kx = Math.round(x*100), ky = Math.round(y*100), kz = Math.round(z*100);
+    const f = 1 - taper*(y/h + .5);
+    const ex = Math.abs(x) > w*.49, ez = Math.abs(z) > d*.49, ey = Math.abs(y) > h*.49;
+    const ch = ex && ez ? .9 : 1, cy = ey && (ex || ez) ? .985 : 1;                 // chamfered edges
+    const bul = (Math.sin(y*1.1 + seed)*.035 + Math.sin(y*2.7 + seed*2.3)*.02)*Math.min(1, h/4);       // slow bulges
+    p.setXYZ(i, (x*f + n(kx,ky,kz,1)*w*.06 + bul*w)*ch, (y + (y > 0 ? n(kx,ky,kz,2)*Math.min(h,w)*.05 : 0))*cy, (z*f + n(kx,ky,kz,3)*d*.08 + Math.cos(y*1.7 + seed)*.03*d*Math.min(1, h/4))*ch);
+  }
+  g.translate(0,h/2,0);
+  g.computeVertexNormals();
+  return g;
+}
+function watch(box, cb){               // tegn kun, når boksen er på skærmen
+  let on = false;
+  new IntersectionObserver(e => { on = e[0].isIntersecting; }, {rootMargin:'120px'}).observe(box);
+  let last = performance.now();
+  function loop(now){ const dt = Math.min(.1,(now-last)/1000); last = now; if (on) cb(dt, now/1000); requestAnimationFrame(loop); }
+  requestAnimationFrame(loop);
+}
+function fit(renderer, camera, canvas){
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (!w || !h) return;
+  renderer.setSize(w, h, false);
+  camera.aspect = w/h; camera.updateProjectionMatrix();
+}
+
+/* =====================================================================
+   1. MODELLEN AF STONEHENGE
+   koordinater: x = øst, z = syd, y = op. Azimut regnes fra nord med uret.
+   ===================================================================== */
+(function(){
+  const canvas = document.getElementById('henge'), box = document.getElementById('box1');
+  const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.15;
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, 1, .5, 3000);
+  const controls = new OrbitControls(camera, canvas);
+  controls.enableDamping = true; controls.maxPolarAngle = Math.PI/2 - .02; controls.minDistance = 4; controls.maxDistance = 320;
+  const HOME = [new THREE.Vector3(-46,26,60).multiplyScalar(MOBILE ? 1.35 : 1), new THREE.Vector3(0,2,0)];
+  camera.position.copy(HOME[0]); controls.target.copy(HOME[1]);
+
+  const AXIS = 49.9*RAD, LAT = 51.18*RAD;
+  const dir = az => new THREE.Vector3(Math.sin(az), 0, -Math.cos(az));
+
+  // ---- lys og himmel ----
+  const hemi = new THREE.HemisphereLight(0xd6e4ff, 0x6a7550, .6); scene.add(hemi);
+  const sun = new THREE.DirectionalLight(0xfff1dc, 2.4);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(MOBILE ? 1024 : 4096, MOBILE ? 1024 : 4096);
+  Object.assign(sun.shadow.camera, {left:-64, right:64, top:64, bottom:-64, near:1, far:420});
+  sun.shadow.bias = -0.0006; sun.shadow.normalBias = .04;
+  scene.add(sun, sun.target);
+  const sunBall = new THREE.Mesh(new THREE.SphereGeometry(14, 24, 16), new THREE.MeshBasicMaterial({color:0xffe9b0, fog:false, toneMapped:false}));
+  scene.add(sunBall);
+  const SKYT = {night:new THREE.Color(0x04060e), dawn:new THREE.Color(0x3a5688), day:new THREE.Color(0x2f72c8)};
+  const SKYH = {night:new THREE.Color(0x0a1122), dawn:new THREE.Color(0xe39a66), day:new THREE.Color(0xb9d3ec)};
+  const sky = makeSky(2600); scene.add(sky.mesh);
+  scene.background = new THREE.Color(0x0a1122);
+  scene.fog = new THREE.Fog(0xb9d3ec, 260, 2400);
+
+  /*TXT*/
+  const DEC = '.';
+  const TXT = {
+    phases:['New moon','Waxing crescent','First quarter','Waxing gibbous','Full moon','Waning gibbous','Last quarter','Waning crescent'],
+    moon:'Moon', alt:'altitude', lit:'lit', day:'day', age:'Moon phase', off:'Moon path',
+    solar:'Solar eclipse', lunar:'Lunar eclipse', covered:'Sun covered', inUmbra:'of the Moon inside Earth’s umbra',
+    total:'total', annular:'annular', partial:'partial', none:'no eclipse', penumbral:'in the penumbra only (barely noticeable)',
+    pole:'Pole star', fromPole:'from the celestial pole', unnamed:'a star',
+    capMoon:'The Moon sits on the ecliptic (the Sun’s path) and is drawn 3× enlarged so the phase can be seen. In reality the Moon’s orbit is inclined by about 5°, so it can stand a little above or below. The phase is held fixed over the day.',
+    capSolar:'Idealised solar eclipse: the Moon stands in front of the Sun. Sun and Moon are drawn 3× enlarged. Drag “Moon path”: only when the Moon is almost exactly in front of the Sun is the eclipse total; a distant, small Moon gives an annular one. In reality this happens only at new moon close to a node, and totality is seen only along a narrow track across the Earth.',
+    capLunar:'Idealised lunar eclipse: the Moon stands opposite the Sun and slides through Earth’s shadow (drawn 3× enlarged). In totality it is copper red, because Earth’s atmosphere bends red sunlight into the shadow. Happens only at full moon close to a node.',
+    look:{sun:'Look at the Sun', moon:'Look at the Moon'}
+  };
+  /*ENDTXT*/
+  const fx = (x, n = 1) => x.toFixed(n).replace('.', DEC);
+  const EPOCH = [-3000, -2500, -2200, 2026];
+  const SD = window.STAR_DATA;
+  const R3 = (a, v) => { const c = Math.cos(a), s = Math.sin(a); return [c*v[0] + s*v[1], -s*v[0] + c*v[1], v[2]]; };
+  const R2 = (a, v) => { const c = Math.cos(a), s = Math.sin(a); return [c*v[0] - s*v[2], v[1], s*v[0] + c*v[2]]; };
+  const precVec = (v, T) => { const as = Math.PI/648000;
+    const zt = (2306.2181*T + .30188*T*T + .017998*T**3)*as, z = (2306.2181*T + 1.09468*T*T + .018203*T**3)*as, th = (2004.3109*T - .42665*T*T - .041833*T**3)*as;
+    return R3(-z, R2(th, R3(-zt, v))); };
+  const BASIS = [[1,0,0],[0,1,0],[0,0,1]];
+  const rowsOf = c => [0,1,2].map(i => [c[0][i], c[1][i], c[2][i]]);
+  const precMat = yr => rowsOf(BASIS.map(e => precVec(e, (yr - 2000)/100)));
+  const toScene = (v, LST) => { const a = v[0]*Math.cos(LST) + v[1]*Math.sin(LST), b = v[0]*Math.sin(LST) - v[1]*Math.cos(LST), c = v[2];
+    const N = c*Math.cos(LAT) - a*Math.sin(LAT), E = -b, U = c*Math.sin(LAT) + a*Math.cos(LAT); return [E, U, -N]; };
+  const localMat = LST => rowsOf(BASIS.map(e => toScene(e, LST)));
+  const mul3 = (A, B) => A.map(r => [0,1,2].map(j => r[0]*B[0][j] + r[1]*B[1][j] + r[2]*B[2][j]));
+  const tr3 = A => [0,1,2].map(i => [A[0][i], A[1][i], A[2][i]]);
+  const eclVec = (lam, beta, e) => [Math.cos(beta)*Math.cos(lam), Math.cos(beta)*Math.sin(lam)*Math.cos(e) - Math.sin(beta)*Math.sin(e), Math.cos(beta)*Math.sin(lam)*Math.sin(e) + Math.sin(beta)*Math.cos(e)];
+  const GALM = [[-0.0548755604,-0.8734370902,-0.4838350155],[0.4941094279,-0.4448296300,0.7469822445],[-0.8676661490,-0.1980763734,0.4559837762]];
+  const eqv = (raD, decD) => { const a = raD*RAD, d = decD*RAD; return [Math.cos(d)*Math.cos(a), Math.cos(d)*Math.sin(a), Math.sin(d)]; };
+  const lens = (r1, r2, d) => {                       // andel af skive 1, som skive 2 dækker
+    if (d >= r1 + r2) return 0;
+    if (d <= Math.abs(r2 - r1)) return r2 >= r1 ? 1 : (r2*r2)/(r1*r1);
+    const A = r1*r1*Math.acos((d*d + r1*r1 - r2*r2)/(2*d*r1)) + r2*r2*Math.acos((d*d + r2*r2 - r1*r1)/(2*d*r2))
+      - .5*Math.sqrt((-d + r1 + r2)*(d + r1 - r2)*(d - r1 + r2)*(d + r1 + r2));
+    return A/(Math.PI*r1*r1); };
+
+  const grp = new THREE.Group(); grp.matrixAutoUpdate = false; scene.add(grp);
+  // ---- stjerner ----
+  const NS = SD.n, spos = new Float32Array(NS*3), smag = new Float32Array(NS), sbv = new Float32Array(NS), sv0 = [];
+  for (let i = 0; i < NS; i++){ const v = eqv(SD.d[4*i]/100, SD.d[4*i + 1]/100); sv0.push(v);
+    spos.set([v[0]*2480, v[1]*2480, v[2]*2480], 3*i); smag[i] = SD.d[4*i + 2]/10; sbv[i] = SD.d[4*i + 3]/100; }
+  const sg = new THREE.BufferGeometry();
+  sg.setAttribute('position', new THREE.BufferAttribute(spos,3)); sg.setAttribute('aMag', new THREE.BufferAttribute(smag,1)); sg.setAttribute('aBV', new THREE.BufferAttribute(sbv,1));
+  const starsMat = new THREE.ShaderMaterial({transparent:true, depthWrite:false, blending:THREE.AdditiveBlending,
+    uniforms:{uLim:{value:-9}, uPix:{value:renderer.getPixelRatio()}, uTime:{value:0}},
+    vertexShader:`attribute float aMag; attribute float aBV; uniform float uLim; uniform float uPix; uniform float uTime; varying vec3 vCol; varying float vA;
+      void main(){
+        vec4 w = modelMatrix*vec4(position,1.0); vec3 d = normalize(w.xyz);
+        float am = min(1.0/(max(d.y,0.0) + 0.04), 25.0), ext = 0.22*(am - 1.0);
+        float vis = clamp((uLim - (aMag + ext))*1.2, 0.0, 1.0);
+        float h = fract(sin(dot(position.xy, vec2(12.9898,78.233)))*43758.5453);
+        float tw = 1.0 + (0.10 + 0.5*(1.0 - d.y))*0.5*sin(uTime*(2.0 + 4.0*h) + h*60.0);
+        float sz = clamp(2.3 + 0.95*(5.0 - aMag), 2.2, 10.0);
+        float a = clamp(0.55 + 0.20*(5.5 - aMag), 0.40, 1.0);
+        float t = clamp((aBV + 0.3)/1.9, 0.0, 1.0);
+        vCol = t < 0.4 ? mix(vec3(.62,.74,1.), vec3(1.,.97,.92), t/0.4) : mix(vec3(1.,.97,.92), vec3(1.,.70,.48), (t - 0.4)/0.6);
+        vA = a*vis*tw;
+        gl_PointSize = sz*uPix;
+        gl_Position = projectionMatrix*viewMatrix*w;
+      }`,
+    fragmentShader:`varying vec3 vCol; varying float vA;
+      void main(){ float r = length(gl_PointCoord - .5)*2.0; float a = exp(-r*r*2.4)*(1.0 - smoothstep(.85, 1., r)); gl_FragColor = vec4(vCol, a*vA); }`});
+  const stars = new THREE.Points(sg, starsMat); stars.frustumCulled = false; grp.add(stars);
+  // ---- stjernebilleder ----
+  const lp = []; SD.lines.forEach(pl => { for (let k = 0; k + 3 < pl.length; k += 2){
+    const a = eqv(pl[k]/10, pl[k+1]/10), b = eqv(pl[k+2]/10, pl[k+3]/10); lp.push(a[0]*2470,a[1]*2470,a[2]*2470, b[0]*2470,b[1]*2470,b[2]*2470); } });
+  const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(lp,3));
+  const conLines = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({color:0x6f96d6, transparent:true, opacity:.5, fog:false, depthWrite:false}));
+  conLines.frustumCulled = false; conLines.visible = false; grp.add(conLines);
+  const starLbl = SD.names.filter(([i,nm]) => smag[i] <= 2.0 || nm === 'Thuban' || nm === 'Polaris').map(([i,nm]) => {
+    const e = document.createElement('div'); e.className = 'lbl'; e.textContent = nm; e.style.display = 'none'; box.appendChild(e); return {e, v:new THREE.Vector3(...sv0[i]).multiplyScalar(2400)}; });
+  const poleCand = []; for (let i = 0; i < NS; i++) if (smag[i] < 4.0) poleCand.push(i);
+  const nameOf = {}; SD.names.forEach(([i,nm]) => nameOf[i] = nm);
+  // ---- måne og corona ----
+  const moonTex = canvasTex(256, (x,S) => { const R = rng(23);
+    x.fillStyle = '#c4bfb4'; x.fillRect(0,0,S,S);
+    blobs(x,S,R, 9, 25,70, () => [96,94,92,.55]); blobs(x,S,R, 220, 2,9, R => { const v = R() < .5 ? 80 : 235; return [v,v,v,.35]; }); });
+  const moon = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 32), new THREE.ShaderMaterial({fog:false,
+    uniforms:{tex:{value:moonTex}, sunDir:{value:new THREE.Vector3(0,1,0)}, ru:{value:0}, rp:{value:0}, uEcl:{value:0}, uAlt:{value:1}},
+    vertexShader:'varying vec3 vN; varying vec3 vW; varying vec2 vUv; void main(){ vUv = uv; vN = normalize(mat3(modelMatrix)*normal); vec4 w = modelMatrix*vec4(position,1.0); vW = w.xyz; gl_Position = projectionMatrix*viewMatrix*w; }',
+    fragmentShader:`uniform sampler2D tex; uniform vec3 sunDir; uniform float ru; uniform float rp; uniform float uEcl; uniform float uAlt; varying vec3 vN; varying vec3 vW; varying vec2 vUv;
+      void main(){
+        vec3 al = texture2D(tex, vUv).rgb;
+        float l = dot(normalize(vN), sunDir), lit = smoothstep(-0.03, 0.18, l);
+        vec3 col = al*(lit*1.1 + vec3(.02,.025,.035));
+        if (uEcl > 0.5){
+          float ang = acos(clamp(dot(normalize(vW), -sunDir), -1.0, 1.0));
+          float um = 1.0 - smoothstep(ru*0.96, ru*1.04, ang), pen = 1.0 - 0.55*(1.0 - smoothstep(ru, rp, ang)), edge = smoothstep(0.0, ru, ang);
+          col = mix(col*pen, al*vec3(.55,.18,.07)*(0.10 + 0.30*edge), um);
+        }
+        col *= mix(vec3(1.0,.62,.38), vec3(1.0), smoothstep(0.0, 0.35, uAlt));
+        gl_FragColor = vec4(col, 1.0);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }`}));
+  moon.visible = false; moon.frustumCulled = false; scene.add(moon);
+  const coronaTex = canvasTex(256, (x,S) => { const R = rng(31);
+    const g = x.createRadialGradient(S/2,S/2,S*.06,S/2,S/2,S/2); g.addColorStop(0,'rgba(255,250,235,1)'); g.addColorStop(.12,'rgba(235,240,255,.75)'); g.addColorStop(.35,'rgba(190,205,255,.25)'); g.addColorStop(1,'rgba(150,170,255,0)');
+    x.fillStyle = '#000'; x.fillRect(0,0,S,S); x.fillStyle = g; x.fillRect(0,0,S,S);
+    for (let i = 0; i < 26; i++){ const a = R()*Math.PI*2, L = S*(.25 + R()*.22); x.strokeStyle = `rgba(215,225,255,${.05 + R()*.09})`; x.lineWidth = 3 + R()*8;
+      x.beginPath(); x.moveTo(S/2 + Math.cos(a)*S*.1, S/2 + Math.sin(a)*S*.1); x.lineTo(S/2 + Math.cos(a)*L, S/2 + Math.sin(a)*L); x.stroke(); } });
+  const corona = new THREE.Sprite(new THREE.SpriteMaterial({map:coronaTex, blending:THREE.AdditiveBlending, transparent:true, depthWrite:false, fog:false, opacity:0}));
+  corona.visible = false; scene.add(corona);
+  const skyMode = document.getElementById('skyMode'), moonAge = document.getElementById('moonAge'), eclOff = document.getElementById('eclOff'), moonSize = document.getElementById('moonSize');
+  let lastK = {mdir:new THREE.Vector3(0,1,0)}, lastSun = new THREE.Vector3(0,1,0), poleCache = {};
+  const poleInfo = () => { if (poleCache[phase]) return poleCache[phase]; const P = precMat(EPOCH[phase]), pv = P[2];
+    let best = 9, bi = -1; poleCand.forEach(i => { const v = sv0[i], c = Math.acos(Math.min(1, v[0]*pv[0] + v[1]*pv[1] + v[2]*pv[2])); if (c < best){ best = c; bi = i; } });
+    return poleCache[phase] = `${TXT.pole}: ${nameOf[bi] || TXT.unnamed} (${fx(best/RAD)}° ${TXT.fromPole})`; };
+
+
+  // ---- terræn: grav og vold ----
+  const gapF = az => {                       // 0 i indgangene, 1 ellers
+    let d = Math.abs(((az - AXIS + Math.PI*3) % (Math.PI*2)) - Math.PI);
+    let d2 = Math.abs(((az - (AXIS + 128*RAD) + Math.PI*3) % (Math.PI*2)) - Math.PI);
+    return Math.min(ease((d - 5*RAD)/(4*RAD)), ease((d2 - 2*RAD)/(3*RAD)));
+  };
+  const bankH = (r,az) => (1.0*Math.exp(-(((r-46.5)/2.0)**2)) - 1.1*Math.exp(-(((r-51.5)/2.0)**2))) * gapF(az);
+  const radii = [0];
+  for (let r = 6; r < 40; r += 6) radii.push(r);
+  for (let r = 40; r <= 57; r += .5) radii.push(r);
+  for (let r = 62; r < 120; r += 10) radii.push(r);
+  radii.push(160, 260, 340, 430, 540, 700, 900, 1200);
+  const NA = 180;
+  const groundH = (r,az) => bankH(r,az) + ease((r - 280)/420)*(3.2 + 2.4*Math.sin(az*3 + 1) + 1.8*Math.sin(az*5 + 4) + 1.2*Math.sin(az*9));   // low downs on the horizon
+  function polar(rs, hfun, dy, keep){
+    const pos = [], idx = [], uv = [], col = [];
+    rs.forEach(r => { for (let j = 0; j <= NA; j++){ const az = j/NA*Math.PI*2, v = dir(az);
+      const X = v.x*r, Z = v.z*r, c = 1 + .09*Math.sin(X*.05 + 1.3)*Math.cos(Z*.043) + .07*Math.sin(X*.013 + Z*.017) + .04*Math.sin(X*.21)*Math.sin(Z*.19);
+      pos.push(X, hfun(r,az) + dy, Z); uv.push(X/14, Z/14); col.push(c, c, c*.94); }});
+    for (let i = 0; i < rs.length-1; i++) for (let j = 0; j < NA; j++){
+      const a = i*(NA+1)+j, b = a+1, c = a+NA+1, d = c+1; if (!keep || keep((j + .5)/NA*Math.PI*2)) idx.push(a,b,c, b,d,c);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos,3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uv,2));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(col,3));
+    g.setIndex(idx); g.computeVertexNormals(); return g;
+  }
+  const tex = TEX.grass;
+  const ground = new THREE.Mesh(polar(radii, groundH, 0), new THREE.MeshStandardMaterial({map:tex, roughness:1, side:THREE.DoubleSide, vertexColors:true}));
+  ground.receiveShadow = true; scene.add(ground);
+  // frisk kridt på volden i de ældste faser
+  const chalkR = []; for (let r = 44; r <= 49; r += .5) chalkR.push(r);
+  const chalkMat = new THREE.MeshStandardMaterial({color:0xf2efe4, emissive:0x4a4840, roughness:1, transparent:true, opacity:1, depthWrite:false, side:THREE.DoubleSide});
+  const chalk = new THREE.Mesh(polar(chalkR, bankH, .04, az => gapF(az) > .55), chalkMat);
+  chalk.receiveShadow = true; scene.add(chalk);
+
+  // ---- sten ----
+  const items = [];                                   // alt, der kan komme og gå
+  const matCache = {};
+  const matS = c => matCache[c] ??= new THREE.MeshStandardMaterial({color:c, map:TEX.stone, bumpMap:TEX.bump, bumpScale:BUMP, roughness:.96});
+  const sarsenCols = [0xd3cdbf, 0xc9c3b5, 0xddd6c7, 0xc4bfaf, 0xd7d0c1];
+  const blueCols = [0x7f97a7, 0x738a99, 0x8c9ea9];
+  let seed = 1;
+  function upright(o){     // o: w,h,d, r, az, phases[4], today:'up'|'down'|'gone', color, lean
+    const g = new THREE.Group();
+    const m = new THREE.Mesh(stoneGeo(o.w,o.h,o.d, seed++, o.taper ?? .1), matS(o.color ?? sarsenCols[seed % 5]));
+    m.castShadow = m.receiveShadow = true; g.add(m);
+    const p = o.pos || dir(o.az).multiplyScalar(o.r);
+    g.position.copy(p); g.rotation.y = Math.PI - (o.face ?? o.az);
+    scene.add(g);
+    const it = {type:'up', g, m, o, s:0, f:0, fs:(seed % 2 ? 1 : -1)*(o.fall ?? 1)};
+    items.push(it); return it;
+  }
+  function lintel(o){      // o: len,hgt,dep, pos(Vector3), face, phases, today
+    const m = new THREE.Mesh(stoneGeo(o.len,o.hgt,o.dep, seed++, .02), matS(sarsenCols[seed % 5]));
+    m.castShadow = m.receiveShadow = true;
+    m.position.copy(o.pos); m.rotation.y = Math.PI - o.face; scene.add(m);
+    const it = {type:'lin', m, o, s:0, f:0}; items.push(it); return it;
+  }
+  // sarsenkredsen: 30 stolper, 30 overliggere
+  const RC = 15.6, HU = 4.1;
+  const standing = new Set([1,2,3,4,5,6,7,10,11,16,21,22,23,27,28,29,30]);
+  const fallen = new Set([8,9,12,14,15,19,25,26]);
+  const linToday = new Set([30,1,2,4,6,21]);          // overligger n ligger mellem sten n og n+1
+  for (let k = 1; k <= 30; k++){
+    const az = AXIS + (k - .5)*12*RAD;
+    upright({w:2.1, h:(k === 11 ? 2.4 : HU), d:1.1, r:RC, az, phases:[0,1,1], today: standing.has(k) ? 'up' : fallen.has(k) ? 'down' : 'gone'});
+    const azl = AXIS + k*12*RAD;
+    lintel({len:3.25, hgt:.8, dep:1.05, pos:dir(azl).multiplyScalar(RC).setY(HU), face:azl, phases:[0,1,1], today: linToday.has(k) ? 'up' : 'gone'});
+  }
+  // de fem trilitoner i hestesko, åben mod nordøst
+  [[75,6.1,'up','up','up'],[130,6.6,'up','up','up'],[180,7.3,'down','up','down'],[230,6.6,'up','up','up'],[285,6.1,'up','down','down']].forEach(([rel,h,a,b,l]) => {
+    const az = AXIS + rel*RAD, c = dir(az).multiplyScalar(7.6), t = dir(az + Math.PI/2);
+    upright({w:2.4, h, d:1.3, pos:c.clone().addScaledVector(t,-1.55), az, face:az, phases:[0,1,1], today:a, fall:-1});
+    upright({w:2.4, h, d:1.3, pos:c.clone().addScaledVector(t, 1.55), az, face:az, phases:[0,1,1], today:b, fall:-1});
+    lintel({len:4.8, hgt:1.0, dep:1.35, pos:c.clone().setY(h), face:az, phases:[0,1,1], today:l, inward:true});
+  });
+  // blåsten
+  const blue = o => upright(Object.assign({w:.8, h:1.9, d:.55, taper:.2, color:blueCols[seed % 3]}, o));
+  const pick = (k, share) => { const s = Math.sin(k*91.7)*1000; return (s - Math.floor(s)) < share; };
+  for (let k = 0; k < 56; k++) blue({r:43.3, az:AXIS + (k + .5)/56*Math.PI*2, h:1.3, phases:[1,0,0], today:'gone'});
+  for (let k = 0; k < 40; k++){ const az = AXIS + (k + .5)/40*Math.PI*2;
+    blue({r:11.9, az, phases:[0,1,0], today:'gone'}); blue({r:13.0, az, phases:[0,1,0], today:'gone'}); }
+  for (let k = 0; k < 60; k++) blue({r:11.7, az:AXIS + (k + .5)/60*Math.PI*2, h:1.7 + (k % 3)*.2, phases:[0,0,1], today: pick(k,.45) ? 'up' : pick(k+7,.25) ? 'down' : 'gone'});
+  for (let k = 0; k < 19; k++){ const rel = 50 + k*(260/18);
+    blue({r:5.4, az:AXIS + rel*RAD, h:2.3, w:.6, d:.6, phases:[0,0,1], today: pick(k+3,.6) ? 'up' : 'gone'}); }
+  // alterstenen (ligger), hælstenen, slagtestenen og de fire stationssten
+  const altar = upright({w:4.9, h:.5, d:1.0, pos:dir(AXIS + Math.PI).multiplyScalar(3.4), az:AXIS, face:AXIS, taper:0, color:0x9ea991, phases:[0,1,1], today:'up'});
+  const heel = upright({w:2.4, h:4.7, d:2.0, pos:dir(AXIS).multiplyScalar(77).addScaledVector(dir(AXIS + Math.PI/2), 1.8), az:AXIS, face:AXIS, taper:.3, phases:[0,1,1], today:'up'});
+  heel.m.rotation.x = -.3;
+  upright({w:2.1, h:4.6, d:.9, pos:dir(AXIS).multiplyScalar(41).addScaledVector(dir(AXIS + Math.PI/2), 3), az:AXIS, face:AXIS, phases:[0,1,1], today:'down'});
+  [67.6, 180-67.6, 180+67.6, -67.6].forEach((rel,i) => upright({w:1.2, h:2.2, d:.9, r:43.3, az:AXIS + rel*RAD, taper:.25, phases:[0,1,1], today: i % 2 ? 'gone' : 'up'}));
+  // Avenuen: to lave volde mod nordøst
+  const aveMat = new THREE.MeshStandardMaterial({color:0x7c9f58, roughness:1});
+  const ave = [-1,1].map(s => { const m = new THREE.Mesh(new THREE.BoxGeometry(1.6,.5,210), aveMat);
+    m.position.copy(dir(AXIS).multiplyScalar(160).addScaledVector(dir(AXIS + Math.PI/2), s*10.5)); m.rotation.y = -AXIS; m.receiveShadow = true; scene.add(m); return m; });
+  // solhvervsaksen
+  const axisLine = new THREE.Mesh(new THREE.PlaneGeometry(.5, 260), new THREE.MeshBasicMaterial({color:0xffd27a, transparent:true, opacity:.75, depthWrite:false}));
+  axisLine.rotation.x = -Math.PI/2; axisLine.rotation.z = -AXIS; axisLine.position.copy(dir(AXIS).multiplyScalar(40)).setY(.12);
+  const axisG = new THREE.Group(); axisG.add(axisLine); axisG.rotation.set(0,0,0); scene.add(axisG);
+  axisLine.rotation.set(-Math.PI/2, 0, -AXIS);
+
+  // ---- navne ----
+  const labels = [
+    ['Sarsen circle', dir(AXIS + 100*RAD).multiplyScalar(RC).setY(5.6), [1,2,3]],
+    ['Trilithons', dir(AXIS + 180*RAD).multiplyScalar(7.6).setY(8.8), [1,2,3]],
+    ['Altar Stone', dir(AXIS + Math.PI).multiplyScalar(3.4).setY(1.2), [1,2,3]],
+    ['Bluestone', dir(AXIS + 250*RAD).multiplyScalar(11.8).setY(2.6), [1,2,3]],
+    ['Aubrey Holes (56)', dir(AXIS + 200*RAD).multiplyScalar(43.3).setY(2), [0]],
+    ['Ditch and bank', dir(AXIS + 270*RAD).multiplyScalar(48).setY(2), [0,1,2,3]],
+    ['Heel Stone', dir(AXIS).multiplyScalar(77).setY(5.6), [1,2,3]],
+    ['Station Stones', dir(AXIS + 67.6*RAD).multiplyScalar(43.3).setY(3), [1,2,3]],
+    ['The Avenue', dir(AXIS).multiplyScalar(110).setY(1.5), [2,3]],
+    ['N', new THREE.Vector3(0,1,-62), [0,1,2,3]]
+  ].map(([t,p,ph]) => { const e = document.createElement('div'); e.className = 'lbl'; e.textContent = t; box.appendChild(e); return {e,p,ph}; });
+
+  // ---- faser ----
+  const PH = [
+    ['c. 3000 BC – the first Stonehenge', 'A circular ditch with a bank of gleaming white chalk, about 100 metres across, with an entrance to the north-east. Along the inside, 56 holes – the Aubrey Holes – where cremated human bones were placed.', 'Uncertain: whether the holes held bluestones (as shown here) or timber posts.'],
+    ['c. 2500 BC – the great stones', 'Thirty sarsen uprights with a continuous ring of lintels, and inside it five trilithons in a horseshoe, open towards the midsummer sunrise. The bluestones stand in a double arc between them, and the Altar Stone lies at the foot of the largest trilithon.', 'Uncertain: whether the circle was ever completed in the south-west, and the exact arrangement of the bluestones.'],
+    ['c. 2200 BC – the bluestones are moved', 'The bluestones have been rearranged into a circle and an inner oval, and the Avenue – two parallel banks – leads from the entrance to the north-east and on to the River Avon. The chalk is becoming overgrown.', 'The oval was later opened into a horseshoe.'],
+    ['Today – a ruin, partly re-erected', 'Seventeen of the circle’s thirty uprights still stand, some with lintels, and three of the five trilithons are intact. Some stones have fallen, others are gone altogether – carted off as building material over the centuries.', 'The model shows which stones stand, lie fallen or are missing, but only approximately.']
+  ];
+  let phase = 1;
+  const phaseBtns = [...document.querySelectorAll('[data-phase]')];
+  function setPhase(p){
+    phase = p;
+    phaseBtns.forEach(b => b.setAttribute('aria-pressed', +b.dataset.phase === p));
+    document.getElementById('phaseCap').innerHTML = `<b>${PH[p][0]}</b><p>${PH[p][1]}<span class="sure">${PH[p][2]}</span></p>`;
+    updateSun();
+  }
+  phaseBtns.forEach(b => b.addEventListener('click', () => setPhase(+b.dataset.phase)));
+  function animate(dt){
+    const k = Math.min(1, dt*2.6);
+    items.forEach(it => {
+      const o = it.o;
+      const present = phase < 3 ? o.phases[phase] : (o.phases[2] && o.today !== 'gone');
+      const down = phase === 3 && o.today === 'down';
+      it.s += ((present ? 1 : 0) - it.s)*k; it.f += ((down ? 1 : 0) - it.f)*k;
+      if (it.type === 'up'){
+        it.g.visible = it.s > .01;
+        it.g.position.y = -(o.h + .3)*(1 - it.s);
+        it.m.rotation.x = (o === heel.o ? -.3 : 0) + it.f*it.fs*(Math.PI/2 - .06);
+        it.m.position.y = it.f*o.d*.5;
+      } else {
+        it.m.visible = it.s > .01;
+        it.m.scale.setScalar(Math.max(.001, it.s));
+        const out = dir(o.face).multiplyScalar(o.inward ? -4.2 : 3);
+        it.m.position.set(o.pos.x + out.x*it.f, lerp(o.pos.y, .05, it.f) + (1 - it.s)*6, o.pos.z + out.z*it.f);
+        it.m.rotation.y = Math.PI - o.face + it.f*.5;
+      }
+    });
+    chalkMat.opacity += ([1,.7,.3,0][phase] - chalkMat.opacity)*k; chalk.visible = chalkMat.opacity > .02;
+    const av = phase >= 2 ? 1 : 0;
+    ave.forEach(m => { m.scale.y += (av - m.scale.y)*k; m.visible = m.scale.y > .03; m.position.y = -.05; });
+  }
+  ave.forEach(m => m.scale.y = 0);
+
+  // ---- solen ----
+  const day = document.getElementById('day'), hour = document.getElementById('hour');
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const eps = () => (phase === 3 ? 23.44 : 23.98)*RAD;
+  const decl = n => Math.asin(Math.sin(eps())*Math.sin(2*Math.PI*(n - 80.5)/365.25));
+  function sunPos(n, h){
+    const d = decl(n), H = (h - 12)*15*RAD;
+    const alt = Math.asin(Math.sin(LAT)*Math.sin(d) + Math.cos(LAT)*Math.cos(d)*Math.cos(H));
+    const az = Math.atan2(-Math.cos(d)*Math.sin(H), Math.sin(d)*Math.cos(LAT) - Math.cos(d)*Math.sin(LAT)*Math.cos(H));
+    return {alt, az:(az + Math.PI*2) % (Math.PI*2), d};
+  }
+  const riseH = n => { const d = decl(n); return 12 - Math.acos(clamp(-Math.tan(LAT)*Math.tan(d), -1, 1))/RAD/15; };
+  const hud = document.getElementById('hud1');
+  function updateSky(n, h, s, v){
+    const e = eps(), lam = 2*Math.PI*(n - 80.5)/365.25, sv = eclVec(lam, 0, e), LST = Math.atan2(sv[1], sv[0]) + (h - 12)*15*RAD;
+    const M = mul3(localMat(LST), precMat(EPOCH[phase]));
+    grp.matrix.set(M[0][0],M[0][1],M[0][2],0, M[1][0],M[1][1],M[1][2],0, M[2][0],M[2][1],M[2][2],0, 0,0,0,1); grp.matrixWorldNeedsUpdate = true;
+    const G = mul3(GALM, tr3(M)); sky.u.gal.value.set(G[0][0],G[0][1],G[0][2], G[1][0],G[1][1],G[1][2], G[2][0],G[2][1],G[2][2]);
+    lastSun.copy(v).normalize();
+    controls.maxPolarAngle = skyMode.value === 'none' ? Math.PI/2 - .02 : Math.PI*.98;
+    const mode = skyMode.value, RS = .2666, SF = 3, K = {cover:0, mLight:0, mGlow:0, mdir:new THREE.Vector3(0,-1,0), info:'<br>' + poleInfo()};
+    document.getElementById('moonRow').hidden = mode !== 'moon';
+    document.getElementById('eclRow').hidden = !(mode === 'solar' || mode === 'lunar');
+    document.getElementById('sizeRow').hidden = mode !== 'solar';
+    const cap = document.getElementById('skyCap'); cap.hidden = mode === 'none';
+    cap.textContent = mode === 'moon' ? TXT.capMoon : mode === 'solar' ? TXT.capSolar : mode === 'lunar' ? TXT.capLunar : '';
+    const rSun = mode === 'solar' ? RS*SF*RAD : 1.39*RAD, sunR = 1500*Math.tan(rSun);
+    sunBall.scale.setScalar(sunR/14);
+    moon.visible = mode !== 'none'; corona.visible = false; corona.material.opacity = 0;
+    document.getElementById('bLook').textContent = mode === 'moon' || mode === 'lunar' ? TXT.look.moon : TXT.look.sun;
+    if (mode === 'none'){ lastK = K; return K; }
+    const age = +moonAge.value, off = +eclOff.value*SF*RAD;
+    const elong = mode === 'moon' ? age/29.53*2*Math.PI : mode === 'solar' ? 0 : Math.PI, beta = mode === 'moon' ? 0 : off;
+    const ratio = mode === 'solar' ? +moonSize.value : 1, rMoon = RS*SF*ratio*RAD;
+    const mv = toScene(eclVec(lam + elong, beta, e), LST); K.mdir.set(mv[0], mv[1], mv[2]).normalize();
+    moon.position.copy(K.mdir).multiplyScalar(1480); moon.scale.setScalar(1480*Math.tan(rMoon)); moon.lookAt(0,0,0);
+    const mu = moon.material.uniforms; mu.sunDir.value.copy(lastSun); mu.uAlt.value = K.mdir.y; mu.uEcl.value = mode === 'lunar' ? 1 : 0;
+    const sep = Math.acos(clamp(K.mdir.dot(lastSun), -1, 1)), illum = (1 - Math.cos(sep))/2, mAlt = Math.asin(K.mdir.y)/RAD;
+    let info = `<br><b>${TXT.moon}</b> ${TXT.alt} ${fx(mAlt)}° · ${Math.round(illum*100)} % ${TXT.lit}`, res = '';
+    let lunDim = 1;
+    if (mode === 'moon'){
+      const ph = Math.round(age/29.53*8) % 8; res = `${TXT.day} ${fx(age)} · ${TXT.phases[ph]}`;
+      document.getElementById('moonAgeV').textContent = res;
+    } else if (mode === 'solar'){
+      const cv = lens(rSun, rMoon, sep); K.cover = cv;
+      res = cv >= .9995 ? TXT.total : (rMoon < rSun && sep <= rSun - rMoon) ? TXT.annular : cv > .001 ? TXT.partial : TXT.none;
+      if (cv > .001) res += ` · ${TXT.covered} ${Math.round(cv*100)} %`;
+      info += `<br>${TXT.solar}: ${res}`;
+      sky.u.glow.value = 0;
+      corona.visible = true; corona.position.copy(lastSun).multiplyScalar(1490); corona.scale.setScalar(2*1490*Math.tan(rSun)*6.5);
+      corona.material.opacity = ease((cv - .985)/.014)*(cv >= .9995 ? 1 : .6);
+    } else {
+      const ru = .72*SF*RAD, rp = 1.75*ru, a = Math.acos(clamp(K.mdir.dot(lastSun.clone().negate()), -1, 1)), cv = lens(rMoon, ru, a);
+      mu.ru.value = ru; mu.rp.value = rp; lunDim = 1 - .93*cv;
+      res = cv >= .9995 ? TXT.total : cv > .001 ? `${TXT.partial} · ${Math.round(cv*100)} % ${TXT.inUmbra}` : a < rp + rMoon ? TXT.penumbral : TXT.none;
+      info += `<br>${TXT.lunar}: ${res}`;
+    }
+    if (mode !== 'moon') document.getElementById('eclOffV').textContent = (+eclOff.value >= 0 ? '+' : '') + fx(+eclOff.value, 2) + '°';
+    K.mLight = illum*lunDim*clamp(mAlt/8, 0, 1)*.85; K.mGlow = clamp(illum*lunDim*clamp(mAlt/6, 0, 1), 0, 1);
+    K.info = info + '<br>' + poleInfo();
+    lastK = K; return K;
+  }
+  function updateSun(){
+    const n = +day.value, h = +hour.value, s = sunPos(n,h);
+    const v = dir(s.az).multiplyScalar(Math.cos(s.alt)).setY(Math.sin(s.alt));
+    sun.position.copy(v).multiplyScalar(200); sun.target.position.set(0,0,0);
+    sunBall.position.copy(v).multiplyScalar(1500);
+    const t = clamp((s.alt/RAD + 6)/9, 0, 1), d0 = clamp((s.alt/RAD - 1)/9, 0, 1);
+    const k = updateSky(n, h, s, v), dimF = 1 - .985*Math.pow(k.cover, 8), d = d0*dimF;
+    const B = Math.max(t*dimF, k.cover > .98 ? .12*ease((k.cover - .98)/.02) : 0);
+    sky.u.top.value.copy(SKYT.night).lerp(SKYT.dawn, t).lerp(SKYT.day, d);
+    sky.u.hor.value.copy(SKYH.night).lerp(SKYH.dawn, t).lerp(SKYH.day, d);
+    sky.u.sunDir.value.copy(v).normalize(); sky.u.glow.value = t*(1 - .97*k.cover);
+    sky.u.moonDir.value.copy(k.mdir); sky.u.moonGlow.value = k.mGlow*(1 - t);
+    sky.u.dark.value = clamp(1 - 2.2*B, 0, 1)*(1 - .8*k.mGlow);
+    starsMat.uniforms.uLim.value = 6.6 - 12*Math.pow(B, .6) - 3.2*k.mGlow*(1 - t);
+    scene.fog.color.copy(sky.u.hor.value); scene.background.copy(sky.u.hor.value);
+    sun.intensity = 2.6*clamp(s.alt/RAD/6, 0, 1)*dimF;
+    sun.color.setHSL(.09 + .03*d, .9 - .5*d, .6 + .3*d);
+    sunBall.material.color.setHSL(.07 + .06*d, 1, .6 + .25*d); sky.u.sunCol.value.copy(sun.color);
+    if (k.mLight > .01 && sun.intensity < .1){ sun.position.copy(k.mdir).multiplyScalar(200); sun.intensity = k.mLight; sun.color.set(0xaec2e8); }
+    hemi.intensity = .34 + .6*t + .35*d + .3*k.mLight*(1 - t);
+    const dt = new Date(2001, 0, n);
+    document.getElementById('dayV').textContent = dt.getDate() + ' ' + MONTHS[dt.getMonth()];
+    const hh = Math.floor(h) % 24, mm = Math.floor((h - Math.floor(h))*60);
+    document.getElementById('hourV').textContent = String(hh).padStart(2,'0') + ':' + String(mm).padStart(2,'0') + ' solar time';
+    const rA = Math.acos(clamp(Math.sin(s.d)/Math.cos(LAT), -1, 1))/RAD;
+    hud.innerHTML = `<b>Sun</b> altitude ${(s.alt/RAD).toFixed(1)}° · azimuth ${(s.az/RAD).toFixed(0)}°<br>` +
+      `Sunrise today: ${rA.toFixed(1)}° from north · axis: 49.9°` + k.info;
+  }
+  day.addEventListener('input', updateSun); hour.addEventListener('input', updateSun);
+  [moonAge, eclOff, moonSize].forEach(c => c.addEventListener('input', updateSun));
+  skyMode.addEventListener('change', () => {
+    const m = skyMode.value, a = sunPos(+day.value, +hour.value).alt/RAD;
+    if (m === 'solar' && a < 12) hour.value = 11.5;
+    if (m === 'lunar' && a > -8) hour.value = 0.5;
+    if (m === 'solar' || m === 'lunar') eclOff.value = 0;
+    updateSun();
+  });
+  const bCon = document.getElementById('bCon');
+  bCon.addEventListener('click', () => { const on = bCon.getAttribute('aria-pressed') !== 'true'; bCon.setAttribute('aria-pressed', on); conLines.visible = on; });
+  document.getElementById('bLook').addEventListener('click', () => {
+    const o0 = skyMode.value === 'moon' || skyMode.value === 'lunar' ? lastK.mdir : lastSun, o = o0.clone(), hx0 = Math.hypot(o.x, o.z) || 1;
+    if (o.y < .15){ o.y = .15; o.normalize(); }
+    const hx = Math.hypot(o.x, o.z) || 1;
+    const p = new THREE.Vector3(-o.x/hx*22, 1.7, -o.z/hx*22);
+    controls.maxPolarAngle = Math.PI*.98;
+    view(p, p.clone().addScaledVector(o, 5));
+  });
+  let playing = false, rev = false;
+  const bPlay = document.getElementById('bPlay'), bRev = document.getElementById('bRev');
+  bPlay.addEventListener('click', () => { playing = !playing; bPlay.setAttribute('aria-pressed', playing); bPlay.textContent = playing ? '⏸ Pause' : '▶ Run the day'; });
+  bRev.addEventListener('click', () => { rev = !rev; bRev.setAttribute('aria-pressed', rev); });
+  function view(pos, tgt){ camera.position.copy(pos); controls.target.copy(tgt); controls.update(); }
+  document.getElementById('bSummer').addEventListener('click', () => {
+    day.value = 172; hour.value = riseH(172) + .12; updateSun();
+    view(dir(AXIS + Math.PI).multiplyScalar(1.2).setY(1.7), dir(AXIS).multiplyScalar(30).setY(2.4));
+  });
+  document.getElementById('bWinter').addEventListener('click', () => {
+    day.value = 355; hour.value = 24 - riseH(355) - .12; updateSun();
+    view(dir(AXIS).multiplyScalar(34).setY(1.7), new THREE.Vector3(0,3.6,0));
+  });
+  document.getElementById('bHome').addEventListener('click', () => view(HOME[0], HOME[1]));
+  document.getElementById('bTop').addEventListener('click', () => view(new THREE.Vector3(0, MOBILE ? 190 : 140, .01), new THREE.Vector3(0,0,0)));
+  let showAxis = true, showLbl = true;
+  const bAxis = document.getElementById('bAxis'), bLbl = document.getElementById('bLbl');
+  bAxis.addEventListener('click', () => { showAxis = !showAxis; bAxis.setAttribute('aria-pressed', showAxis); axisLine.visible = showAxis; });
+  bLbl.addEventListener('click', () => { showLbl = !showLbl; bLbl.setAttribute('aria-pressed', showLbl); });
+
+  const v3 = new THREE.Vector3();
+  function drawLabels(){
+    const w = canvas.clientWidth, h = canvas.clientHeight, con = conLines.visible;
+    starLbl.forEach(l => { v3.copy(l.v).applyMatrix4(grp.matrix); const up = v3.y > 40;
+      v3.project(camera); const ok = con && up && v3.z < 1 && Math.abs(v3.x) < 1 && Math.abs(v3.y) < 1;
+      l.e.style.display = ok ? '' : 'none'; if (ok){ l.e.style.left = ((v3.x + 1)/2*w) + 'px'; l.e.style.top = ((1 - v3.y)/2*h) + 'px'; } });
+    labels.forEach(l => {
+      v3.copy(l.p).project(camera);
+      const ok = showLbl && l.ph.includes(phase) && v3.z < 1 && Math.abs(v3.x) < 1 && Math.abs(v3.y) < 1;
+      l.e.style.display = ok ? '' : 'none';
+      if (ok){ l.e.style.left = ((v3.x + 1)/2*w) + 'px'; l.e.style.top = ((1 - v3.y)/2*h) + 'px'; }
+    });
+  }
+  new ResizeObserver(() => fit(renderer, camera, canvas)).observe(canvas);
+  fit(renderer, camera, canvas);
+  window.__henge = {sunPos, toScene, eclVec, K:() => lastK, S:() => grp.matrix.elements, ph:() => phase};
+  setPhase(1);
+  items.forEach(it => { const o = it.o; it.s = o.phases[1] ? 1 : 0; });
+  chalkMat.opacity = .7;
+  watch(box, dt => {
+    starsMat.uniforms.uTime.value += dt;
+    if (playing){
+      let h = +hour.value + (rev ? -1 : 1)*dt*1.2*(+document.getElementById('spd').value);
+      if (h >= 24){ h -= 24; day.value = (+day.value % 365) + 1; }
+      if (h < 0){ h += 24; day.value = ((+day.value + 363) % 365) + 1; }
+      hour.value = h; updateSun();
+    }
+    animate(dt); controls.update(); renderer.render(scene, camera); drawLabels();
+  });
+})();
+
+/* =====================================================================
+   2. SÅDAN REJSTE MAN STENENE
+   x = slæberetning, y = op. Hullet ligger ved x = 0…1,15.
+   ===================================================================== */
+(function(){
+  const canvas = document.getElementById('raise'), box = document.getElementById('box2');
+  const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.15;
+  const scene = new THREE.Scene(); scene.background = new THREE.Color(0xb9d3ec);
+  scene.fog = new THREE.Fog(0xb9d3ec, 40, 105);
+  const sky = makeSky(300); scene.add(sky.mesh);
+  sky.u.sunDir.value.set(-14,24,16).normalize(); sky.u.glow.value = .7;
+  const camera = new THREE.PerspectiveCamera(42, 1, .1, 400);
+  const controls = new OrbitControls(camera, canvas);
+  controls.enableDamping = true; controls.maxPolarAngle = Math.PI/2 - .03; controls.minDistance = 2.5; controls.maxDistance = 60;
+  scene.add(new THREE.HemisphereLight(0xdcebff, 0x55683a, .85));
+  const sun = new THREE.DirectionalLight(0xfff3dd, 2.3); sun.position.set(-14, 24, 16); sun.castShadow = true;
+  sun.shadow.mapSize.set(MOBILE ? 1024 : 2048, MOBILE ? 1024 : 2048);
+  Object.assign(sun.shadow.camera, {left:-26, right:26, top:20, bottom:-14, near:1, far:80}); sun.shadow.bias = -0.0005; sun.shadow.normalBias = .03;
+  scene.add(sun);
+
+  const ZA = 1.6, ZN = -1.6, L = 6.3, TH = 1.1, WD = 2.1, DEPTH = 2.2, HTOP = L - DEPTH;   // HTOP = 4,1 m over jorden
+  const grass = new THREE.MeshStandardMaterial({map:TEX.grass, roughness:1});
+  const worldUV = m => { const p = m.geometry.attributes.position, uv = m.geometry.attributes.uv;
+    for (let i = 0; i < p.count; i++) uv.setXY(i, (p.getX(i) + m.position.x)/9, (p.getZ(i) + m.position.z)/9); };
+  const chalkM = new THREE.MeshStandardMaterial({color:0xece8da, roughness:1, side:THREE.DoubleSide});
+  const wood = new THREE.MeshStandardMaterial({color:0x9a6f42, map:TEX.wood, roughness:.9});
+  const wood2 = new THREE.MeshStandardMaterial({color:0xb58a56, map:TEX.wood, roughness:.9});
+  const sarsen = new THREE.MeshStandardMaterial({color:0xd5cfc1, map:TEX.stone, bumpMap:TEX.bump, bumpScale:BUMP, roughness:.96});
+  const sh = m => { m.castShadow = m.receiveShadow = true; return m; };
+
+  // ---- jord med hul: skrå rampe på den ene side, lodret væg på den anden ----
+  const prof = new THREE.Shape([[-60,-5],[-60,0],[-2.2,0],[.05,-DEPTH],[1.15,-DEPTH],[1.15,0],[60,0],[60,-5]].map(p => new THREE.Vector2(p[0],p[1])));
+  const trench = new THREE.Mesh(new THREE.ExtrudeGeometry(prof, {depth:2.3, bevelEnabled:false}), grass);
+  trench.position.z = ZA - 1.15; trench.receiveShadow = true; worldUV(trench); scene.add(trench);
+  [[-60, ZA - 1.15],[ZA + 1.15, 60]].forEach(([a,b]) => { const m = new THREE.Mesh(new THREE.BoxGeometry(120,5,b-a), grass);
+    m.position.set(0,-2.5,(a+b)/2); m.receiveShadow = true; worldUV(m); scene.add(m); });
+  const pitShape = new THREE.Shape([[-2.2,0],[.05,-DEPTH],[1.15,-DEPTH],[1.15,0]].map(p => new THREE.Vector2(p[0],p[1])));
+  [ZA - 1.149, ZA + 1.149].forEach(z => { const m = new THREE.Mesh(new THREE.ShapeGeometry(pitShape), chalkM); m.position.z = z; m.receiveShadow = true; scene.add(m); });
+  const quad = (pts) => { const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pts.flat(), 3)); g.setIndex([0,1,2, 0,2,3]); g.computeVertexNormals();
+    const m = new THREE.Mesh(g, chalkM); m.receiveShadow = true; scene.add(m); return m; };
+  const z0 = ZA - 1.15, z1 = ZA + 1.15, e = .012;
+  quad([[-2.2,e,z0],[-2.2,e,z1],[.05,-DEPTH+e,z1],[.05,-DEPTH+e,z0]]);
+  quad([[.05,-DEPTH+e,z0],[.05,-DEPTH+e,z1],[1.15,-DEPTH+e,z1],[1.15,-DEPTH+e,z0]]);
+  quad([[1.15-e,-DEPTH,z0],[1.15-e,-DEPTH,z1],[1.15-e,0,z1],[1.15-e,0,z0]]);
+  // rækken af træpæle, der beskytter hullets bagvæg
+  for (let i = 0; i < 6; i++){ const m = sh(new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,DEPTH+.25,8), wood));
+    m.position.set(1.07, -DEPTH/2 + .12, ZA - .9 + i*.36); scene.add(m); }
+  // fyld (kridtbrokker og sten), der pakkes i hullet til sidst
+  const fillG = new THREE.ExtrudeGeometry(new THREE.Shape([[-2.2,DEPTH],[.05,0],[.05,DEPTH]].map(p => new THREE.Vector2(p[0],p[1]))), {depth:2.28, bevelEnabled:false});
+  const fill = new THREE.Mesh(fillG, new THREE.MeshStandardMaterial({color:0xd8d2bf, roughness:1}));
+  fill.position.set(0,-DEPTH, ZA - 1.14); fill.receiveShadow = true; scene.add(fill);
+
+  // ---- skinner, slæde, sten ----
+  [-.62,.62].forEach(dz => { const m = sh(new THREE.Mesh(new THREE.BoxGeometry(34,.14,.26), wood)); m.position.set(-19.2,.07,ZA+dz); scene.add(m); });
+  for (let x = -35; x < -3; x += 2.2){ const m = sh(new THREE.Mesh(new THREE.BoxGeometry(.22,.1,2.0), wood2)); m.position.set(x,.03,ZA); scene.add(m); }
+  const sled = new THREE.Group(); scene.add(sled);
+  [-.62,.62].forEach(dz => { const m = sh(new THREE.Mesh(new THREE.BoxGeometry(6,.11,.3), wood2)); m.position.set(-3,.195,dz); sled.add(m); });
+  const pivot = sh(new THREE.Mesh(new THREE.CylinderGeometry(.13,.13,2.4,10), wood)); pivot.rotation.x = Math.PI/2; pivot.position.set(-2.2,.12,ZA); scene.add(pivot);
+
+  const stone = new THREE.Group(); scene.add(stone);
+  const sMesh = sh(new THREE.Mesh(stoneGeo(TH, L, WD, 11, .04), sarsen)); stone.add(sMesh);
+  const tenonG = new THREE.CylinderGeometry(.2,.26,.16,14);
+  [-.5,.5].forEach(dz => { const t = sh(new THREE.Mesh(tenonG, sarsen)); t.position.set(0, L + .06, dz); stone.add(t); });
+  // nabostenen står allerede
+  const nb = sh(new THREE.Mesh(stoneGeo(TH, L, WD, 23, .04), sarsen)); nb.position.set(.6,-DEPTH,ZN); scene.add(nb);
+  [-.5,.5].forEach(dz => { const t = sh(new THREE.Mesh(tenonG, sarsen)); t.position.set(.6, HTOP + .06, ZN + dz); scene.add(t); });
+
+  // ---- overligger og træplatform ----
+  const lintelMat = new THREE.MeshStandardMaterial({color:0xdbd4c5, map:TEX.stone, bumpMap:TEX.bump, bumpScale:BUMP, roughness:.96, transparent:true, opacity:1});
+  const lin = new THREE.Group(); scene.add(lin);
+  lin.add(sh(new THREE.Mesh(stoneGeo(3.2,.8,1.05, 31, .02), lintelMat)));
+  lin.children[0].rotation.y = Math.PI/2; lin.children[0].position.y = -.4;
+  const holeM = new THREE.MeshBasicMaterial({color:0x2b2822});
+  [-1.1,1.1].forEach(z => { const h = new THREE.Mesh(new THREE.CylinderGeometry(.27,.27,.03,16), holeM); h.position.set(0,-.4,z); lin.add(h); });
+  const NL = 14, LH = .3, crib = [];
+  for (let k = 0; k < NL; k++){
+    const g = new THREE.Group(); const alongZ = k % 2 === 0;
+    const n = alongZ ? 5 : 6;
+    for (let i = 0; i < n; i++){
+      const m = sh(new THREE.Mesh(new THREE.CylinderGeometry(.14,.14, alongZ ? 4.6 : 3.3, 8), k % 3 ? wood : wood2));
+      if (alongZ){ m.rotation.x = Math.PI/2; m.position.set(-3.3 + i*.72, 0, 0); }
+      else { m.rotation.z = Math.PI/2; m.position.set(-1.85, 0, -2.1 + i*.84); }
+      g.add(m);
+    }
+    g.position.y = k*LH + LH/2; scene.add(g); crib.push(g);
+  }
+
+  // ---- A-ramme og reb ----
+  const aFrame = new THREE.Group(); scene.add(aFrame);
+  const poleG = new THREE.CylinderGeometry(.09,.11,7,8); poleG.translate(0,3.5,0);
+  const poles = [-1,1].map(s => { const m = sh(new THREE.Mesh(poleG, wood)); aFrame.add(m); return m; });
+  const ropeMat = new THREE.MeshStandardMaterial({color:0x9a8452, roughness:1});
+  const ropeG = new THREE.CylinderGeometry(.035,.035,1,6); ropeG.translate(0,.5,0);
+  const mkRope = n => { const g = new THREE.Group(); for (let i = 0; i < n - 1; i++){ const m = new THREE.Mesh(ropeG, ropeMat); m.castShadow = true; g.add(m); } scene.add(g); return g; };
+  const ropes = [mkRope(3), mkRope(3)];
+  const setRope = (l, pts) => l.children.forEach((m,i) => aim(m, pts[i], pts[i+1], 1));
+
+  // ---- folk ----
+  const skin = new THREE.MeshStandardMaterial({color:0xd9a77c, roughness:.8});
+  const cloth = [0x7a5a3a, 0x8f6b45, 0x6b6b4a, 0x9a7b56].map(c => new THREE.MeshStandardMaterial({color:c, roughness:1}));
+  const bodyG = new THREE.CylinderGeometry(.15,.2,.78,10); bodyG.translate(0,1.0,0);      // tunic
+  const legG = new THREE.CylinderGeometry(.065,.055,.66,6); legG.translate(0,.33,0);
+  const armG = new THREE.CylinderGeometry(.05,.045,.62,6); armG.translate(0,-.31,0);
+  const headG = new THREE.SphereGeometry(.125,12,10), hairG = new THREE.SphereGeometry(.133,12,8,0,Math.PI*2,0,Math.PI*.52);
+  const hair = [0x3b2a1c, 0x5a4026, 0x2a211a].map(c => new THREE.MeshStandardMaterial({color:c, roughness:1}));
+  function person(i, arm = -.9){ const g = new THREE.Group(), c = cloth[i % 4];
+    const b = sh(new THREE.Mesh(bodyG, c)), h = sh(new THREE.Mesh(headG, skin)), hr = new THREE.Mesh(hairG, hair[i % 3]);
+    h.position.y = 1.53; hr.position.y = 1.54; g.add(b,h,hr);
+    [-1,1].forEach(s => { const l = sh(new THREE.Mesh(legG, skin)); l.position.z = s*.08;
+      const a = sh(new THREE.Mesh(armG, skin)); a.position.set(0,1.34,s*.2); a.rotation.z = arm; g.add(l,a); });
+    scene.add(g); return g; }
+  const haul = [], NH = 10;
+  for (let r = 0; r < 2; r++) for (let i = 0; i < NH; i++) haul.push({g:person(r*NH+i), r, i});
+  const crew = []; for (let i = 0; i < 8; i++) crew.push({g:person(i+3, .5), i});
+  const leverG = new THREE.CylinderGeometry(.045,.055,3.4,6); leverG.translate(0,1.7,0);
+  const levers = crew.map(() => { const m = sh(new THREE.Mesh(leverG, wood2)); scene.add(m); return m; });
+
+  // ---- tidslinjen: T fra 0 til 6, ét trin pr. heltal ----
+  const P = {x:-2.2, y:.25}, S0 = 3.2, TH2 = TH/2, RAMP = Math.atan2(DEPTH, 2.25);
+  const K2 = {x:.62, y:-1.95, th:62*RAD}, K3 = {x:.6, y:-DEPTH, th:Math.PI/2};
+  const aboutPivot = th => ({x:P.x + TH2*Math.sin(th) + S0*Math.cos(th), y:P.y + TH2*Math.cos(th) - S0*Math.sin(th), th});
+  function pose(T){
+    if (T < 1) return {x:lerp(-9, 1.0, ease(T)), y:.8, th:0};
+    if (T < 2){ const u = T - 1;
+      if (u < .72) return aboutPivot(RAMP*ease(u/.72));
+      const a = aboutPivot(RAMP), w = ease((u - .72)/.28);
+      return {x:lerp(a.x,K2.x,w), y:lerp(a.y,K2.y,w), th:lerp(a.th,K2.th,w)}; }
+    if (T < 3){ const w = ease((T - 2)/.7); return {x:lerp(K2.x,K3.x,w), y:lerp(K2.y,K3.y,w), th:lerp(K2.th,K3.th,w)}; }
+    return K3;
+  }
+  const STAGES = [
+    ['1 · The sledge', 'The stone is dragged forward', 'The stone lies on a wooden sledge that slides on greased timber rails. Long ropes of plant fibre and a large team pull.', 'Experiments show that a sledge on rails works better than rollers, which easily get stuck in soft ground.'],
+    ['2 · The hole', 'The stone is tipped into the hole', 'The hole has one sloping side and one vertical side lined with timber stakes so the chalk is not crushed. The stone is pushed out over the edge until it is just about to tip – then the rear end is lifted with levers and the foot slides down the ramp.', 'Certain: excavated stone holes have exactly this shape, with a ramp and stake slots.'],
+    ['3 · The raising', 'The stone is hauled upright', 'The ropes are led over an A-shaped timber frame, which gives the pull a better angle. The team hauls the stone the last few degrees to vertical, and the hole is packed hard with chalk rubble and stones.', 'Probable, but not proven: the A-frame has left no trace. Some think the stone was tipped up without one.'],
+    ['4 · The platform', 'The lintel is lifted', 'The lintel of 4–6 tonnes is levered up one end at a time, and a new layer of timber is slipped underneath – layer by layer, until it is 4 metres up.', 'The most widely accepted explanation. An earth ramp has also been proposed, but no traces of ramps have been found.'],
+    ['5 · In place', 'The lintel is pushed across', 'From the platform the lintel is wriggled sideways over the uprights and lowered onto the tenons. The timber is taken down and used for the next one.', 'The tenons were only finally shaped once the lintel was up, so that it fitted.'],
+    ['6 · The joint', 'Tenon and mortice', 'On top of each upright are tenons that engage mortice holes in the lintel. The joints are borrowed from carpentry and hold the stones in place to this day.', 'Certain: tenons and mortice holes can be seen on the stones today.']
+  ];
+  const CAMS = [
+    [[-15,6,13],[-5,1,ZA]], [[-8,3.6,8],[-.8,-.2,ZA]], [[4,5,15],[2.5,2.6,-1]],
+    [[-10,5.5,9],[-1,2,0]], [[-8,7.5,8],[0,3.6,0]], [[-3.4,5.9,3.0],[.6,4.4,.2]]
+  ];
+  let T = 0, playing = false, rev = false, curStage = -1, camT = 1;
+  const camFrom = [new THREE.Vector3(), new THREE.Vector3()], camTo = [new THREE.Vector3(), new THREE.Vector3()];
+  const stageBox = document.getElementById('stageBtns'), cap = document.getElementById('stageCap'), hud = document.getElementById('hud2');
+  const rT = document.getElementById('rT'), rPlay = document.getElementById('rPlay'), rRev = document.getElementById('rRev');
+  const sBtns = STAGES.map((s,i) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = s[0];
+    b.addEventListener('click', () => { T = i + .0001; rT.value = T; update(true); }); stageBox.appendChild(b); return b; });
+  function setPlay(p){ playing = p; rPlay.setAttribute('aria-pressed', p); rPlay.textContent = p ? '⏸ Pause' : '▶ Play'; }
+  rPlay.addEventListener('click', () => { if (!playing && !rev && T >= 5.999) T = 0; if (!playing && rev && T <= 0) T = 5.999; setPlay(!playing); });
+  rRev.addEventListener('click', () => { rev = !rev; rRev.setAttribute('aria-pressed', rev); });
+  rT.addEventListener('input', () => { T = +rT.value; update(false); });
+  canvas.addEventListener('pointerdown', () => { camT = 1; });
+
+  const tmp = new THREE.Vector3(), up = new THREE.Vector3(0,1,0);
+  function aim(mesh, a, b, len = 7){ mesh.position.copy(a); tmp.copy(b).sub(a); mesh.scale.y = tmp.length()/len; mesh.quaternion.setFromUnitVectors(up, tmp.normalize()); }
+  function update(jump){
+    T = clamp(T, 0, 5.999);
+    const st = Math.floor(T), u = T - st, mob = MOBILE ? 1.35 : 1;
+    if (st !== curStage){
+      curStage = st;
+      sBtns.forEach((b,i) => b.setAttribute('aria-pressed', i === st));
+      cap.innerHTML = `<b>${STAGES[st][1]}</b><p>${STAGES[st][2]}<span class="sure">${STAGES[st][3]}</span></p>`;
+      camFrom[0].copy(camera.position); camFrom[1].copy(controls.target);
+      camTo[1].set(...CAMS[st][1]); camTo[0].set(...CAMS[st][0]).sub(camTo[1]).multiplyScalar(mob).add(camTo[1]);
+      camT = jump === 'init' ? 1 : 0;
+      if (jump === 'init'){ camera.position.copy(camTo[0]); controls.target.copy(camTo[1]); }
+    }
+    // stenen
+    const p = pose(T);
+    stone.position.set(p.x, p.y, ZA); stone.rotation.z = Math.PI/2 - p.th;
+    const top = new THREE.Vector3(p.x - L*Math.cos(p.th), p.y + L*Math.sin(p.th), ZA);
+    sled.position.set(Math.min(p.x - .2, -2.2), 0, ZA); sled.visible = T < 3;
+    pivot.visible = T < 3;
+    // fyld
+    const fs = T < 2.7 ? 0 : ease((T - 2.7)/.3); fill.visible = fs > .001; fill.scale.y = Math.max(.001, fs);
+    // A-ramme
+    const af = T < 1.85 ? 0 : T < 2 ? ease((T - 1.85)/.15) : T < 2.8 ? 1 : 1 - ease((T - 2.8)/.2);
+    aFrame.visible = af > .01;
+    const beta = lerp(112, 66, ease((T - 2)/.7))*RAD;
+    const apex = new THREE.Vector3(2.6 + 7*Math.cos(beta)*af, 7*Math.sin(beta)*af, ZA);
+    poles.forEach((m,i) => aim(m, new THREE.Vector3(2.6, 0, ZA + (i ? 1.7 : -1.7)), apex.clone().setY(Math.max(.1, apex.y))));
+    // trækholdet
+    const walk = Math.sin(T*40);
+    haul.forEach(h => {
+      let x, lean, vis = true;
+      const dz = ZA + (h.r ? .75 : -.75);
+      if (T < 1){ x = p.x + 13 + h.i*1.25; lean = -.38; h.g.position.set(x, Math.abs(Math.sin(T*40 + h.i))*.05, dz); }
+      else if (T < 1.85){ x = 14 + h.i*1.25; lean = 0; h.g.position.set(x, 0, dz); }
+      else if (T < 2.7){ const pull = ease((T - 2)/.7); x = 13.5 + h.i*1.25 + pull*3.5; lean = T < 2 ? 0 : -.42*(1 - Math.abs(pull*2 - 1)*.3); h.g.position.set(x, Math.abs(Math.sin(T*40 + h.i))*.04*(pull > 0 && pull < 1 ? 1 : 0), dz); }
+      else { x = 17 + h.i*1.25 + (T - 2.7)*3; lean = 0; h.g.position.set(x, 0, dz); vis = T < 3.6; }
+      h.g.rotation.z = lean; h.g.visible = vis;
+    });
+    // reb
+    ropes.forEach((l,r) => {
+      const first = haul[r*NH].g.position, last = haul[r*NH + NH - 1].g.position, hand = new THREE.Vector3(0,.95,0);
+      if (T < 1){ l.visible = true; setRope(l, [new THREE.Vector3(p.x - .3, .55, ZA + (r ? .6 : -.6)), first.clone().add(hand), last.clone().add(hand)]); }
+      else if (T >= 1.85 && T < 2.8){ l.visible = true; setRope(l, [top.clone().setZ(ZA + (r ? .5 : -.5)), apex.clone().setY(Math.max(1, apex.y)), first.clone().add(hand)]); }
+      else l.visible = false;
+    });
+    // løftestangsholdet: først ved stenens bagende, senere ved platformen
+    const kc = st === 3 ? u*NL : st > 3 ? NL : 0, kk = Math.floor(kc), fr = kc - kk;
+    crew.forEach((c,i) => {
+      const lv = levers[i]; let vis = false;
+      if (T >= 1 && T < 1.75 && i < 6){
+        vis = true; const side = i % 2 ? 1 : -1, row = Math.floor(i/2);
+        const bx = top.x + .5 + row*.9, by = Math.max(0, top.y - .9);
+        c.g.position.set(bx - .2, 0, ZA + side*1.55); c.g.rotation.z = 0;
+        aim(lv, new THREE.Vector3(bx - .1, 1.0 + Math.sin(T*30 + i)*.08, ZA + side*1.45), new THREE.Vector3(bx + .5, by + .1, ZA + side*.5), 3.4);
+      } else if (st === 3 || (st === 4 && u < .55)){
+        vis = true; const endZ = i < 4 ? -1 : 1, j = i % 4, yb = st === 3 ? kk*LH : NL*LH;
+        const active = st === 3 && ((kk % 2 === 0) === (endZ < 0));
+        c.g.position.set(-3.2 + j*.78, yb, endZ*2.0); c.g.rotation.z = 0;
+        const hy = yb + 1.05 - (active ? Math.sin(fr*Math.PI)*.45 : 0);
+        aim(lv, new THREE.Vector3(-3.1 + j*.78, hy, endZ*1.95), new THREE.Vector3(-2.3 + j*.3, yb + .1 + (active ? Math.sin(fr*Math.PI)*.2 : 0), endZ*1.45), 3.4);
+      }
+      c.g.visible = lv.visible = vis;
+    });
+    // platform og overligger
+    const remove = st === 4 ? ease((u - .6)/.4) : st > 4 ? 1 : 0;
+    crib.forEach((g,k) => { g.visible = st >= 3 && (st > 3 || kc >= k + .5) && k < Math.round(NL*(1 - remove)); });
+    lin.visible = st >= 3;
+    let lx = -1.85, ly = .4, tilt = 0, op = 1;
+    if (st === 3){ ly = .4 + LH*(kk + ease(fr)); tilt = Math.sin(fr*Math.PI)*.055*(kk % 2 ? 1 : -1); }
+    if (st >= 4){ const w = st === 4 ? ease(u/.5) : 1, dn = st === 4 ? ease((u - .5)/.12) : 1;
+      lx = lerp(-1.85, .6, w); ly = lerp(.4 + LH*NL + .12*Math.sin(w*Math.PI), HTOP + .4, dn); }
+    if (st === 5){ const lift = Math.sin(clamp(u/.9,0,1)*Math.PI); ly += lift*1.1; op = 1 - .55*ease(u/.15)*(1 - ease((u - .85)/.15)); }
+    lin.position.set(lx, ly, 0); lin.rotation.x = tilt;
+    lintelMat.opacity = op; lintelMat.depthWrite = op > .98;
+    hud.innerHTML = `<b>Stage ${st + 1} of 6</b> · ${STAGES[st][1]}`;
+  }
+  new ResizeObserver(() => fit(renderer, camera, canvas)).observe(canvas);
+  fit(renderer, camera, canvas);
+  update('init');
+  watch(box, dt => {
+    if (playing){
+      T += (rev ? -1 : 1)*dt/7*(+document.getElementById('rSpd').value);
+      if (T >= 5.999 || T <= 0){ T = clamp(T,0,5.999); setPlay(false); }
+      rT.value = T; update(false);
+    }
+    if (camT < 1){ camT = Math.min(1, camT + dt/1.2); const w = ease(camT);
+      camera.position.lerpVectors(camFrom[0], camTo[0], w); controls.target.lerpVectors(camFrom[1], camTo[1], w); }
+    controls.update(); renderer.render(scene, camera);
+  });
+})();
+
+/* =====================================================================
+   3. KRAFTBEREGNER
+   ===================================================================== */
+(function(){
+  const $ = id => document.getElementById(id);
+  const m = $('cM'), mu = $('cMu'), a = $('cA'), p = $('cP');
+  const dk = (x,n) => x.toFixed(n);
+  function calc(){
+    const M = +m.value*1000, al = +a.value*RAD, F = M*9.82*(+mu.value*Math.cos(al) + Math.sin(al));
+    $('cMv').textContent = m.value + ' tonnes'; $('cMuv').textContent = dk(+mu.value,2);
+    $('cAv').textContent = dk(+a.value,1) + '°' + (+a.value > 0 ? ' (1:' + Math.round(1/Math.tan(al)) + ')' : '');
+    $('cPv').textContent = p.value + ' N';
+    $('cOut').innerHTML = Math.ceil(F/+p.value) + ' people <small>· total pull ' + dk(F/1000,0) + ' kN</small>';
+    $('cNote').textContent = 'Of this, friction ' + dk(M*9.82*+mu.value*Math.cos(al)/1000,0) + ' kN and weight up the slope ' + dk(M*9.82*Math.sin(al)/1000,0) + ' kN. 400 N corresponds to lifting 40 kg.';
+  }
+  [m,mu,a,p].forEach(e => e.addEventListener('input', calc));
+  const set = (M,MU,A,PP) => { m.value = M; mu.value = MU; a.value = A; p.value = PP; calc(); };
+  $('cBlue').addEventListener('click', () => set(3,.15,0,400));
+  $('cSarsen').addEventListener('click', () => set(25,.15,0,400));
+  $('cExp').addEventListener('click', () => set(40,.12,2.9,500));
+  calc();
+})();
+</script>
+<script src="lang-switch.js" defer></script>
+</body>
+</html>

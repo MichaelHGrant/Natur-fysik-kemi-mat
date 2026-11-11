@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quaternions – the formula on Broom Bridge | mhgfysik.dk</title>
+<meta name="description" content="Hamilton's quaternions from Broom Bridge in Dublin, 16 October 1843: i² = j² = k² = ijk = −1. Rules of calculation, rotations in 3D, slerp, gimbal lock and the 720° rotation – with interactive 3D examples.">
+<style>
+:root{
+  --bg:#06080d; --panel:#0e1320; --panel2:#141b2b; --ink:#e7e9ef; --muted:#9ba4b6;
+  --gold:#d8b46a; --gold2:#f2d590; --ice:#9fd0ff; --line:#252f47; --green:#7fd1b9; --red:#f08a7a; --violet:#c3a6ff;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;line-height:1.6}
+a{color:var(--gold2)}
+.wrap{max-width:1180px;margin:0 auto;padding:0 16px}
+header{padding:18px 0 8px;border-bottom:1px solid var(--line)}
+.crumb{font-size:.85rem;color:var(--muted)}
+.crumb a{color:var(--muted);text-decoration:none}
+.crumb a:hover{color:var(--gold2)}
+h1{font-family:Georgia,"Times New Roman",serif;font-weight:normal;color:var(--gold2);
+  font-size:clamp(1.6rem,4.2vw,2.5rem);margin:.3em 0 .2em;letter-spacing:.01em}
+h2{font-family:Georgia,serif;font-weight:normal;color:var(--gold);font-size:1.45rem;
+  margin:1.8em 0 .5em;border-bottom:1px solid var(--line);padding-bottom:.25em;scroll-margin-top:12px}
+h3{color:var(--gold2);font-size:1.08rem;margin:1.3em 0 .3em;scroll-margin-top:12px}
+.lead{color:#cfd4df;font-size:1.05rem;max-width:860px}
+p,li{max-width:900px}
+nav.toc{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 4px}
+nav.toc a{font-size:.82rem;text-decoration:none;color:#cfd4df;background:var(--panel2);border:1px solid var(--line);
+  border-radius:14px;padding:3px 10px}
+nav.toc a:hover{border-color:var(--gold);color:var(--gold2)}
+mjx-container{color:#fff}
+mjx-container[display="true"]{overflow-x:auto;overflow-y:hidden;padding:2px 0}
+.eq{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:8px;padding:6px 14px;margin:12px 0;max-width:900px}
+
+/* ---------- simulations ---------- */
+.simbox{position:relative;margin:14px 0 0;border:1px solid var(--line);border-radius:12px 12px 0 0;
+  overflow:hidden;background:#000;height:min(62vh,560px);min-height:340px;touch-action:none}
+.simbox.flat{height:min(58vh,480px)}
+.simbox > canvas{display:block;width:100%;height:100%}
+.hud{position:absolute;left:10px;top:8px;pointer-events:none;max-width:62%;font-size:.84rem;
+  background:rgba(8,11,19,.72);border:1px solid var(--line);border-radius:8px;padding:6px 10px;line-height:1.45}
+.hud b{color:var(--gold2);font-weight:normal}
+.hud .msg{color:var(--green);margin-top:3px}
+.hud .warn{color:var(--red);margin-top:3px}
+.labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.lbl{position:absolute;transform:translate(-50%,-120%);font-size:11.5px;color:#dfe5f2;white-space:nowrap;
+  text-shadow:0 0 3px #000,0 0 6px #000}
+.lbl.g{color:var(--gold2)} .lbl.b{color:var(--ice)} .lbl.gr{color:var(--green)} .lbl.r{color:var(--red)} .lbl.v{color:var(--violet)}
+.hint{position:absolute;right:10px;bottom:6px;font-size:.72rem;color:#7d879b;pointer-events:none}
+.simbox canvas.graph{position:absolute;right:10px;top:8px;width:250px;height:150px;background:rgba(8,11,19,.8);
+  border:1px solid var(--line);border-radius:8px;pointer-events:none}
+.controls{background:var(--panel);border:1px solid var(--line);border-top:none;border-radius:0 0 12px 12px;
+  padding:8px 12px 10px;margin-bottom:10px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0}
+button{background:var(--panel2);color:var(--ink);border:1px solid #33405e;border-radius:8px;
+  padding:6px 11px;font-size:.9rem;cursor:pointer;font-family:inherit}
+button:hover{border-color:var(--gold)}
+button.on{background:#3a2f17;border-color:var(--gold);color:var(--gold2)}
+button.chip{font-size:.8rem;padding:4px 10px;border-radius:14px}
+input[type=range]{accent-color:var(--gold)}
+input[type=number]{background:var(--panel2);color:var(--ink);border:1px solid #33405e;border-radius:6px;padding:3px 5px;width:66px;font-family:inherit}
+.sl{display:flex;align-items:center;gap:6px;font-size:.85rem;color:#c9cfdb;min-width:230px}
+.sl input[type=range]{flex:1;min-width:110px}
+.sl b{color:var(--gold2);font-weight:normal;min-width:62px;display:inline-block}
+label.tg{font-size:.85rem;color:#c9cfdb;display:flex;align-items:center;gap:4px;cursor:pointer;user-select:none}
+.sep{width:1px;height:22px;background:var(--line);margin:0 4px}
+select{background:var(--panel2);color:var(--ink);border:1px solid #33405e;border-radius:6px;padding:4px 6px;font-family:inherit}
+.task{font-size:.88rem;color:#c3c9d6;background:var(--panel2);border-radius:8px;padding:8px 14px;margin:8px 0 18px}
+.task b{color:var(--gold)}
+.task ol{margin:.3em 0;padding-left:1.3em}
+
+/* ---------- article ---------- */
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+@media(max-width:820px){.cols{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 16px;min-width:0}
+.card h3{margin-top:.4em}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+.tw{overflow-x:auto;max-width:100%}
+th,td{border-bottom:1px solid var(--line);padding:5px 6px;text-align:left}
+th{color:var(--gold);font-weight:normal}
+.note{font-size:.85rem;color:var(--muted)}
+blockquote{margin:.8em 0;padding:.4em 1em;border-left:3px solid var(--gold);color:#d6d9e2;font-family:Georgia,serif;font-style:italic;max-width:860px}
+.timeline{list-style:none;padding:0;margin:.5em 0}
+.timeline li{padding:4px 0 4px 92px;position:relative;border-bottom:1px dashed var(--line)}
+.timeline li span{position:absolute;left:0;top:4px;color:var(--gold2);font-family:Georgia,serif}
+ul.src{font-size:.86rem;color:#b9c0cf}
+footer{margin:40px 0 0;padding:16px 0 30px;border-top:1px solid var(--line);color:var(--muted);font-size:.85rem}
+@media(max-width:600px){
+  .hud{max-width:72%;font-size:.74rem;padding:4px 7px}
+  .simbox canvas.graph{width:170px;height:105px;top:auto;bottom:24px}
+  .lbl{font-size:10px}
+  button{padding:6px 9px}
+  .sl{min-width:100%}
+  .timeline li{padding-left:70px}
+  .hint{display:none}
+  input[type=number]{width:54px}
+}
+</style>
+<script>
+window.MathJax = { tex: { inlineMath: [['$','$'], ['\\(','\\)']] }, svg: { fontCache: 'global' } };
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+
+<!-- app (PWA) -->
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/app/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="mhgfysik">
+<script src="/app/app.js" defer></script>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="crumb"><a href="index-en.html#geometri">← Home</a> · Geometry · <a href="hamilton-mekanik-en.html">← Hamiltonian mechanics</a> · <a href="kvaternioner.html?lang=da">🇩🇰 Dansk</a></div>
+    <h1>Quaternions – the formula on Broom Bridge</h1>
+    <p class="lead">On Monday 16 October 1843 William Rowan Hamilton was walking along the Royal Canal in Dublin when he suddenly saw the solution to a problem he had struggled with for more than ten years. He took out his penknife and cut it into a stone of the bridge: $i^2=j^2=k^2=ijk=-1$. The formula defines the <b>quaternions</b> – a number system in which $ab\neq ba$. Today they steer the rotation of spacecraft, VR headsets, mobile phones and every single 3D animation on this website.</p>
+    <p class="note pdflink">This page as a PDF for printing: <a href="kvaternioner-en.pdf">English</a> · <a href="kvaternioner.pdf" hreflang="da">dansk</a></p>
+    <nav class="toc">
+      <a href="#broen">The bridge and the day</a>
+      <a href="#tripletter">Why not three dimensions?</a>
+      <a href="#regning">Calculating with quaternions</a>
+      <a href="#lommeregner">Calculator</a>
+      <a href="#vektorer">Birth of the dot and cross products</a>
+      <a href="#rotation">Rotations in 3D</a>
+      <a href="#slerp">Slerp: the shortest way</a>
+      <a href="#kardanlaas">Gimbal lock</a>
+      <a href="#spin">720° and the electron's spin</a>
+      <a href="#anvendelser">Applications</a>
+      <a href="#opgaver">Exercises</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+<h2 id="broen">The bridge and the day</h2>
+<p>Hamilton was Professor of Astronomy at Trinity College, lived at Dunsink Observatory north-west of Dublin and was President of the Royal Irish Academy. On 16 October 1843 he was to chair a council meeting of the Academy and walked into town along the towpath of the Royal Canal with his wife, Helen. When they reached the bridge at Cabra – today <b>Broom Bridge</b>, which Hamilton himself called Brougham Bridge – he felt "the galvanic circuit of thought close", as he later wrote. He saw that he had to use <em>four</em> dimensions instead of three, and that multiplication had to give up the commutative law. He cut the fundamental rules into a stone of the bridge and wrote them in his notebook the same evening. The next day he described the discovery in a long letter to his friend John T. Graves, and on 13 November he presented it to the Academy.</p>
+<p>In a letter to his son Archibald in 1865, shortly before his death, Hamilton recalled that every morning at breakfast the children had asked: "Well, Papa, can you multiply triplets?" – and that he had been obliged to reply, with a sad shake of the head, that he could only add and subtract them.</p>
+<div class="cols">
+  <div class="card">
+    <h3>The bridge today</h3>
+    <p>Hamilton's carving has long since disappeared. A stone plaque under the bridge, on the towpath side, was unveiled by the Taoiseach Éamon de Valera – himself a former mathematics teacher – on 13 November 1958. The plaque records that here Hamilton, in a flash of genius, discovered the fundamental formula for quaternion multiplication and cut it on a stone of the bridge. The bridge carries Broombridge Road over the Royal Canal and is named after William Broome, a director of the canal company. Hamilton's sons called it "Quaternion Bridge", and 16 October is today jokingly known as "Broomsday" (after Joyce's "Bloomsday").</p>
+  </div>
+  <div class="card">
+    <h3>The Hamilton Walk</h3>
+    <p>Since 1990 mathematicians have walked Hamilton's route from Dunsink Observatory to the bridge every year on 16 October. The walk was started by Tony O'Farrell of the mathematics department at Maynooth and has had participants such as Andrew Wiles, Roger Penrose, Timothy Gowers and the physicists Murray Gell-Mann, Steven Weinberg and Frank Wilczek. At the bridge the formula is read aloud – and some write it again in chalk.</p>
+  </div>
+</div>
+
+<h2 id="tripletter">Why not three dimensions?</h2>
+<p>The complex numbers $a+bi$ with $i^2=-1$ are points in a plane, and multiplying by a complex number means <em>rotating and scaling</em> in the plane. Hamilton wanted to do the same in space with "triplets" $a+bi+cj$. He wanted a multiplication in which the length of a product is the product of the lengths, $|ab|=|a|\,|b|$, as for the complex numbers. It did not work, and it cannot work. Try it: $(a+bi+cj)$ multiplied by itself gives a term in $ij$. If $ij$ is to be a number of the form $x+yi+zj$, you run into conflict with the length requirement. Hamilton realised on the bridge that $ij$ had to be a completely new number, $k$, perpendicular to the other three – and that $ji$ had to be $-k$.</p>
+<p>It has since been proved that Hamilton could not have done better. Ferdinand Georg Frobenius showed in 1877 that the real numbers, the complex numbers and the quaternions are the only finite-dimensional associative division algebras over the reals. Adolf Hurwitz showed in 1898 that algebras with $|ab|=|a||b|$ exist only in dimensions <b>1, 2, 4 and 8</b>. The eight-dimensional one is the <b>octonions</b>, which Graves found as early as December 1843 – after reading Hamilton's letter – and Arthur Cayley independently in 1845. There one must also give up the associative law.</p>
+
+<h2 id="regning">Calculating with quaternions</h2>
+<p>A quaternion is an expression</p>
+<div class="eq">$$q=a+bi+cj+dk,\qquad a,b,c,d\in\mathbb R ,$$</div>
+<p>where $a$ is called the scalar part and $bi+cj+dk$ the vector part. You add term by term and multiply out by the distributive law with the rules from the bridge:</p>
+<div class="eq">$$i^2=j^2=k^2=ijk=-1\quad\Longrightarrow\quad ij=k,\;\; jk=i,\;\; ki=j,\qquad ji=-k,\;\; kj=-i,\;\; ik=-j .$$</div>
+<p>(Multiply $ijk=-1$ on the right by $k$: $ij\,k^2=-k$, so $-ij=-k$ and $ij=k$. The rest follows in the same way.) The multiplication table is cyclic: $i\to j\to k\to i$ gives plus, the opposite way gives minus – the same pattern as the cross product of the unit vectors. One defines:</p>
+<ul>
+  <li><b>Conjugate:</b> $\bar q=a-bi-cj-dk$, and $\overline{pq}=\bar q\,\bar p$ (note the reversed order).</li>
+  <li><b>Norm:</b> $|q|^2=q\bar q=a^2+b^2+c^2+d^2$, and $|pq|=|p|\,|q|$.</li>
+  <li><b>Inverse:</b> $q^{-1}=\bar q/|q|^2$. So you can divide by any non-zero quaternion.</li>
+</ul>
+
+<h3 id="lommeregner">Calculator and multiplication table</h3>
+<p>Click a cell in the multiplication table (row times column), or type two quaternions and see that $pq$ and $qp$ differ, while the norm behaves nicely.</p>
+<div class="card" id="qcalc">
+  <div class="cols">
+    <div>
+      <table id="qtab" style="max-width:330px;text-align:center"></table>
+      <p id="qtabout" style="min-height:2.6em;margin:.5em 0"></p>
+    </div>
+    <div>
+      <div class="row"><b style="color:var(--gold2);width:24px">p =</b>
+        <input type="number" step="any" id="p0" value="1"> + <input type="number" step="any" id="p1" value="2"> i + <input type="number" step="any" id="p2" value="0"> j + <input type="number" step="any" id="p3" value="0"> k</div>
+      <div class="row"><b style="color:var(--ice);width:24px">q =</b>
+        <input type="number" step="any" id="q0" value="0"> + <input type="number" step="any" id="q1" value="0"> i + <input type="number" step="any" id="q2" value="1"> j + <input type="number" step="any" id="q3" value="1"> k</div>
+      <div id="qout" style="font-size:.95rem;line-height:1.8;margin-top:6px"></div>
+    </div>
+  </div>
+</div>
+
+<h2 id="vektorer">The birth of the dot and cross products</h2>
+<p>Write a quaternion as a pair of a scalar and an ordinary vector, $q=(a,\mathbf u)$. Multiplying out gives a compact formula:</p>
+<div class="eq">$$(a,\mathbf u)(b,\mathbf v)=\big(ab-\mathbf u\cdot\mathbf v,\;\;a\mathbf v+b\mathbf u+\mathbf u\times\mathbf v\big).$$</div>
+<p>For two "pure" quaternions (scalar part zero), $\mathbf u\mathbf v = -\mathbf u\cdot\mathbf v+\mathbf u\times\mathbf v$. Hamilton thus found the dot product and the cross product <em>as the two parts of a single product</em>, and it was he who introduced the words "scalar" and "vector". Peter Guthrie Tait and James Clerk Maxwell used quaternions in electromagnetism; Maxwell's <em>Treatise</em> (1873) writes the field equations with Hamilton's $\nabla$. But in the 1880s Josiah Willard Gibbs and Oliver Heaviside separated the two parts and created the vector analysis we use today. That set off a bitter "quaternion war" with Tait in the pages of <em>Nature</em>. Lord Kelvin, who disliked them, called quaternions in 1892 "an unmixed evil to those who have touched them in any way". The vectors won – for a hundred years.</p>
+
+<h2 id="rotation">Rotations in 3D with quaternions</h2>
+<p>The great comeback came with computers. A rotation by the angle $\theta$ about an axis with unit vector $\mathbf n$ corresponds to the unit quaternion</p>
+<div class="eq">$$q=\cos\frac\theta2+\sin\frac\theta2\,(n_x i+n_y j+n_z k),\qquad |q|=1 ,$$</div>
+<p>and a vector $\mathbf v$, regarded as the pure quaternion $v=v_xi+v_yj+v_zk$, is rotated by "sandwiching" it between $q$ and $\bar q$:</p>
+<div class="eq">$$v' = q\,v\,\bar q .$$</div>
+<p>Two rotations in succession are simply the product $q_2q_1$ – four numbers instead of a 3×3 matrix with nine. The French mathematician Olinde Rodrigues had in fact found the formula for composing rotations using half-angles in 1840, without seeing the algebra behind it; the connection became widely known only in the 20th century. Notice the <b>half-angle</b>: a rotation of 360° gives $q=-1$, and only after 720° is $q=+1$ again. Both $q$ and $-q$ rotate vectors in the same way.</p>
+<div class="simbox" id="box2"><div class="labels"></div><div class="hud" id="hud2"></div><div class="hint">Drag: rotate · pinch/scroll: zoom</div></div>
+<div class="controls" data-sim="s2">
+  <div class="row">
+    <button data-act="play">▶ Rotate</button><button data-act="rev">◀ Reverse</button><button data-act="reset">↺ Reset</button>
+    <span class="sep"></span>
+    <label class="sl">Speed <input type="range" data-speed min="0.1" max="3" step="0.1" value="1"><b>1.0×</b></label>
+  </div>
+  <div class="row">
+    <label class="sl">Angle θ <input type="range" id="th2" min="0" max="720" step="1" value="60"><b id="th2v"></b></label>
+    <label class="sl">Axis direction (azimuth) <input type="range" id="az2" min="0" max="360" step="1" value="30"><b id="az2v"></b></label>
+    <label class="sl">Axis elevation <input type="range" id="el2" min="-90" max="90" step="1" value="55"><b id="el2v"></b></label>
+  </div>
+</div>
+<div class="task"><b>Try it yourself.</b> The green arrow is the rotation axis $\mathbf n$; the red vector points out through the aircraft's nose and traces its path. <ol>
+  <li>Make the axis vertical (elevation 90°) and θ = 90°. What are the components of $q$? Do they match $\cos 45°$ and $\sin 45°$?</li>
+  <li>Run θ from 0° to 360°. The aircraft is back where it started – but what is $q$ now? Carry on to 720°.</li>
+  <li>Find an axis and an angle that turn the aircraft upside down with its nose pointing the same way. Is there more than one possibility?</li>
+</ol></div>
+
+<h2 id="slerp">Slerp: the shortest way between two orientations</h2>
+<p>In a film or a game a figure must glide smoothly from one orientation to another. With Euler angles (heading, pitch, roll) it is tempting to interpolate each angle separately, but that gives a convoluted, uneven motion. The unit quaternions lie on a three-dimensional sphere $S^3$ in four dimensions, and the natural path is the great circle between them. Ken Shoemake introduced <b>slerp</b> (<em>spherical linear interpolation</em>) in 1985:</p>
+<div class="eq">$$\operatorname{slerp}(q_0,q_1;t)=\frac{\sin\big((1-t)\Omega\big)}{\sin\Omega}\,q_0+\frac{\sin(t\Omega)}{\sin\Omega}\,q_1,\qquad \cos\Omega=q_0\cdot q_1 .$$</div>
+<p>Slerp rotates about one fixed axis at constant angular velocity – the shortest rotation from start to finish. If $q_0\cdot q_1<0$, one changes the sign of $q_1$ (it is the same rotation) so as not to go the long way round.</p>
+<div class="simbox" id="box3"><div class="labels"></div><div class="hud" id="hud3"></div><div class="hint">Drag: rotate · pinch/scroll: zoom</div></div>
+<div class="controls" data-sim="s3">
+  <div class="row">
+    <button data-act="play">▶ Play</button><button data-act="rev">◀ Reverse</button><button data-act="reset">↺ Reset</button>
+    <button id="b3new">🎲 New orientations</button>
+    <span class="sep"></span>
+    <label class="sl">Speed <input type="range" data-speed min="0.1" max="3" step="0.1" value="1"><b>1.0×</b></label>
+  </div>
+</div>
+<div class="task"><b>Try it yourself.</b> Both aircraft start in orientation A and end in B. The curves show where the nose points along the way. <ol>
+  <li>Which curve is part of a great circle? How long is each path (the angle in the readout)?</li>
+  <li>Roll the dice a few times. Can the Euler path become much longer than the slerp path? When do they look alike?</li>
+</ol></div>
+
+<h2 id="kardanlaas">Gimbal lock – the Apollo astronauts' nightmare</h2>
+<p>A gyroscope or an inertial navigation system sits in three gimbal rings: one for heading, one for pitch and one for roll. That corresponds to describing the orientation with three Euler angles. But when the pitch reaches 90°, the axis of the innermost ring coincides with that of the outermost. Two of the rings now turn about the same axis, and one degree of freedom is lost: <b>gimbal lock</b>. Mathematically, the volume spanned by the three axes is $\cos(\text{pitch})$, which becomes zero.</p>
+<p>The inertial platform of the Apollo spacecraft had exactly three gimbals. The computer gave a warning when the middle gimbal angle approached 70°, and at 85° the platform locked, so the astronauts had to realign it on the stars. During Apollo 11, Michael Collins jokingly asked Mission Control to send him a fourth gimbal for Christmas. Quaternions have no such singularities, and that is why modern spacecraft, drones and phones compute their orientation with quaternions. See also <a href="gyroskop-tippetop-en.html#inertinavigation">inertial navigation</a> on the gyroscope page.</p>
+<div class="simbox" id="box4"><div class="labels"></div><div class="hud" id="hud4"></div><div class="hint">Drag: rotate · pinch/scroll: zoom</div></div>
+<div class="controls" data-sim="s4">
+  <div class="row">
+    <label class="sl">Heading (gold ring) <input type="range" id="ya4" min="-180" max="180" step="1" value="25"><b id="ya4v"></b></label>
+    <label class="sl">Pitch (blue ring) <input type="range" id="pi4" min="-90" max="90" step="1" value="20"><b id="pi4v"></b></label>
+    <label class="sl">Roll (red ring) <input type="range" id="ro4" min="-180" max="180" step="1" value="0"><b id="ro4v"></b></label>
+  </div>
+  <div class="row"><button id="b4lock">Go to gimbal lock (pitch 90°)</button><button id="b4zero">Reset</button></div>
+</div>
+<div class="task"><b>Try it yourself.</b> <ol>
+  <li>Set the pitch to 90°. Now try changing heading and roll separately. Why do they do the same thing?</li>
+  <li>In gimbal lock the aircraft cannot turn about its own lateral axis without the rings having to turn infinitely fast. Which rotation has "disappeared"?</li>
+</ol></div>
+
+<h2 id="spin">720° and the electron's spin</h2>
+<p>That the quaternion becomes $-1$ after one full turn is not a curiosity. The unit quaternions form the group $SU(2)$, which covers the rotation group $SO(3)$ twice: to each rotation correspond two quaternions, $q$ and $-q$. Pauli's spin matrices are the quaternions in disguise: $i\leftrightarrow -i\sigma_x$, $j\leftrightarrow -i\sigma_y$, $k\leftrightarrow -i\sigma_z$. An electron's spin state transforms like $q$ itself – not like $q\,v\,\bar q$ – and therefore changes sign under a rotation of 360°. This has been measured directly with neutron interferometry (Rauch et al. and Werner et al., 1975). You can experience it with <b>Dirac's belt trick</b> or the "plate trick": hold a plate level on your hand and turn it through 360° – your arm is twisted. Turn it a further 360° the same way, and your arm is back in its starting position.</p>
+
+<h2 id="anvendelser">Applications today</h2>
+<ul>
+  <li><b>Computer graphics and games:</b> every 3D figure on this website is rotated by Three.js, which internally stores orientations as quaternions – including those on this page.</li>
+  <li><b>Spaceflight:</b> the Space Station, the Hubble telescope and most satellites control their attitude with quaternions.</li>
+  <li><b>Mobile phones, drones and VR:</b> gyroscopes and accelerometers are combined into a quaternion that is updated hundreds of times a second.</li>
+  <li><b>Robots and molecules:</b> robot arms, crystallography and molecular dynamics use quaternions to describe the rotation of rigid bodies without singularities.</li>
+  <li><b>Physics:</b> spin-½, $SU(2)$ in the Standard Model and Lorentz transformations (with complex quaternions).</li>
+</ul>
+
+<h2 id="opgaver">Exercises</h2>
+<ol>
+  <li>Calculate $(1+i)(1+j)$ and $(1+j)(1+i)$. Check that the norm of the product is $|1+i|\cdot|1+j|=2$.</li>
+  <li>Show from $i^2=j^2=k^2=ijk=-1$ that $jk=i$ and $ki=j$.</li>
+  <li>Rotate the vector $\mathbf v = i$ (the x-axis) by 90° about the z-axis with $q=\cos45°+k\sin45°$. Calculate $q\,i\,\bar q$ and show that the result is $j$.</li>
+  <li>Show that $q$ and $-q$ give the same rotation, but that the rotation by θ + 360° corresponds to $-q$.</li>
+  <li>Prove the formula $(0,\mathbf u)(0,\mathbf v)=(-\mathbf u\cdot\mathbf v,\;\mathbf u\times\mathbf v)$ by multiplying out $u_1i+u_2j+u_3k$ times $v_1i+v_2j+v_3k$.</li>
+</ol>
+
+<h2 id="kilder">Sources and further reading</h2>
+<ul class="src">
+  <li>W. R. Hamilton: "On Quaternions; or on a New System of Imaginaries in Algebra", <em>Philosophical Magazine</em>, 1844–1850, and <em>Lectures on Quaternions</em>, Dublin 1853.</li>
+  <li>T. L. Hankins: <em>Sir William Rowan Hamilton</em>. Johns Hopkins University Press, 1980.</li>
+  <li>S. L. Altmann: "Hamilton, Rodrigues, and the Quaternion Scandal", <em>Mathematics Magazine</em> 62 (1989) 291–308.</li>
+  <li>K. Shoemake: "Animating Rotation with Quaternion Curves", <em>SIGGRAPH '85</em>, Computer Graphics 19 (1985) 245–254.</li>
+  <li>J. B. Kuipers: <em>Quaternions and Rotation Sequences</em>. Princeton University Press, 1999.</li>
+  <li>J. Baez: "The Octonions", <em>Bull. Amer. Math. Soc.</em> 39 (2002) 145–205.</li>
+  <li>MacTutor History of Mathematics: "Dublin – Hamilton's plaque", and Wikipedia: <a href="https://en.wikipedia.org/wiki/Broom_Bridge">Broom Bridge</a>, <a href="https://en.wikipedia.org/wiki/Hamilton_Walk">Hamilton Walk</a>.</li>
+</ul>
+<p class="note">Related pages: <a href="hamilton-mekanik-en.html">Hamiltonian mechanics</a> · <a href="lagrange-mekanik-en.html">Lagrangian mechanics</a> · <a href="gyroskop-tippetop-en.html">The gyroscope and the tippe top</a> · <a href="principia-en.html">Newton's Principia</a>.</p>
+
+</main>
+<footer>
+  <div class="wrap">mhgfysik.dk · Michael H. Grant, lektor emeritus in physics &amp; mathematics · The content may be reused under <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a> with attribution. · <a href="index-en.html">Home</a></div>
+</footer>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* ================================================================
+   Fælles værktøj (samme motor som principia.html)
+   ================================================================ */
+const UP = new THREE.Vector3(0,1,0);
+const G0 = 9.82;
+const fmt = (x,d=2)=>{ if(!isFinite(x)) return '–'; if(Math.abs(x)<0.5*Math.pow(10,-d)) x=0; return x.toFixed(d).replace('-','−'); };
+const sims = [];
+const dummy = new THREE.Object3D();
+const _v = new THREE.Vector3(), _a = new THREE.Vector3();
+
+function makeView(boxId, {cam, target, bg=0x070a12, fog=false, polar=Math.PI*0.495}){
+  const box = document.getElementById(boxId);
+  const renderer = new THREE.WebGLRenderer({antialias:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  box.insertBefore(renderer.domElement, box.firstChild);
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(bg);
+  if(fog) scene.fog = new THREE.Fog(bg, 45, 140);
+  const camera = new THREE.PerspectiveCamera(45, 1, 0.05, 1000);
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true; controls.dampingFactor = 0.12; controls.maxPolarAngle = polar;
+  scene.add(new THREE.HemisphereLight(0xdfe6ff, 0x262a33, 1.1));
+  const dl = new THREE.DirectionalLight(0xffffff, 1.6); dl.position.set(8,14,9); scene.add(dl);
+  const view = {box, renderer, scene, camera, controls, labels: box.querySelector('.labels'), labelList: []};
+  view.setCam = (c=cam, t=target)=>{ camera.position.set(...c); controls.target.set(...t); controls.update(); };
+  view.setCam();
+  const resize = ()=>{ const w=box.clientWidth, h=box.clientHeight; if(!w||!h) return;
+    renderer.setSize(w, h, false); camera.aspect = w/h; camera.updateProjectionMatrix(); };
+  new ResizeObserver(resize).observe(box); resize();
+  return view;
+}
+function addLabel(view, cls=''){
+  const el = document.createElement('div'); el.className = 'lbl '+cls; view.labels.appendChild(el);
+  const L = {el, pos:new THREE.Vector3(), show:true, set(t){ if(this._t!==t){ this._t=t; el.innerHTML=t; } }};
+  view.labelList.push(L); return L;
+}
+function updateLabels(view){
+  const w=view.box.clientWidth, h=view.box.clientHeight;
+  for(const L of view.labelList){
+    if(!L.show){ L.el.style.display='none'; continue; }
+    _v.copy(L.pos).project(view.camera);
+    if(_v.z>1 || Math.abs(_v.x)>1.1 || Math.abs(_v.y)>1.1){ L.el.style.display='none'; continue; }
+    L.el.style.display='block';
+    L.el.style.left=((_v.x+1)/2*w)+'px'; L.el.style.top=((1-_v.y)/2*h)+'px';
+  }
+}
+function makeArrow(color, r=0.06){
+  const g = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({color, emissive:color, emissiveIntensity:0.45, roughness:0.4});
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(r,r,1,12), mat);
+  const head = new THREE.Mesh(new THREE.ConeGeometry(r*2.6, r*6, 16), mat);
+  g.add(shaft, head);
+  const d = new THREE.Vector3();
+  g.set = (origin, dir, len)=>{
+    if(!(len>1e-3)){ g.visible=false; return; }
+    g.visible = true; g.position.copy(origin);
+    const hl = Math.min(r*6, len*0.5);
+    shaft.scale.set(1, len-hl, 1); shaft.position.y = (len-hl)/2;
+    head.scale.setScalar(hl/(r*6)); head.position.y = len-hl/2;
+    d.copy(dir).normalize(); g.quaternion.setFromUnitVectors(UP, d);
+  };
+  return g;
+}
+function starField(scene, n=1600, R=400){
+  const p=new Float32Array(n*3);
+  for(let i=0;i<n;i++){ const u=Math.random()*2-1, th=Math.random()*Math.PI*2, s=Math.sqrt(1-u*u);
+    p[3*i]=R*s*Math.cos(th); p[3*i+1]=R*u; p[3*i+2]=R*s*Math.sin(th); }
+  const g=new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(p,3));
+  const pts=new THREE.Points(g, new THREE.PointsMaterial({color:0xcfd6ff, size:1.3, sizeAttenuation:false, fog:false}));
+  scene.add(pts); return pts;
+}
+const std = (color, o={})=> new THREE.MeshStandardMaterial(Object.assign({color, roughness:0.55, metalness:0.1}, o));
+/* en 2D-canvas, der følger sin CSS-størrelse og skærmens pixeltæthed */
+function fit2d(cv){
+  const dpr=Math.min(window.devicePixelRatio||1,2), W=cv.clientWidth, H=cv.clientHeight;
+  if(cv.width!==Math.round(W*dpr) || cv.height!==Math.round(H*dpr)){ cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); }
+  const c=cv.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0); return {c,W,H};
+}
+/* en lille trail (linje) i 3D med fast kapacitet */
+function makeTrail(scene, color, cap=1500, opacity=0.9){
+  const pos=new Float32Array(cap*3), g=new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos,3).setUsage(THREE.DynamicDrawUsage));
+  const line=new THREE.Line(g, new THREE.LineBasicMaterial({color, transparent:true, opacity}));
+  line.frustumCulled=false; scene.add(line);
+  return {line, pos, cap, n:0,
+    clear(){ this.n=0; g.setDrawRange(0,0); },
+    push(x,y,z){ if(this.n>=cap){ pos.copyWithin(0,3); this.n=cap-1; } pos[3*this.n]=x; pos[3*this.n+1]=y; pos[3*this.n+2]=z; this.n++;
+      g.setDrawRange(0,this.n); g.attributes.position.needsUpdate=true; }};
+}
+
+/* --------- simulations-runner: start/pause, baglæns, tempo --------- */
+function addSim(sim){
+  Object.assign(sim, {running:false, reverse:false, speed:1, hist:[], visible:false, finished:false});
+  sims.push(sim);
+  const box = sim.view ? sim.view.box : sim.box;
+  new IntersectionObserver(es=>{ sim.visible = es[0].isIntersecting; }, {rootMargin:'100px'}).observe(box);
+  const bar = document.querySelector(`.controls[data-sim="${sim.id}"]`);
+  sim.bar = bar;
+  sim.restart = (newMode)=>{ sim.hist.length=0; sim.finished=false; sim.reset(newMode); };
+  bar.querySelectorAll('[data-act]').forEach(b=>b.addEventListener('click', ()=>{
+    const a=b.dataset.act;
+    if(a==='play'){
+      if(!sim.running && sim.finished && !sim.reverse) sim.restart();
+      if(sim.reverse){ sim.reverse=false; sim.running=true; }
+      else sim.running = !sim.running;
+    } else if(a==='rev'){
+      if(sim.reverse){ sim.reverse=false; sim.running=false; }
+      else if(sim.hist.length || (sim.reversible && sim.tNow()>1e-9)){ sim.reverse=true; sim.running=true; sim.finished=false; }
+    } else if(a==='reset'){ sim.restart(); sim.running=false; sim.reverse=false; }
+    syncBar(sim);
+  }));
+  const sp = bar.querySelector('[data-speed]');
+  if(sp) sp.addEventListener('input', ()=>{ sim.speed=+sp.value; sp.nextElementSibling.textContent = fmt(sim.speed,1)+'×'; });
+  bar.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click', ()=>{
+    bar.querySelectorAll('[data-mode]').forEach(x=>x.classList.toggle('on', x===b));
+    sim.mode = b.dataset.mode;
+    bar.querySelectorAll('[data-for]').forEach(r=>r.style.display = (r.dataset.for===sim.mode)?'':'none');
+    sim.restart(true); sim.running=false; sim.reverse=false; syncBar(sim);
+  }));
+  bar.querySelectorAll('[data-for]').forEach(r=>r.style.display = (r.dataset.for===sim.mode)?'':'none');
+}
+function syncBar(sim){
+  const p = sim.bar.querySelector('[data-act="play"]'), r = sim.bar.querySelector('[data-act="rev"]');
+  if(p){ p.textContent = (sim.running && !sim.reverse) ? '⏸ Pause' : '▶ Start'; p.classList.toggle('on', sim.running && !sim.reverse); }
+  if(r) r.classList.toggle('on', sim.reverse);
+}
+function param(id, obj, key, show, onChange){
+  const el=document.getElementById(id), out=document.getElementById(id+'v');
+  const upd=()=>{ obj[key] = (el.tagName==='SELECT') ? el.value : (el.type==='checkbox' ? el.checked : +el.value); if(out) out.innerHTML = show(obj[key]); };
+  el.addEventListener('input', ()=>{ upd(); onChange&&onChange(); }); upd();
+}
+function paramReset(sim){ return ()=>{ const was = sim.running && !sim.reverse; sim.restart(); sim.running = was; sim.reverse=false; syncBar(sim); }; }
+
+function startLoop(){
+  const clock = new THREE.Clock();
+  function frame(){
+    requestAnimationFrame(frame);
+    const dt = Math.min(clock.getDelta(), 0.05);
+    for(const s of sims){
+      if(!s.visible) continue;
+      if(s.running){
+        if(s.reverse && s.reversible){
+          s.step(-Math.min(dt*s.speed, s.tNow()));
+          if(s.tNow()<=1e-9){ s.running=false; s.reverse=false; syncBar(s); }
+        } else if(s.reverse){
+          const st = s.hist.pop(); if(st) s.setState(st);
+          if(!s.hist.length){ s.running=false; s.reverse=false; syncBar(s); }
+        } else {
+          if(!s.reversible) s.hist.push(s.getState());
+          if(s.hist.length>9000) s.hist.splice(0,1500);
+          s.step(dt*s.speed);
+          if(s.done && s.done()){ s.running=false; s.finished=true; syncBar(s); }
+        }
+      }
+      s.draw(dt);
+      if(s.view){
+        s.view.controls.update();
+        s.view.renderer.render(s.view.scene, s.view.camera);
+        updateLabels(s.view);
+      }
+      if(s.hud) s.hud();
+    }
+  }
+  sims.forEach(syncBar);
+  frame();
+}
+
+
+/* ================================================================
+   Kvaternion-regning
+   ================================================================ */
+const qmul=(p,q)=>[
+  p[0]*q[0]-p[1]*q[1]-p[2]*q[2]-p[3]*q[3],
+  p[0]*q[1]+p[1]*q[0]+p[2]*q[3]-p[3]*q[2],
+  p[0]*q[2]-p[1]*q[3]+p[2]*q[0]+p[3]*q[1],
+  p[0]*q[3]+p[1]*q[2]-p[2]*q[1]+p[3]*q[0]];
+const qnorm=q=>Math.hypot(q[0],q[1],q[2],q[3]);
+function qstr(q,d=3){
+  const u=['','i','j','k']; let s='';
+  for(let n=0;n<4;n++){ const v=q[n]; if(Math.abs(v)<1e-9) continue;
+    const a=Math.abs(v), num=(n>0&&Math.abs(a-1)<1e-9)?'':(+a.toFixed(d)).toString();
+    s+=(s? (v<0?' − ':' + ') : (v<0?'−':''))+num+(n?'<i>'+u[n]+'</i>':''); }
+  return s||'0';
+}
+const fmtq=q=>qstr(q,4);
+
+/* ---------- gangetavle og lommeregner ---------- */
+{
+  const U=[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]], nm=['1','<i>i</i>','<i>j</i>','<i>k</i>'];
+  const tab=document.getElementById('qtab'), out=document.getElementById('qtabout');
+  let html='<tr><th style="text-align:center">·</th>'+nm.map(n=>`<th style="text-align:center">${n}</th>`).join('')+'</tr>';
+  for(let r=0;r<4;r++){ html+=`<tr><th style="text-align:center">${nm[r]}</th>`;
+    for(let c=0;c<4;c++){ html+=`<td data-r="${r}" data-c="${c}" style="text-align:center;cursor:pointer;border:1px solid var(--line)">${qstr(qmul(U[r],U[c]))}</td>`; }
+    html+='</tr>'; }
+  tab.innerHTML=html;
+  tab.querySelectorAll('td').forEach(td=>td.addEventListener('click',()=>{
+    tab.querySelectorAll('td').forEach(x=>x.style.background='');
+    const r=+td.dataset.r, c=+td.dataset.c; td.style.background='#3a2f17';
+    const sw=tab.querySelector(`td[data-r="${c}"][data-c="${r}"]`); if(sw!==td) sw.style.background='#16304a';
+    const ab=qstr(qmul(U[r],U[c])), ba=qstr(qmul(U[c],U[r]));
+    out.innerHTML=`${nm[r]} · ${nm[c]} = <b style="color:var(--gold2)">${ab}</b>, but ${nm[c]} · ${nm[r]} = <b style="color:var(--ice)">${ba}</b>`+
+      (ab===ba?' – these two commute.':' – the order matters!');
+  }));
+  const ids=['p0','p1','p2','p3','q0','q1','q2','q3'].map(i=>document.getElementById(i));
+  const qo=document.getElementById('qout');
+  const calc=()=>{
+    const v=ids.map(e=>+e.value||0), p=v.slice(0,4), q=v.slice(4), pq=qmul(p,q), qp=qmul(q,p);
+    qo.innerHTML=`<span style="color:var(--gold2)">p</span><span style="color:var(--ice)">q</span> = ${qstr(pq)}<br>`+
+      `<span style="color:var(--ice)">q</span><span style="color:var(--gold2)">p</span> = ${qstr(qp)}<br>`+
+      `|p| · |q| = ${fmt(qnorm(p),4)} · ${fmt(qnorm(q),4)} = ${fmt(qnorm(p)*qnorm(q),4)} &nbsp; og &nbsp; |pq| = ${fmt(qnorm(pq),4)}<br>`+
+      (qnorm(q)>0?`q<sup>−1</sup> = q̄ / |q|² = ${qstr([q[0],-q[1],-q[2],-q[3]].map(x=>x/qnorm(q)**2))}`:'');
+  };
+  ids.forEach(e=>e.addEventListener('input',calc)); calc();
+  tab.querySelector('td[data-r="1"][data-c="2"]').click();
+}
+
+/* ---------- et lille fly: næsen langs +x ---------- */
+function makePlane(body=0xd8b46a){
+  const g=new THREE.Group();
+  const fus=new THREE.Mesh(new THREE.CylinderGeometry(0.13,0.09,1.5,16), std(body,{metalness:0.4,roughness:0.35})); fus.rotation.z=-Math.PI/2; g.add(fus);
+  const nose=new THREE.Mesh(new THREE.ConeGeometry(0.13,0.35,16), std(0xe6e8ee,{metalness:0.6})); nose.rotation.z=-Math.PI/2; nose.position.x=0.92; g.add(nose);
+  const wing=new THREE.Mesh(new THREE.BoxGeometry(0.42,0.03,1.7), std(body,{metalness:0.3})); wing.position.x=0.08; g.add(wing);
+  const tipL=new THREE.Mesh(new THREE.BoxGeometry(0.42,0.04,0.14), std(0xe0503c)); tipL.position.set(0.08,0,-0.82); g.add(tipL);
+  const tipR=new THREE.Mesh(new THREE.BoxGeometry(0.42,0.04,0.14), std(0x3cbf6a)); tipR.position.set(0.08,0,0.82); g.add(tipR);
+  const stab=new THREE.Mesh(new THREE.BoxGeometry(0.25,0.03,0.7), std(body)); stab.position.x=-0.65; g.add(stab);
+  const fin=new THREE.Mesh(new THREE.BoxGeometry(0.28,0.38,0.03), std(0x6fa8dc)); fin.position.set(-0.66,0.2,0); g.add(fin);
+  return g;
+}
+function axesLines(scene, L=2.6){
+  const mk=(v,c)=>{ const g=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),v.clone().multiplyScalar(L)]); scene.add(new THREE.Line(g,new THREE.LineBasicMaterial({color:c,transparent:true,opacity:0.55}))); };
+  mk(new THREE.Vector3(1,0,0),0xe0503c); mk(new THREE.Vector3(0,1,0),0x3cbf6a); mk(new THREE.Vector3(0,0,1),0x4f86c6);
+}
+function wireSphere(scene, r, pos){
+  const s=new THREE.Mesh(new THREE.SphereGeometry(r,32,20), new THREE.MeshBasicMaterial({color:0x6f7fa6,wireframe:true,transparent:true,opacity:0.12}));
+  if(pos) s.position.copy(pos); scene.add(s); return s;
+}
+function polyline(scene,color,cap,opacity=1){
+  const pos=new Float32Array(cap*3), g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3).setUsage(THREE.DynamicDrawUsage));
+  const l=new THREE.Line(g,new THREE.LineBasicMaterial({color,transparent:true,opacity})); l.frustumCulled=false; scene.add(l);
+  return {set(pts){ const n=Math.min(cap,pts.length); for(let i=0;i<n;i++){ pos[3*i]=pts[i].x; pos[3*i+1]=pts[i].y; pos[3*i+2]=pts[i].z; } g.setDrawRange(0,n); g.attributes.position.needsUpdate=true; }, line:l};
+}
+
+/* ================================================================
+   SIM 2 – drejning med en enhedskvaternion
+   ================================================================ */
+const v2=makeView('box2',{cam:[3.4,2.6,4.6],target:[0,0,0],polar:Math.PI});
+const s2={id:'s2', view:v2};
+const P2={th:60, az:30, el:55};
+const hud2=document.getElementById('hud2');
+axesLines(v2.scene); wireSphere(v2.scene,1.8);
+const plane2=makePlane(); v2.scene.add(plane2);
+const axisArrow=makeArrow(0x7fd1b9,0.035); v2.scene.add(axisArrow);
+const axisBack=polyline(v2.scene,0x7fd1b9,2,0.5);
+const vecArrow=makeArrow(0xf08a7a,0.03); v2.scene.add(vecArrow);
+const vecStart=makeArrow(0xf08a7a,0.02); v2.scene.add(vecStart); vecStart.traverse(o=>{ if(o.material){ o.material=o.material.clone(); o.material.transparent=true; o.material.opacity=0.35; } });
+const arc2=polyline(v2.scene,0xf2d590,400);
+const ln=addLabel(v2,'gr'), lv=addLabel(v2,'r');
+let st2;
+const axisVec=()=>{ const a=P2.az*Math.PI/180, e=P2.el*Math.PI/180; return new THREE.Vector3(Math.cos(e)*Math.cos(a), Math.sin(e), -Math.cos(e)*Math.sin(a)); };
+s2.reset=()=>{ st2={th:P2.th}; };
+s2.getState=()=>({...st2}); s2.setState=s=>{ st2={...s}; syncSlider(); };
+s2.step=dt=>{ st2.th=Math.min(720,st2.th+60*dt); syncSlider(); };
+s2.done=()=>st2.th>=720;
+const th2El=document.getElementById('th2'), th2Out=document.getElementById('th2v');
+function syncSlider(){ th2El.value=st2.th; th2Out.textContent=fmt(st2.th,0)+'°'; }
+s2.draw=()=>{
+  const n=axisVec(), th=st2.th*Math.PI/180;
+  const q=new THREE.Quaternion().setFromAxisAngle(n,th);
+  plane2.quaternion.copy(q);
+  axisArrow.set(n.clone().multiplyScalar(-0.2), n, 2.6); axisBack.set([new THREE.Vector3(),n.clone().multiplyScalar(-2.4)]);
+  const v0=new THREE.Vector3(1.8,0,0), v=v0.clone().applyQuaternion(q);
+  vecArrow.set(new THREE.Vector3(), v, 1.8); vecStart.set(new THREE.Vector3(), v0, 1.8);
+  const pts=[]; const N=Math.max(2,Math.round(st2.th/2));
+  for(let i=0;i<=N;i++){ pts.push(v0.clone().applyQuaternion(new THREE.Quaternion().setFromAxisAngle(n,th*i/N))); }
+  arc2.set(pts);
+  ln.pos.copy(n).multiplyScalar(2.75); ln.set('axis n'); lv.pos.copy(v).multiplyScalar(1.12); lv.set('v′ = q v q̄');
+};
+s2.hud=()=>{
+  const n=axisVec(), h=st2.th*Math.PI/360, w=Math.cos(h), s=Math.sin(h);
+  const q=[w,s*n.x,s*n.y,s*n.z];
+  // akser i siden: x rød, y grøn, z blå  (z ud mod beskueren)
+  const neg = Math.abs(st2.th-360)<1.5, pos = Math.abs(st2.th-720)<1.5;
+  hud2.innerHTML=`<b>θ</b> = ${fmt(st2.th,0)}° &nbsp; <b>n</b> = (${fmt(n.x,2)}, ${fmt(n.y,2)}, ${fmt(n.z,2)})<br>`+
+    `<b>q</b> = ${fmtq(q)}<br>cos(θ/2) = ${fmt(w,4)} &nbsp; |q| = ${fmt(qnorm(q),4)}`+
+    (neg?`<div class="warn">θ = 360°: the aircraft is back – but q = −1!</div>`:pos?`<div class="msg">θ = 720°: now q = +1 again.</div>`:
+     st2.th>360?`<div class="msg">Over 360°: q has the opposite sign to the rotation θ − 360°.</div>`:`<div class="msg">The half-angle: q = cos(θ/2) + sin(θ/2) n.</div>`);
+};
+addSim(s2);
+param('th2',P2,'th',v=>fmt(v,0)+'°',()=>{ st2.th=P2.th; s2.hist.length=0; });
+param('az2',P2,'az',v=>v+'°'); param('el2',P2,'el',v=>v+'°');
+s2.restart();
+
+/* ================================================================
+   SIM 3 – slerp mod lineær interpolation af Euler-vinkler
+   ================================================================ */
+const v3=makeView('box3',{cam:[0,2.6,7.4],target:[0,0,0],polar:Math.PI});
+const s3={id:'s3', view:v3};
+const hud3=document.getElementById('hud3');
+const OFF=2.4, RS=1.6;
+const cA=new THREE.Vector3(-OFF,0,0), cB=new THREE.Vector3(OFF,0,0);
+wireSphere(v3.scene,RS,cA); wireSphere(v3.scene,RS,cB);
+const plS=makePlane(), plE=makePlane(0x9aa3b5); plS.position.copy(cA); plE.position.copy(cB); v3.scene.add(plS,plE);
+const fullS=polyline(v3.scene,0xf2d590,200,0.25), fullE=polyline(v3.scene,0x9fd0ff,200,0.25);
+const trS=polyline(v3.scene,0xf2d590,200), trE=polyline(v3.scene,0x9fd0ff,200);
+const dots=[]; for(const c of [cA,cB]) for(const col of [0x7fd1b9,0xf08a7a]){ const d=new THREE.Mesh(new THREE.SphereGeometry(0.06,12,10),new THREE.MeshBasicMaterial({color:col})); v3.scene.add(d); dots.push({d,c}); }
+const lS3=addLabel(v3,'g'), lE3=addLabel(v3,'b'); lS3.pos.set(-OFF,-RS-0.15,0); lS3.set('slerp (quaternions)'); lE3.pos.set(OFF,-RS-0.15,0); lE3.set('Euler angles, linear');
+const lA=addLabel(v3,'gr'), lB=addLabel(v3,'r');
+let eA, eB, qA, qB, pathS=[], pathE=[], angS=0, angE=0;
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const eulerAt=t=>new THREE.Euler(eA.x+(eB.x-eA.x)*t, eA.y+(eB.y-eA.y)*t, eA.z+(eB.z-eA.z)*t, 'YXZ');
+const slerpAt=t=>new THREE.Quaternion().slerpQuaternions(qA,qB,t);
+const qOfE=e=>new THREE.Quaternion().setFromEuler(e);
+const nose=q=>new THREE.Vector3(RS,0,0).applyQuaternion(q);
+function newOrientations(){
+  const D=Math.PI/180;
+  eA=new THREE.Euler(rnd(-70,70)*D, rnd(-170,170)*D, rnd(-170,170)*D,'YXZ');
+  eB=new THREE.Euler(rnd(-70,70)*D, rnd(-170,170)*D, rnd(-170,170)*D,'YXZ');
+  qA=qOfE(eA); qB=qOfE(eB);
+  pathS=[]; pathE=[]; angS=0; angE=0; let pS=null,pE=null;
+  for(let i=0;i<=160;i++){ const t=i/160, a=slerpAt(t), b=qOfE(eulerAt(t));
+    pathS.push(nose(a).add(cA)); pathE.push(nose(b).add(cB));
+    if(pS){ angS+=2*Math.acos(Math.min(1,Math.abs(pS.dot(a)))); angE+=2*Math.acos(Math.min(1,Math.abs(pE.dot(b)))); } pS=a; pE=b; }
+  fullS.set(pathS); fullE.set(pathE);
+  const nA=nose(qA), nB=nose(qB);
+  dots[0].d.position.copy(nA).add(cA); dots[1].d.position.copy(nB).add(cA); dots[2].d.position.copy(nA).add(cB); dots[3].d.position.copy(nB).add(cB);
+}
+let st3;
+s3.reset=()=>{ st3={t:0}; };
+s3.getState=()=>({...st3}); s3.setState=s=>{ st3={...s}; };
+s3.step=dt=>{ st3.t=Math.min(1,st3.t+dt/4); };
+s3.done=()=>st3.t>=1;
+document.getElementById('b3new').onclick=()=>{ newOrientations(); s3.restart(); s3.running=true; s3.reverse=false; syncBar(s3); };
+s3.draw=()=>{
+  const t=st3.t, a=slerpAt(t), b=qOfE(eulerAt(t));
+  plS.quaternion.copy(a); plE.quaternion.copy(b);
+  const k=Math.round(t*160); trS.set(pathS.slice(0,k+1)); trE.set(pathE.slice(0,k+1));
+  lA.pos.copy(dots[0].d.position).add(new THREE.Vector3(0,0.15,0)); lA.set('A'); lB.pos.copy(dots[1].d.position).add(new THREE.Vector3(0,0.15,0)); lB.set('B');
+};
+s3.hud=()=>{
+  const D=180/Math.PI;
+  hud3.innerHTML=`<b>t</b> = ${fmt(st3.t,2)}<br>`+
+    `<span style="color:var(--gold2)">Slerp:</span> total rotation ${fmt(angS*D,0)}° (one axis, steady speed)<br>`+
+    `<span style="color:var(--ice)">Euler:</span> total rotation ${fmt(angE*D,0)}°`+
+    `<div class="msg">Shortest rotation from A to B: ${fmt(2*Math.acos(Math.min(1,Math.abs(qA.dot(qB))))*D,0)}°</div>`;
+};
+newOrientations();
+addSim(s3);
+s3.restart();
+
+/* ================================================================
+   SIM 4 – tre kardanringe og kardanlås
+   ================================================================ */
+const v4=makeView('box4',{cam:[4.6,2.6,5.6],target:[0,0,0],polar:Math.PI});
+const s4={id:'s4', view:v4};
+const P4={ya:25, pi:20, ro:0};
+const hud4=document.getElementById('hud4');
+{ const stand=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,4.2,10),std(0x3a4256,{metalness:0.6})); v4.scene.add(stand);
+  const base=new THREE.Mesh(new THREE.CylinderGeometry(0.6,0.7,0.1,32),std(0x2a3142)); base.position.y=-2.1; v4.scene.add(base); }
+const ringMat=c=>std(c,{metalness:0.55,roughness:0.3});
+const outer=new THREE.Group(); v4.scene.add(outer);
+outer.add(new THREE.Mesh(new THREE.TorusGeometry(1.75,0.045,12,96),ringMat(0xd8b46a)));
+const middle=new THREE.Group(); outer.add(middle);
+{ const m=new THREE.Mesh(new THREE.TorusGeometry(1.45,0.045,12,96),ringMat(0x4f86c6)); m.rotation.x=Math.PI/2; middle.add(m);
+  for(const x of [-1.75,1.45]){ const pin=new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.035,0.32,8),std(0xaaaaaa)); pin.rotation.z=Math.PI/2; pin.position.x=x<0?-1.6:1.6; middle.add(pin); } }
+const inner=new THREE.Group(); middle.add(inner);
+{ const m=new THREE.Mesh(new THREE.TorusGeometry(1.15,0.045,12,96),ringMat(0xe0503c)); m.rotation.y=Math.PI/2; inner.add(m);
+  for(const z of [-1,1]){ const pin=new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.035,0.32,8),std(0xaaaaaa)); pin.rotation.x=Math.PI/2; pin.position.z=z*1.3; inner.add(pin); } }
+const plane4=makePlane(); plane4.rotation.y=-Math.PI/2; plane4.scale.setScalar(0.85); inner.add(plane4);   // næsen langs +z (krængningsaksen)
+const axY=makeArrow(0xd8b46a,0.03), axP=makeArrow(0x4f86c6,0.03), axR=makeArrow(0xe0503c,0.03); v4.scene.add(axY,axP,axR);
+const lY=addLabel(v4,'g'), lP=addLabel(v4,'b'), lR=addLabel(v4,'r');
+const s4set=()=>{ const D=Math.PI/180; outer.rotation.set(0,P4.ya*D,0); middle.rotation.set(P4.pi*D,0,0); inner.rotation.set(0,0,P4.ro*D); };
+Object.assign(s4,{reset(){}, getState(){return 0;}, setState(){}, step(){},
+  draw(){
+    s4set(); v4.scene.updateMatrixWorld();
+    const ay=new THREE.Vector3(0,1,0), ap=new THREE.Vector3(1,0,0).applyQuaternion(outer.getWorldQuaternion(new THREE.Quaternion())),
+          ar=new THREE.Vector3(0,0,1).applyQuaternion(middle.getWorldQuaternion(new THREE.Quaternion()));
+    axY.set(new THREE.Vector3(),ay,2.3); axP.set(new THREE.Vector3(),ap,2.1); axR.set(new THREE.Vector3(),ar,1.9);
+    lY.pos.copy(ay).multiplyScalar(2.45); lY.set('heading axis'); lP.pos.copy(ap).multiplyScalar(2.25); lP.set('pitch axis'); lR.pos.copy(ar).multiplyScalar(2.05); lR.set('roll axis');
+    s4.det=ay.dot(ap.clone().cross(ar));
+  },
+  hud(){ const d=Math.abs(s4.det||0);
+    hud4.innerHTML=`Heading ${P4.ya}° · pitch ${P4.pi}° · roll ${P4.ro}°<br>Volume spanned by the three axes: |det| = ${fmt(d,3)} = |cos(pitch)|`+
+      (d<0.02?`<div class="warn">GIMBAL LOCK: the heading and roll axes coincide. One degree of freedom is lost.</div>`:
+       d<0.35?`<div class="warn">Warning: close to gimbal lock (Apollo warned at 70°).</div>`:`<div class="msg">Three independent axes.</div>`); }});
+addSim(s4);
+param('ya4',P4,'ya',v=>v+'°'); param('pi4',P4,'pi',v=>v+'°'); param('ro4',P4,'ro',v=>v+'°');
+const setSl=(id,v)=>{ const e=document.getElementById(id); e.value=v; e.dispatchEvent(new Event('input')); };
+document.getElementById('b4lock').onclick=()=>setSl('pi4',90);
+document.getElementById('b4zero').onclick=()=>{ setSl('ya4',25); setSl('pi4',20); setSl('ro4',0); };
+
+startLoop();
+
+</script>
+<script src="lang-switch.js" defer></script>
+</body>
+</html>

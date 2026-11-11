@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Månens bane over 19 år — simuleringen med Solens tidevandskraft i 3D</title>
+<meta name="description" content="Interaktiv 3D-simulering af Månens bane om Jorden over 19 år, regnet med Newtons tyngdelov og Solens tidevandskraft direkte i browseren: apsidelinjen drejer på 8,85 år, knudelinjen baglæns på 18,6 år, og banen lukker sig aldrig.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --space:#05080f; --ink:#0a0f1b; --ink-2:#0e1524;
+  --hair:rgba(201,162,39,.28); --hair-soft:rgba(201,162,39,.13);
+  --brass:#c9a227; --brass-dim:#8d7326; --parchment:#ece3d2; --muted:#8d93a3;
+  --apse:#f2762e; --node:#4fd1c5; --sun:#ffd479; --moon:#e8e4da; --earth:#6fa8d6; --pole:#b48cf2; --kepler:#e05a6a;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0; background:var(--space); color:var(--parchment); font-family:'Inter',system-ui,sans-serif; overflow:hidden; -webkit-font-smoothing:antialiased}
+canvas#scene{position:fixed; inset:0; width:100%; height:100%; display:block; touch-action:none}
+.panel{background:linear-gradient(180deg,rgba(14,21,36,.93),rgba(8,12,22,.93)); border:1px solid var(--hair); border-radius:2px; backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); box-shadow:0 18px 50px rgba(0,0,0,.55)}
+.eyebrow{font-size:9.5px; font-weight:600; letter-spacing:.19em; text-transform:uppercase; color:var(--brass)}
+.rule{height:1px; background:var(--hair-soft); margin:11px 0}
+#masthead{position:fixed; top:16px; left:18px; z-index:20; max-width:min(48ch,70vw); pointer-events:none}
+#masthead h1{font-family:'Spectral',Georgia,serif; font-weight:600; font-size:clamp(19px,2.5vw,29px); line-height:1.12; margin:5px 0 0}
+#masthead h1 em{font-style:italic; color:var(--brass); font-weight:400}
+#masthead p{margin:7px 0 0; font-size:12.5px; line-height:1.5; color:var(--muted); max-width:42ch}
+#controls{position:fixed; top:140px; left:18px; z-index:20; width:292px; max-height:calc(100vh - 166px); overflow-y:auto; padding:14px 15px 16px; scrollbar-width:thin; scrollbar-color:var(--brass-dim) transparent}
+.grp{margin-bottom:14px} .grp:last-child{margin-bottom:0}
+.row{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:9px}
+.row label{font-size:12px; color:#c3c9d6}
+.val{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--brass); font-variant-numeric:tabular-nums}
+input[type=range]{-webkit-appearance:none; appearance:none; width:100%; height:16px; background:transparent; margin:4px 0 0; cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:1px; background:var(--hair)}
+input[type=range]::-moz-range-track{height:1px; background:var(--hair)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:13px; height:13px; margin-top:-6px; background:var(--brass); border-radius:50%; border:none}
+input[type=range]::-moz-range-thumb{width:13px; height:13px; background:var(--brass); border-radius:50%; border:none}
+input[type=range]:focus-visible{outline:2px solid var(--brass); outline-offset:4px}
+.btns{display:flex; gap:6px; flex-wrap:wrap; margin-top:9px}
+button{font-family:'Inter',sans-serif; font-size:11px; font-weight:500; color:var(--parchment); background:rgba(201,162,39,.07); border:1px solid var(--hair); border-radius:2px; padding:6px 9px; cursor:pointer; transition:background .15s,border-color .15s}
+button:hover{background:rgba(201,162,39,.18); border-color:var(--brass)}
+button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
+button.on{background:var(--brass); color:#0a0f1b; border-color:var(--brass); font-weight:600}
+button.wide{flex:1; text-align:center}
+.transport{display:flex; gap:5px; margin-top:9px}
+.transport button{padding:7px 0; flex:1}
+.transport button.play{flex:2.1}
+.checks{display:grid; grid-template-columns:1fr 1fr; gap:6px 8px; margin-top:9px}
+.chk{display:flex; align-items:center; gap:6px; font-size:11.5px; color:#c3c9d6; cursor:pointer}
+.chk input{appearance:none; -webkit-appearance:none; width:12px; height:12px; flex:none; border:1px solid var(--hair); border-radius:1px; background:transparent; cursor:pointer; position:relative}
+.chk input:checked{background:var(--brass); border-color:var(--brass)}
+.chk input:checked::after{content:''; position:absolute; left:3.5px; top:1px; width:3px; height:6px; border:solid #0a0f1b; border-width:0 1.6px 1.6px 0; transform:rotate(42deg)}
+.swatch{width:9px; height:2px; flex:none; border-radius:1px}
+.note{font-size:10.5px; color:var(--muted); line-height:1.45; margin:8px 0 0}
+#readout{position:fixed; left:18px; bottom:18px; z-index:20; width:292px; padding:12px 15px 13px}
+#stamp{font-family:'Spectral',serif; font-size:17px; margin-top:5px}
+#stamp span{color:var(--muted); font-size:12px; font-family:'Inter',sans-serif}
+.dl{display:grid; grid-template-columns:auto 1fr; gap:4px 12px; font-size:11.5px; margin-top:4px}
+.dl dt{color:var(--muted)}
+.dl dd{margin:0; text-align:right; font-family:'IBM Plex Mono',monospace; font-variant-numeric:tabular-nums}
+#instrument{position:fixed; right:18px; bottom:66px; z-index:20; width:330px; padding:12px 13px 13px}
+.tabs{display:flex; gap:4px; margin-bottom:9px}
+.tabs button{flex:1; padding:5px 4px; font-size:10.5px}
+#chart{width:304px; height:170px; display:block}
+#chartCap{font-size:10.5px; line-height:1.45; color:var(--muted); margin-top:8px; min-height:2.9em}
+#topRight{position:fixed; top:18px; right:18px; z-index:25; display:flex; gap:6px}
+#topRight a,#topRight button{font:600 11px 'Inter',sans-serif; letter-spacing:.05em; color:var(--space); background:var(--brass); border:0; border-radius:2px; padding:7px 11px; text-decoration:none; cursor:pointer}
+#topRight a.ghost{background:rgba(14,21,36,.9); color:var(--parchment); border:1px solid var(--hair)}
+#sheetToggle,#chartToggle{display:none}
+#topRight .sm{display:none}
+#about{border:1px solid var(--hair); background:var(--ink); color:var(--parchment); padding:0; width:min(760px,94vw); max-height:90vh; border-radius:3px}
+#about::backdrop{background:rgba(2,4,9,.72)}
+#about .wrap{padding:22px 26px 26px; overflow-y:auto; max-height:90vh}
+#about h2{font-family:'Spectral',serif; font-weight:600; font-size:24px; margin:4px 0 10px}
+#about h3{font-family:'Spectral',serif; font-weight:600; font-size:17px; margin:20px 0 4px; color:var(--brass)}
+#about p,#about li{font-size:14px; line-height:1.6; color:#d9d2c3}
+#about a{color:var(--brass)}
+#about .close{float:right; position:sticky; top:0}
+#loading{position:fixed; inset:0; display:grid; place-content:center; z-index:60; background:var(--space); color:var(--muted); font-size:13px; text-align:center; gap:10px}
+#loading b{font-family:'Spectral',serif; font-size:20px; color:var(--parchment); font-weight:600}
+.lbl{font:500 11px 'Inter',sans-serif; color:var(--parchment); text-shadow:0 0 6px #000,0 0 3px #000; white-space:nowrap; pointer-events:none}
+.lbl.sun{color:var(--sun)} .lbl.apse{color:var(--apse)} .lbl.node{color:var(--node)} .lbl.pole{color:var(--pole)} .lbl.muted{color:var(--muted)}
+body.shot #controls,body.shot #readout,body.shot #instrument,body.shot #topRight,body.shot #masthead p{display:none}
+@media (max-width:900px){
+  #masthead{max-width:58vw} #masthead p{display:none}
+  #topRight{top:12px; right:12px; flex-direction:column; align-items:flex-end}
+  #topRight .lg{display:none} #topRight .sm{display:inline}
+  #sheetToggle,#chartToggle{display:block}
+  #controls{top:auto; bottom:0; left:0; width:100%; max-height:62vh; border-radius:8px 8px 0 0; transform:translateY(101%); transition:transform .28s cubic-bezier(.4,0,.2,1); padding-bottom:calc(18px + env(safe-area-inset-bottom)); z-index:40}
+  #controls.open{transform:translateY(0)}
+  #readout{width:auto; left:10px; right:10px; bottom:62px; padding:9px 12px}
+  #readout .dl{grid-template-columns:auto 1fr auto 1fr; gap:3px 10px; font-size:11px}
+  #instrument{display:none}
+  #instrument.open{display:block; left:10px; right:10px; width:auto; bottom:auto; top:118px}
+  #chart{width:100%}
+}
+</style>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/app/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="mhgfysik">
+<script src="/app/app.js" defer></script>
+</head>
+<body>
+<canvas id="scene" aria-label="3D-simulering af Månens bane om Jorden over 19 år"></canvas>
+<div id="loading"><b>Regner Månens bane ud …</b><span id="loadMsg">Newtons tyngdelov og Solens tidevandskraft, time for time i 19 år</span></div>
+
+<header id="masthead">
+  <div class="eyebrow">Simuleringen · 19 år · Solens tidevandskraft</div>
+  <h1>Månens bane <em>lukker sig aldrig</em></h1>
+  <p>Regnet time for time i din browser fra 1. januar 2026: perigæet vandrer på 8,85 år, knudelinjen baglæns på 18,6 år.</p>
+</header>
+
+<div id="topRight">
+  <button id="aboutBtn" type="button">Om modellen</button>
+  <a class="ghost" href="maanens-bane-3d.html"><span class="lg">Middelbanen i 3D</span><span class="sm">Middelbane</span></a>
+  <button id="chartToggle" type="button">Grafer</button>
+  <button id="sheetToggle" type="button" aria-expanded="false">Betjening</button>
+</div>
+
+<section id="controls" class="panel" aria-label="Betjening">
+  <div class="grp">
+    <div class="eyebrow">Tid</div>
+    <div class="transport">
+      <button id="playBtn" class="play on">Pause</button>
+      <button id="revBtn" title="Kør tiden baglæns">&#8646;</button>
+      <button id="resetBtn" title="Tilbage til 1. januar 2026">Start</button>
+    </div>
+    <div class="row"><label for="tSlider">Tidspunkt</label><span class="val" id="tVal">0,00 år</span></div>
+    <input type="range" id="tSlider" min="0" max="6939" step="0.125" value="0">
+    <div class="row"><label for="speed">Hastighed</label><span class="val" id="speedVal">10 d/s</span></div>
+    <input type="range" id="speed" min="-0.3" max="3.2" step="0.01" value="1">
+  </div>
+  <div class="rule"></div>
+  <div class="grp">
+    <div class="eyebrow">Spor og referenceramme</div>
+    <div class="row"><label for="trail">Månens spor</label><span class="val" id="trailVal">2 måneder</span></div>
+    <input type="range" id="trail" min="0" max="1" step="0.001" value="0.18">
+    <div class="btns">
+      <button id="frameInert" class="on wide">Fast stjernehimmel</button>
+      <button id="frameSun" class="wide">Solen fastholdt</button>
+    </div>
+    <div class="btns">
+      <button id="viewTop">Ovenfra</button>
+      <button id="viewEdge">Fra siden</button>
+      <button id="viewFree">Skrå</button>
+      <button id="viewPole">Polen</button>
+    </div>
+  </div>
+  <div class="rule"></div>
+  <div class="grp">
+    <div class="eyebrow">Vis</div>
+    <div class="checks">
+      <label class="chk"><input type="checkbox" id="cOsc" checked><span class="swatch" style="background:var(--brass)"></span>Øjebliksbane</label>
+      <label class="chk"><input type="checkbox" id="cKep"><span class="swatch" style="background:var(--kepler)"></span>Kepler 1/1-26</label>
+      <label class="chk"><input type="checkbox" id="cApse" checked><span class="swatch" style="background:var(--apse)"></span>Apsidelinje</label>
+      <label class="chk"><input type="checkbox" id="cPeri" checked><span class="swatch" style="background:var(--apse)"></span>Alle perigæer</label>
+      <label class="chk"><input type="checkbox" id="cNode" checked><span class="swatch" style="background:var(--node)"></span>Knudelinje</label>
+      <label class="chk"><input type="checkbox" id="cPole" checked><span class="swatch" style="background:var(--pole)"></span>Banens pol</label>
+      <label class="chk"><input type="checkbox" id="cSun" checked><span class="swatch" style="background:var(--sun)"></span>Retning til Solen</label>
+      <label class="chk"><input type="checkbox" id="cGrid" checked><span class="swatch" style="background:var(--muted)"></span>Ekliptika</label>
+    </div>
+  </div>
+  <div class="rule"></div>
+  <div class="grp">
+    <div class="eyebrow">Overdrivelse (kun visningen)</div>
+    <div class="row"><label for="exE">Afstandsvariation</label><span class="val" id="exEVal">4,0×</span></div>
+    <input type="range" id="exE" min="1" max="8" step="0.1" value="4">
+    <div class="row"><label for="exI">Banehældning</label><span class="val" id="exIVal">3,0×</span></div>
+    <input type="range" id="exI" min="1" max="8" step="0.1" value="3">
+    <div class="btns"><button id="realBtn" class="wide">Sæt til 1× (virkelige forhold)</button></div>
+    <p class="note">Regningen er altid uden overdrivelse. Kun afstanden fra middelafstanden og højden over ekliptika forstørres på skærmen, så ændringerne kan ses.</p>
+  </div>
+</section>
+
+<section id="readout" class="panel" aria-live="off">
+  <div class="eyebrow">Øjebliksbanen</div>
+  <div id="stamp">1. jan. 2026 <span>dag 0</span></div>
+  <dl class="dl">
+    <dt>Afstand</dt><dd id="rR">—</dd>
+    <dt>Excentricitet e</dt><dd id="rE">—</dd>
+    <dt>Hældning i</dt><dd id="rI">—</dd>
+    <dt>Knude Ω</dt><dd id="rO">—</dd>
+    <dt>Perigæum ϖ</dt><dd id="rW">—</dd>
+    <dt>Tidevand/Jord</dt><dd id="rT">—</dd>
+  </dl>
+</section>
+
+<section id="instrument" class="panel" aria-label="Grafer over de 19 år">
+  <div class="tabs">
+    <button data-tab="e" class="on">Excentricitet</button>
+    <button data-tab="lon">Knude og perigæum</button>
+    <button data-tab="i">Hældning</button>
+  </div>
+  <canvas id="chart" width="608" height="340"></canvas>
+  <p id="chartCap"></p>
+</section>
+
+<dialog id="about" aria-labelledby="aboutTitle">
+  <div class="wrap">
+    <button class="close" type="button" id="aboutClose">Luk ✕</button>
+    <div class="eyebrow">Om modellen</div>
+    <h2 id="aboutTitle">Hvad du ser — og hvordan det er regnet</h2>
+    <p>Siden løser Månens bevægelsesligning i forhold til Jorden,</p>
+    <p style="font-family:'IBM Plex Mono',monospace; font-size:13px">r̈ = −G(M⊕+Mₘ) r/r³ + GM☉ [ (d−r)/|d−r|³ − d/d³ ],</p>
+    <p>hvor <b>r</b> er Månens sted set fra Jorden og <b>d</b> Solens. Det første led er Kepler; det andet er Solens tidevandskraft — forskellen på, hvor hårdt Solen trækker i Månen og i Jorden. Jorden følger en Kepler-ellipse om Solen (e = 0,0167, perihel 3. januar). Regningen er en klassisk fjerdeordens Runge–Kutta med et skridt på én time over 19 år, i alt ca. 166 000 skridt, som din browser klarer på et øjeblik.</p>
+    <p>Månen starter 1. januar 2026 fra middelelementerne (Meeus, kap. 47): a = 384 400 km, e = 0,0549, i = 5,145°. Fordi den starter fra en <i>øjebliksbane</i> og ikke fra et middel, bliver de simulerede perioder lidt anderledes end de observerede 8,85 og 18,61 år. Graferne viser de perioder, simuleringen selv giver.</p>
+    <h3>Øjebliksbanen</h3>
+    <p>Ud fra sted og hastighed i hvert øjeblik regnes den ellipse, Månen ville følge, hvis Solen forsvandt. Den gule ellipse er øjebliksbanen; den røde stiplede er Kepler-ellipsen fra 1. januar 2026, som Månen ville have fulgt for evigt uden Solen.</p>
+    <h3>Tre ting at prøve</h3>
+    <ul>
+      <li>Slå <b>Alle perigæer</b> til, kør hurtigt og se fra oven: perigæerne tegner en roset, der går rundt én gang på knap 9 år.</li>
+      <li>Vælg <b>Polen</b>: banens pol vandrer i en cirkel med radius 5,1° om ekliptikas pol, baglæns, på 18,6 år — med takker to gange om måneden.</li>
+      <li>Vælg <b>Solen fastholdt</b>: i en ramme, der drejer med Solen, ses evektionen — banen strækkes, når apsidelinjen peger mod Solen.</li>
+    </ul>
+    <h3>Mere</h3>
+    <p>Artiklen <a href="maanens-bane-lukker-sig-aldrig.pdf">»Månens bane lukker sig aldrig«</a> forklarer fysikken og historien — Newtons og Clairauts kamp med perigæets drejning. <a href="maanens-bane-3d.html">Middelbanen i 3D</a> viser de samme cyklusser ud fra middelelementer, med formørkelser og faser. Kometernes baner kan udforskes i <a href="kometbaner-3d.html">Kometbaner i 3D</a>.</p>
+  </div>
+</dialog>
+
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+const DEG=Math.PI/180, TAU=2*Math.PI;
+const Q=new URLSearchParams(location.search);
+if(Q.get('shot')) document.body.classList.add('shot');
+
+/* ================= Fysikken (km og døgn) ================= */
+const DAY=86400;
+const MU_E=(398600.4418+4902.8001)*DAY*DAY;      // G(M⊕+Mm)
+const MU_S=1.32712440018e11*DAY*DAY;             // GM☉
+const MS_ME=332946.0487;
+const JD0=2461041.5;                             // 1. jan. 2026, 0 UT
+const NDAYS=6940, H=1/24, SAMPLE=3;              // skridt 1 time, gem hver 3. time
+const EARTH={a:1.495978707e8, e:0.0167086, w:102.9373*DEG, Tp:2461044.5};
+EARTH.n=Math.sqrt(MU_S/EARTH.a**3);
+
+function sunGeo(jd,out){ // Solens sted set fra Jorden (ekliptika J2000), km
+  const M=EARTH.n*(jd-EARTH.Tp); let E=M;
+  for(let k=0;k<8;k++) E-=(E-EARTH.e*Math.sin(E)-M)/(1-EARTH.e*Math.cos(E));
+  const x=EARTH.a*(Math.cos(E)-EARTH.e), y=EARTH.a*Math.sqrt(1-EARTH.e**2)*Math.sin(E);
+  const c=Math.cos(EARTH.w), s=Math.sin(EARTH.w);
+  out[0]=-(c*x-s*y); out[1]=-(s*x+c*y); out[2]=0; return out;
+}
+const dS=[0,0,0];
+function acc(jd,r,a){
+  const rx=r[0],ry=r[1],rz=r[2]; const r2=rx*rx+ry*ry+rz*rz, r3=r2*Math.sqrt(r2);
+  sunGeo(jd,dS);
+  const qx=dS[0]-rx,qy=dS[1]-ry,qz=dS[2]-rz; const q2=qx*qx+qy*qy+qz*qz, q3=q2*Math.sqrt(q2);
+  const d2=dS[0]**2+dS[1]**2, d3=d2*Math.sqrt(d2);
+  a[0]=-MU_E*rx/r3+MU_S*(qx/q3-dS[0]/d3);
+  a[1]=-MU_E*ry/r3+MU_S*(qy/q3-dS[1]/d3);
+  a[2]=-MU_E*rz/r3+MU_S*(qz/q3);
+}
+function elems(r,v){ // øjebliksbane
+  const mu=MU_E; const rn=Math.hypot(r[0],r[1],r[2]); const v2=v[0]**2+v[1]**2+v[2]**2;
+  const h=[r[1]*v[2]-r[2]*v[1], r[2]*v[0]-r[0]*v[2], r[0]*v[1]-r[1]*v[0]]; const hn=Math.hypot(...h);
+  const rv=r[0]*v[0]+r[1]*v[1]+r[2]*v[2];
+  const ev=[0,1,2].map(k=>((v2-mu/rn)*r[k]-rv*v[k])/mu); const e=Math.hypot(...ev);
+  const a=1/(2/rn-v2/mu); const i=Math.acos(h[2]/hn);
+  const Om=Math.atan2(h[0],-h[1]);
+  const N=[-h[1],h[0]], Nn=Math.hypot(N[0],N[1]);
+  let w=Math.acos(Math.max(-1,Math.min(1,(N[0]*ev[0]+N[1]*ev[1])/(Nn*e)))); if(ev[2]<0) w=TAU-w;
+  const varpi=Om+w; // perigæets længde ϖ = Ω + ω
+  return {a,e,i,Om:(Om+TAU)%TAU, varpi:(varpi%TAU+TAU)%TAU, h, ev, hn};
+}
+function stateFromElems(el){
+  const {a,e,i,Om,w,M}=el; let E=M; for(let k=0;k<30;k++) E-=(E-e*Math.sin(E)-M)/(1-e*Math.cos(E));
+  const x=a*(Math.cos(E)-e), y=a*Math.sqrt(1-e*e)*Math.sin(E);
+  const n=Math.sqrt(MU_E/a**3), rr=a*(1-e*Math.cos(E));
+  const vx=-a*n*Math.sin(E)/(1-e*Math.cos(E)), vy=a*n*Math.sqrt(1-e*e)*Math.cos(E)/(1-e*Math.cos(E));
+  const cO=Math.cos(Om),sO=Math.sin(Om),ci=Math.cos(i),si=Math.sin(i),cw=Math.cos(w),sw=Math.sin(w);
+  const P=[cO*cw-sO*sw*ci, sO*cw+cO*sw*ci, sw*si], Qv=[-cO*sw-sO*cw*ci, -sO*sw+cO*cw*ci, cw*si];
+  return {r:[0,1,2].map(k=>x*P[k]+y*Qv[k]), v:[0,1,2].map(k=>vx*P[k]+vy*Qv[k]), P, Q:Qv};
+}
+// Middelelementer 1. jan. 2026 (Meeus kap. 47)
+const T=(JD0-2451545)/36525, norm=x=>((x%360)+360)%360;
+const Lp=norm(218.3164477+481267.88123421*T), Mp=norm(134.9633964+477198.8675055*T), F=norm(93.2720950+483202.0175233*T);
+const INIT={a:384400, e:0.0549, i:5.145*DEG, Om:norm(Lp-F)*DEG, w:norm((Lp-Mp)-(Lp-F))*DEG, M:Mp*DEG};
+
+let NS=0, POS, ROT, SUNL, EL, PERI=[];  // samples
+function integrate(){
+  const st=stateFromElems(INIT); let r=st.r.slice(), v=st.v.slice();
+  const steps=Math.round(NDAYS/H); NS=Math.floor(steps/SAMPLE)+1;
+  POS=new Float64Array(NS*3); SUNL=new Float64Array(NS); EL=new Float32Array(NS*5);
+  const k1v=[0,0,0],k2v=[0,0,0],k3v=[0,0,0],k4v=[0,0,0], rt=[0,0,0], ds=[0,0,0];
+  let s=0, prevRv=null, prevR=null;
+  const save=(jd)=>{
+    POS[s*3]=r[0];POS[s*3+1]=r[1];POS[s*3+2]=r[2];
+    sunGeo(jd,ds); SUNL[s]=Math.atan2(ds[1],ds[0]);
+    const el=elems(r,v); EL[s*5]=el.e; EL[s*5+1]=el.i; EL[s*5+2]=el.Om; EL[s*5+3]=el.varpi; EL[s*5+4]=el.a; s++;
+  };
+  save(JD0);
+  for(let n=0;n<steps;n++){
+    const jd=JD0+n*H;
+    acc(jd,r,k1v); const k1r=v.slice();
+    for(let k=0;k<3;k++) rt[k]=r[k]+0.5*H*k1r[k];
+    const k2r=[0,1,2].map(k=>v[k]+0.5*H*k1v[k]); acc(jd+H/2,rt,k2v);
+    for(let k=0;k<3;k++) rt[k]=r[k]+0.5*H*k2r[k];
+    const k3r=[0,1,2].map(k=>v[k]+0.5*H*k2v[k]); acc(jd+H/2,rt,k3v);
+    for(let k=0;k<3;k++) rt[k]=r[k]+H*k3r[k];
+    const k4r=[0,1,2].map(k=>v[k]+H*k3v[k]); acc(jd+H,rt,k4v);
+    for(let k=0;k<3;k++){ r[k]+=H/6*(k1r[k]+2*k2r[k]+2*k3r[k]+k4r[k]); v[k]+=H/6*(k1v[k]+2*k2v[k]+2*k3v[k]+k4v[k]); }
+    const rv=r[0]*v[0]+r[1]*v[1]+r[2]*v[2];
+    if(prevRv!==null && prevRv<0 && rv>=0){ // perigæpassage: lineær interpolation
+      const f=prevRv/(prevRv-rv); PERI.push({t:(n+f)*H, x:prevR[0]+f*(r[0]-prevR[0]), y:prevR[1]+f*(r[1]-prevR[1]), z:prevR[2]+f*(r[2]-prevR[2])});
+    }
+    prevRv=rv; prevR=r.slice();
+    if((n+1)%SAMPLE===0) save(jd+H);
+  }
+  NS=s;
+}
+const DT=SAMPLE*H; // døgn mellem samples
+function unwrap(off){ const out=new Float64Array(NS); let acc=0; out[0]=EL[off];
+  for(let s=1;s<NS;s++){ let d=EL[s*5+off]-EL[(s-1)*5+off]; if(d>Math.PI) d-=TAU; if(d<-Math.PI) d+=TAU; acc+=d; out[s]=EL[off]+acc; } return out; }
+function slope(y){ // mindste kvadraters hældning (rad/døgn)
+  let sx=0,sy=0,sxx=0,sxy=0; for(let s=0;s<NS;s++){const x=s*DT; sx+=x; sy+=y[s]; sxx+=x*x; sxy+=x*y[s];}
+  return (NS*sxy-sx*sy)/(NS*sxx-sx*sx);
+}
+
+/* ================= Scenen ================= */
+const canvas=document.getElementById('scene');
+const renderer=new THREE.WebGLRenderer({canvas, antialias:true, preserveDrawingBuffer:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+const labels=new CSS2DRenderer(); labels.domElement.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:10';
+document.body.appendChild(labels.domElement);
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(42,1,0.1,2000);
+const controls=new OrbitControls(camera,canvas); controls.enableDamping=true; controls.minDistance=25; controls.maxDistance=400;
+// z er ekliptikas nordpol i fysikken; Three.js har y op → vi lægger fysik-z på Three-y
+const toV=(x,y,z,o=new THREE.Vector3())=>o.set(x,z,-y);
+function resize(){ const w=innerWidth,h=innerHeight; renderer.setSize(w,h,false); labels.setSize(w,h); camera.aspect=w/h; camera.updateProjectionMatrix(); }
+addEventListener('resize',resize); resize();
+
+const SC=1/1e4; // 1 enhed = 10 000 km
+// stjerner
+{ const g=new THREE.BufferGeometry(), n=1600, p=new Float32Array(n*3);
+  for(let k=0;k<n;k++){ const u=Math.random()*2-1, t=Math.random()*TAU, R=700; p[k*3]=R*Math.sqrt(1-u*u)*Math.cos(t); p[k*3+1]=R*u; p[k*3+2]=R*Math.sqrt(1-u*u)*Math.sin(t); }
+  g.setAttribute('position',new THREE.BufferAttribute(p,3));
+  scene.add(new THREE.Points(g,new THREE.PointsMaterial({color:0x9aa3b8,size:1.1,sizeAttenuation:false,transparent:true,opacity:.7}))); }
+scene.add(new THREE.AmbientLight(0x404858,1.2));
+const sunLight=new THREE.DirectionalLight(0xfff1d6,2.4); scene.add(sunLight);
+const mkLabel=(text,cls)=>{ const d=document.createElement('div'); d.className='lbl '+(cls||''); d.textContent=text; return new CSS2DObject(d); };
+
+// ekliptika-gitter
+const grid=new THREE.Group(); scene.add(grid);
+{ const m=new THREE.LineBasicMaterial({color:0x8d93a3,transparent:true,opacity:.16});
+  for(const R of [20,30,40,50,60]){ const pts=[]; for(let k=0;k<=128;k++){const a=k/128*TAU; pts.push(new THREE.Vector3(R*Math.cos(a),0,R*Math.sin(a)));} grid.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),m)); }
+  for(let k=0;k<12;k++){ const a=k/12*TAU; grid.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(8*Math.cos(a),0,8*Math.sin(a)),new THREE.Vector3(60*Math.cos(a),0,60*Math.sin(a))]),m)); }
+  const disc=new THREE.Mesh(new THREE.CircleGeometry(60,96),new THREE.MeshBasicMaterial({color:0x1b2740,transparent:true,opacity:.18,side:THREE.DoubleSide,depthWrite:false}));
+  disc.rotation.x=-Math.PI/2; grid.add(disc);
+  const eq=mkLabel('♈ forårspunktet','muted'); toV(63,0,0,eq.position); grid.add(eq);
+  const ax=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0),new THREE.Vector3(0,34,0)]),new THREE.LineDashedMaterial({color:0x8d93a3,dashSize:1,gapSize:1,transparent:true,opacity:.5}));
+  ax.computeLineDistances(); grid.add(ax);
+  const ep=mkLabel('ekliptikas pol','muted'); ep.position.set(0,35.5,0); grid.add(ep);
+}
+// Jorden og Månen
+const earth=new THREE.Mesh(new THREE.SphereGeometry(1,48,32),new THREE.MeshStandardMaterial({color:0x6fa8d6,roughness:.7,emissive:0x0b1a2c}));
+earth.scale.setScalar(6371*SC*3); scene.add(earth);
+const moon=new THREE.Mesh(new THREE.SphereGeometry(1,32,24),new THREE.MeshStandardMaterial({color:0xe8e4da,roughness:.95,emissive:0x111111}));
+moon.scale.setScalar(1737*SC*4); scene.add(moon);
+const moonLbl=mkLabel('Månen'); moon.add(moonLbl); moonLbl.position.set(0,1.8,0);
+
+// spor
+const trailGeo=new THREE.BufferGeometry(); const trailLine=new THREE.Line(trailGeo,new THREE.LineBasicMaterial({vertexColors:true,transparent:true,opacity:.95}));
+scene.add(trailLine);
+// øjebliksbane, Kepler-ellipse
+const N_ELL=256;
+const oscGeo=new THREE.BufferGeometry(); oscGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array((N_ELL+1)*3),3));
+const oscLine=new THREE.Line(oscGeo,new THREE.LineBasicMaterial({color:0xc9a227,transparent:true,opacity:.9})); scene.add(oscLine);
+const kepGeo=new THREE.BufferGeometry(); kepGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array((N_ELL+1)*3),3));
+const kepLine=new THREE.Line(kepGeo,new THREE.LineDashedMaterial({color:0xe05a6a,dashSize:1.2,gapSize:.8})); scene.add(kepLine);
+// apsidelinje, knudelinje
+const mkSeg=(col,dashed)=>{ const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(6),3));
+  const l=new THREE.Line(g,dashed?new THREE.LineDashedMaterial({color:col,dashSize:1,gapSize:.7}):new THREE.LineBasicMaterial({color:col})); scene.add(l); return l; };
+const apseLine=mkSeg(0xf2762e), nodeLine=mkSeg(0x4fd1c5,true), sunLine=mkSeg(0xffd479), poleLine=mkSeg(0xb48cf2);
+const periDot=new THREE.Mesh(new THREE.SphereGeometry(.55,16,12),new THREE.MeshBasicMaterial({color:0xf2762e})); scene.add(periDot);
+const periLbl=mkLabel('perigæum','apse'); periDot.add(periLbl); periLbl.position.set(0,1.6,0);
+const nodeDot=new THREE.Mesh(new THREE.SphereGeometry(.5,16,12),new THREE.MeshBasicMaterial({color:0x4fd1c5})); scene.add(nodeDot);
+const nodeLbl=mkLabel('☊ stigende knude','node'); nodeDot.add(nodeLbl); nodeLbl.position.set(0,1.6,0);
+const sunLbl=mkLabel('mod Solen →','sun'); scene.add(sunLbl);
+const poleLbl=mkLabel('banens pol','pole'); scene.add(poleLbl);
+// alle perigæer
+const periGeo=new THREE.BufferGeometry(); const periPts=new THREE.Points(periGeo,new THREE.PointsMaterial({size:5,sizeAttenuation:false,vertexColors:true})); scene.add(periPts);
+// polens spor
+const poleGeo=new THREE.BufferGeometry(); const poleTrail=new THREE.Line(poleGeo,new THREE.LineBasicMaterial({color:0xb48cf2,transparent:true,opacity:.75})); scene.add(poleTrail);
+
+/* ================= Tilstand ================= */
+const S={t:Number(Q.get('t')||0), playing:!Q.get('shot'), dir:1, speed:10, frame:Q.get('frame')==='sun'?'sun':'inert', exE:4, exI:3, trailDays:60, tab:'e'};
+if(Q.get('exE')) S.exE=+Q.get('exE'); if(Q.get('exI')) S.exI=+Q.get('exI');
+const A0=384400;
+let DISP=null, ROTD=null; // visningskoordinater (Three) for begge rammer
+function dispPoint(x,y,z,rotAng,o){ // overdrivelse + evt. rotation; returnerer Three-vektor
+  const rh=Math.hypot(x,y,z); const k=(A0+S.exE*(rh-A0))/rh;
+  let X=x*k, Y=y*k, Z=z*k*S.exI;
+  if(rotAng){ const c=Math.cos(-rotAng), s=Math.sin(-rotAng); const X2=c*X-s*Y; Y=s*X+c*Y; X=X2; }
+  return toV(X*SC,Y*SC,Z*SC,o);
+}
+function rebuild(){
+  DISP=new Float32Array(NS*3); ROTD=new Float32Array(NS*3); const v=new THREE.Vector3();
+  for(let s=0;s<NS;s++){ dispPoint(POS[s*3],POS[s*3+1],POS[s*3+2],0,v); DISP[s*3]=v.x;DISP[s*3+1]=v.y;DISP[s*3+2]=v.z;
+    dispPoint(POS[s*3],POS[s*3+1],POS[s*3+2],SUNL[s],v); ROTD[s*3]=v.x;ROTD[s*3+1]=v.y;ROTD[s*3+2]=v.z; }
+  setFrameArrays(); buildKepler(); buildPeri(); buildPole();
+}
+const COLS=new Float32Array(1); let colArr;
+function setFrameArrays(){
+  const arr=S.frame==='sun'?ROTD:DISP;
+  trailGeo.setAttribute('position',new THREE.BufferAttribute(arr,3));
+  colArr=new Float32Array(NS*3); trailGeo.setAttribute('color',new THREE.BufferAttribute(colArr,3));
+}
+function sampleAt(t){ const f=t/DT; const s=Math.max(0,Math.min(NS-2,Math.floor(f))); return {s, f:Math.min(1,Math.max(0,f-s))}; }
+function lerpArr(arr,s,f,o){ return o.set(arr[s*3]+(arr[s*3+3]-arr[s*3])*f, arr[s*3+1]+(arr[s*3+4]-arr[s*3+1])*f, arr[s*3+2]+(arr[s*3+5]-arr[s*3+2])*f); }
+function ellipsePts(el,rotAng,attr){ // el: {a,e,P,Q}
+  const p=attr.array, v=new THREE.Vector3();
+  for(let k=0;k<=N_ELL;k++){ const E=k/N_ELL*TAU; const x=el.a*(Math.cos(E)-el.e), y=el.a*Math.sqrt(1-el.e**2)*Math.sin(E);
+    dispPoint(x*el.P[0]+y*el.Q[0], x*el.P[1]+y*el.Q[1], x*el.P[2]+y*el.Q[2], rotAng, v); p[k*3]=v.x;p[k*3+1]=v.y;p[k*3+2]=v.z; }
+  attr.needsUpdate=true;
+}
+function buildKepler(){ const st=stateFromElems(INIT); ellipsePts({a:INIT.a,e:INIT.e,P:st.P,Q:st.Q}, 0, kepGeo.attributes.position); kepLine.computeLineDistances(); }
+function buildPeri(){
+  const n=PERI.length, p=new Float32Array(n*3), c=new Float32Array(n*3), v=new THREE.Vector3(), col=new THREE.Color();
+  PERI.forEach((q,k)=>{ const s=Math.min(NS-1,Math.round(q.t/DT)); dispPoint(q.x,q.y,q.z,S.frame==='sun'?SUNL[s]:0,v); p[k*3]=v.x;p[k*3+1]=v.y;p[k*3+2]=v.z;
+    col.setHSL(0.02+0.6*q.t/NDAYS,0.85,0.6); c[k*3]=col.r;c[k*3+1]=col.g;c[k*3+2]=col.b; });
+  periGeo.setAttribute('position',new THREE.BufferAttribute(p,3)); periGeo.setAttribute('color',new THREE.BufferAttribute(c,3));
+}
+const POLE_L=32;
+function poleVec(s,o){ const i=EL[s*5+1], Om=EL[s*5+2]; const ti=Math.atan(S.exI*Math.tan(i));
+  // banens pol: (sin i sin Ω, −sin i cos Ω, cos i)
+  let x=Math.sin(ti)*Math.sin(Om), y=-Math.sin(ti)*Math.cos(Om), z=Math.cos(ti);
+  if(S.frame==='sun'){ const a=-SUNL[s], c=Math.cos(a), sn=Math.sin(a); const x2=c*x-sn*y; y=sn*x+c*y; x=x2; }
+  return toV(x*POLE_L,y*POLE_L,z*POLE_L,o); }
+function buildPole(){ const p=new Float32Array(NS*3), v=new THREE.Vector3(); for(let s=0;s<NS;s++){ poleVec(s,v); p[s*3]=v.x;p[s*3+1]=v.y;p[s*3+2]=v.z; } poleGeo.setAttribute('position',new THREE.BufferAttribute(p,3)); }
+
+/* ================= Opdatering pr. billede ================= */
+const fmtN=(x,d)=>x.toLocaleString('da-DK',{minimumFractionDigits:d,maximumFractionDigits:d});
+const MONTHS=['jan.','feb.','mar.','apr.','maj','jun.','jul.','aug.','sep.','okt.','nov.','dec.'];
+function dateStr(jd){ const d=new Date((jd-2440587.5)*864e5); return d.getUTCDate()+'. '+MONTHS[d.getUTCMonth()]+' '+d.getUTCFullYear(); }
+const tmp=new THREE.Vector3(), tmp2=new THREE.Vector3();
+function update(){
+  const {s,f}=sampleAt(S.t); const rot=S.frame==='sun'; const arr=rot?ROTD:DISP;
+  lerpArr(arr,s,f,tmp); moon.position.copy(tmp);
+  // spor med fading
+  const nTrail=Math.max(2,Math.round(S.trailDays/DT)); const s0=Math.max(0,s+1-nTrail);
+  const cnt=s+2-s0; trailGeo.setDrawRange(s0,Math.min(cnt,NS-s0));
+  const full=S.trailDays>=NDAYS-1;
+  for(let k=s0;k<Math.min(NS,s+2);k++){ const u=(k-s0)/Math.max(1,cnt-1); const b=full?0.25+0.6*u*u:0.08+0.92*u**1.6;
+    colArr[k*3]=0.91*b; colArr[k*3+1]=0.89*b; colArr[k*3+2]=0.85*b; }
+  trailGeo.attributes.color.needsUpdate=true;
+  // øjebliksbane
+  const e=EL[s*5], i=EL[s*5+1], Om=EL[s*5+2], vp=EL[s*5+3], a=EL[s*5+4];
+  const r=[POS[s*3],POS[s*3+1],POS[s*3+2]];
+  // rekonstruér P,Q fra elementer (ω = ϖ − Ω for lille i)
+  const w=vp-Om, cO=Math.cos(Om),sO=Math.sin(Om),ci=Math.cos(i),si=Math.sin(i),cw=Math.cos(w),sw=Math.sin(w);
+  const P=[cO*cw-sO*sw*ci, sO*cw+cO*sw*ci, sw*si], Qv=[-cO*sw-sO*cw*ci, -sO*sw+cO*cw*ci, cw*si];
+  const rotAng=rot?SUNL[s]:0;
+  ellipsePts({a,e,P,Q:Qv},rotAng,oscGeo.attributes.position);
+  // apsidelinje: apogæum → perigæum
+  const ap=apseLine.geometry.attributes.position.array; dispPoint(-a*(1+e)*P[0],-a*(1+e)*P[1],-a*(1+e)*P[2],rotAng,tmp); ap[0]=tmp.x;ap[1]=tmp.y;ap[2]=tmp.z;
+  dispPoint(a*(1-e)*P[0],a*(1-e)*P[1],a*(1-e)*P[2],rotAng,tmp); ap[3]=tmp.x;ap[4]=tmp.y;ap[5]=tmp.z; apseLine.geometry.attributes.position.needsUpdate=true;
+  periDot.position.copy(tmp);
+  // knudelinje i ekliptika
+  const nx=Math.cos(Om-rotAng), ny=Math.sin(Om-rotAng), L=A0*SC*1.25;
+  const np=nodeLine.geometry.attributes.position.array; toV(-nx*L,-ny*L,0,tmp); np[0]=tmp.x;np[1]=tmp.y;np[2]=tmp.z; toV(nx*L,ny*L,0,tmp2); np[3]=tmp2.x;np[4]=tmp2.y;np[5]=tmp2.z;
+  nodeLine.geometry.attributes.position.needsUpdate=true; nodeLine.computeLineDistances(); nodeDot.position.copy(tmp2);
+  // Solen
+  const ls=SUNL[s]+(SUNL[Math.min(NS-1,s+1)]-SUNL[s]+(Math.abs(SUNL[Math.min(NS-1,s+1)]-SUNL[s])>3?(SUNL[s]>0?TAU:-TAU):0))*f;
+  const sl=rot?0:ls; const sp=sunLine.geometry.attributes.position.array; toV(Math.cos(sl)*8,Math.sin(sl)*8,0,tmp); sp[0]=tmp.x;sp[1]=tmp.y;sp[2]=tmp.z;
+  toV(Math.cos(sl)*58,Math.sin(sl)*58,0,tmp2); sp[3]=tmp2.x;sp[4]=tmp2.y;sp[5]=tmp2.z; sunLine.geometry.attributes.position.needsUpdate=true;
+  sunLbl.position.copy(tmp2).multiplyScalar(1.06); toV(Math.cos(sl),Math.sin(sl),0,tmp); sunLight.position.copy(tmp).multiplyScalar(100);
+  // polen
+  poleVec(s,tmp); const pp=poleLine.geometry.attributes.position.array; pp[0]=0;pp[1]=0;pp[2]=0; pp[3]=tmp.x;pp[4]=tmp.y;pp[5]=tmp.z; poleLine.geometry.attributes.position.needsUpdate=true;
+  poleLbl.position.copy(tmp).multiplyScalar(1.07); poleGeo.setDrawRange(0,s+1);
+  // perigæer indtil nu
+  let np2=0; while(np2<PERI.length && PERI[np2].t<=S.t) np2++; periGeo.setDrawRange(0,np2);
+  // aflæsning
+  const jd=JD0+S.t; const rn=Math.hypot(...r); const ds=sunGeo(jd,[0,0,0]); const dn=Math.hypot(ds[0],ds[1]);
+  document.getElementById('stamp').innerHTML=dateStr(jd)+' <span>år '+fmtN(S.t/365.25,2)+'</span>';
+  document.getElementById('rR').textContent=fmtN(rn,0)+' km';
+  document.getElementById('rE').textContent=fmtN(e,4);
+  document.getElementById('rI').textContent=fmtN(i/DEG,3)+'°';
+  document.getElementById('rO').textContent=fmtN(Om/DEG,1)+'°';
+  document.getElementById('rW').textContent=fmtN(vp/DEG,1)+'°';
+  document.getElementById('rT').textContent=fmtN(100*2*MS_ME*(rn/dn)**3,2)+' %';
+  document.getElementById('tSlider').value=S.t; document.getElementById('tVal').textContent=fmtN(S.t/365.25,2)+' år';
+  drawChart();
+}
+
+/* ================= Grafer ================= */
+let OMU, VPU, ESM, PER={};
+const chart=document.getElementById('chart'), cx=chart.getContext('2d');
+function drawChart(){
+  const W=chart.width, Hh=chart.height, padL=46, padR=10, padT=12, padB=28; cx.clearRect(0,0,W,Hh);
+  cx.font='18px Inter, sans-serif'; cx.fillStyle='#8d93a3'; cx.strokeStyle='rgba(201,162,39,.25)'; cx.lineWidth=1;
+  const X=t=>padL+(W-padL-padR)*t/NDAYS;
+  let series=[], lo, hi, fmtY, cap;
+  if(S.tab==='e'){ series=[{arr:k=>EL[k*5],col:'#c9a227'}]; lo=0.025; hi=0.08; fmtY=v=>fmtN(v,3);
+    cap=`Gul: øjebliksværdien, ${fmtN(PER.emin,3)}–${fmtN(PER.emax,3)}. Hvid: middel over en måned, ${fmtN(PER.smin,3)}–${fmtN(PER.smax,3)} — evektionen med perioden 205,9 døgn.`; }
+  else if(S.tab==='i'){ series=[{arr:k=>EL[k*5+1]/DEG,col:'#b48cf2'}]; lo=4.9; hi=5.4; fmtY=v=>fmtN(v,1)+'°';
+    cap='Banehældningen svinger mellem ca. 5,0° og 5,3°: størst, når Solen står ved knudelinjen, to gange om året.'; }
+  else { series=[{arr:k=>VPU[k]/DEG,col:'#f2762e'},{arr:k=>OMU[k]/DEG,col:'#4fd1c5'}]; lo=Math.min(OMU[NS-1],VPU[0])/DEG-20; hi=VPU[NS-1]/DEG+20; fmtY=v=>fmtN(v,0)+'°';
+    cap=`Perigæet (orange) drejer forlæns, knuden (turkis) baglæns. Hældningerne giver en omgang på ${fmtN(PER.apse,2)} år for perigæet og ${fmtN(PER.node,2)} år for knuden (observeret: 8,85 og 18,61 år).`; }
+  const Y=v=>padT+(Hh-padT-padB)*(1-(v-lo)/(hi-lo));
+  for(let k=0;k<=4;k++){ const v=lo+(hi-lo)*k/4; cx.beginPath(); cx.moveTo(padL,Y(v)); cx.lineTo(W-padR,Y(v)); cx.stroke(); cx.textAlign='right'; cx.fillText(fmtY(v),padL-5,Y(v)+6); }
+  cx.textAlign='center'; for(let yr=0;yr<=19;yr+=3) cx.fillText(2026+yr,X(yr*365.25),Hh-6);
+  if(S.tab==='e'){ cx.strokeStyle='rgba(201,162,39,.35)'; cx.lineWidth=1; cx.beginPath(); for(let k=0;k<NS;k+=2){ const x=X(k*DT), y=Y(EL[k*5]); k?cx.lineTo(x,y):cx.moveTo(x,y);} cx.stroke(); series=[{arr:k=>ESM[k],col:'#ece3d2'}]; }
+  for(const sr of series){ cx.strokeStyle=sr.col; cx.lineWidth=1.6; cx.beginPath(); const step=Math.max(1,Math.floor(NS/1400));
+    for(let k=0;k<NS;k+=step){ const x=X(k*DT), y=Y(sr.arr(k)); k?cx.lineTo(x,y):cx.moveTo(x,y); } cx.stroke(); }
+  cx.strokeStyle='#ece3d2'; cx.lineWidth=1.5; cx.beginPath(); cx.moveTo(X(S.t),padT); cx.lineTo(X(S.t),Hh-padB); cx.stroke();
+  document.getElementById('chartCap').textContent=cap;
+}
+
+/* ================= Betjening ================= */
+const $=id=>document.getElementById(id);
+const fmtSpeed=v=>v<1?fmtN(v,1)+' d/s':v<100?fmtN(v,0)+' d/s':fmtN(v/365.25,1)+' år/s';
+$('speed').oninput=e=>{ S.speed=10**(+e.target.value); $('speedVal').textContent=fmtSpeed(S.speed); };
+$('playBtn').onclick=()=>{ S.playing=!S.playing; $('playBtn').textContent=S.playing?'Pause':'Afspil'; $('playBtn').classList.toggle('on',S.playing); };
+$('revBtn').onclick=()=>{ S.dir*=-1; $('revBtn').classList.toggle('on',S.dir<0); };
+$('resetBtn').onclick=()=>{ S.t=0; update(); };
+$('tSlider').oninput=e=>{ S.t=+e.target.value; update(); };
+const trailMap=u=>u<=0?14:u>=0.999?NDAYS:Math.round(14*Math.pow(NDAYS/14,u));
+const trailTxt=d=>d>=NDAYS?'hele 19 år':d<45?d+' døgn':d<730?Math.round(d/29.53)+' måneder':fmtN(d/365.25,1)+' år';
+$('trail').oninput=e=>{ S.trailDays=trailMap(+e.target.value); $('trailVal').textContent=trailTxt(S.trailDays); colArr&&colArr.fill(0); update(); };
+function setFrame(fr){ S.frame=fr; $('frameInert').classList.toggle('on',fr==='inert'); $('frameSun').classList.toggle('on',fr==='sun'); setFrameArrays(); buildPeri(); buildPole(); kepLine.visible=$('cKep').checked&&fr==='inert'; update(); }
+$('frameInert').onclick=()=>setFrame('inert'); $('frameSun').onclick=()=>setFrame('sun');
+const vis={cOsc:[oscLine],cKep:[kepLine],cApse:[apseLine,periDot],cPeri:[periPts],cNode:[nodeLine,nodeDot],cPole:[poleLine,poleTrail,poleLbl],cSun:[sunLine,sunLbl],cGrid:[grid]};
+for(const id in vis){ $(id).onchange=e=>{ vis[id].forEach(o=>o.visible=e.target.checked); if(id==='cKep') kepLine.visible=e.target.checked&&S.frame==='inert'; }; }
+kepLine.visible=false;
+const exUpd=()=>{ $('exEVal').textContent=fmtN(S.exE,1)+'×'; $('exIVal').textContent=fmtN(S.exI,1)+'×'; rebuild(); update(); };
+$('exE').oninput=e=>{ S.exE=+e.target.value; exUpd(); }; $('exI').oninput=e=>{ S.exI=+e.target.value; exUpd(); };
+$('realBtn').onclick=()=>{ S.exE=1; S.exI=1; $('exE').value=1; $('exI').value=1; exUpd(); };
+function view(kind){ const d=camera.position.length()||110; controls.target.set(0,0,0);
+  if(kind==='top') camera.position.set(0,165,0.01); else if(kind==='edge') camera.position.set(0,3,165); else if(kind==='pole') camera.position.set(16,70,16); else camera.position.set(88,80,104);
+  if(kind==='pole') controls.target.set(0,26,0);
+  const m=camera.aspect<1?Math.min(2.2,0.8/camera.aspect):1; camera.position.sub(controls.target).multiplyScalar(m).add(controls.target);
+  camera.lookAt(controls.target); controls.update(); }
+$('viewTop').onclick=()=>view('top'); $('viewEdge').onclick=()=>view('edge'); $('viewFree').onclick=()=>view('free'); $('viewPole').onclick=()=>view('pole');
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{ document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b)); S.tab=b.dataset.tab; drawChart(); });
+$('sheetToggle').onclick=()=>{ const o=$('controls').classList.toggle('open'); $('sheetToggle').setAttribute('aria-expanded',o); };
+$('chartToggle').onclick=()=>$('instrument').classList.toggle('open');
+const ab=$('about'); $('aboutBtn').onclick=()=>{ try{ab.showModal()}catch(e){ab.setAttribute('open','')} }; $('aboutClose').onclick=()=>ab.close();
+ab.addEventListener('click',e=>{ if(e.target===ab) ab.close(); });
+
+/* ================= Start ================= */
+let last=performance.now();
+function loop(now){ const dt=Math.min(0.1,(now-last)/1000); last=now;
+  if(S.playing){ S.t+=S.dir*S.speed*dt; if(S.t>NDAYS-1){S.t=NDAYS-1; S.playing=false; $('playBtn').textContent='Afspil'; $('playBtn').classList.remove('on');} if(S.t<0){S.t=0;} update(); }
+  controls.update(); renderer.render(scene,camera); syncLabels(); labels.render(scene,camera); requestAnimationFrame(loop); }
+function syncLabels(){ scene.traverse(o=>{ if(o.isCSS2DObject){ let v=true, p=o; while(p){ if(!p.visible){v=false;break;} p=p.parent; } o.element.style.visibility=v?'visible':'hidden'; } }); }
+setTimeout(()=>{
+  const t0=performance.now(); integrate();
+  OMU=unwrap(2); VPU=unwrap(3);
+  PER.node=Math.abs(TAU/slope(OMU))/365.25; PER.apse=TAU/slope(VPU)/365.25;
+  PER.emin=1,PER.emax=0; for(let s=0;s<NS;s++){ PER.emin=Math.min(PER.emin,EL[s*5]); PER.emax=Math.max(PER.emax,EL[s*5]); }
+  { const w=Math.round(29.53/DT); ESM=new Float32Array(NS); let acc=0; const pre=new Float64Array(NS+1); for(let s=0;s<NS;s++) pre[s+1]=pre[s]+EL[s*5];
+    PER.smin=1; PER.smax=0; for(let s=0;s<NS;s++){ const a=Math.max(0,s-(w>>1)), b=Math.min(NS,s+(w>>1)+1); ESM[s]=(pre[b]-pre[a])/(b-a); if(s>w&&s<NS-w){PER.smin=Math.min(PER.smin,ESM[s]); PER.smax=Math.max(PER.smax,ESM[s]);} } }
+  window.__SIM={ms:performance.now()-t0, node:PER.node, apse:PER.apse, emin:PER.emin, emax:PER.emax, smin:PER.smin, smax:PER.smax, nPeri:PERI.length};
+  // URL-parametre (bruges også til figurerne i artiklen)
+  if(Q.get('trail')){ S.trailDays=Math.min(NDAYS,+Q.get('trail')); }
+  $('trailVal').textContent=trailTxt(S.trailDays);
+  $('speed').dispatchEvent(new Event('input')); $('exEVal').textContent=fmtN(S.exE,1)+'×'; $('exIVal').textContent=fmtN(S.exI,1)+'×'; $('exE').value=S.exE; $('exI').value=S.exI;
+  if(Q.get('tab')){ S.tab=Q.get('tab'); document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x.dataset.tab===S.tab)); }
+  for(const id of ['cOsc','cKep','cApse','cPeri','cNode','cPole','cSun','cGrid']){ const v=Q.get(id); if(v!==null){ $(id).checked=v==='1'; $(id).dispatchEvent(new Event('change')); } }
+  rebuild(); setFrame(S.frame);
+  view(Q.get('view')||'free');
+  if(!S.playing){ $('playBtn').textContent='Afspil'; $('playBtn').classList.remove('on'); }
+  $('loading').remove(); update(); requestAnimationFrame(loop);
+  window.__READY=true;
+},30);
+</script>
+<script src="lang-switch.js" defer></script>
+</body>
+</html>

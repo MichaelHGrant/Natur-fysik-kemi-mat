@@ -1,0 +1,1228 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Volcanoes</title>
+<meta name="description" content="Volcanoes in 3D: a section through a volcano where the silica and water content of the magma decide whether the eruption gives lava flows, lava fountains, a lava dome, explosions or a Plinian column, computed with a model of the eruption column. The volcanoes of the world on the globe, and the effect of volcanoes on climate. And a model of what would happen if the Yellowstone supervolcano erupted: pyroclastic flows, the umbrella cloud, ash fall on the cities and the climate.">
+<link rel="canonical" href="https://mhgfysik.dk/vulkaner-en.html">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body { margin: 0; }
+img { max-width: 100%; }
+/* Layout: the volcano in section as hero, readouts beside it, controls below, the column and the eruption map, the globe of volcanoes and the climate underneath, notes at the bottom */
+:root {
+  --void: #060a10;
+  --panel: #0e151d;
+  --raise: #172230;
+  --line: #233244;
+  --ink: #e6efea;
+  --muted: #8fa29b;
+  --green: #ff9a4d;
+  --dust: #c9a77c;
+  --red: #ff6f6f;
+  --sea: #5fb7ff;
+  --sunc: #ffd36b;
+  --crest: #ff8a4c;
+  --trough: #4aa8ff;
+  --focus: #ffd9b8;
+  --f-display: "Spectral", Georgia, "Times New Roman", serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { background: var(--void); color: var(--ink); }
+body { font-family: var(--f-body); font-size: 15px; line-height: 1.55; }
+a { color: var(--green); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 56px; display: grid; gap: 18px; }
+header { display: grid; gap: 6px; }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.eyebrow a { color: inherit; }
+h1 { font-family: var(--f-display); font-weight: 400; font-size: clamp(30px, 5vw, 48px); line-height: 1.08; margin: 0; text-wrap: balance; }
+h1 em { font-style: italic; color: var(--green); }
+.lede { margin: 4px 0 0; max-width: 70ch; color: var(--muted); }
+.stagewrap { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 12px; }
+@media (max-width: 760px) { .stagewrap { grid-template-columns: minmax(0, 1fr); } }
+.stage { position: relative; height: clamp(380px, 64vh, 660px); background: #020305; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.hud { position: absolute; pointer-events: none; font-family: var(--f-mono); font-size: 12px; color: var(--muted); text-shadow: 0 1px 6px #000; }
+.hud.tl { top: 12px; left: 14px; display: grid; gap: 2px; }
+.hud.tl b { color: var(--ink); font-weight: 500; }
+.hud.bl { bottom: 10px; left: 14px; font-size: 11px; }
+.camtabs { position: absolute; top: 10px; right: 10px; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; max-width: 70%; }
+.camtabs button { font: 500 11px/1 var(--f-mono); color: #fff; background: rgba(8,12,15,.7); border: 1px solid rgba(255,255,255,.2); border-radius: 999px; padding: 6px 10px; cursor: pointer; }
+.camtabs button[aria-pressed="true"] { background: rgba(8,12,15,.95); border-color: rgba(255,217,184,.6); }
+.dials { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+@media (max-width: 760px) { .dials { grid-template-columns: 1fr 1fr; } .dials .ro { grid-column: 1 / -1; } }
+.dials .hd { font: 500 11px var(--f-mono); color: var(--muted); }
+.dials canvas { width: 100%; aspect-ratio: 1/1; display: block; }
+.ro { display: grid; gap: 4px; font-size: 13px; }
+.ro div { display: flex; justify-content: space-between; gap: 8px; border-top: 1px solid var(--line); padding-top: 4px; }
+.ro span { color: var(--muted); font-size: 12px; }
+.ro b { font: 500 13px var(--f-mono); font-variant-numeric: tabular-nums; text-align: right; }
+.controls { display: grid; gap: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.play { height: 44px; min-width: 112px; padding: 0 18px 0 14px; border-radius: 999px; border: 1px solid #4a5a70; background: #18222f; color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 600 15px/1 var(--f-body); }
+.play svg { width: 16px; height: 16px; fill: currentColor; }
+.action { font: 600 14px/1 var(--f-body); color: #2a1204; background: var(--green); border: 0; border-radius: 999px; padding: 12px 16px; cursor: pointer; }
+.ghost { font: 500 14px/1 var(--f-body); color: var(--ink); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 10px 14px; cursor: pointer; }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
+.seg button { font: 500 13px/1 var(--f-body); color: var(--muted); background: transparent; border: 0; padding: 9px 11px; cursor: pointer; border-right: 1px solid var(--line); }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { color: var(--ink); background: var(--raise); }
+.ctl-label { font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.group { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.chk { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; cursor: pointer; }
+.chk input { width: 15px; height: 15px; accent-color: var(--green); }
+.sliders { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px 22px; }
+.sl { display: grid; gap: 2px; font-size: 13px; color: var(--muted); }
+.sl .top { display: flex; justify-content: space-between; gap: 8px; }
+.sl output { font: 500 13px var(--f-mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+.sl input[type=range] { width: 100%; accent-color: var(--green); }
+.sl input[type=date] { font: 500 13px var(--f-mono); color: var(--ink); background: var(--raise); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; color-scheme: dark; }
+.hint { font-size: 12px; color: var(--muted); margin: 0; }
+.msg { font-size: 12px; color: var(--green); min-height: 1em; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.skybox { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; display: grid; gap: 8px; }
+.skybox .hd { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+.skybox h2 { font-family: var(--f-display); font-weight: 400; font-size: 22px; margin: 0; }
+.skybox canvas { width: 100%; aspect-ratio: 3/1; display: block; border-radius: 4px; background: #01040a; }
+@media (max-width: 640px) { .skybox canvas { aspect-ratio: 2/1; } }
+.skyread { font-size: 13.5px; color: #cfdcd6; margin: 0; }
+.notes { display: grid; grid-template-columns: 1.3fr 1fr; gap: 28px 36px; padding-top: 8px; }
+.notes > section { min-width: 0; }
+.notes h2 { font-family: var(--f-display); font-weight: 400; font-size: 25px; margin: 0 0 8px; text-wrap: balance; }
+.notes h3 { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 500; margin: 0 0 8px; }
+.notes p { margin: 0 0 10px; max-width: 66ch; }
+.eq { font-family: var(--f-display); font-style: italic; font-size: 18px; padding: 6px 0 10px; overflow-x: auto; white-space: nowrap; }
+.side { border-left: 1px solid var(--line); padding-left: 24px; color: #cbd7d1; font-size: 14px; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 6px 0 16px; font-size: 14px; }
+.facts dt { font-family: var(--f-mono); font-size: 12px; color: var(--muted); padding-top: 2px; }
+.facts dd { margin: 0; }
+.tblwrap { overflow-x: auto; margin: 4px 0 14px; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; min-width: 460px; }
+th, td { text-align: left; padding: 6px 10px 6px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+td i.sw { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 6px; vertical-align: -1px; }
+ul.refs { margin: 0; padding-left: 18px; font-size: 13.5px; } ul.refs li { margin-bottom: 5px; }
+@media (max-width: 760px) { .notes { grid-template-columns: 1fr; } .side { border-left: 0; border-top: 1px solid var(--line); padding-left: 0; padding-top: 16px; } }
+@media (max-width: 640px) { .camtabs { max-width: 100%; left: 10px; top: auto; bottom: 10px; justify-content: flex-start; } .hud.bl { display: none; } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+.side2 { display: grid; gap: 8px; align-content: start; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px; min-width: 0; }
+.side2 .hd { font: 500 11px var(--f-mono); color: var(--muted); }
+.side2 h3 { font-family: var(--f-display); font-weight: 400; font-size: 20px; margin: 0; line-height: 1.15; }
+.side2 .kind { font-size: 12.5px; color: var(--muted); }
+.side2 canvas { width: 100%; height: 150px; display: block; }
+.duo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+@media (max-width: 860px) { .duo { grid-template-columns: minmax(0, 1fr); } }
+.box { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; display: grid; gap: 10px; min-width: 0; align-content: start; }
+.box h2 { font-family: var(--f-display); font-weight: 400; font-size: 22px; margin: 0; }
+.box canvas { width: 100%; height: 220px; display: block; }
+.box svg { width: 100%; height: auto; display: block; }
+.box p { margin: 0; font-size: 13.5px; color: #cdd6df; }
+.big { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--muted); }
+.big b { display: block; font: 500 20px var(--f-mono); color: var(--ink); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 10px; font: 500 11px var(--f-mono); color: var(--muted); }
+.legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; margin-right: 4px; vertical-align: -1px; }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.tab { font: 500 14px/1.2 var(--f-body); color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 9px 16px; cursor: pointer; }
+.tab[aria-selected="true"] { color: var(--ink); background: var(--raise); border-color: #4a5a70; }
+.stage .hud { color: #dbe4ea; }
+.stage.tall { height: clamp(420px, 70vh, 720px); }
+.trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 980px) { .trio { grid-template-columns: minmax(0, 1fr); } }
+.trio canvas { width: 100%; height: 240px; display: block; }
+.stagebadge { font: 600 12px var(--f-mono); padding: 3px 8px; border-radius: 999px; background: rgba(0,0,0,.45); color: #fff; }
+.stagetext { position: absolute; left: 14px; right: 14px; bottom: 34px; max-width: 520px; font-size: 13px; color: #eef3f7; text-shadow: 0 1px 6px #000; pointer-events: none; }
+@media (max-width: 640px) { .stagetext { bottom: 54px; font-size: 12px; } }
+#tiltCv { width: 100%; height: 260px; display: block; }
+.sec { font-family: var(--f-display); font-weight: 400; font-size: clamp(26px, 3.6vw, 34px); margin: 22px 0 -6px; }
+.stage.mid { height: clamp(330px, 56vh, 560px); }
+.gt { width: 100%; min-width: 0; font-size: 12.5px; }
+.gt th, .gt td { padding: 4px 6px 4px 0; }
+.gt td:nth-child(n+2), .gt th:nth-child(n+2) { white-space: nowrap; text-align: right; font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.gt tr { cursor: pointer; }
+.gt tr[aria-selected="true"] td { color: var(--green); }
+.gt tr:hover td { background: rgba(255,154,77,.07); }
+#profCv { width: 100%; height: 230px; display: block; }
+@media (max-width: 640px) { #profCv { height: 200px; } }
+.cbar { height: 10px; border-radius: 3px; }
+.cbarlbl { display: flex; justify-content: space-between; font: 500 10.5px var(--f-mono); color: var(--muted); }
+.box canvas.tallc { height: 280px; }
+.vinfo h3 { margin: 0; }
+.vinfo p { margin: 0; font-size: 13.5px; color: #cdd6df; }
+.rbadge { display: inline-block; font: 600 12px var(--f-mono); padding: 3px 9px; border-radius: 999px; color: #160a02; }
+.side2 .kind { margin: 0; }
+#ysStage canvas { cursor: pointer; }
+#ysTbl tr[aria-selected="true"] td { color: var(--sunc); }
+#ysPre .tab[aria-selected="true"] { border-color: #e27bff; }
+</style>
+
+<!-- app (PWA) -->
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/app/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="mhgfysik">
+<script src="/app/app.js" defer></script>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow"><a href="index-en.html#geofysik">← Home</a> · Earth and geophysics · volcanoes in 3D</div>
+    <h1>Volcanoes: why some <em>flow</em> and others explode</h1>
+    <p class="lede">Magma is molten rock with dissolved water and other gases. As the magma rises, the pressure falls and the gas forms bubbles, just as when you open a fizzy drink. In fluid basalt the bubbles escape, and the lava flows out quietly or sprays up in fountains. In viscous, silica-rich magma the bubbles are trapped until the magma shatters into ash and is shot up in a column that can reach 40 km. Turn the silica and water content of the magma and how fast it rises, and watch the volcano in section. Drag the picture to turn it.</p>
+  </header>
+
+  <div class="tabs" role="tablist" id="pre">
+    <button class="tab" role="tab" type="button" data-p="kilauea" aria-selected="false">Kīlauea 2018</button>
+    <button class="tab" role="tab" type="button" data-p="fountain" aria-selected="false">Lava fountain</button>
+    <button class="tab" role="tab" type="button" data-p="stromboli" aria-selected="false">Stromboli</button>
+    <button class="tab" role="tab" type="button" data-p="unzen" aria-selected="false">Unzen 1991: lava dome</button>
+    <button class="tab" role="tab" type="button" data-p="soufriere" aria-selected="false">Soufrière Hills</button>
+    <button class="tab" role="tab" type="button" data-p="helens" aria-selected="false">Mount St. Helens 1980</button>
+    <button class="tab" role="tab" type="button" data-p="pinatubo" aria-selected="true">Pinatubo 1991</button>
+    <button class="tab" role="tab" type="button" data-p="collapse" aria-selected="false">Column collapse</button>
+  </div>
+
+  <div class="stagewrap">
+    <div class="stage tall" id="stage">
+      <canvas id="cv" aria-label="3D section through a volcano with magma chamber, conduit and eruption. Drag to turn, scroll to zoom."></canvas>
+      <div class="hud tl"><div><span class="rbadge" id="hReg">—</span></div><div id="hMag"></div></div>
+      <div class="camtabs" id="cams">
+        <button type="button" data-cam="far" aria-pressed="true">Whole eruption</button>
+        <button type="button" data-cam="cut" aria-pressed="false">Section</button>
+        <button type="button" data-cam="near" aria-pressed="false">At the crater</button>
+      </div>
+      <div class="stagetext" id="stageText"></div>
+      <div class="hud bl">Drag to turn · scroll to zoom</div>
+    </div>
+    <div class="side2">
+      <div class="hd">The magma</div>
+      <div class="ro">
+        <div><span>Type</span><b id="rType">—</b></div>
+        <div><span>Temperature</span><b id="rT">—</b></div>
+        <div><span>Viscosity</span><b id="rEta">—</b></div>
+        <div><span>Bubbles form at depth</span><b id="rSat">—</b></div>
+        <div><span>Shatters into ash at depth</span><b id="rFrag">—</b></div>
+      </div>
+      <div class="hd">The eruption</div>
+      <div class="ro">
+        <div><span>Magma out of the conduit</span><b id="rQ">—</b></div>
+        <div><span>Speed out of the crater</span><b id="rU">—</b></div>
+        <div><span>Column height (model)</span><b id="rH">—</b></div>
+        <div><span>Mastin's formula</span><b id="rHm">—</b></div>
+        <div><span>Fountain height</span><b id="rF">—</b></div>
+        <div><span>Volume over the duration</span><b id="rV">—</b></div>
+        <div><span>VEI</span><b id="rVEI">—</b></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="row">
+      <button class="play" id="play" type="button"><svg viewBox="0 0 20 20" id="playIcon" aria-hidden="true"><path d="M4 4h12v12H4z"/></svg><span id="playTxt">Stop</span></button>
+      <button class="ghost" id="restart" type="button">Start again</button>
+      <div class="group"><span class="ctl-label">Speed</span>
+        <div class="seg" id="tempo"><button type="button" data-v="0.5">½×</button><button type="button" data-v="1" aria-pressed="true">1×</button><button type="button" data-v="2">2×</button></div>
+      </div>
+      <label class="chk"><input type="checkbox" id="tScale" checked> Height scale</label>
+      <label class="chk"><input type="checkbox" id="tLbl" checked> Labels in the section</label>
+    </div>
+    <div class="sliders">
+      <label class="sl"><span class="top"><span>Silica SiO₂</span><output id="oSi"></output></span><input type="range" id="sSi" min="48" max="76" step="0.5" value="65"></label>
+      <label class="sl"><span class="top"><span>Dissolved water</span><output id="oW"></output></span><input type="range" id="sW" min="0.1" max="7" step="0.1" value="6"></label>
+      <label class="sl"><span class="top"><span>Conduit radius</span><output id="oR"></output></span><input type="range" id="sR" min="0" max="100" step="1" value="78"></label>
+      <label class="sl"><span class="top"><span>Ascent speed in the conduit</span><output id="oUa"></output></span><input type="range" id="sUa" min="0" max="100" step="1" value="88"></label>
+      <label class="sl"><span class="top"><span>Duration</span><output id="oD"></output></span><input type="range" id="sD" min="0" max="100" step="1" value="48"></label>
+    </div>
+    <p class="hint">Basalt has about 50 % SiO₂ and erupts at 1100–1200 °C. Rhyolite has over 70 % and is only 750–850 °C. Silica links up in long chains, which is why rhyolite is a million times more viscous than basalt. The ascent speed decides whether the gas has time to seep out: if a viscous magma rises slowly, it builds a lava dome; if it rises fast, it explodes.</p>
+  </div>
+
+  <div class="duo">
+    <div class="box">
+      <h2>The eruption column</h2>
+      <canvas id="colCv" class="tallc" aria-label="The speed of the column and its density relative to the air as a function of height"></canvas>
+      <div class="legend"><span><i style="background:#ff9a4d"></i>upward speed (m/s)</span><span><i style="background:#9fd0ff"></i>density relative to the air</span><span><i style="background:#ffffff"></i>column radius</span></div>
+      <p id="colTxt">At the bottom the column is heavier than the air and is carried only by its speed out of the crater. It draws in cold air, which is heated and expands. If the column becomes lighter than the air before its speed is used up, it rises on as a hot bubble. Otherwise it collapses.</p>
+    </div>
+    <div class="box">
+      <h2>Map of eruption styles</h2>
+      <canvas id="mapCv" class="tallc" aria-label="The eruption style as a function of silica content and ascent speed at the chosen water content and conduit radius"></canvas>
+      <div class="legend" id="mapLeg"></div>
+      <p>Each point is computed with the chosen water content and conduit radius. Click the map to move the magma there.</p>
+    </div>
+  </div>
+
+  <h2 class="sec">The world's volcanoes</h2>
+  <p class="lede">Most volcanoes lie at plate boundaries. At the trenches an ocean plate slides beneath another and carries water down with it. The water lowers the melting point of the mantle above the plate, and andesite and dacite form: the Ring of Fire around the Pacific. At the mid-ocean ridges and in rift zones the plates are pulled apart, and the mantle melts as the pressure falls. Over hotspots such as Hawaii and Iceland, hot mantle rises from deep below. Click a volcano.</p>
+  <div class="stagewrap">
+    <div class="stage mid" id="stage2">
+      <canvas id="cv2" aria-label="The Earth with volcanoes and plate boundaries. Drag to turn, click a volcano."></canvas>
+      <div class="hud bl">Drag to turn · scroll to zoom · click a volcano</div>
+    </div>
+    <div class="side2 vinfo" id="vInfo">
+      <div class="hd" id="vKind">—</div>
+      <h3 id="vName">—</h3>
+      <div class="ro">
+        <div><span>Height</span><b id="vH">—</b></div>
+        <div><span>Last major eruption</span><b id="vLast">—</b></div>
+      </div>
+      <p id="vNote"></p>
+      <div class="legend" style="margin-top:6px"><span><i style="background:#ff6a3d"></i>subduction</span><span><i style="background:#ffd34d"></i>hotspot</span><span><i style="background:#6fd3ff"></i>rift and ridge</span><span><i style="background:#e27bff"></i>supervolcano</span></div>
+      <div class="legend"><span><i style="background:#ff6a3d;height:3px"></i>trench</span><span><i style="background:#6fd3ff;height:3px"></i>spreading ridge</span><span><i style="background:#c9d4dd;height:3px"></i>other boundary</span></div>
+    </div>
+  </div>
+
+  <h2 class="sec">Volcanoes and climate</h2>
+  <div class="duo">
+    <div class="box">
+      <canvas id="climCv" class="tallc" aria-label="Radiative forcing and change of the Earth's mean temperature in the years after an eruption"></canvas>
+      <div class="legend"><span><i style="background:#9fd0ff"></i>radiative forcing (W/m²)</span><span><i style="background:#ff9a4d"></i>temperature change (°C)</span></div>
+    </div>
+    <div class="box">
+      <div class="seg" id="clim"><button type="button" data-v="7">El Chichón 1982</button><button type="button" data-v="18" aria-pressed="true">Pinatubo 1991</button><button type="button" data-v="60">Tambora 1815</button><button type="button" data-v="150">Samalas 1257</button></div>
+      <label class="sl"><span class="top"><span>Sulphur dioxide in the stratosphere</span><output id="oSO2"></output></span><input type="range" id="sSO2" min="0" max="100" step="1" value="58"></label>
+      <div class="big"><span>Largest cooling<b id="cDT">—</b></span><span>Largest forcing<b id="cF">—</b></span><span>Aerosol optical depth<b id="cAOD">—</b></span></div>
+      <p>A large explosion shoots sulphur dioxide up into the stratosphere. There, within a few weeks, it turns into tiny droplets of sulphuric acid that scatter sunlight back into space. The droplets slowly fall out over one to two years. Pinatubo sent up about 18 million tonnes of SO₂, and the Earth's mean temperature fell by about 0.4 °C the year after. Tambora in 1815 gave the 'year without a summer' in 1816 in Europe and North America. The model is a simple energy balance with the upper layer of the ocean and the deep ocean.</p>
+    </div>
+  </div>
+
+
+  <h2 class="sec" id="yellowstone">If Yellowstone erupts</h2>
+  <p class="lede">Beneath Yellowstone in the USA lies a magma chamber of viscous, silica-rich rhyolite. Three times it has emptied in giant eruptions: 2.08 million, 1.3 million and 631,000 years ago. Each time the ground above the chamber collapsed and left a caldera, a crater up to 75 km across. The model shows what would happen if it happened today: how far the glowing pyroclastic flows reach, how the umbrella cloud spreads over North America, and how much ash falls on the cities. Click a city on the map or in the table. For the caldera and the eruption itself in 3D, see <a href="yellowstone-en.html">Yellowstone in 3D</a>.</p>
+  <div class="tabs" role="tablist" id="ysPre">
+    <button class="tab" role="tab" type="button" data-s="hydro" aria-selected="false">Hydrothermal explosion</button>
+    <button class="tab" role="tab" type="button" data-s="lava" aria-selected="false">Lava flow</button>
+    <button class="tab" role="tab" type="button" data-s="vei6" aria-selected="false">Smaller eruption, VEI 6</button>
+    <button class="tab" role="tab" type="button" data-s="usgs" aria-selected="true">USGS scenario, 330 km³</button>
+    <button class="tab" role="tab" type="button" data-s="mesa" aria-selected="false">Mesa Falls, 1.3 Ma</button>
+    <button class="tab" role="tab" type="button" data-s="lc" aria-selected="false">Lava Creek, 631 ka</button>
+    <button class="tab" role="tab" type="button" data-s="huck" aria-selected="false">Huckleberry Ridge, 2.08 Ma</button>
+  </div>
+  <div class="stagewrap">
+    <div class="stage tall" id="ysStage">
+      <canvas id="ysCv" aria-label="Map of North America with the ash fall from a Yellowstone eruption. Click a city."></canvas>
+      <div class="hud tl"><div><span class="rbadge" id="ysBadge">—</span></div><div id="ysClock"></div></div>
+      <div class="stagetext" id="ysText"></div>
+    </div>
+    <div class="side2">
+      <div class="hd">The eruption</div>
+      <div class="ro">
+        <div><span>Magma</span><b id="ysMag">—</b></div>
+        <div><span>Loose ash</span><b id="ysAsh">—</b></div>
+        <div><span>VEI</span><b id="ysVei">—</b></div>
+        <div><span>Mass flow</span><b id="ysMer">—</b></div>
+        <div><span>Reach of umbrella cloud</span><b id="ysR">—</b></div>
+        <div><span>Pyroclastic flows</span><b id="ysPdc">—</b></div>
+        <div><span>Over 1 cm of ash</span><b id="ysA1">—</b></div>
+        <div><span>Over 10 cm of ash</span><b id="ysA10">—</b></div>
+      </div>
+      <div class="hd" id="ysCityHd">—</div>
+      <div class="ro">
+        <div><span>Distance</span><b id="ysCd">—</b></div>
+        <div><span>Ash arrives after</span><b id="ysCarr">—</b></div>
+        <div><span>Ash now</span><b id="ysCnow">—</b></div>
+        <div><span>Ash in the end</span><b id="ysCfin">—</b></div>
+      </div>
+      <p class="kind" id="ysCityTxt" style="margin:0"></p>
+      <div class="hd">Thickness of the ash layer</div>
+      <div><div class="cbar" id="ysBar"></div><div class="cbarlbl"><span>1 mm</span><span>1 cm</span><span>10 cm</span><span>1 m</span><span>10 m</span></div></div>
+    </div>
+  </div>
+  <div class="controls">
+    <div class="row">
+      <button class="play" id="ysPlay" type="button"><svg viewBox="0 0 20 20" id="ysPlayIcon" aria-hidden="true"><path d="M4 4h12v12H4z"/></svg><span id="ysPlayTxt">Stop</span></button>
+      <button class="ghost" id="ysRestart" type="button">Restart</button>
+      <div class="group"><span class="ctl-label">Speed</span>
+        <div class="seg" id="ysTempo"><button type="button" data-v="0.5">½×</button><button type="button" data-v="1" aria-pressed="true">1×</button><button type="button" data-v="2">2×</button></div>
+      </div>
+      <label class="chk"><input type="checkbox" id="ysZoom"> Zoom in on Yellowstone</label>
+    </div>
+    <div class="sliders">
+      <label class="sl"><span class="top"><span>Time since the eruption began</span><output id="oYsT"></output></span><input type="range" id="sYsT" min="0" max="14" step="0.01" value="0"></label>
+      <label class="sl"><span class="top"><span>Magma erupted</span><output id="oYsV"></output></span><input type="range" id="sYsV" min="0" max="100" step="0.5" value="73"></label>
+    </div>
+    <div class="row">
+      <div class="group"><span class="ctl-label">Duration</span>
+        <div class="seg" id="ysDur"><button type="button" data-v="2">2 days</button><button type="button" data-v="3">3 days</button><button type="button" data-v="7" aria-pressed="true">1 week</button><button type="button" data-v="30">1 month</button></div>
+      </div>
+      <div class="group"><span class="ctl-label">Wind</span>
+        <div class="seg" id="ysWind"><button type="button" data-v="w" aria-pressed="true">Winter: strong westerlies</button><button type="button" data-v="s">Summer: light wind</button></div>
+      </div>
+    </div>
+    <p class="hint">A large eruption sends so much ash and gas up that the umbrella cloud in the stratosphere spreads as a flat, heavy current in all directions, even against the wind. So the ash layer ends up almost circular around Yellowstone. In a smaller eruption the wind carries the ash east. The model is a simple description fitted to the USGS computer simulation of a 330 km³ eruption lasting a week.</p>
+  </div>
+  <div class="duo">
+    <div class="box">
+      <h2>The cities</h2>
+      <div class="tblwrap" style="max-height:320px;overflow-y:auto"><table class="gt" id="ysTbl">
+        <thead><tr><th>City</th><th>km</th><th>Arrival</th><th>Now</th><th>Final</th></tr></thead><tbody></tbody></table></div>
+      <p>Just 1 mm of ash closes airports and makes roads slippery. At 1 cm crops are damaged and the power grid short-circuits. At 10 cm weak roofs can collapse, especially when the ash is wet, because wet ash weighs up to 1.5 tonnes per m³.</p>
+    </div>
+    <div class="box">
+      <h2>The climate after Yellowstone</h2>
+      <canvas id="ysClimCv" class="tallc" aria-label="Change in Earth's mean temperature in the years after the eruption, compared with Pinatubo 1991"></canvas>
+      <div class="legend"><span><i style="background:#ff9a4d"></i>this eruption</span><span><i style="background:#9fd0ff"></i>Pinatubo 1991 (dashed)</span></div>
+      <div class="big"><span>SO₂ in the stratosphere<b id="ysSO2">—</b></span><span>Largest cooling<b id="ysDT">—</b></span><span>Optical depth<b id="ysAOD">—</b></span></div>
+      <p>Rhyolite contains little sulphur, so the model assumes about 0.5 million tonnes of SO₂ per km³ of magma. That is uncertain by a factor of 10. At very large amounts the sulphuric acid droplets grow large and fall out faster, so the cooling grows more slowly than the amount of sulphur. Recent calculations for supervolcanoes give a global cooling of about 1–4 °C for a few years, with much colder summers over North America.</p>
+    </div>
+  </div>
+  <div class="duo">
+    <div class="box">
+      <h2>What would happen</h2>
+      <p><b>Months to years before:</b> swarms of earthquakes under the caldera, moving closer to the surface; the ground rising several centimetres a week; more carbon dioxide and sulphur in the hot springs. The volcano observatory would raise the alert level, and the area would be evacuated.</p>
+      <p><b>The first hours:</b> steam explosions as the magma meets the groundwater. Then the conduit opens, and a Plinian column rises 30–50 km.</p>
+      <p><b>Hours to days:</b> the roof of the magma chamber breaks along a ring of fractures and sinks. Magma surges up along the whole ring, the columns collapse, and pyroclastic flows race out in all directions, up to about 100 km. Everything inside them dies. Their deposits can be hundreds of metres thick.</p>
+      <p><b>Days to weeks:</b> the umbrella cloud spreads over the continent. Aircraft cannot fly, and ash settles over the farmland of the Midwest.</p>
+      <p><b>Months to years:</b> rain washes the ash into the rivers and creates mudflows. Water and sewer systems clog. The sulphuric acid droplets in the stratosphere cool the Earth for a few years, and harvests fail in many places.</p>
+    </div>
+    <div class="box">
+      <h2>How likely is it?</h2>
+      <p>Very unlikely. The USGS puts the chance of a new caldera eruption at about 1 in 730,000 per year, and that figure rests on just the two intervals between the three great eruptions. So Yellowstone is not "overdue". Only about 5–15 % of the magma chamber is molten, and there may never again be enough magma for a giant eruption.</p>
+      <p>Since the last caldera eruption there have been about 80 quiet eruptions, mostly lava flows. The latest was 70,000 years ago. The most likely next eruption is therefore a lava flow. The most likely dangerous event is a hydrothermal explosion: superheated water suddenly flashing to steam, as at Biscuit Basin in July 2024.</p>
+      <p>Yellowstone's alert level is "normal", and the volcano is watched around the clock with seismometers, GPS, satellites and gas measurements by the Yellowstone Volcano Observatory.</p>
+    </div>
+  </div>
+
+  <div class="notes">
+    <section>
+      <h2>Why magma rises</h2>
+      <p>The mantle is solid rock, but it melts where the pressure falls or where water is added. The melt is lighter than the rock around it and is squeezed up through cracks. It gathers in a magma chamber a few kilometres beneath the volcano. When the pressure in the chamber becomes large enough, the roof cracks, and the magma rises through a conduit or a dyke.</p>
+
+      <h2>The gas makes the difference</h2>
+      <p>Water dissolves in magma just as carbon dioxide dissolves in a fizzy drink. The amount dissolved roughly follows</p>
+      <div class="eq">c = s·√P,  s ≈ 4.1·10⁻⁶ Pa<sup>−½</sup></div>
+      <p>At 100 MPa, about 4 km down, the magma can hold 4 % water. On the way up the pressure falls, and the water comes out as bubbles. At atmospheric pressure a kilogram of steam at 900 °C takes up more than 5 m³. When the bubbles fill about 75 % of the volume, the magma shatters into ash and gas that race up at several hundred metres per second.</p>
+      <p>In fluid basalt the bubbles rise faster than the magma and escape. Large bubbles bursting in the crater give Strombolian eruptions. If the magma rises fast, the gas stays in it and sprays it up in Hawaiian fountains. In viscous magma the bubbles cannot escape. If the magma rises slowly, the gas still seeps out through cracks, and the degassed magma is squeezed out as a lava dome. If it rises fast, it explodes.</p>
+      <div class="eq">log<sub>10</sub> η = A + B/(T − C)</div>
+      <p>The viscosity η is computed here with a formula of the Vogel-Fulcher-Tammann type. B and C grow with the silica content, and dissolved water lowers the viscosity strongly. Crystals make andesite and dacite even more viscous.</p>
+
+      <h2>The eruption column</h2>
+      <p>Just above the crater the mixture of ash and gas is several times heavier than the air and is carried only by its speed. The column sucks in air from the sides. The air is heated by the ash and expands, so the column becomes lighter. If the column has become lighter than the air before its speed is used up, it rises on as an enormous hot bubble until it has the same density as the air around it. There it spreads out like an umbrella and drifts with the wind. The model here solves the equations for mass, momentum and energy in the column on the way up (Morton, Taylor &amp; Turner 1956; Woods 1988), with an entrainment coefficient of 0.09:</p>
+      <div class="eq">d(ρub²)/dz = 2α ρ<sub>a</sub> u b,  d(ρu²b²)/dz = g (ρ<sub>a</sub> − ρ) b²</div>
+      <p>The column height grows only as the fourth root of the mass flux: ten thousand times more magma gives a column ten times higher. Mastin et al. (2009) found H ≈ 2.0 km · (V/(m³/s))<sup>0.241</sup> from many observed eruptions.</p>
+      <p>If the mass flux is large and the speed small, the column does not become light enough. Then it collapses like a fountain, and the ash pours down the sides of the volcano as pyroclastic flows: glowing avalanches of ash, gas and rock that race along at 100–700 km/h at 300–800 °C. Such a flow wiped out the town of Saint-Pierre on Martinique in 1902, and Pompeii and Herculaneum in AD 79.</p>
+
+      <h2>VEI: the size of eruptions</h2>
+      <p>The Volcanic Explosivity Index VEI (Newhall and Self 1982) is based on the volume of material thrown out. Each step is ten times more: VEI 4 is 0.1 km³, VEI 5 is 1 km³, VEI 6 is 10 km³ and VEI 8 more than 1000 km³. Quiet basalt eruptions have VEI 0–1, even if they pour out many km³ of lava. Laki in 1783 poured out 15 km³ of lava.</p>
+
+      <h2>Iceland and Denmark</h2>
+      <p>The Laki fissure in Iceland opened in June 1783 and for eight months poured out lava and about 120 million tonnes of sulphur dioxide. A poisonous haze settled over Europe that summer. In Iceland more than half of the livestock and about a fifth of the people died in the famine that followed. Iceland was then ruled from Denmark, and in Copenhagen there was talk of moving the Icelanders to Jutland. In April 2010 the ash from Eyjafjallajökull closed the airspace over most of Europe for a week, Denmark included, because the ash can melt inside jet engines.</p>
+    </section>
+    <aside class="side">
+      <h3>Magma types</h3>
+      <div class="tblwrap"><table style="min-width:0">
+        <thead><tr><th>Type</th><th>SiO₂</th><th>T</th><th>η (Pa·s)</th></tr></thead>
+        <tbody>
+          <tr><td>Basalt</td><td>45–52 %</td><td>1100–1250 °C</td><td>10–10³</td></tr>
+          <tr><td>Andesite</td><td>57–63 %</td><td>950–1100 °C</td><td>10⁴–10⁶</td></tr>
+          <tr><td>Dacite</td><td>63–69 %</td><td>850–1000 °C</td><td>10⁵–10⁸</td></tr>
+          <tr><td>Rhyolite</td><td>&gt; 69 %</td><td>750–850 °C</td><td>10⁶–10¹⁰</td></tr>
+        </tbody></table></div>
+      <p style="font-size:12.5px;color:var(--muted)">For comparison: water 10⁻³ Pa·s, honey 10 Pa·s, peanut butter 10³ Pa·s, asphalt at room temperature 10⁸ Pa·s.</p>
+      <h3>Great eruptions</h3>
+      <div class="tblwrap"><table style="min-width:0">
+        <thead><tr><th>Year</th><th>Volcano</th><th>VEI</th></tr></thead>
+        <tbody>
+          <tr><td>2.08 million years ago</td><td><a href="#yellowstone">Yellowstone</a>, Huckleberry Ridge</td><td>8</td></tr>
+          <tr><td>631,000 years ago</td><td><a href="#yellowstone">Yellowstone</a>, Lava Creek</td><td>8</td></tr>
+          <tr><td>74,000 years ago</td><td>Toba, Sumatra</td><td>8</td></tr>
+          <tr><td>c. 1600 BC</td><td>Thera, Santorini</td><td>7</td></tr>
+          <tr><td>79</td><td>Vesuvius</td><td>5</td></tr>
+          <tr><td>1257</td><td>Samalas, Lombok</td><td>7</td></tr>
+          <tr><td>1783</td><td>Laki, Iceland</td><td>4 (lava)</td></tr>
+          <tr><td>1815</td><td>Tambora</td><td>7</td></tr>
+          <tr><td>1883</td><td>Krakatoa</td><td>6</td></tr>
+          <tr><td>1912</td><td>Novarupta, Alaska</td><td>6</td></tr>
+          <tr><td>1980</td><td>Mount St. Helens</td><td>5</td></tr>
+          <tr><td>1991</td><td>Pinatubo</td><td>6</td></tr>
+          <tr><td>2022</td><td>Hunga Tonga</td><td>5–6</td></tr>
+        </tbody></table></div>
+      <h3>See also</h3>
+      <p><a href="tsunami-en.html">Tsunamis</a> · <a href="jordskaelv-en.html">Earthquakes and volcanoes for children</a> · <a href="pladetektonik-en.html">Plate tectonics</a></p>
+      <h3>Sources</h3>
+      <ul class="refs">
+        <li>A. W. Woods, <i>Bull. Volcanol.</i> 50 (1988): the dynamics of eruption columns.</li>
+        <li>L. G. Mastin et al., <i>J. Volcanol. Geotherm. Res.</i> 186 (2009): column height and mass flux.</li>
+        <li>L. Wilson, R. S. J. Sparks and G. P. L. Walker, <i>Geophys. J. R. Astr. Soc.</i> 63 (1980): Plinian eruptions and column collapse.</li>
+        <li>D. Giordano, J. K. Russell and D. B. Dingwell, <i>Earth Planet. Sci. Lett.</i> 271 (2008): the viscosity of magmas.</li>
+        <li>C. G. Newhall and S. Self, <i>J. Geophys. Res.</i> 87 (1982): VEI.</li>
+        <li>A. Robock, <i>Rev. Geophys.</i> 38 (2000): volcanoes and climate.</li>
+        <li>Smithsonian Institution, Global Volcanism Program: the volcanoes on the globe.</li>
+        <li>L. G. Mastin, A. R. Van Eaton and J. B. Lowenstern, <i>Geochem. Geophys. Geosyst.</i> 15 (2014): ash fall from a Yellowstone supereruption.</li>
+        <li>Y. J. Suzuki and T. Koyaguchi, <i>J. Geophys. Res.</i> 114 (2009): spreading of the umbrella cloud.</li>
+        <li>T. M. Wilson et al., <i>Phys. Chem. Earth</i> 45–46 (2012): effects of ash on buildings, power and farming.</li>
+        <li>USGS, Yellowstone Volcano Observatory: questions about supervolcanoes and hydrothermal explosions.</li>
+      </ul>
+    </aside>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+window.TXT={dec:".",hr:"h",mio:"million",stop:"Stop",start:"Start",km:"km",m:"m",kmh:"km/h",
+ reg:["Lava flows","Hawaiian: lava fountain","Strombolian","Lava dome","Vulcanian","Plinian column","Column collapse"],
+ regCol:["#ff7a3d","#ffb03d","#ffd36b","#c98a5a","#b7b2a8","#e8e4dc","#ff5a5a"],
+ regTxt:["The gas seeps out, and the fluid lava runs quietly down the sides of the volcano. The lava can run many kilometres before it freezes.","The gas stays in the magma on the way up and tears it apart as the bubbles expand in the crater. The lava sprays up in a glowing fountain, and the drops fall and run on as lava flows.","Large gas bubbles rise faster than the magma. They burst in the crater at intervals and throw glowing clots of lava, bombs, a few hundred metres up.","The magma is so viscous and rises so slowly that the gas has time to seep out through cracks. The degassed lava is squeezed out as a plug that grows and can collapse in glowing avalanches.","A plug of viscous, frozen lava holds the gas back until the pressure blows it apart. Short, violent explosions throw out rock and ash and send ash clouds a few kilometres up.","The magma shatters into ash and gas that race up the conduit. The column draws in air, becomes lighter than air and rises until it spreads out as an umbrella cloud in the stratosphere.","The column is too heavy: it does not become lighter than air before its speed is used up. It collapses like a fountain, and glowing pyroclastic flows race down the volcano."],
+ types:[[52,"Basalt"],[57,"Basaltic andesite"],[63,"Andesite"],[69,"Dacite"],[99,"Rhyolite"]],
+ lbl:{ch:"Magma chamber",cond:"Conduit",sat:"Bubbles form",frag:"The magma shatters into ash",nb:"The column becomes lighter than air",top:"Top",umb:"Umbrella cloud",pdc:"Pyroclastic flows",dome:"Lava dome",lava:"Lava flow",sea:"Sea level"},
+ above:"above the chamber",none:"—",inCh:"already in the chamber",
+ vk:{s:"Subduction zone",h:"Hotspot",r:"Rift or mid-ocean ridge",c:"Supervolcano (caldera)"},
+ colTxt:(H,nb)=>"The column becomes lighter than air at "+H+" km and spreads out at about "+nb+" km.",
+ colNo:"No eruption column: the magma comes out as lava.",colCollapse:h=>"The column collapses at "+h+" km and turns into pyroclastic flows.",
+ mapX:"SiO₂ (%)",mapY:"ascent (m/s)",colU:"speed (m/s)",colR:"ρ/ρ air",
+ yrs:"years after the eruption",
+ presets:{kilauea:[50,0.2,6,1,72],fountain:[50,0.9,4,1.5,12],stromboli:[51,1.5,1.5,0.01,24],unzen:[65,2.5,15,0.002,150],soufriere:[60,3,15,0.03,10],helens:[64,4.6,30,3,9],pinatubo:[65,6,55,10,12],collapse:[65,1.2,80,10,6]},
+ preTxt:{kilauea:"Kīlauea, Hawaii, 2018: basalt with little gas poured out for three months through fissures in the East Rift.",fountain:"A lava fountain as on Kīlauea in 1959, when the fountains reached 580 m.",stromboli:"Stromboli: large gas bubbles burst in the crater every quarter of an hour.",unzen:"Unzen, Japan, 1991–95: a dacite lava dome that grew and collapsed in more than 9000 glowing avalanches.",soufriere:"Soufrière Hills, Montserrat: an andesite dome and short, violent Vulcanian explosions.",helens:"Mount St. Helens, 18 May 1980: after the landslide and the sideways blast, a Plinian column stood for nine hours.",pinatubo:"Pinatubo, Philippines, 15 June 1991: a column 35 km high and 10 km³ of ash. The umbrella cloud grew 400 km wide.",collapse:"With little gas and a large mass flux the column does not become light enough and collapses. This is how pyroclastic flows form, as at Mont Pelée in 1902."}
+};
+
+/* ---------- vulkaner: fysikkerne (deles af siden og testene) ---------- */
+const GV=9.81,RV=461.5,RA=287,PATM=101325,SOLS=4.1e-6; // vanddampens og luftens gaskonstant, opløselighed s i c = s·√P
+/* magmaens egenskaber ud fra kiselindhold (vægt-% SiO2) og vandindhold (vægt-%) */
+function magma(si,w){
+  const T=Math.max(780,Math.min(1220,1200-16.5*(si-50)))+273.15; // typisk udbrudstemperatur, K
+  const f=(si-50)/25;
+  // Vogel–Fulcher–Tammann: log10 η = A + B/(T − C), tilpasset typiske værdier (Giordano m.fl. 2008)
+  const B=6373+6427*f,C=500-250*f;let logEta=-4.55+B/(T-C);
+  logEta-=(1.3+3.9*f)*(1-Math.exp(-w/1.5));   // opløst vand bryder silikatkæderne
+  logEta+=2.4*Math.pow(Math.max(0,Math.sin(Math.PI*Math.min(1,Math.max(0,f)))),0.8); // krystaller, flest i andesit og dacit
+  const rho=2750-14*(si-50);
+  const pSat=Math.pow(w/100/SOLS,2);          // trykket, hvor vandet begynder at danne bobler
+  return {si,w,T,logEta,eta:Math.pow(10,logEta),rho,pSat};}
+/* gasbobler: volumenbrøk ved trykket P */
+function gasFrac(m,P){const n=Math.max(0,m.w/100-SOLS*Math.sqrt(P));const rg=P/(RV*m.T);return n<=0?0:(n/rg)/(n/rg+(1-n)/m.rho);}
+/* trykket, hvor boblerne fylder 75 % (magmaen splintres til aske) */
+function fragPressure(m){if(gasFrac(m,PATM)<0.75)return 0;let lo=PATM,hi=Math.max(PATM*1.01,m.pSat);for(let k=0;k<60;k++){const mid=Math.sqrt(lo*hi);if(gasFrac(m,mid)>0.75)lo=mid;else hi=mid;}return lo;}
+/* udstrømningsfarten: gassens udvidelse fra fragmenteringstrykket til atmosfæretryk (Wilson m.fl. 1980) */
+function ventVelocity(m,Pf){const n=m.w/100;if(Pf<=PATM)return 0;const u2=2*(n*RV*m.T*Math.log(Pf/PATM)+(1-n)*(Pf-PATM)/m.rho);
+  // strømningen i kanalen er "kvalt" ved lydfarten i blandingen af gas og aske, ca. √(nRT); krateret udvider sig og giver lidt ekstra
+  return Math.min(Math.sqrt(Math.max(0,u2)),1.8*Math.sqrt(n*RV*m.T));}
+function mixDensity(n,T,P,rhoS){return 1/(n*RV*T/P+(1-n)/rhoS);}
+/* standardatmosfæren */
+function atmos(z){const T=z<11000?288.15-0.0065*z:z<20000?216.65:216.65+0.001*(z-20000);
+  let P;if(z<11000)P=PATM*Math.pow(T/288.15,5.2559);else if(z<20000)P=22632*Math.exp(-(z-11000)*GV/(RA*216.65));else P=5475*Math.pow(T/216.65,-34.163);
+  return {T,P,rho:P/(RA*T)};}
+/* Udbrudssøjlen som en "top-hat"-model med indblanding af luft (Morton, Taylor & Turner 1956; Woods 1988).
+   Q = ρ u b² (massefluks/π), M = ρ u² b², E = Q (Cp T + g z) */
+function plume(MER,u0,n0,T0,zv){
+  const rhoS=2500,Cs=1100,Ca=1005,Cv=1850,alpha=0.09;
+  const a0=atmos(zv);const rho0=mixDensity(n0,T0,a0.P,rhoS);const b0=Math.sqrt(MER/(Math.PI*rho0*u0));
+  let Q=rho0*u0*b0*b0,M=Q*u0,z=zv;const Q0=Q,xs0=1-n0;let E=Q*((xs0*Cs+n0*Cv)*T0+GV*z);
+  const prof=[];let buoyant=false,zNB=-1,dz=Math.max(2,b0/10),T=T0,rho=rho0,u=u0,b=b0;
+  for(let k=0;k<40000&&z<zv+60000;k++){
+    const A=atmos(z);const qa=(Q-Q0);const xs=xs0*Q0/Q,xv=n0*Q0/Q,xa=qa/Q;
+    const Cp=xs*Cs+xv*Cv+xa*Ca;T=(E/Q-GV*z)/Cp;const Rg=(xv*RV+xa*RA)/Math.max(1e-9,xv+xa);
+    rho=1/((xv+xa)*Rg*T/A.P+xs/rhoS);u=M/Q;b=Math.sqrt(Q/(rho*u));
+    if(k%4===0)prof.push({z,u,b,rho,ra:A.rho,T});
+    if(rho<A.rho)buoyant=true;if(buoyant&&zNB<0&&rho>A.rho)zNB=z;
+    const dQ=2*alpha*A.rho*u*b,dM=GV*(A.rho-rho)*b*b,dE=(Ca*A.T+GV*z)*dQ;
+    Q+=dQ*dz;M+=dM*dz;E+=dE*dz;z+=dz;dz=Math.max(2,Math.min(80,b/8));
+    if(M<=0||u<0.5)break;}
+  prof.push({z,u:0,b,rho,ra:atmos(z).rho,T});
+  const top=z-zv;
+  return {b0,rho0,buoyant,collapse:!buoyant,top,zNB:zNB>0?zNB-zv:top*0.72,prof};}
+/* Mastin m.fl. (2009): empirisk søjlehøjde H (km) = 2,00·V^0,241, V i m³/s tæt magma */
+function mastinH(MER){return 2.0*Math.pow(MER/2500,0.241);}
+/* Udbrudsmåden: */
+const REG={EFF:0,HAW:1,STR:2,DOME:3,VUL:4,PLI:5,COL:6};
+function eruption(si,w,r,ua,durH){
+  // r: kanalens radius (m), ua: magmaens opstigningsfart i kanalen (m/s)
+  const m=magma(si,w);const Pf=fragPressure(m);
+  const res={m,ua,r,Pf,u0:0,MER:m.rho*Math.PI*r*r*ua,regime:REG.EFF,H:0,col:null,fountain:0,vei:0,zFrag:-1,zSat:Math.min(15000,m.pSat/(m.rho*GV)),burst:0};
+  res.Qv=res.MER/m.rho;
+  res.zFrag=Pf>PATM?(Pf-PATM)/(m.rho*GV):-1;
+  const ventU=ventVelocity(m,Pf>PATM?Pf:PATM);res.ventU=ventU;const n=w/100;
+  const fluid=m.logEta<4.3;
+  if(fluid&&(w<0.3||Pf<=PATM)){res.regime=REG.EFF;}
+  else if(fluid&&ua<0.05){res.regime=REG.STR;res.fountain=Math.min(350,40+0.08*ventU*ventU/(2*GV));}
+  else if(fluid&&ua<4){res.regime=REG.HAW;res.fountain=Math.min(1500,(0.1*ventU*ventU/(2*GV))*Math.min(1.6,0.5+Math.log10(1+10*ua)));}
+  else if(!fluid&&(Pf<=PATM||ua<0.004)){res.regime=REG.DOME;}
+  else if(!fluid&&ua<0.12){res.regime=REG.VUL;res.u0=ventU*0.8;const rho0=mixDensity(Math.min(n,0.05),m.T,PATM,2500);res.burst=rho0*res.u0*Math.PI*r*r*0.3;
+    res.col=plume(res.burst,Math.max(40,res.u0),Math.min(n,0.05),m.T,0);res.H=res.col.top;}
+  else{res.u0=ventU;res.col=plume(res.MER,Math.max(60,res.u0),n,m.T,0);res.H=res.col.top;res.regime=res.col.collapse?REG.COL:REG.PLI;}
+  // det udbrudte rumfang: lava, eller løs tefra med densiteten ca. 1000 kg/m³
+  const lava=res.regime===REG.EFF||res.regime===REG.DOME||res.regime===REG.HAW;
+  const V=res.MER*durH*3600/(lava?m.rho:1000);res.V=V;
+  res.vei=V<1e4?0:V<1e6?1:Math.min(8,Math.floor(Math.log10(V))-4);
+  if(res.regime===REG.EFF||res.regime===REG.HAW||res.regime===REG.DOME)res.vei=Math.min(res.vei,1);
+  if(res.regime===REG.STR||res.regime===REG.VUL)res.vei=Math.min(res.vei,res.regime===REG.STR?2:3);
+  return res;}
+/* Klima: svovldioxid i stratosfæren → sulfatpartikler → afkøling. To-boks energibalance. */
+function climate(SO2,years,lat){
+  const dt=1/365,N=Math.round(years/dt);const tauC=35/365,tauR=lat>45?0.55:1.0;let so2=SO2,aer=0;
+  const C1=8.0,C2=100,lam=1.25,gam=0.7;let T1=0,T2=0;const out=[];
+  for(let k=0;k<=N;k++){const t=k*dt;const conv=so2/tauC*dt;so2-=conv;aer+=conv*1.5-aer/tauR*dt; // 1 t SO2 → 1,5 t sulfat-aerosol (med vand)
+    const aod=aer<45?aer/150:0.3*Math.pow(aer/45,2/3);const F=-25*aod;
+    T1+=dt*(F-lam*T1-gam*(T1-T2))/C1;T2+=dt*gam*(T1-T2)/C2;
+    if(k%7===0)out.push({t,F,T:T1,aod});}
+  return out;}
+
+/* vulkaner: [navn da, navn en, bredde, længde, type (s subduktion, h varm plet, r rift/ryg, c supervulkan), højde m, sidste store udbrud da, en, note da, note en] */
+const VOLC=[
+["Vesuv","Vesuvius",40.82,14.43,"s",1281,"1944","1944","Begravede Pompeji og Herculaneum i år 79. Omkring 600 000 mennesker bor i den røde zone omkring vulkanen.","Buried Pompeii and Herculaneum in AD 79. Around 600,000 people live in the red zone around the volcano."],
+["Etna","Etna",37.75,15.0,"s",3357,"i gang","ongoing","Europas mest aktive vulkan med lavastrømme og fontæner flere gange om året.","Europe's most active volcano, with lava flows and fountains several times a year."],
+["Stromboli","Stromboli",38.79,15.21,"s",924,"i gang","ongoing","Har haft små eksplosioner hvert kvarter i over 2000 år: »Middelhavets fyrtårn«.","Has had small explosions every quarter of an hour for over 2000 years: the 'lighthouse of the Mediterranean'."],
+["Campi Flegrei","Campi Flegrei",40.83,14.14,"c",458,"1538","1538","En stor kaldera vest for Napoli. Udbruddet for 39 000 år siden dækkede det østlige Middelhav med aske.","A large caldera west of Naples. The eruption 39,000 years ago covered the eastern Mediterranean with ash."],
+["Santorini","Santorini",36.40,25.40,"s",367,"1950","1950","Det minoiske udbrud omkring 1600 f.Kr. sprængte øen og efterlod den kaldera, der i dag er fyldt med hav.","The Minoan eruption around 1600 BC blew the island apart and left the caldera that is now filled by the sea."],
+["Hekla","Hekla",63.98,-19.70,"r",1491,"2000","2000","I middelalderen kaldt »helvedes port«. Har haft over 20 udbrud siden landnamet.","In the Middle Ages called the 'gate of hell'. Has erupted more than 20 times since Iceland was settled."],
+["Laki","Laki",64.07,-18.23,"r",818,"1783","1783","En 27 km lang sprække, der i 1783–84 sendte 15 km³ lava og 120 millioner tons SO₂ ud.","A 27 km long fissure that in 1783–84 poured out 15 km³ of lava and 120 million tonnes of SO₂."],
+["Eyjafjallajökull","Eyjafjallajökull",63.63,-19.62,"r",1651,"2010","2010","Asken fra udbruddet under isen lukkede Europas luftrum i april 2010.","The ash from the eruption beneath the ice closed Europe's airspace in April 2010."],
+["Grímsvötn","Grímsvötn",64.42,-17.33,"r",1725,"2011","2011","Under Vatnajökull. Udbruddene smelter isen og sender store gletsjerløb ud.","Beneath Vatnajökull. The eruptions melt the ice and send out great glacial floods."],
+["Sundhnúkur, Reykjanes","Sundhnúkur, Reykjanes",63.88,-22.37,"r",140,"i gang","ongoing","Sprækkeudbrud ved Grindavík siden 2023, efter 800 år uden udbrud på Reykjanes.","Fissure eruptions near Grindavík since 2023, after 800 years without eruptions on Reykjanes."],
+["Surtsey","Surtsey",63.30,-20.60,"r",155,"1967","1967","En ny ø, der rejste sig af havet 1963–67.","A new island that rose from the sea in 1963–67."],
+["Beerenberg, Jan Mayen","Beerenberg, Jan Mayen",71.08,-8.16,"r",2277,"1985","1985","Verdens nordligste aktive vulkan på land.","The world's northernmost active volcano on land."],
+["Kīlauea","Kīlauea",19.41,-155.28,"h",1247,"i gang","ongoing","En skjoldvulkan over Hawaii-pletten. I 2018 løb lavaen ud gennem 24 sprækker og ødelagde over 700 huse.","A shield volcano over the Hawaiian hotspot. In 2018 lava poured from 24 fissures and destroyed more than 700 homes."],
+["Mauna Loa","Mauna Loa",19.48,-155.61,"h",4169,"2022","2022","Jordens største vulkan: 9 km høj fra havbunden og 75 000 km³.","The largest volcano on Earth: 9 km high from the sea floor and 75,000 km³."],
+["Yellowstone","Yellowstone",44.43,-110.67,"c",2805,"640 000 år siden","640,000 years ago","En supervulkan over en varm plet. De tre store udbrud for 2,1, 1,3 og 0,64 mio. år siden sendte op til 2500 km³ ud.","A supervolcano over a hotspot. The three great eruptions 2.1, 1.3 and 0.64 million years ago put out up to 2500 km³."],
+["Mount St. Helens","Mount St. Helens",46.20,-122.18,"s",2549,"2008","2008","Den 18. maj 1980 gled nordsiden ud i et skred, og trykket fra magmaen forløste et sidelæns blast og en Plinius-søjle på 24 km.","On 18 May 1980 the north flank slid away, releasing a sideways blast and a Plinian column 24 km high."],
+["Mount Rainier","Mount Rainier",46.85,-121.76,"s",4392,"ca. 1450","c. 1450","Dækket af gletsjere. Mudderstrømme (laharer) fra Rainier er den største vulkanske fare i USA.","Covered by glaciers. Mudflows (lahars) from Rainier are the greatest volcanic hazard in the USA."],
+["Novarupta","Novarupta",58.27,-155.16,"s",841,"1912","1912","Det største udbrud i det 20. århundrede: 13–15 km³ magma på tre dage.","The largest eruption of the 20th century: 13–15 km³ of magma in three days."],
+["Popocatépetl","Popocatépetl",19.02,-98.62,"s",5393,"i gang","ongoing","Ligger 70 km fra Mexico City. Små eksplosioner og askeudbrud næsten hver dag.","Lies 70 km from Mexico City. Small explosions and ash nearly every day."],
+["Parícutin","Parícutin",19.49,-102.25,"s",3170,"1952","1952","Voksede op af en majsmark i 1943 og blev 424 m høj på ni år.","Grew out of a cornfield in 1943 and reached 424 m in nine years."],
+["Mont Pelée","Mont Pelée",14.81,-61.17,"s",1397,"1932","1932","En pyroklastisk strøm dræbte 28 000 mennesker i Saint-Pierre på Martinique i 1902.","A pyroclastic flow killed 28,000 people in Saint-Pierre on Martinique in 1902."],
+["Soufrière Hills","Soufrière Hills",16.72,-62.18,"s",1050,"2010","2010","Lavadomer og pyroklastiske strømme siden 1995. Halvdelen af øen Montserrat er forladt.","Lava domes and pyroclastic flows since 1995. Half of the island of Montserrat has been abandoned."],
+["Nevado del Ruiz","Nevado del Ruiz",4.89,-75.32,"s",5321,"2023","2023","Et lille udbrud i 1985 smeltede isen på toppen, og en mudderstrøm dræbte 23 000 mennesker i Armero.","A small eruption in 1985 melted the summit ice, and a mudflow killed 23,000 people in Armero."],
+["Cotopaxi","Cotopaxi",-0.68,-78.44,"s",5897,"2023","2023","En af verdens højeste aktive vulkaner, med en næsten perfekt kegleform.","One of the highest active volcanoes in the world, with an almost perfect cone."],
+["Villarrica","Villarrica",-39.42,-71.93,"s",2847,"2015","2015","Har en sø af lava i krateret.","Has a lake of lava in its crater."],
+["Galápagos (Fernandina)","Galápagos (Fernandina)",-0.37,-91.55,"h",1476,"2024","2024","Den mest aktive af Galápagos-øernes vulkaner over en varm plet.","The most active of the Galápagos volcanoes, over a hotspot."],
+["Teide","Teide",28.27,-16.64,"h",3715,"1909","1909","Spaniens højeste bjerg, på Tenerife.","Spain's highest mountain, on Tenerife."],
+["Cumbre Vieja, La Palma","Cumbre Vieja, La Palma",28.57,-17.84,"h",1949,"2021","2021","Udbruddet i 2021 varede 85 dage og begravede over 1600 bygninger i lava.","The 2021 eruption lasted 85 days and buried more than 1600 buildings in lava."],
+["Tristan da Cunha","Tristan da Cunha",-37.09,-12.28,"h",2062,"1961","1961","Hele øens befolkning blev evakueret til England ved udbruddet i 1961.","The whole population of the island was evacuated to England in the 1961 eruption."],
+["Nyiragongo","Nyiragongo",-1.52,29.25,"r",3470,"2021","2021","Har en af verdens største lavasøer. Lavaen er så tyndtflydende, at den kan løbe 60 km/t.","Has one of the world's largest lava lakes. The lava is so fluid that it can run at 60 km/h."],
+["Ol Doinyo Lengai","Ol Doinyo Lengai",-2.76,35.90,"r",2962,"2017","2017","Den eneste vulkan med karbonatitlava, der kun er 500 °C varm og sort, men bliver hvid i luften.","The only volcano with carbonatite lava, which is only 500 °C, black, and turns white in the air."],
+["Kilimanjaro","Kilimanjaro",-3.07,37.35,"r",5895,"for 150 000 år siden","150,000 years ago","Afrikas højeste bjerg, en sovende vulkan ved den østafrikanske rift.","Africa's highest mountain, a dormant volcano by the East African Rift."],
+["Piton de la Fournaise","Piton de la Fournaise",-21.23,55.71,"h",2632,"2023","2023","En skjoldvulkan på Réunion over en varm plet, med udbrud næsten hvert år.","A shield volcano on Réunion over a hotspot, erupting almost every year."],
+["Toba","Toba",2.68,98.88,"c",2157,"74 000 år siden","74,000 years ago","Det største udbrud i de sidste to millioner år: omkring 2800 km³. Kalderaen er nu en sø på 100 km.","The largest eruption in the last two million years: about 2800 km³. The caldera is now a lake 100 km long."],
+["Krakatau","Krakatoa",-6.10,105.42,"s",813,"2023","2023","Eksplosionen i 1883 blev hørt 4800 km væk. Tsunamierne dræbte omkring 36 000.","The explosion in 1883 was heard 4800 km away. The tsunamis killed about 36,000."],
+["Merapi","Merapi",-7.54,110.45,"s",2910,"i gang","ongoing","Lavadomer, der vokser og falder sammen i glødende laviner, kaldet merapi-strømme.","Lava domes that grow and collapse in glowing avalanches."],
+["Tambora","Tambora",-8.25,118.0,"s",2850,"1967","1967","Udbruddet i 1815 var det største i historisk tid. 1816 blev året uden sommer.","The 1815 eruption was the largest in historical times. 1816 became the year without a summer."],
+["Samalas (Rinjani)","Samalas (Rinjani)",-8.41,116.46,"s",3726,"2016","2016","Et kæmpeudbrud i 1257, fundet i iskerner fra Grønland og Antarktis, før man vidste, hvilken vulkan det var.","A huge eruption in 1257, found in ice cores from Greenland and Antarctica before anyone knew which volcano it was."],
+["Pinatubo","Pinatubo",15.13,120.35,"s",1486,"1991","1991","Udbruddet den 15. juni 1991 sendte 18 millioner tons SO₂ op i stratosfæren og kølede Jorden 0,4 °C.","The eruption on 15 June 1991 put 18 million tonnes of SO₂ into the stratosphere and cooled the Earth by 0.4 °C."],
+["Mayon","Mayon",13.26,123.69,"s",2463,"2023","2023","Kendt som verdens mest regelmæssige kegle.","Known as the world's most perfect cone."],
+["Fuji","Fuji",35.36,138.73,"s",3776,"1707","1707","Japans højeste bjerg. Asken fra udbruddet i 1707 faldt i Edo, det nuværende Tokyo.","Japan's highest mountain. Ash from the 1707 eruption fell on Edo, today's Tokyo."],
+["Sakurajima","Sakurajima",31.58,130.66,"s",1117,"i gang","ongoing","Hundredvis af små Vulcano-eksplosioner om året, tæt ved byen Kagoshima.","Hundreds of small Vulcanian explosions a year, close to the city of Kagoshima."],
+["Unzen","Unzen",32.76,130.29,"s",1483,"1996","1996","Lavadomen 1991–95 faldt sammen i over 9000 pyroklastiske strømme.","The lava dome of 1991–95 collapsed in more than 9000 pyroclastic flows."],
+["Klyutjevskaja Sopka","Klyuchevskoy",56.06,160.64,"s",4754,"i gang","ongoing","Den højeste aktive vulkan i Asien, på Kamtjatka.","The highest active volcano in Asia, on Kamchatka."],
+["Hunga Tonga–Hunga Haʻapai","Hunga Tonga–Hunga Haʻapai",-20.55,-175.39,"s",114,"2022","2022","Eksplosionen i 2022 sendte en søjle 57 km op, den højeste nogensinde målt, og en trykbølge rundt om Jorden flere gange.","The 2022 explosion sent a column 57 km high, the highest ever measured, and a pressure wave around the Earth several times."],
+["Taupo","Taupo",-38.82,176.0,"c",760,"232","232","Udbruddet omkring år 232 var et af de voldsomste i de sidste 5000 år.","The eruption around AD 232 was one of the most violent of the last 5000 years."],
+["Ruapehu","Ruapehu",-39.28,175.57,"s",2797,"2007","2007","En lahar fra kratersøen rev i 1953 en jernbanebro væk lige før et tog, og 151 mennesker døde.","In 1953 a lahar from the crater lake swept away a railway bridge just before a train came, and 151 people died."],
+["Erebus","Erebus",-77.53,167.17,"r",3794,"i gang","ongoing","Verdens sydligste aktive vulkan, med en lavasø i krateret.","The world's southernmost active volcano, with a lava lake in its crater."],
+["Deception Island","Deception Island",-62.97,-60.65,"r",602,"1970","1970","En ringformet kaldera i Antarktis, hvor skibe kan sejle ind i det oversvømmede krater.","A ring-shaped caldera in Antarctica where ships can sail into the flooded crater."],
+["Axial Seamount","Axial Seamount",45.95,-130.0,"r",-1410,"2015","2015","En undersøisk vulkan på Juan de Fuca-ryggen, overvåget af instrumenter på havbunden.","An underwater volcano on the Juan de Fuca Ridge, watched by instruments on the sea floor."]
+];
+
+const PBND=[[0,[11.4,41.4,10.1,40.8,8.7,39.5,7.8,38.8,6.9,38.1,6.0,37.6,6.0,36.9,5.0,36.3,5.3,34.9,5.5,33.6,5.7,32.2,4.5,31.3,4.2,30.5,2.8,30.5,2.5,31.6,2.5,31.6,1.4,30.6,0.1,29.9,-1.3,29.4,-2.3,28.9,-4.0,29.0,-5.1,29.6,-6.1,29.6,-7.5,30.5,-7.8,31.6,-8.5,32.6,-8.7,33.6,-10.4,34.1,-11.0,34.7,-12.4,34.2,-13.2,34.1,-14.5,34.8,-15.9,34.6,-16.8,35.2,-18.0,35.2,-18.4,34.6,-19.7,33.3,-21.3,33.1,-21.9,31.2,-22.5,29.3,-23.5,28.4,-24.4,27.5,-26.2,27.9,-26.8,26.6,-28.2,26.6,-29.1,27.8,-30.6,28.9,-31.9,30.5,-33.2,32.2,-34.5,33.9,-35.8,35.7,-37.0,37.6,-38.8,36.7,-40.7,35.8,-42.5,34.8,-44.4,33.8,-46.2,32.7,-46.5,33.6]],[0,[-47.6,164.7,-47.6,164.7,-47.3,164.7,-46.2,165.4,-45.8,165.8,-45.6,166.1,-45.3,166.4,-45.1,166.8,-44.8,167.1,-44.7,167.4,-44.2,168.5,-44.0,168.8,-43.8,169.1,-43.6,169.6,-43.4,170.1,-43.1,170.5,-42.7,170.6]],[0,[60.0,158.8,59.5,158.0,58.5,156.7,57.0,155.0,55.2,154.8,54.2,154.9,53.2,155.0,51.5,155.5,50.3,155.7,49.1,155.9,48.4,156.1]],[0,[25.7,67.2,26.0,67.3,26.5,67.3,27.1,67.2,27.9,67.3,28.4,67.3,28.6,67.2,29.4,67.3,29.8,67.3,30.1,67.8,29.9,68.3,29.2,68.7,29.1,69.1,29.3,69.9,29.8,70.1,30.4,70.2,31.0,70.3,31.5,70.1,31.9,69.9,32.4,70.4,32.9,70.9,33.5,71.4,34.0,71.8,34.7,72.5,34.2,73.0,33.7,73.6,33.2,74.3,32.9,75.1,32.2,75.7,31.6,75.7,31.2,76.5,30.7,77.0,30.6,77.6,30.2,78.1,29.9,78.4,29.7,78.9,29.4,79.2,29.1,79.8,29.1,80.2,29.0,80.5,28.8,81.0,28.4,81.4,28.2,82.2,27.9,82.9,27.6,83.7,27.5,84.2,27.3,84.6,27.2,85.6,27.1,86.3,26.7,86.5,26.7,86.8,27.0,87.2,26.9,87.7,26.9,88.3,27.0,89.3,26.8,89.8,26.9,90.3,27.0,91.3,27.0,91.8,27.1,92.3,27.1,93.2,27.1,93.6,27.5,94.2,27.9,94.8,28.2,95.5,28.1,96.2,28.1,96.8,28.1,97.3,27.7,97.5,27.2,97.3,26.8,97.1,26.3,96.9,25.6,96.6,25.1,96.3,24.5,96.1,24.4,96.1]],[0,[36.4,35.9,35.9,35.6,35.7,35.8,34.9,35.7,34.0,35.5,32.9,35.2,32.1,35.0,31.3,35.0,30.8,34.9,30.0,34.9,29.5,34.9,29.0,34.7,28.4,34.5,27.9,34.2,27.1,34.2]],[0,[-61.8,160.8,-61.5,160.8,-60.3,160.2,-60.1,160.0,-59.7,159.7,-59.5,159.1,-59.2,158.5,-58.8,158.1,-58.4,157.7,-58.0,157.6,-57.7,157.5,-57.5,157.5,-57.3,157.4,-57.2,157.5,-57.1,157.6,-56.9,157.7,-56.6,157.8,-56.4,157.9,-56.2,157.9,-56.1,157.9,-56.1,157.9,-56.0,157.9,-56.0,158.0,-56.0,158.2,-56.0,158.3,-55.9,158.5,-55.8,158.5,-55.7,158.8,-55.7,159.0,-55.4,159.2,-55.3,159.3,-55.1,159.4,-54.8,159.5,-54.5,159.6,-54.2,159.6,-53.9,159.7,-53.7,159.8,-53.1,160.2,-52.8,160.5,-52.5,160.9,-52.3,161.1,-52.1,161.4,-51.8,161.7,-51.6,161.9,-51.3,162.1,-51.0,162.4,-50.7,162.5,-50.3,162.8,-50.1,162.9,-49.9,163.1,-49.7,163.2,-49.6,163.3,-49.5,163.5,-49.4,163.5,-49.3,163.7,-49.2,163.8,-49.0,164.0,-48.8,164.1,-48.5,164.3,-48.3,164.4,-48.1,164.5,-47.8,164.6,-47.6,164.7,-47.6,164.7]],[0,[60.5,-144.3,60.1,-141.7,59.9,-141.1,59.7,-140.4,59.5,-139.7,59.3,-139.2,59.0,-138.4,58.5,-137.4,58.0,-136.9,57.0,-136.3,56.0,-135.9,55.0,-134.9,54.0,-134.3,53.0,-133.2,51.9,-131.8,51.5,-131.1,51.4,-131.0]],[0,[12.8,58.2,13.6,58.8,14.6,59.3,15.5,59.9,16.4,60.6,17.3,61.2,18.4,61.9,19.5,62.6,20.7,63.4,21.9,64.1,22.8,64.8,23.7,65.5,24.9,66.6,25.2,66.8]],[0,[25.2,66.8,25.5,67.1,25.7,67.2]],[2,[11.4,41.4,11.6,42.4,11.9,43.7]],[2,[11.9,43.7,12.1,45.0,12.2,46.3,12.5,46.5,12.6,48.2,13.0,48.8,13.1,49.8,13.4,50.2,13.1,51.2,14.6,52.2,14.4,52.8,14.6,53.0,14.3,53.8,15.2,54.5,14.3,56.1,14.5,56.3,13.5,57.5,12.8,58.2]],[2,[12.8,58.2,12.7,58.3,11.9,59.0,11.2,59.7,10.1,58.0,9.0,56.3]],[0,[24.2,141.7,24.2,141.9,24.5,142.5,24.6,143.0]],[0,[24.6,143.0,24.6,143.2,24.6,143.4]],[0,[24.9,139.3,25.1,140.2,25.2,141.1]],[0,[-16.8,-178.7,-17.8,179.5,-18.7,178.1,-19.5,176.6]],[0,[-19.5,176.6,-19.9,175.9,-20.6,174.3,-21.2,172.7,-21.9,171.0,-21.9,170.6]],[0,[25.0,96.7,24.4,96.1]],[0,[24.4,96.1,23.6,95.4,22.6,95.0,21.7,94.7,19.8,94.2,18.7,93.8,17.6,93.5,16.2,93.1,14.7,92.7,13.3,92.3,11.9,91.9,10.5,91.5]],[0,[-0.6,149.3,-0.6,149.3]],[0,[-0.6,149.3,-0.3,147.5,-0.4,145.9,-0.8,144.4,-0.7,143.8,-1.0,142.9,-1.4,141.7,-1.3,140.8,-1.6,140.1,-1.9,139.7]],[0,[35.2,-34.7,35.2,-33.4,35.3,-31.0,35.5,-28.7,35.6,-27.0,35.6,-25.3,35.7,-23.8,35.8,-22.3,35.9,-20.6,36.0,-18.9,36.1,-17.2,36.2,-15.6,36.5,-13.4,36.8,-11.2,36.9,-9.9,36.6,-7.9,36.5,-6.3,36.4,-4.7,36.5,-3.0,36.6,-1.4,36.7,0.3,36.4,2.6,36.2,5.0,35.9,6.4,35.7,7.8,35.2,9.3,34.8,10.9,34.3,13.1,33.8,15.3,33.3,17.5,32.7,19.7,32.0,21.8,32.8,23.5,33.5,25.2,34.2,26.9]],[0,[-11.7,165.3,-11.5,166.1,-11.2,166.9,-11.0,167.9,-10.8,168.9]],[0,[-27.6,-178.7,-27.7,-177.3,-27.8,-176.5]],[0,[-27.8,-176.5,-27.8,-176.4]],[0,[-11.2,-179.9,-12.8,-179.7,-14.4,-179.4,-15.6,-179.1,-16.8,-178.7]],[2,[-25.3,69.5,-25.3,69.5]],[2,[-25.3,69.5,-25.6,69.9,-26.2,70.9,-26.1,71.1,-26.8,72.0,-27.5,72.9,-27.4,73.2,-28.7,74.6,-29.0,74.3,-29.8,75.3,-30.3,75.0,-31.5,76.6,-31.9,76.2,-33.2,78.0,-34.3,77.0,-35.2,78.5,-35.4,78.3,-36.1,79.3,-37.0,78.4,-37.0,78.5]],[2,[-37.0,78.5,-37.6,79.1,-38.7,78.1,-39.7,77.0,-40.7,78.6,-41.7,80.2,-41.1,81.0,-41.9,82.4,-42.6,83.7,-41.0,85.2,-41.6,86.5,-42.3,87.8,-41.7,88.4,-42.6,90.5,-43.5,92.8,-44.3,94.8,-45.1,96.9,-46.6,95.8,-47.3,97.6,-47.9,99.5,-47.3,100.0,-47.8,101.8,-48.3,103.7,-48.9,106.5,-49.0,106.5,-48.7,106.7,-49.2,109.2,-49.7,111.7,-50.0,114.2,-49.5,114.5,-49.7,116.5,-49.1,116.7,-49.4,118.1,-49.5,120.6,-49.5,120.8,-48.9,120.9,-49.0,121.7,-49.4,121.6,-49.5,123.8,-48.9,124.0,-49.3,125.7,-49.3,126.2,-48.9,126.3,-48.9,127.4,-50.2,127.3,-50.4,130.0,-50.4,131.8,-50.4,133.7,-50.4,135.5,-50.4,137.3,-50.4,139.6,-51.4,139.8,-52.4,139.9,-52.4,140.9,-53.8,141.5,-53.7,143.7,-54.8,144.1,-54.5,146.8,-56.0,147.4,-57.5,148.1,-57.4,149.1,-58.8,149.9,-60.1,150.8,-61.4,151.5,-61.0,154.2,-62.8,156.1,-62.4,158.1,-62.0,160.1]],[2,[-62.0,160.1,-61.8,160.8]],[2,[-25.3,69.5,-24.9,69.8,-23.6,69.4,-22.3,69.0,-22.1,69.1,-20.4,68.2,-20.6,67.8,-20.1,67.3,-20.3,66.8,-19.2,66.0,-18.1,65.1,-17.5,66.0,-17.0,66.8,-16.5,66.5,-15.9,67.3,-14.9,66.6,-13.9,65.9,-13.4,66.8,-12.0,65.8,-11.6,66.4,-11.2,66.2,-10.9,66.6,-10.5,66.3,-9.7,67.3,-9.3,67.1,-8.3,68.4,-7.5,67.7,-7.1,68.0]],[2,[25.2,141.1,24.2,141.7]],[2,[24.2,141.7,22.5,142.8,21.3,143.4,20.0,144.1,19.8,144.3,19.8,144.4,19.0,144.8,19.0,145.0,18.5,145.2,17.9,145.4,17.8,145.2,16.8,145.4,16.7,145.2,15.6,144.8,14.5,144.3,13.7,143.8,12.8,143.2,11.3,142.6]],[2,[-45.4,-75.7,-45.6,-75.6]],[2,[44.5,-28.8,44.1,-28.9,44.0,-28.9,44.0,-29.2,43.3,-29.5,43.0,-29.5,42.6,-29.5,42.5,-29.5,42.2,-29.4,42.0,-29.5,41.8,-29.5,41.5,-29.6,41.3,-29.7,41.2,-29.7,41.1,-29.5,40.8,-29.6,40.6,-29.6,40.6,-29.8,39.3,-30.0,39.3,-30.2,38.6,-30.5,38.3,-30.7,38.3,-30.8,37.5,-31.2,37.5,-31.5,37.2,-31.7,37.4,-32.9,37.0,-33.0,37.1,-33.2,36.6,-33.3,36.7,-33.4,36.4,-33.5,36.4,-33.8,36.2,-33.9,35.5,-34.2,35.6,-34.5,35.2,-34.7]],[2,[35.2,-34.7,34.9,-34.8,35.2,-36.1,34.6,-36.3,34.7,-36.8,34.0,-37.0,34.1,-37.4,33.4,-37.7,33.4,-37.8,33.7,-39.3,33.0,-39.7,33.0,-39.6,32.1,-40.3,31.1,-41.0,31.1,-41.1,30.7,-41.4,30.7,-41.5,29.9,-42.2,30.0,-42.6,29.4,-42.9,29.4,-43.0,28.7,-43.4,28.8,-43.7,27.4,-44.3,25.9,-44.8,25.9,-44.9,25.1,-45.3,25.2,-45.6,24.5,-45.9,24.5,-46.2,23.8,-46.5,23.6,-45.2,22.6,-45.3,22.6,-45.3,21.8,-45.4,21.8,-45.7,20.6,-46.0,20.5,-45.7,19.7,-45.9,19.7,-45.9,18.8,-46.0,18.3,-46.2,18.3,-46.3,17.5,-46.5,17.5,-46.4,15.6,-46.8]],[2,[15.6,-46.8,15.4,-46.9,15.3,-46.9]],[2,[-65.8,-177.7,-66.3,-177.3,-67.5,179.7,-68.6,176.3,-69.7,172.6]],[2,[31.1,-114.7,30.9,-114.8,30.5,-114.5,30.0,-114.1,29.7,-113.9,29.5,-113.6,29.2,-113.5,29.0,-113.3,28.9,-113.0,28.6,-113.0,28.5,-112.8,28.2,-112.6,27.9,-112.3,27.7,-112.2,27.6,-111.8,27.2,-111.6,26.8,-111.3,26.6,-111.1,26.5,-111.0,26.2,-110.8,25.9,-110.6,25.6,-110.3,25.5,-110.1,25.3,-110.0,25.1,-109.7,24.8,-109.4,24.7,-109.3,24.6,-109.1,24.5,-109.0,24.1,-108.7,23.5,-108.3,23.0,-108.0]],[2,[23.0,-108.0,23.0,-108.0,22.3,-107.3,22.0,-106.7,21.8,-106.2,21.7,-105.9,21.5,-105.8]],[2,[52.2,-30.1,52.1,-30.1,51.2,-30.1,51.1,-29.8,50.3,-29.8,50.1,-28.4,49.4,-28.2,49.3,-28.1,49.2,-28.0,49.0,-27.9,48.9,-27.7,48.7,-27.7,48.6,-27.7,48.5,-27.5,48.3,-27.5,48.2,-27.4,48.1,-27.4,48.0,-27.3,47.3,-27.1,46.8,-27.1,46.3,-27.3,45.5,-27.6,44.5,-28.2,44.5,-28.8]],[2,[27.1,34.2,26.6,34.6,25.3,35.3,23.8,36.2,22.9,36.7,22.0,37.2,20.9,37.9,19.8,38.5,18.1,39.4,17.1,40.0,16.0,40.5,15.2,41.1,14.3,41.6,13.2,42.5,12.2,43.5,11.9,43.7]],[2,[-54.2,-2.3,-54.2,-0.4,-54.7,1.1,-54.4,1.5,-54.6,2.3,-53.9,3.4,-54.5,5.0,-54.1,5.5,-54.4,6.2,-53.9,6.7,-54.4,8.0,-53.6,9.0,-52.8,10.0,-53.3,11.3,-51.9,12.8,-52.4,14.0,-51.9,14.4,-52.3,15.4,-51.7,15.9,-52.2,17.5,-52.7,19.1,-53.0,21.1,-53.3,23.2,-53.5,25.3,-52.8,25.7,-53.1,27.4,-52.6,27.7,-52.8,28.6,-52.0,28.9,-52.2,29.8,-50.7,30.6,-49.2,31.4,-49.3,32.2,-47.9,32.9,-46.5,33.6]],[2,[-46.5,33.6,-45.9,33.9,-46.1,35.0,-44.7,35.7,-44.6,37.0,-44.1,39.1,-43.3,39.5,-43.4,40.0,-43.8,40.0,-44.0,41.5,-42.5,42.1,-40.9,42.7,-40.4,44.4,-39.8,46.1,-39.1,46.3,-38.8,47.3,-38.5,47.3,-38.0,49.2,-37.8,49.3,-37.6,50.8,-37.3,52.2,-36.6,52.3,-36.6,53.5,-35.5,53.7,-34.7,54.5,-34.4,54.7,-34.3,55.5,-33.8,55.7,-33.5,57.0,-32.2,57.1,-31.6,58.3,-31.2,58.4,-31.1,59.0,-30.6,59.2,-30.6,60.3,-30.6,60.5,-29.4,60.8,-28.3,62.5,-28.0,63.6,-27.8,64.7,-27.6,65.8,-27.3,66.9,-27.0,67.1,-26.9,67.4,-26.7,67.4,-26.6,67.7,-26.0,68.6,-25.3,69.5]],[2,[15.3,-46.9,15.3,-46.9,14.9,-45.0,13.7,-45.0,12.5,-44.9,12.5,-44.1,12.1,-44.1,12.0,-43.8,10.9,-43.8,10.8,-42.4,10.7,-41.0,9.9,-41.0,9.9,-40.7,9.3,-40.7,9.3,-40.5,8.7,-40.5,8.7,-40.0,8.1,-40.0,8.0,-38.1,7.6,-38.1,7.6,-36.8,7.4,-36.7,7.3,-36.0,7.0,-35.9,6.9,-35.3,6.6,-35.2,6.6,-33.5,5.6,-33.4,5.6,-32.9,3.9,-32.7,4.0,-30.9,2.8,-30.7,1.6,-30.6,1.6,-29.9,0.8,-29.7,1.0,-28.0,1.1,-26.3,0.5,-26.2,0.6,-24.9,-1.2,-24.4,-0.9,-22.8,-0.7,-21.2,-0.4,-19.6,-0.1,-18.0,0.2,-16.4,-0.6,-16.1,-0.5,-15.9,-1.1,-15.7,-1.1,-15.4,-1.4,-15.3,-1.2,-14.2,-0.9,-13.1,-1.9,-12.6,-2.9,-12.2,-3.0,-12.2]],[2,[-3.0,-12.2,-3.1,-12.3,-3.1,-12.4,-5.0,-11.9,-6.9,-11.3,-7.2,-12.5,-7.5,-13.8,-9.3,-13.4,-9.4,-13.7,-10.5,-13.4,-11.5,-13.2,-12.0,-15.1,-13.2,-14.8,-14.3,-14.6,-14.2,-13.8,-15.2,-13.5,-16.3,-13.2,-16.5,-14.4,-18.1,-14.0,-17.9,-12.8,-19.3,-12.5,-20.7,-12.1,-22.2,-11.7,-22.4,-12.8,-22.8,-12.7,-22.9,-13.8,-24.8,-13.4,-24.9,-13.7,-25.7,-13.6,-25.8,-14.2,-26.6,-14.0,-26.6,-13.7,-28.3,-13.1,-28.2,-12.7,-29.0,-12.5,-29.3,-13.9,-30.7,-13.6,-32.2,-13.3,-32.4,-14.3,-33.5,-14.4,-33.6,-15.0,-34.2,-15.1,-34.3,-15.6,-35.3,-15.5,-35.7,-17.6,-37.4,-17.2,-37.5,-18.0,-38.6,-17.8,-38.5,-16.7,-39.8,-16.3,-39.8,-16.6,-40.4,-16.5,-40.5,-17.0,-42.2,-16.8,-43.9,-16.5,-45.6,-16.2,-45.5,-15.1,-46.0,-14.9,-45.8,-13.9,-47.6,-13.6,-47.2,-10.8,-48.2,-10.3,-49.2,-9.9,-48.8,-7.4,-50.0,-7.0,-49.9,-6.8,-50.4,-6.5,-50.3,-5.5,-51.2,-5.0,-52.2,-4.5,-52.1,-4.3,-53.2,-3.8,-53.1,-2.9,-54.2,-2.3]],[2,[-54.2,-2.3,-54.2,-2.2,-55.2,-1.6]],[2,[15.6,-46.8,15.8,-47.9,16.1,-48.9,16.2,-50.9,16.8,-52.8,17.3,-54.3,17.8,-55.7,18.3,-56.8,18.7,-57.9,19.0,-59.1,19.2,-60.3,19.1,-60.7]],[1,[60.5,-144.3,59.4,-147.2,58.3,-149.9,57.2,-152.0,56.1,-154.0,55.7,-154.8,55.3,-155.4,55.0,-156.5,54.7,-157.1,54.4,-157.8,54.1,-158.7,53.9,-159.3,53.4,-161.4,52.8,-163.5,52.3,-166.1,51.7,-168.6,51.3,-170.8,50.8,-173.0,50.6,-176.0,50.4,-179.0,50.6,178.5,50.9,175.5,51.5,173.5,52.1,171.5,53.1,169.1]],[1,[53.1,169.1,53.8,167.1,54.5,165.6,55.2,164.1]],[1,[15.8,-98.9,16.1,-99.4,16.3,-99.9,16.6,-100.7,16.9,-101.4,17.2,-102.1,17.6,-102.9,18.0,-103.5,18.4,-104.1,18.8,-104.7,18.8,-104.8]],[1,[18.8,-104.8,19.1,-105.2,19.3,-105.5,19.9,-105.8,20.7,-105.9,21.5,-105.8]],[1,[3.4,127.9,3.0,127.7]],[1,[3.0,127.7,2.5,127.4,1.1,127.0,0.1,126.9,-1.0,126.9]],[1,[-42.7,170.6,-42.7,171.3,-42.6,171.9,-42.5,172.6,-42.4,173.1,-42.3,173.7,-42.2,174.3,-42.1,175.0,-42.1,175.5,-41.9,176.1,-41.7,176.7,-41.7,177.1,-41.5,177.6,-41.2,178.0,-40.8,178.3,-40.4,178.6,-40.1,178.8,-39.7,178.9,-39.2,179.0,-37.5,180.0,-35.8,-179.1,-33.9,-178.4,-32.0,-177.7,-30.1,-177.1,-28.2,-176.5]],[1,[-28.2,-176.5,-27.8,-176.4]],[1,[10.5,91.5,9.4,91.6]],[1,[9.4,91.6,8.3,91.9,7.1,92.1,6.3,92.5]],[1,[6.3,92.5,5.4,93.0,4.5,93.4,3.0,94.6,1.5,95.7,-0.2,96.9,-1.8,98.1,-3.1,99.0,-4.5,100.0,-5.4,100.9,-6.3,101.7,-6.8,102.9]],[1,[-6.8,102.9,-7.3,104.2,-7.6,104.9]],[1,[-7.6,104.9,-8.1,105.9,-8.5,106.9]],[1,[24.6,143.0,25.0,143.0,26.0,143.0,27.0,143.2,28.0,143.2,29.0,142.8,30.0,142.5,31.0,142.2,32.0,142.1,33.0,142.0,34.0,142.0,35.0,142.0,35.2,142.0]],[1,[41.1,144.3,40.5,144.3,38.9,144.0,37.9,143.6,36.8,143.0,35.8,142.3,35.3,142.0,35.2,142.0]],[1,[35.2,142.0,35.2,141.9,35.1,141.7,34.9,141.2,34.6,139.8,34.2,139.2,33.8,138.5,33.1,137.5,32.5,136.5,32.4,136.4]],[1,[32.4,136.4,31.8,134.9,31.2,134.1,30.4,133.0,30.0,132.0]],[1,[5.4,119.4,5.5,119.6]],[1,[5.5,119.6,6.5,120.9,7.9,122.1,8.4,123.1]],[1,[52.5,161.5,52.2,161.2,51.3,160.3,50.5,159.4,49.6,157.9,48.6,156.4,48.4,156.1]],[1,[48.4,156.1,47.5,155.1,46.8,154.5,45.5,152.6,44.8,150.9,44.0,149.5,43.2,148.1,42.1,146.0,41.5,144.9,41.1,144.3]],[1,[41.1,144.3,41.0,144.2]],[1,[7.0,134.6,7.0,134.7,7.3,136.7,7.6,137.3,8.3,137.9,9.0,138.3]],[1,[9.0,138.3,9.4,138.5,10.8,138.9,10.8,140.7,11.2,142.3,11.3,142.6]],[1,[11.3,142.6,11.8,143.7,12.3,144.8,13.1,145.7,13.9,146.6,15.6,147.3,17.5,147.3,18.8,147.3,20.0,147.3,21.0,147.0,22.0,146.2,23.0,145.0,24.0,144.0,24.6,143.4]],[1,[34.2,26.9,34.9,28.7,35.6,30.5,36.2,32.3,36.1,33.8,36.4,35.8,36.4,35.9]],[1,[36.4,35.9,36.0,36.4,36.6,37.2,37.1,37.9,37.3,38.9,37.3,39.7,37.1,41.2,36.7,42.5,36.3,43.8,35.5,45.4,34.6,46.7,33.6,47.9,32.9,49.4,32.1,50.9,30.8,52.5,30.0,53.4,29.2,54.3,28.4,55.9,27.6,57.4,27.1,58.7,26.5,59.9,25.7,61.7,25.4,62.9,25.1,64.0,25.1,65.2,25.2,66.4,25.2,66.8]],[1,[-10.7,165.0,-11.2,165.1,-11.7,165.3]],[1,[-11.7,165.3,-12.7,165.6,-13.7,165.9,-15.0,166.3,-16.3,166.7,-17.3,167.1,-18.3,167.6,-19.3,168.1,-20.2,168.6,-21.4,169.5,-21.7,170.3,-21.9,170.6]],[1,[1.2,119.3,1.3,119.6,1.5,120.9,1.5,122.9,1.7,124.3,1.8,125.7,1.8,125.8]],[1,[23.3,121.0,23.3,121.2,23.2,122.1]],[1,[23.2,122.1,23.2,123.6,23.5,125.5,24.0,126.6,24.8,127.5,25.5,128.5,26.7,129.7,27.2,130.2,28.0,130.7,28.8,131.1,29.6,131.7,30.0,132.0]],[1,[-10.7,165.0,-11.1,163.7,-11.1,162.4,-10.8,161.2,-10.0,159.9,-9.4,158.4,-8.5,156.6,-8.5,156.5]],[1,[-8.5,156.5,-7.5,155.5]],[1,[-7.5,155.5,-7.1,155.0,-7.0,154.8]],[1,[-11.2,-179.9,-11.5,-178.9,-12.2,-177.8,-13.2,-176.5,-13.6,-175.7,-13.9,-175.2]],[1,[-13.9,-175.2,-14.1,-174.7,-14.7,-173.5,-15.4,-173.0,-16.2,-172.9,-17.3,-172.8,-18.2,-173.1,-18.8,-173.6,-19.9,-173.8,-21.7,-174.4,-22.7,-175.0,-23.8,-175.6,-25.1,-176.0,-25.9,-176.2,-27.8,-176.5]],[1,[-27.8,-176.5,-28.2,-176.5]],[1,[-1.0,126.3,-0.3,126.0,0.5,125.7,1.6,125.7,1.8,125.8]],[1,[1.8,125.8,3.0,125.9,4.1,126.1]],[1,[4.1,126.1,4.4,126.2,4.9,126.2]],[0,[-9.3,121.3,-8.3,121.3,-7.1,121.0,-5.2,120.7,-4.2,120.6,-3.1,120.5,-2.1,120.2]],[0,[-2.1,120.2,-0.7,119.7,0.6,119.3,1.2,119.3]],[0,[1.2,119.3,2.0,119.3,3.5,118.6,5.1,119.4,5.4,119.4]],[0,[-1.9,67.1,-1.9,68.6,-1.8,70.0,-1.7,71.4,-1.6,73.2,-1.4,74.9,-0.9,76.8,-0.4,78.7,0.1,80.6,0.6,81.8,1.0,82.9,2.3,84.3,3.3,85.1,4.4,86.0,5.0,87.3,5.6,88.5,6.6,89.2,7.5,89.9,8.5,90.8,9.4,91.6]],[0,[-37.0,78.5,-36.1,79.7,-35.2,80.9,-34.3,81.8,-33.3,82.6,-32.2,83.4,-31.1,84.5,-30.0,85.5,-28.7,86.4,-27.5,87.2,-26.2,88.0,-25.1,89.0,-24.0,89.9,-22.9,90.9,-22.0,91.7,-21.1,92.5,-19.9,93.4,-18.8,94.2,-17.6,95.1,-16.6,95.8,-15.6,96.6,-14.4,97.3,-13.2,98.0,-11.7,99.0,-10.8,100.3,-9.9,101.7,-8.9,103.2,-8.3,104.1,-7.6,104.9]],[0,[-62.0,160.1,-63.6,162.2,-65.3,164.4,-66.9,167.0,-68.5,170.0,-69.3,171.7,-69.7,172.6]],[0,[54.3,144.5,52.8,144.7,51.4,144.9,49.6,144.9,47.9,144.8,46.5,144.7,45.1,144.5,43.6,144.3,42.4,144.3,41.1,144.2,41.0,144.2]],[0,[3.0,127.7,3.5,127.2,4.3,126.3,4.9,126.2]],[0,[52.6,-35.3,52.5,-33.2,52.2,-30.1,52.2,-30.1]],[0,[-4.0,132.5,-3.8,132.3]],[0,[-3.8,132.3,-3.1,131.7,-2.7,130.5,-2.5,128.8,-2.6,127.9]],[0,[-2.6,127.9,-2.7,126.7,-3.0,125.4,-3.4,124.1,-3.4,123.1,-3.3,122.1]],[0,[-1.0,126.3,-1.0,126.9]],[0,[-1.0,126.9,-1.1,128.6,-1.0,129.9]],[0,[-1.0,129.9,-0.9,131.0,-0.8,132.1,-0.8,132.7]],[0,[-0.8,132.7,-0.8,133.8,-0.7,134.8,-0.8,135.9,-1.0,136.9]],[0,[-7.8,129.0,-7.8,129.0,-7.2,128.1,-6.7,127.1]],[0,[-6.7,127.1,-6.3,126.4,-5.8,125.4,-5.1,124.5,-4.4,123.6,-3.3,122.1]],[0,[-3.3,122.1,-3.2,121.8,-2.6,121.0,-2.1,120.2]],[0,[55.2,164.1,55.2,164.1]],[0,[55.2,164.1,55.9,163.4,57.0,162.5,58.7,160.4,60.0,158.8]],[1,[53.1,169.1,53.8,167.1,54.5,165.6,55.2,164.1]],[1,[53.1,169.1,53.1,169.1]],[1,[53.1,169.1,53.1,168.3,53.0,165.9,52.7,163.5,52.5,161.5]],[2,[-7.1,68.0,-6.6,67.9,-6.1,68.3,-5.7,68.0,-5.1,68.4,-4.8,68.1,-4.3,68.3,-3.6,67.7,-3.1,67.9,-2.1,67.1,-1.9,67.1]],[2,[-1.9,67.1,-1.7,67.3,-1.2,66.6,-1.0,66.8,-0.7,66.5,-0.3,66.7,0.1,66.2,0.4,66.4,0.7,66.1,1.4,66.5,2.5,65.0,2.3,64.8,2.8,63.4,3.5,62.2,4.3,61.4,5.1,60.6,5.9,59.5,6.1,59.6,7.1,58.5,7.7,57.6,9.0,56.3]],[0,[4.6,97.7,3.4,98.2,2.2,98.7,0.9,99.6,-0.5,100.4,-1.8,101.2,-3.4,102.5,-4.7,103.1,-5.9,103.1,-6.8,102.9]],[0,[25.0,96.7,23.7,96.4,22.4,96.1,21.2,96.1,20.0,96.2,18.5,96.5,17.1,96.8,15.2,97.1]],[0,[15.2,97.1,13.6,97.4]],[0,[13.6,97.4,13.2,97.2,11.5,96.7,10.4,96.6,9.3,96.6,8.0,96.7,6.8,96.8,4.8,97.4,4.6,97.7]],[1,[17.1,123.0,16.4,123.3,15.4,124.2,13.7,125.3,12.1,126.3,10.7,126.7,9.4,127.1,8.0,127.5,6.5,127.6,4.9,127.7,3.4,127.9]],[1,[23.3,121.0,22.1,120.7,20.8,120.4,19.8,120.4,18.7,120.4,17.3,119.5,16.2,119.5,15.1,119.5,13.7,120.0,13.6,120.1]],[1,[13.6,120.1,13.2,120.8,12.9,121.3,11.7,121.7,10.8,122.1]],[1,[10.8,122.1,10.7,122.1,9.7,122.2,8.8,122.6,8.4,123.1]],[1,[8.4,123.1,8.1,123.4,7.9,123.6]],[1,[4.1,126.1,4.5,125.9,5.2,125.0,6.1,124.0,7.8,123.6,7.9,123.6]],[0,[8.9,117.2,10.2,118.1,11.3,118.9,12.5,119.7,13.5,120.0,13.6,120.1]],[2,[6.3,92.5,7.0,93.7,7.4,94.4,7.9,94.2,8.4,94.0,8.7,93.9,9.0,93.8,9.1,94.1,9.5,94.0,9.9,93.8,10.4,93.8,10.5,94.1,10.8,94.1,10.9,94.7,11.0,95.3,12.0,95.2,12.7,95.2,12.7,95.7,13.2,95.7,13.2,95.8,13.8,95.8,13.8,96.0,15.2,96.0,15.2,97.1]],[1,[17.1,123.0,17.4,123.1,18.8,122.8,20.2,122.6,21.6,122.3,23.1,122.1,23.2,122.1]],[2,[6.8,118.7,8.1,119.8,9.5,120.9,10.8,122.1]],[0,[8.9,117.2,7.9,118.0,6.8,118.7]],[0,[6.8,118.7,6.5,119.0,5.5,119.6]],[2,[-6.7,127.1,-6.2,128.2,-5.7,129.2,-5.5,129.1,-4.7,130.7,-3.8,132.3]],[0,[-2.5,127.5,-1.9,128.4,-1.4,129.4,-1.0,129.9]],[0,[-2.5,127.5,-2.6,127.9]],[0,[-0.8,132.7,-0.6,132.8,0.6,132.7,1.8,132.8,3.7,132.8,4.6,133.1,5.8,133.5,6.6,134.2,7.0,134.6]],[1,[-0.7,149.3,-0.6,149.3]],[0,[9.0,138.3,8.3,139.9,7.6,141.6,6.9,143.2,6.1,144.8,6.1,146.1]],[2,[24.9,139.3,25.9,138.9,26.9,138.5,28.5,137.9,29.7,137.4,30.8,137.0,31.9,136.7,31.9,136.6,32.4,136.4]],[2,[52.6,-35.3,52.7,-35.4,53.7,-35.3,54.4,-35.3,54.8,-35.5,55.1,-35.5,55.9,-34.8,56.6,-34.1,57.5,-33.3,58.0,-32.5,58.6,-31.6,59.0,-30.9,59.6,-30.2,60.0,-29.7,60.3,-29.2,60.7,-28.6,61.2,-28.0,61.6,-27.3,62.0,-26.6,62.5,-26.0,62.9,-25.2,63.4,-24.4,64.0,-23.3,64.4,-22.6,65.0,-21.4,65.5,-20.1,65.9,-19.0,66.1,-18.6]],[2,[66.1,-18.6,66.1,-18.6,66.4,-18.6,67.0,-18.7,67.4,-18.6,67.8,-18.4,68.2,-18.0,68.6,-17.6,69.0,-17.0,69.3,-16.4,69.6,-15.8,70.0,-15.4,70.3,-15.1,70.6,-14.7,70.8,-13.3,71.0,-12.3,71.0,-10.6,71.1,-10.3,71.1,-9.6,71.1,-8.2,71.1,-7.4,71.1,-7.3]],[2,[71.1,-7.3,71.3,-5.5,71.9,-1.1,72.4,2.0,72.6,2.8,72.9,4.9,73.2,7.0,73.8,8.4,74.2,9.0,74.5,8.8,75.1,7.8,75.7,7.2,76.3,7.4,76.8,7.8,77.0,7.1,77.7,7.7,78.2,5.1,78.9,5.8,79.3,2.7,79.7,3.0,80.3,-1.7,80.8,-1.5,81.0,-2.6,81.6,-3.4,81.7,-4.8,81.9,-4.4,82.0,-6.3,82.4,-9.5]],[0,[82.4,-9.5,83.0,-9.1,83.5,-8.4,84.0,-5.7,84.9,0.3,85.3,6.3,85.8,12.2,86.1,20.1,86.5,27.2,86.7,35.1,87.0,44.1,87.2,57.8,87.2,62.8,87.0,69.0,86.8,73.1,86.3,80.0,86.0,85.3,85.8,91.6,85.5,99.2,85.1,104.4,84.7,108.9,84.3,114.0,83.8,116.7,83.3,118.1,82.1,120.7,81.4,122.1,80.3,123.4,79.4,125.6,78.7,126.9,77.1,128.9,75.3,131.0,74.2,132.7,73.1,134.2,71.5,135.0,70.0,135.8,69.0,136.6,68.0,137.3,66.6,137.9,65.1,138.4,63.4,139.3,61.8,139.9,60.2,140.4,59.2,141.1,58.2,141.6,57.1,142.0,56.1,142.4,54.4,144.3,54.3,144.5]],[2,[17.8,-81.6,18.7,-81.7]],[2,[-16.6,-177.0,-17.8,-176.6,-19.2,-176.8,-19.4,-176.5,-20.4,-176.8,-20.5,-176.7,-20.6,-176.7,-22.3,-177.2,-22.7,-177.4,-23.7,-177.5,-24.8,-177.7,-26.0,-178.1,-27.3,-178.6,-27.6,-178.7]],[2,[-13.9,-175.2,-14.2,-175.4,-14.3,-175.4,-14.8,-175.5,-15.4,-175.5,-15.8,-175.6,-15.8,-175.4,-16.0,-175.5,-16.1,-175.3,-16.7,-175.4]],[2,[-16.7,-175.4,-16.6,-177.0]],[2,[-10.8,168.9,-10.9,169.1,-11.5,170.2,-12.3,171.3,-13.1,172.6,-14.1,174.0,-15.4,174.6,-16.7,175.2,-17.3,175.7,-18.0,175.9,-19.0,176.4,-19.5,176.6]],[1,[-8.5,106.9,-8.5,107.0,-8.7,108.3,-8.9,109.6,-8.9,110.7,-9.0,111.8,-9.1,112.9,-9.3,114.0,-9.6,115.4]],[1,[-9.6,115.4,-9.4,117.1,-9.3,118.8,-9.3,120.0,-9.3,121.3]],[1,[-9.3,121.3,-9.3,122.4,-8.9,123.9,-8.5,125.4,-8.2,127.2,-7.8,128.9,-7.8,129.0]],[1,[-7.8,129.0,-7.4,130.5,-6.5,131.5,-5.6,132.3,-4.0,132.5]],[1,[15.1,-96.0,14.5,-94.8,13.7,-93.2,12.9,-91.6,12.4,-90.4,11.9,-89.2,10.7,-87.8,10.0,-86.8,9.4,-85.7,8.5,-84.2,7.7,-82.8]],[1,[7.7,-82.8,7.1,-81.8]],[1,[7.1,-81.8,6.7,-80.0,6.8,-78.7]],[1,[6.8,-78.7,5.8,-78.7,4.5,-78.8,3.8,-78.7]],[1,[19.6,-61.2,19.1,-60.7]],[1,[19.1,-60.7,18.4,-60.0,17.7,-59.2,15.8,-58.4,14.9,-57.7,13.1,-57.3,11.2,-57.6,10.7,-57.8]],[0,[15.8,-98.9,15.3,-97.4,15.1,-96.0]],[0,[15.1,-96.0,15.1,-95.5,15.2,-93.8,15.4,-92.0,15.5,-90.2,15.8,-88.6,16.3,-87.0,17.0,-85.2,17.5,-83.4,17.8,-81.6]],[0,[12.2,-75.1,12.0,-73.3,11.8,-71.6,11.5,-69.9,11.4,-67.9,11.3,-65.9,11.2,-63.8,11.0,-61.8,10.9,-59.8,10.7,-57.8]],[0,[18.7,-81.7,18.9,-80.5,19.1,-79.4,19.2,-78.0,19.4,-76.7,19.6,-75.3,19.7,-74.0,19.8,-72.2,19.8,-70.5,19.9,-69.1,19.9,-67.7,19.8,-66.1,19.8,-64.5,19.7,-62.9,19.6,-61.2]],[2,[1.1,-102.2,1.1,-102.2,1.1,-102.2]],[2,[1.1,-102.2,0.7,-102.2,0.7,-102.2,0.4,-102.3,0.2,-102.3,-0.0,-102.3,-0.4,-102.4,-0.5,-102.4,-0.8,-102.4,-1.1,-102.5,-1.3,-102.5,-1.3,-102.4,-1.4,-102.4,-1.5,-102.5,-1.6,-102.4,-1.6,-102.3,-1.7,-102.3,-1.8,-102.4,-1.8,-102.4,-1.9,-102.4,-1.9,-102.6,-2.2,-102.7,-2.3,-102.7,-2.5,-102.7,-2.7,-102.7,-2.9,-102.8,-2.9,-102.7,-2.9,-102.6,-3.1,-102.6,-3.4,-102.6,-3.5,-102.6,-3.8,-102.7,-3.9,-102.7,-4.0,-102.7,-4.1,-102.7,-4.0,-103.1,-3.9,-103.8,-3.8,-104.5,-4.2,-104.7,-4.1,-105.4,-4.6,-105.5,-4.5,-106.3,-4.5,-106.3,-4.7,-106.3,-4.8,-106.4,-5.0,-106.5,-5.2,-106.5,-5.4,-106.5,-5.5,-106.6,-5.6,-106.6,-5.6,-106.7,-6.0,-106.8,-6.0,-106.8,-6.4,-107.0,-6.4,-107.4,-6.8,-107.6,-7.2,-107.7,-7.5,-107.9,-7.6,-107.9,-8.2,-108.1,-8.4,-108.2,-9.1,-108.3,-8.9,-109.8,-9.1,-109.8,-9.7,-109.9,-9.7,-110.1,-10.1,-110.2,-10.6,-110.3,-10.8,-110.3,-10.8,-110.4,-11.4,-110.5,-11.5,-110.7,-11.7,-110.8,-12.0,-110.9,-12.7,-111.1,-12.8,-110.9,-13.4,-111.0,-13.4,-111.2,-13.5,-111.3,-13.4,-112.4,-13.9,-112.4,-14.1,-112.6,-14.7,-112.6,-14.7,-112.8,-15.8,-113.0,-16.4,-113.1,-16.4,-113.0,-16.7,-113.2,-16.7,-113.0,-17.1,-113.2,-17.1,-113.1,-17.5,-113.3,-17.5,-113.2,-18.0,-113.4,-18.0,-113.3,-18.4,-113.4,-18.8,-113.5,-18.8,-113.4,-19.3,-113.6,-19.3,-113.5,-20.3,-113.8,-20.6,-113.9,-20.6,-114.1,-21.1,-114.2,-21.6,-114.3,-21.6,-114.4,-22.1,-114.4,-22.1,-114.5,-22.2,-114.5,-22.5,-114.5,-23.0,-114.6,-23.0,-114.9,-23.2,-115.0,-23.2,-115.2,-23.4,-115.3,-23.5,-115.6,-23.9,-115.4,-24.0,-115.4,-24.1,-115.5,-24.2,-115.9,-24.4,-116.0,-24.5,-116.2,-24.6,-116.2,-24.8,-116.1,-25.2,-116.5,-25.4,-116.4,-25.7,-116.0,-26.0,-115.7,-26.2,-115.5,-26.5,-115.3,-26.6,-115.1,-26.7,-114.5,-26.8,-113.9,-26.8,-113.5,-26.8,-113.0,-26.8,-112.9,-26.9,-112.9,-27.0,-113.1,-27.3,-113.1,-27.6,-113.1,-27.6,-113.0,-27.8,-113.0,-28.0,-113.0,-28.4,-112.9,-28.4,-113.0,-28.5,-113.0,-28.8,-113.0,-29.0,-113.0,-29.2,-112.4,-29.3,-111.8,-29.6,-111.7,-30.0,-111.8,-30.2,-111.8,-30.4,-111.8,-30.6,-111.9,-30.7,-111.9,-31.0,-112.0,-31.4,-112.0,-31.4,-112.0,-31.5,-112.0]],[2,[-31.5,-112.0,-31.6,-112.0,-31.7,-112.0,-31.8,-112.0,-31.9,-112.1,-32.1,-112.1,-32.3,-112.2,-32.3,-112.4,-32.5,-112.4,-32.8,-112.4,-33.1,-112.4,-33.4,-112.5,-33.6,-112.5,-33.7,-112.6,-34.0,-112.6,-34.3,-112.6,-34.6,-112.4,-34.7,-112.2,-34.8,-111.8,-34.9,-111.4,-34.9,-111.4,-35.0,-111.1,-35.1,-110.8,-35.1,-110.8]],[2,[-35.1,-110.8,-35.1,-110.8]],[2,[3.0,-102.2,3.0,-101.9,2.6,-101.5,2.2,-101.2,2.2,-101.2,2.2,-101.2]],[2,[2.2,-101.2,2.2,-101.1,2.2,-100.6,2.2,-100.5,2.2,-100.1,2.3,-100.0,2.3,-99.9,2.3,-99.8,2.3,-99.7,2.3,-99.7,2.2,-99.7,2.1,-98.9,2.2,-98.9,2.1,-97.8,2.1,-97.6,1.9,-97.6,1.9,-96.2,2.2,-96.1,2.2,-95.2,2.5,-95.2,2.4,-93.6,2.2,-92.2,2.2,-92.1,2.0,-92.1,2.0,-91.5,1.8,-91.6,1.7,-90.7,1.1,-90.7,1.0,-88.9,0.9,-87.1,0.8,-85.4,1.6,-85.3,1.6,-84.6,2.5,-84.6,3.1,-84.5,3.2,-83.4,3.1,-82.8]],[2,[1.1,-102.2,1.1,-102.2,1.1,-102.2]],[2,[1.1,-102.2,1.2,-102.1,1.3,-102.0,1.3,-101.8,1.4,-101.6,1.3,-101.6,1.4,-101.5,1.3,-101.4,1.4,-101.3,1.4,-101.3,1.4,-101.2,1.4,-101.2,1.5,-101.0,1.5,-101.1,1.7,-101.0,1.7,-101.0,1.7,-100.9,1.8,-101.0,1.9,-101.0,2.0,-101.1,2.2,-101.2,2.2,-101.2]],[2,[18.8,-104.8,17.9,-105.4]],[2,[17.9,-105.4,17.8,-105.4,17.0,-105.4,16.3,-105.4,15.6,-105.4,15.1,-105.3,15.3,-104.7,14.1,-104.4,12.6,-103.9,11.9,-103.8,11.9,-103.9,10.9,-103.7,10.3,-103.6,10.1,-103.6,10.0,-104.3,9.2,-104.3,8.5,-104.3,8.3,-104.2,8.4,-103.0,7.2,-102.7,5.5,-102.5,3.8,-102.2,3.7,-102.3]],[2,[17.9,-105.4,17.9,-106.3,18.0,-106.3,18.1,-106.3,18.3,-106.3,18.5,-106.2,18.5,-106.5,18.6,-106.8,18.6,-107.0,18.7,-107.2,18.8,-107.3,18.9,-107.5,18.9,-107.8,19.1,-108.2,19.2,-108.2,19.4,-108.5,19.6,-108.9,19.6,-108.9,19.8,-109.2,19.9,-109.3]],[2,[19.9,-109.3,20.0,-109.5,20.1,-109.4,20.2,-109.4,20.2,-109.3,20.4,-109.2,20.5,-109.2,20.6,-109.3,20.6,-109.3,20.7,-109.2,20.8,-109.1,21.1,-108.9,21.3,-108.8,21.3,-109.0,21.5,-108.9,21.6,-108.8,21.8,-108.7,21.9,-108.6,22.0,-108.7,22.1,-108.6,22.2,-108.5,22.3,-108.5,22.4,-108.4,22.6,-108.3,22.7,-108.2,23.0,-108.0,23.0,-108.0]],[2,[7.7,-82.8,6.2,-82.8,4.6,-82.8,3.1,-82.8]],[2,[3.7,-102.3,3.5,-102.2,3.2,-102.2,3.1,-102.2,3.0,-102.2]],[2,[3.0,-102.2,2.9,-102.1,2.9,-102.1,2.8,-102.1,2.8,-102.1,2.6,-102.1,2.6,-102.1,2.5,-102.1,2.5,-102.1,2.4,-102.1,2.4,-102.1,2.3,-102.1,2.3,-102.1,2.2,-102.1,2.1,-102.1,2.0,-102.1,2.0,-102.1,1.9,-102.1,1.9,-102.1,1.8,-102.1,1.8,-102.3,1.5,-102.2,1.5,-102.3,1.4,-102.2,1.3,-102.2,1.2,-102.2,1.2,-102.2,1.1,-102.2]],[2,[1.1,-102.2,1.1,-102.2]],[2,[-34.5,-109.3,-34.5,-109.3]],[2,[-34.5,-109.3,-34.5,-109.3]],[2,[-34.5,-109.3,-34.2,-109.3,-33.9,-109.3,-33.7,-109.2,-33.4,-109.3,-33.1,-109.4,-33.0,-109.2,-32.9,-109.0,-32.7,-109.2,-32.4,-109.4,-32.1,-109.8,-31.9,-110.2,-31.7,-110.7,-31.6,-111.2,-31.6,-111.7,-31.5,-112.0]],[2,[-45.4,-75.6,-45.4,-75.7]],[2,[-45.4,-75.7,-45.6,-76.7,-45.8,-77.7,-45.6,-77.8,-45.1,-78.0,-44.4,-78.2,-44.5,-78.9,-44.7,-79.6,-44.8,-80.3,-44.9,-81.1,-45.0,-81.9,-44.4,-82.1,-43.6,-82.4,-42.9,-82.5,-43.0,-83.4,-42.9,-83.5,-42.2,-83.6,-41.7,-83.7,-41.1,-83.8,-41.2,-84.5,-41.3,-85.1,-41.4,-86.2,-41.5,-87.3,-41.3,-87.4,-41.3,-88.4,-41.4,-89.2,-41.4,-90.1,-41.1,-90.1,-41.1,-90.7,-41.1,-91.4,-40.7,-91.5,-40.3,-91.5,-39.8,-91.5,-39.3,-91.6,-38.9,-91.7,-38.9,-92.3,-39.0,-93.0,-38.4,-93.1,-38.5,-94.0,-37.7,-94.1,-37.0,-94.1,-37.0,-94.9,-37.0,-95.7,-36.9,-96.6,-36.9,-97.4,-36.3,-97.4,-36.2,-98.4,-36.1,-99.5,-36.1,-100.6,-36.0,-101.3,-35.9,-101.9,-35.9,-102.6,-35.8,-103.2,-35.7,-104.0,-35.6,-104.8,-35.5,-105.4,-35.4,-106.0,-35.4,-106.7,-35.3,-107.3,-35.2,-108.1,-35.1,-108.8,-34.5,-109.3]],[2,[-34.5,-109.3,-34.5,-109.3]],[2,[-35.1,-110.8,-35.1,-110.8,-35.1,-110.8]],[2,[-35.1,-110.8,-35.1,-110.5,-34.9,-110.3,-34.8,-110.1,-34.7,-109.9,-34.6,-109.7,-34.5,-109.3]],[2,[-34.5,-109.3,-34.5,-109.3]],[2,[-65.8,-177.7,-65.6,-177.1,-65.2,-175.7,-65.5,-175.1,-65.8,-174.4,-65.5,-173.7,-65.0,-172.5,-64.4,-171.3,-64.9,-170.0,-64.8,-169.8,-64.2,-169.1,-63.7,-168.4,-63.1,-167.5,-62.5,-166.6,-62.6,-166.2,-63.0,-165.1,-63.5,-163.9,-63.0,-163.0,-62.4,-162.1,-62.6,-161.3,-62.9,-160.4,-62.6,-159.9,-63.0,-158.7,-62.8,-158.4,-63.1,-157.6,-63.3,-156.7,-63.0,-156.0,-62.4,-155.3,-61.8,-154.3,-61.8,-154.2,-61.4,-153.7,-60.8,-152.9,-60.2,-152.1,-59.5,-151.3,-59.7,-150.4,-59.3,-149.8,-58.8,-149.3,-58.1,-148.3,-57.6,-147.7,-57.6,-147.2,-57.3,-146.7,-56.7,-146.0,-56.2,-145.4,-55.8,-144.9,-55.9,-144.5,-56.3,-143.3,-56.6,-142.1,-56.8,-141.2,-57.1,-140.3,-56.8,-140.0,-56.3,-139.5,-55.7,-139.2,-55.6,-139.6,-55.3,-139.3,-54.7,-138.8,-54.1,-138.3,-53.6,-137.9,-53.7,-137.5,-53.9,-136.6,-53.4,-136.2,-53.6,-135.3,-53.9,-134.2,-54.2,-132.9,-54.4,-132.1,-54.6,-131.4,-54.9,-130.1,-55.1,-129.3,-55.3,-128.6,-55.6,-127.2,-55.1,-126.8,-55.1,-126.2,-55.5,-125.1,-55.6,-124.3,-55.7,-123.4,-55.9,-122.7,-56.0,-121.9,-55.8,-121.6,-55.2,-121.2,-54.4,-120.7,-54.6,-119.7,-54.8,-118.6,-54.4,-118.3,-53.7,-118.0,-53.1,-117.7,-52.9,-119.0,-52.8,-118.9,-52.2,-118.4,-51.8,-118.1,-51.3,-117.8,-50.9,-117.5,-50.4,-117.2,-49.9,-116.8,-49.4,-116.4,-49.6,-115.2,-49.7,-114.6,-49.8,-113.9,-49.4,-113.7,-48.8,-113.5,-48.3,-113.3,-47.8,-113.1,-47.2,-113.0,-46.5,-112.7,-45.9,-112.4,-45.8,-112.7,-45.5,-112.5,-44.9,-112.4,-44.4,-112.2,-43.8,-112.0,-43.2,-111.7,-42.7,-111.5,-42.2,-111.3,-42.2,-111.0,-41.4,-110.8,-40.8,-110.8,-40.2,-110.7,-39.6,-110.5,-39.0,-110.4,-39.0,-111.3,-38.9,-111.3,-38.3,-111.1,-37.7,-110.9,-37.0,-110.7,-36.4,-110.5,-36.4,-110.7,-36.2,-110.7,-35.8,-110.6,-35.8,-110.9,-35.3,-110.9,-35.1,-110.8]],[2,[-35.1,-110.8,-35.1,-110.8]],[2,[40.3,-125.2,40.4,-125.5,40.4,-126.2,40.4,-126.9,40.5,-127.6,40.5,-127.6,40.6,-127.7,41.1,-127.6,41.6,-127.6,41.6,-127.4,41.6,-127.4,41.7,-127.2,42.4,-127.0,43.0,-126.6,43.4,-127.6,43.8,-128.5,44.2,-129.5,44.6,-130.5,44.9,-130.4,45.3,-130.1,45.4,-130.2,45.7,-129.9,45.9,-129.9,45.9,-130.1,46.2,-130.1,46.2,-129.9,46.4,-129.8,46.4,-129.6,47.1,-129.3,47.7,-128.9,47.8,-129.2,48.3,-128.9,48.5,-129.1,48.9,-128.9,49.2,-129.7,49.5,-130.5,50.0,-130.2,50.1,-130.3,50.2,-130.2,50.3,-130.3,50.5,-130.3,50.9,-130.8,51.2,-131.1,51.4,-130.9]],[0,[-7.9,151.6,-9.9,151.6]],[2,[-8.5,156.5,-9.2,156.4,-9.2,156.3,-9.3,156.1,-9.5,156.1,-9.6,155.9,-9.5,155.8,-9.6,155.7,-9.5,155.6,-9.6,155.5,-9.5,155.5,-9.6,155.2,-9.7,155.2,-9.8,155.1,-9.8,154.8,-9.7,154.8,-9.9,154.2,-10.3,154.2,-10.4,153.5,-10.4,153.3,-10.4,152.9,-10.1,152.9,-10.1,152.7,-10.1,152.2,-10.0,152.3,-10.0,152.0,-9.9,151.9,-9.9,151.8,-9.9,151.6]],[1,[-51.2,-77.1,-50.6,-77.1,-49.8,-77.3,-49.1,-77.6,-48.2,-77.3,-47.6,-76.6,-47.4,-75.9,-47.0,-75.8,-46.6,-75.7,-46.1,-75.6,-45.8,-75.5,-45.6,-75.6]],[1,[-45.6,-75.6,-45.5,-75.6,-45.4,-75.6]],[1,[-45.4,-75.6,-45.3,-75.7,-45.0,-75.8,-44.7,-75.9,-44.4,-75.8,-44.0,-75.7,-43.8,-75.6,-43.4,-75.5,-43.2,-75.4,-42.9,-75.4,-42.6,-75.3,-41.6,-75.2,-41.3,-75.1,-40.7,-75.0,-40.4,-75.0,-39.9,-75.0,-39.7,-75.0,-39.3,-74.9,-38.9,-74.8,-38.4,-74.7,-37.9,-74.6,-37.5,-74.5,-36.0,-74.0,-34.6,-73.4,-33.2,-72.7,-31.7,-72.5,-30.3,-72.4,-28.9,-72.2,-27.9,-71.9,-26.9,-71.6,-25.0,-71.4,-23.2,-71.2,-21.9,-71.1,-21.1,-71.3,-20.4,-71.3,-19.5,-71.6,-18.7,-72.2,-17.9,-73.0,-17.1,-73.9,-16.6,-74.8,-15.6,-75.8,-14.6,-76.8,-13.6,-77.8,-12.2,-78.7,-10.8,-79.7,-9.3,-80.6,-7.5,-81.3,-5.7,-82.0,-4.2,-81.8,-2.8,-81.6,-2.5,-81.6,-2.2,-81.6,-2.0,-81.5,-1.6,-81.5,-1.4,-81.4,-1.1,-81.4,-0.7,-81.3,-0.4,-81.2,-0.1,-81.1,0.3,-80.9,0.7,-80.8,1.0,-80.6,1.4,-80.4,1.8,-80.2,2.1,-80.0,2.3,-79.9,2.7,-79.6,3.0,-79.3,3.4,-79.1,3.6,-78.8,3.8,-78.7]],[1,[3.8,-78.7,3.9,-78.6,4.1,-78.5,4.3,-78.4,5.1,-78.0,5.1,-78.0,5.2,-77.9,5.4,-77.9,5.6,-77.9,5.8,-78.0,6.0,-78.0,6.3,-78.2,6.5,-78.3,6.7,-78.4,6.7,-78.4]],[1,[6.7,-78.4,7.9,-78.4,9.3,-77.4,10.3,-76.7,11.4,-75.9,12.2,-75.1]],[1,[6.8,-78.7,5.8,-78.7,4.5,-78.8,3.8,-78.7]],[2,[19.9,-109.3,20.0,-109.5,20.1,-109.4,20.2,-109.4,20.2,-109.3,20.4,-109.2,20.5,-109.2,20.6,-109.3,20.6,-109.3,20.7,-109.2,20.8,-109.1,21.1,-108.9,21.3,-108.8,21.3,-109.0,21.5,-108.9,21.6,-108.8,21.8,-108.7,21.9,-108.6,22.0,-108.7,22.1,-108.6,22.2,-108.5,22.3,-108.5,22.4,-108.4,22.6,-108.3,22.7,-108.2,23.0,-108.0,23.0,-108.0]],[0,[39.6,-125.1,39.3,-125.0,38.8,-124.8,38.3,-124.6,37.8,-124.3,37.2,-123.9,36.7,-122.9,36.4,-122.4,35.8,-121.8,35.2,-120.8,35.0,-120.4,34.7,-119.9,34.2,-119.5,33.9,-118.9,33.4,-118.3,33.1,-117.2,32.2,-116.4,31.9,-115.8,31.5,-115.4,31.1,-114.7,31.1,-114.7]],[1,[51.4,-131.0,51.4,-130.9]],[1,[51.4,-130.9,50.9,-130.3,50.8,-130.1]],[1,[50.8,-130.1,50.5,-129.7,49.8,-128.6,49.1,-127.8,48.4,-127.2,47.7,-126.4,46.7,-126.0,45.5,-125.6,44.6,-125.5,43.5,-125.7,42.1,-125.5,40.7,-125.2,40.3,-125.2]],[1,[40.3,-125.2,39.6,-125.1]],[1,[-60.4,-26.0,-60.4,-26.0]],[1,[-60.4,-26.0,-60.0,-25.1,-59.4,-24.5,-58.9,-24.0,-58.2,-23.8,-57.4,-24.1,-57.2,-24.2,-56.7,-24.7,-56.3,-25.1,-55.8,-25.7,-55.4,-26.4,-55.2,-27.0,-55.1,-27.6,-55.0,-28.6,-55.0,-29.5,-54.9,-29.7]],[1,[-54.9,-29.7,-54.9,-29.7]],[2,[-54.9,-29.7,-55.2,-29.7,-55.3,-29.8,-55.5,-29.8,-55.6,-29.8,-55.7,-29.8,-55.8,-30.3,-55.9,-30.3,-55.9,-30.3,-56.1,-30.3,-56.1,-30.3,-56.3,-30.3,-56.4,-30.4,-56.4,-30.7,-56.5,-30.7,-56.6,-30.7,-56.9,-30.7,-56.9,-30.5,-57.1,-30.4,-57.1,-30.1]],[2,[-57.1,-30.1,-57.6,-30.1,-57.6,-29.9,-58.3,-29.8,-58.3,-30.0,-58.8,-30.0,-58.8,-29.6,-59.5,-29.6,-59.5,-30.1,-59.9,-30.0,-60.2,-29.9,-60.4,-29.6,-60.5,-28.7,-60.5,-27.7,-60.6,-27.7,-60.6,-27.7]],[2,[-60.4,-26.1,-60.4,-26.0,-60.4,-26.0]],[2,[-60.4,-26.0,-60.7,-24.1,-60.7,-21.7,-60.8,-19.6,-60.3,-19.4,-60.3,-18.6,-59.5,-18.4,-59.5,-18.1,-59.2,-18.1,-59.1,-17.6,-59.1,-16.9,-59.1,-16.4,-58.8,-16.2,-58.5,-16.0,-58.4,-16.0,-58.3,-13.7,-58.1,-10.9,-58.0,-8.6,-57.9,-7.6,-57.9,-7.0,-57.6,-7.0,-57.3,-7.0,-57.3,-6.5,-57.2,-6.1,-56.7,-6.1,-56.6,-5.4,-56.6,-4.7,-56.2,-4.7,-55.8,-4.7,-55.6,-1.6,-55.2,-1.6]],[0,[-61.5,-54.9,-61.5,-54.3,-61.0,-53.1,-60.9,-52.6,-60.8,-52.1,-60.6,-51.1,-60.1,-50.9,-60.0,-48.3,-60.0,-47.0,-60.1,-45.6,-60.2,-45.1,-60.3,-44.0,-60.5,-42.1,-61.0,-41.2,-60.6,-39.8,-61.0,-39.1,-61.2,-37.6,-61.4,-36.4,-61.0,-34.8,-60.7,-33.5,-60.4,-32.4,-60.5,-30.9,-60.6,-27.7,-60.6,-27.7]],[0,[-60.6,-27.7,-60.4,-26.1]],[0,[-60.4,-26.1,-60.4,-26.0,-60.4,-26.0]],[0,[-57.1,-67.1,-58.0,-64.9,-58.6,-62.2,-59.7,-59.0,-60.9,-55.9,-61.5,-54.9]],[0,[-51.8,-76.3,-53.0,-75.7,-54.3,-74.5,-55.6,-71.8,-56.3,-69.8,-56.9,-67.7,-57.1,-67.1]],[0,[-54.9,-29.7,-54.8,-31.9,-54.4,-34.0,-54.2,-35.0,-53.5,-36.0,-53.2,-37.6,-53.3,-39.2,-53.3,-40.3,-53.1,-41.9,-53.0,-43.7,-52.8,-45.4,-52.7,-46.6,-52.6,-47.9,-52.8,-48.8,-52.6,-50.2,-52.7,-51.9,-53.2,-54.0,-53.5,-55.1,-53.6,-57.2,-53.6,-59.0,-53.6,-60.5,-53.7,-61.8,-54.3,-64.1,-54.5,-65.7,-54.6,-68.0,-54.4,-69.6,-53.9,-71.8,-53.1,-73.6,-52.6,-75.0,-51.8,-76.3]],[0,[-51.8,-76.3,-51.2,-77.1]],[0,[-7.5,155.5,-8.2,154.6,-9.0,153.7,-9.2,153.3]],[1,[-7.6,150.0,-7.6,150.2,-7.7,150.6,-7.8,150.9,-7.9,151.3,-7.9,151.6]],[1,[-7.9,151.6,-8.0,151.7,-8.1,152.1,-8.3,152.4,-8.4,152.7,-8.5,153.0,-8.7,153.1,-8.8,153.2,-8.9,153.2,-9.2,153.3]],[2,[-3.5,144.2,-3.5,144.4,-3.6,144.8,-3.5,145.4,-3.5,146.1,-3.4,146.4,-3.8,146.8,-3.6,146.9,-3.5,147.0,-3.4,147.1,-3.3,147.2,-3.2,147.2,-3.1,147.3,-3.0,147.4,-2.9,147.5,-2.9,147.5,-2.9,147.6,-2.8,147.8,-2.9,148.0,-3.0,148.1,-3.1,148.3,-3.2,148.5,-3.3,148.7,-3.4,148.9,-3.5,149.1,-3.5,149.3,-3.5,149.5,-3.6,149.6,-3.6,149.7,-3.6,149.8,-3.6,149.8,-3.7,150.0,-3.8,150.2,-3.9,150.2,-3.8,150.7,-3.7,151.0,-3.8,151.1,-3.7,151.3,-3.7,151.4,-3.7,151.6,-3.8,151.7,-3.6,152.0,-3.6,152.1]],[1,[-5.8,153.7,-5.8,153.2,-5.7,152.6,-5.9,151.9,-6.2,151.6,-6.5,151.0,-6.8,150.3,-7.0,149.4,-7.1,149.2]],[0,[-0.7,149.3,-0.7,149.3]],[0,[-0.7,149.3,-0.8,149.5,-1.0,149.8,-1.0,150.0,-1.1,150.3,-1.2,150.7,-1.3,151.1,-1.5,151.4,-1.6,151.8,-1.9,152.2,-2.1,152.6,-2.2,152.9,-2.2,153.1,-2.4,153.4,-2.6,153.5,-2.7,153.7,-3.0,153.9,-3.3,154.0,-3.6,154.3,-3.9,154.4,-4.3,154.7,-4.6,155.0,-4.9,155.0,-5.2,155.0,-5.6,154.6,-5.9,154.5,-6.4,154.5,-6.8,154.7]],[0,[-6.8,154.7,-6.9,154.7,-7.0,154.8]],[1,[-6.8,154.7,-6.3,153.9,-5.8,153.7]],[1,[-5.8,153.7,-4.9,153.1,-4.1,152.6,-3.6,152.1]],[1,[-0.7,149.3,-0.6,149.3]],[1,[-0.6,149.3,0.4,149.1,1.4,148.7,3.3,148.7,4.7,147.4,6.1,146.1]],[1,[-1.0,136.9,-1.0,137.0,-1.2,137.6,-1.4,138.3,-1.7,139.0,-1.9,139.7]],[1,[-1.9,139.7,-2.0,139.8,-2.2,140.9,-2.7,141.9,-3.1,143.0,-3.5,144.2]],[1,[-3.5,144.2,-3.5,144.2,-4.3,145.3,-5.4,146.6,-6.2,147.9,-6.8,148.6,-7.1,149.2]],[1,[-7.1,149.2,-7.3,149.5,-7.6,150.0]]];
+</script>
+<script>
+(function(){
+"use strict";
+const $=s=>document.querySelector(s);
+const T=window.TXT;
+const fmt=(v,d)=>(v<0?"−":"")+Math.abs(v).toFixed(d).replace(".",T.dec);
+const reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const IMG="https://unpkg.com/three-globe/example/img/";
+const D2R=Math.PI/180;
+function sci(v,d){if(!(v>0))return "0";const e=Math.floor(Math.log10(v));const m=v/Math.pow(10,e);if(e>=-2&&e<=3)return fmt(v,v<1?Math.max(0,1-e):v<10?1:0);return fmt(m,d===undefined?1:d)+"·10"+sup(e);}
+function sup(n){const S="⁰¹²³⁴⁵⁶⁷⁸⁹";return (n<0?"⁻":"")+String(Math.abs(n)).split("").map(c=>S[+c]).join("");}
+function rnd(a,b){return a+Math.random()*(b-a);}
+
+/* ---------- skydere ---------- */
+const sl={r:s=>Math.pow(150,s/100),ua:s=>1e-4*Math.pow(2e5,s/100),d:s=>Math.pow(200,s/100)};
+const inv={r:v=>100*Math.log(v)/Math.log(150),ua:v=>100*Math.log(v/1e-4)/Math.log(2e5),d:v=>100*Math.log(v)/Math.log(200)};
+const st={running:!reduce,tempo:1,cam:"far",pre:"pinatubo",E:null,t:0,scale:true,lbl:true};
+function params(){return {si:+$("#sSi").value,w:+$("#sW").value,r:sl.r(+$("#sR").value),ua:sl.ua(+$("#sUa").value),d:sl.d(+$("#sD").value)};}
+function magType(si){for(const [lim,n] of T.types)if(si<lim)return n;return T.types[T.types.length-1][1];}
+
+/* ======================= 3D: VULKANEN I SNIT ======================= */
+const cv=$("#cv"),stage=$("#stage");
+const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true});
+let pr=Math.min(2,window.devicePixelRatio||1);renderer.setPixelRatio(pr);
+const scene=new THREE.Scene();scene.fog=new THREE.Fog(0xb9c6d2,90,260);
+const camera=new THREE.PerspectiveCamera(40,1,0.05,2000);
+const skyMat=new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,fog:false,uniforms:{flash:{value:0}},
+  vertexShader:"varying vec3 vP;void main(){vP=normalize(position);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}",
+  fragmentShader:"uniform float flash;varying vec3 vP;void main(){float h=vP.y;vec3 top=vec3(0.16,0.33,0.62),hor=vec3(0.73,0.79,0.85),low=vec3(0.36,0.38,0.36);vec3 c=h>0.0?mix(hor,top,pow(min(1.0,h*1.8),0.6)):mix(hor,low,min(1.0,-h*4.0));c+=flash*vec3(0.25,0.25,0.3);gl_FragColor=vec4(c,1.0);}"});
+scene.add(new THREE.Mesh(new THREE.SphereGeometry(900,32,16),skyMat));
+const hemi=new THREE.HemisphereLight(0xe6eef8,0x5a4a3a,0.72);scene.add(hemi);
+const sun=new THREE.DirectionalLight(0xfff2dc,0.8);sun.position.set(-60,80,40);scene.add(sun);
+const ventLight=new THREE.PointLight(0xff6a2a,0,25,1.6);scene.add(ventLight);
+
+/* vulkanens form: skjoldvulkan for basalt, stejl keglevulkan for andesit og dacit */
+const VX=40,VZ=40,NX=200,NZ=100;
+let shape={h:2.2,R:16,s:0};
+function setShape(si){const f=Math.max(0,Math.min(1,(si-50)/18));shape={h:1.4+1.5*f,R:22-13*f,s:f,cr:0.35+0.25*f,crd:0.06+0.12*f};}
+function surf(x,z){const r=Math.hypot(x,z);const {h,R,s}=shape;let y=0.25;
+  if(r<R){const q=r/R;const shield=Math.pow(1-q*q,0.75),strato=Math.pow(1-q,2.1);y+=h*((1-s)*shield+s*strato);}
+  // krateret
+  if(r<shape.cr){const q=r/shape.cr;y-=shape.crd*(1-q*q);}
+  // bakker og dale
+  y+=0.08*Math.sin(x*0.35+1.3)*Math.cos(z*0.31)+0.05*Math.sin(x*0.9-z*0.7)+0.03*Math.sin(x*2.1+z*1.7);
+  return y;}
+const tGeo=new THREE.PlaneGeometry(1,1,NX,NZ);const tPos=tGeo.attributes.position;const tCol=new Float32Array(tPos.count*3);tGeo.setAttribute("color",new THREE.BufferAttribute(tCol,3));
+const terrain=new THREE.Mesh(tGeo,new THREE.MeshLambertMaterial({vertexColors:true}));scene.add(terrain);
+{const g=new THREE.PlaneGeometry(800,400);g.rotateX(-Math.PI/2);g.translate(0,0.1,-200);const plain=new THREE.Mesh(g,new THREE.MeshLambertMaterial({color:0x4d5a38}));scene.add(plain);}
+function buildTerrain(){for(let j=0;j<=NZ;j++)for(let i=0;i<=NX;i++){const v=j*(NX+1)+i;const x=-VX+2*VX*i/NX,z=-VZ+VZ*j/NZ;const y=surf(x,z);tPos.setXYZ(v,x,y,z);
+    const r=Math.hypot(x,z),n=0.5+0.3*Math.sin(x*1.7+z*2.3)*Math.cos(x*0.6-z*0.9)+0.2*Math.sin(x*5.1-z*4.3);let c;
+    if(y>shape.h*0.86+0.25&&shape.s>0.35)c=[0.9,0.9,0.92];               // sne på toppen
+    else if(r<shape.R*0.45)c=[0.33+0.06*n,0.3+0.05*n,0.28+0.04*n];        // nøgen lava og aske
+    else if(r<shape.R*0.75)c=[0.38+0.06*n,0.36+0.06*n,0.26];
+    else c=[0.30+0.05*n,0.42+0.06*n,0.22+0.03*n];
+    tCol.set(c,v*3);}
+  tPos.needsUpdate=true;tGeo.attributes.color.needsUpdate=true;tGeo.computeVertexNormals();tGeo.computeBoundingSphere();}
+
+/* snitfladen: tegnes på et lærred (jordlag, kammer, kanal, bobler) */
+const CW=1600,CH=360,Y0=-11,Y1=7; // lærredet dækker x ∈ [−40, 40] km og y ∈ [−11, 7] km
+const cut=document.createElement("canvas");cut.width=CW;cut.height=CH;const cx=cut.getContext("2d");
+const cutTex=new THREE.CanvasTexture(cut);cutTex.anisotropy=4;
+const cutMesh=new THREE.Mesh(new THREE.PlaneGeometry(2*VX,Y1-Y0),new THREE.MeshBasicMaterial({map:cutTex,transparent:true,alphaTest:0.5,side:THREE.DoubleSide,fog:false}));
+cutMesh.position.set(0,(Y0+Y1)/2,0.002);scene.add(cutMesh);
+const px=x=>(x+VX)/(2*VX)*CW,py=y=>(Y1-y)/(Y1-Y0)*CH;
+let bubbles=[];for(let k=0;k<140;k++)bubbles.push({y:rnd(-6,0),x:rnd(-1,1),s:rnd(0.6,1.4)});
+function drawCut(E,tt){cx.clearRect(0,0,CW,CH);
+  // jorden
+  cx.beginPath();cx.moveTo(0,CH);for(let i=0;i<=320;i++){const x=-VX+2*VX*i/320;cx.lineTo(px(x),py(surf(x,0)));}cx.lineTo(CW,CH);cx.closePath();
+  const g=cx.createLinearGradient(0,py(4),0,CH);g.addColorStop(0,"#6d5a46");g.addColorStop(0.35,"#59483a");g.addColorStop(1,"#2e2620");cx.fillStyle=g;cx.fill();
+  cx.save();cx.clip();
+  // lag af lava og aske i vulkanen
+  for(let k=1;k<9;k++){cx.beginPath();for(let i=0;i<=200;i++){const x=-shape.R+2*shape.R*i/200;const y=surf(x,0)-k*0.28*(1-Math.abs(x)/shape.R*0.6);i?cx.lineTo(px(x),py(y)):cx.moveTo(px(x),py(y));}
+    cx.strokeStyle=k%2?"rgba(40,30,25,.35)":"rgba(140,115,90,.25)";cx.lineWidth=2;cx.stroke();}
+  // grundfjeldets lag
+  for(let k=0;k<7;k++){const y=-1.2-k*1.4;cx.beginPath();for(let i=0;i<=80;i++){const x=-VX+2*VX*i/80;const yy=y+0.25*Math.sin(x*0.15+k);i?cx.lineTo(px(x),py(yy)):cx.moveTo(px(x),py(yy));}cx.strokeStyle="rgba(0,0,0,.22)";cx.lineWidth=1.5;cx.stroke();}
+  // magmakammeret
+  const chY=-6.2,chA=4.2,chB=1.3;const gr=cx.createRadialGradient(px(0),py(chY),4,px(0),py(chY),px(chA)-px(0));gr.addColorStop(0,"#ffd27a");gr.addColorStop(0.55,"#ff7a2a");gr.addColorStop(1,"#a8260e");
+  cx.fillStyle=gr;cx.beginPath();cx.ellipse(px(0),py(chY),px(chA)-px(0),py(chY-chB)-py(chY),0,0,7);cx.fill();
+  // kanalen
+  const top=surf(0,0),cw=Math.max(5,Math.min(16,4+E.r/6));const yTopCh=chY+chB*0.9;
+  const cg=cx.createLinearGradient(0,py(top),0,py(yTopCh));cg.addColorStop(0,E.regime>=4?"#9a8f86":"#ff8a3a");cg.addColorStop(1,"#ff6a20");
+  cx.fillStyle=cg;cx.fillRect(px(0)-cw/2,py(top),cw,py(yTopCh)-py(top));
+  // bobler og aske i kanalen
+  const zSat=-E.zSat/1000,zFrag=E.zFrag>0?-E.zFrag/1000:null;
+  for(const b of bubbles){const yy=top+b.y;const depth=-b.y;let rr=0;
+    if(-depth*1>zSat){const pFrac=Math.min(1,(depth<E.zSat/1000)?Math.pow(1-depth/(E.zSat/1000+1e-6),1.5):0);rr=(0.8+3.5*pFrac)*b.s;}
+    if(zFrag!==null&&yy>top+zFrag){cx.fillStyle="rgba(70,62,56,.9)";cx.fillRect(px(0)+b.x*cw*0.4-1,py(yy)-1,2.2,2.2);continue;}
+    if(rr>0){cx.fillStyle="rgba(255,240,200,.75)";cx.beginPath();cx.arc(px(0)+b.x*(cw/2-rr),py(yy),rr,0,7);cx.fill();}}
+  cx.restore();
+  // mærker
+  if(st.lbl&&st.cam!=="near"){cx.font="500 12px IBM Plex Sans, sans-serif";cx.textBaseline="middle";
+    const lab=(t,x,y,col)=>{const w=cx.measureText(t).width+10;cx.fillStyle="rgba(10,10,12,.55)";cx.fillRect(x,y-9,w,18);cx.fillStyle=col||"#f3ece4";cx.fillText(t,x+6,y+1);};
+    lab(T.lbl.ch,px(chA)+8,py(chY));lab(T.lbl.cond,px(0)+cw/2+10,py(-3.2));
+    const ySat=Math.max(yTopCh,top+zSat);cx.setLineDash([6,4]);cx.strokeStyle="rgba(255,240,200,.8)";cx.beginPath();cx.moveTo(px(-2.2),py(ySat));cx.lineTo(px(2.2),py(ySat));cx.stroke();
+    lab(T.lbl.sat+(top+zSat<yTopCh?" ("+T.inCh+")":""),px(-2.2)-cx.measureText(T.lbl.sat+(top+zSat<yTopCh?" ("+T.inCh+")":"")).width-22,py(ySat));
+    if(zFrag!==null){const yF=top+zFrag;cx.strokeStyle="rgba(200,200,200,.9)";cx.beginPath();cx.moveTo(px(-2.2),py(yF));cx.lineTo(px(2.2),py(yF));cx.stroke();lab(T.lbl.frag,px(2.2)+10,py(yF));}
+    cx.setLineDash([]);}
+  cutTex.needsUpdate=true;}
+
+/* højdeskala */
+const scaleGrp=new THREE.Group();scene.add(scaleGrp);
+function textSprite(t,col,h){const c=document.createElement("canvas");const x=c.getContext("2d");x.font="500 28px IBM Plex Mono, monospace";const w=Math.ceil(x.measureText(t).width)+14;c.width=w;c.height=40;
+  const y=c.getContext("2d");y.font="500 28px IBM Plex Mono, monospace";y.fillStyle="rgba(8,10,14,.55)";y.fillRect(0,0,w,40);y.fillStyle=col||"#eef2f6";y.textBaseline="middle";y.fillText(t,7,21);
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false,transparent:true,fog:false}));s.scale.set(h*w/40,h,1);s.renderOrder=20;return s;}
+{const pts=[];for(let k=0;k<=5;k++){pts.push(new THREE.Vector3(0,k*10,0),new THREE.Vector3(0,(k+1)*10,0));}
+ scaleGrp.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0),new THREE.Vector3(0,50,0)]),new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:0.6})));
+ for(let k=1;k<=5;k++){const s=textSprite(k*10+" km","#eef2f6",1.6);s.position.set(1.6,k*10,0);scaleGrp.add(s);
+   scaleGrp.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-0.6,k*10,0),new THREE.Vector3(0.6,k*10,0)]),new THREE.LineBasicMaterial({color:0xffffff})));}
+ scaleGrp.position.set(-30,0,-14);}
+const nbMark=textSprite(T.lbl.umb,"#ffe9c8",1.4);scene.add(nbMark);
+
+/* partikler: aske (almindelig blanding) og gløder (additiv) */
+function puffTex(){const c=document.createElement("canvas");c.width=c.height=128;const x=c.getContext("2d");
+  for(let k=0;k<9;k++){const a=rnd(0,6.28),r=rnd(0,26),cx2=64+r*Math.cos(a),cy2=64+r*Math.sin(a),rr=rnd(22,38);const g=x.createRadialGradient(cx2,cy2,0,cx2,cy2,rr);g.addColorStop(0,"rgba(255,255,255,.55)");g.addColorStop(1,"rgba(255,255,255,0)");x.fillStyle=g;x.beginPath();x.arc(cx2,cy2,rr,0,7);x.fill();}
+  const t=new THREE.CanvasTexture(c);return t;}
+function makePts(N,additive,tex){const g=new THREE.BufferGeometry();const pos=new Float32Array(N*3),col=new Float32Array(N*4),siz=new Float32Array(N);
+  g.setAttribute("position",new THREE.BufferAttribute(pos,3));g.setAttribute("aCol",new THREE.BufferAttribute(col,4));g.setAttribute("aSize",new THREE.BufferAttribute(siz,1));
+  const m=new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:additive?THREE.AdditiveBlending:THREE.NormalBlending,uniforms:{uScale:{value:500},map:{value:tex}},
+    vertexShader:"attribute vec4 aCol;attribute float aSize;uniform float uScale;varying vec4 vC;void main(){vC=aCol;vec4 mv=modelViewMatrix*vec4(position,1.0);gl_PointSize=min(900.0,aSize*uScale/max(0.05,-mv.z));gl_Position=projectionMatrix*mv;}",
+    fragmentShader:additive?"varying vec4 vC;void main(){vec2 d=gl_PointCoord-0.5;float r=length(d)*2.0;float a=smoothstep(1.0,0.0,r);gl_FragColor=vec4(vC.rgb*a*vC.a,1.0);}":"uniform sampler2D map;varying vec4 vC;void main(){float a=texture2D(map,gl_PointCoord).a;gl_FragColor=vec4(vC.rgb,a*vC.a);}"});
+  const p=new THREE.Points(g,m);p.frustumCulled=false;scene.add(p);return {N,pos,col,siz,g,m,p,list:[]};}
+const ASH=makePts(3800,false,puffTex()),HOT=makePts(1600,true,null);
+function spawn(P,o){if(P.list.length>=P.N)return null;P.list.push(o);return o;}
+/* lavastrømme: bånd ned ad bjerget */
+const lavaMat=new THREE.ShaderMaterial({transparent:true,polygonOffset:true,polygonOffsetFactor:-6,polygonOffsetUnits:-6,uniforms:{uLen:{value:0},uHot:{value:1},uTime:{value:0}},
+  vertexShader:"attribute float aS;varying float vS;varying float vU;void main(){vS=aS;vU=uv.y;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}",
+  fragmentShader:`uniform float uLen;uniform float uHot;uniform float uTime;varying float vS;varying float vU;
+  float h(float n){return fract(sin(n)*43758.5);}
+  void main(){if(vS>uLen)discard;float age=uLen-vS;float edge=1.0-pow(abs(vU-0.5)*2.0,3.0);
+   float ch=1.0-smoothstep(0.0,0.35,abs(vU-0.5));float hot=uHot*(exp(-age/0.5)*0.95+0.55*exp(-vS/1.2)*ch+0.12*ch)*edge;float cr=0.5+0.5*sin(vS*9.0+vU*13.0+h(floor(vS*6.0))*6.0);hot*=0.75+0.25*cr;
+   vec3 crust=vec3(0.13,0.11,0.1);vec3 c=crust+vec3(1.0,0.42,0.1)*hot*1.6+vec3(1.0,0.85,0.4)*pow(hot,3.0);gl_FragColor=vec4(c,0.97*smoothstep(0.0,0.15,edge));}`});
+const lavaGrp=new THREE.Group();scene.add(lavaGrp);let lavaFlows=[];
+function buildLava(widthK){while(lavaGrp.children.length){const m=lavaGrp.children[0];m.geometry.dispose();lavaGrp.remove(m);}lavaFlows=[];
+  const angs=[-2.25,-1.5,-0.85];for(let n=0;n<angs.length;n++){const a0=angs[n];let x=Math.cos(a0)*shape.cr*1.05,z=Math.sin(a0)*shape.cr*1.05;const pts=[];let s=0;let a=a0;
+    for(let k=0;k<160;k++){pts.push([x,z,s]);// nedad med en smule bugtning
+      a+=0.12*Math.sin(k*0.37+n*2.1);const dx=Math.cos(a)*0.15,dz=Math.sin(a)*0.15;x+=dx;z+=dz;s+=0.15;if(z>-0.2)z=-0.2;if(Math.hypot(x,z)>shape.R*1.05)break;}
+    const w=widthK*(0.8+0.3*n%2);const pos=[],uv=[],aS=[],idx=[];
+    for(let k=0;k<pts.length;k++){const [x1,z1,s1]=pts[k];const [x2,z2]=pts[Math.min(pts.length-1,k+1)];const [x0,z0]=pts[Math.max(0,k-1)];let tx=x2-x0,tz=z2-z0;const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;
+      const nx=-tz,nz=tx;const ww=w*(0.6+0.4*Math.min(1,s1/2));for(const sd of [-1,1]){const xx=x1+nx*ww*sd,zz=z1+nz*ww*sd;pos.push(xx,surf(xx,zz)+0.03,zz);uv.push(0,sd>0?1:0);aS.push(s1);}
+      if(k<pts.length-1){const b=k*2;idx.push(b,b+1,b+2,b+1,b+3,b+2);}}
+    const g=new THREE.BufferGeometry();g.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));g.setAttribute("uv",new THREE.Float32BufferAttribute(uv,2));g.setAttribute("aS",new THREE.Float32BufferAttribute(aS,1));g.setIndex(idx);
+    const m=new THREE.Mesh(g,lavaMat);m.renderOrder=1;lavaGrp.add(m);lavaFlows.push({len:pts[pts.length-1][2]});}}
+/* lavadom */
+const domeMat=new THREE.ShaderMaterial({uniforms:{uT:{value:0}},vertexShader:"varying vec3 vP;varying vec3 vN;void main(){vP=position;vN=normalize(normalMatrix*normal);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}",
+  fragmentShader:"uniform float uT;varying vec3 vP;varying vec3 vN;float h(vec3 p){return fract(sin(dot(p,vec3(12.9898,78.233,37.719)))*43758.5453);}float n3(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(mix(h(i),h(i+vec3(1,0,0)),f.x),mix(h(i+vec3(0,1,0)),h(i+vec3(1,1,0)),f.x),f.y),mix(mix(h(i+vec3(0,0,1)),h(i+vec3(1,0,1)),f.x),mix(h(i+vec3(0,1,1)),h(i+vec3(1,1,1)),f.x),f.y),f.z);}void main(){float n=n3(vP*14.0)*0.6+n3(vP*33.0)*0.4;float crack=smoothstep(0.47,0.5,n)*(1.0-smoothstep(0.5,0.53,n));float l=0.45+0.55*max(0.0,dot(vN,normalize(vec3(-0.5,0.8,0.4))));vec3 c=vec3(0.32,0.29,0.27)*l*(0.8+0.4*n)+vec3(1.0,0.4,0.1)*crack*(0.8+0.2*sin(uT*2.0));gl_FragColor=vec4(c,1.0);}"});
+const dome=new THREE.Mesh(new THREE.SphereGeometry(1,40,20,0,Math.PI*2,0,Math.PI/2),domeMat);scene.add(dome);dome.visible=false;
+/* lyn i søjlen */
+const boltMat=new THREE.LineBasicMaterial({color:0xe8eeff,transparent:true,opacity:0});const bolt=new THREE.Line(new THREE.BufferGeometry(),boltMat);scene.add(bolt);let boltT=0,nextBolt=3;
+
+/* ---------- regn udbruddet og byg scenen ---------- */
+let colProf=null,colTop=0,colNB=0,ventY=0;
+function compute(){const p=params();setShape(p.si);const E=eruption(p.si,p.w,p.r,p.ua,p.d);st.E=E;
+  colProf=E.col?E.col.prof:null;colTop=E.H/1000;colNB=E.col?E.col.zNB/1000:0;ventY=surf(0,0)-shape.crd*0.6;
+  buildTerrain();buildLava(E.regime===REG.EFF?0.14+0.08*Math.min(1,E.Qv/200):0.12);ventLight.position.set(0,ventY+0.4,-0.3);
+  updateReadouts();drawColumn();drawMapSoon();}
+function resetAnim(){st.t=0;ASH.list.length=0;HOT.list.length=0;lavaMat.uniforms.uLen.value=0;domeR=0.05;burstT=-1;nextBurst=0.5;}
+let domeR=0.05,burstT=-1,nextBurst=0.5;
+function profAt(z){// z i km over krateret
+  if(!colProf)return null;const P=colProf;const zm=z*1000;let lo=0,hi=P.length-1;if(zm<=P[0].z)return P[0];if(zm>=P[hi].z)return P[hi];while(hi-lo>1){const m=(lo+hi)>>1;if(P[m].z>zm)hi=m;else lo=m;}const a=P[lo],b=P[hi],f=(zm-a.z)/(b.z-a.z);return {u:a.u+(b.u-a.u)*f,b:a.b+(b.b-a.b)*f,rho:a.rho+(b.rho-a.rho)*f,ra:a.ra+(b.ra-a.ra)*f};}
+/* tidens gang: hvor mange sekunder i virkeligheden pr. sekund på skærmen */
+function timeScale(reg){return [40,3,2.5,60,6,30,14][reg];}
+const SPAWN={ash:0,hot:0};
+function stepParticles(dt){const E=st.E,reg=E.regime,ts=timeScale(reg)*st.tempo,dts=dt*ts,g=9.81e-3; // km/s²
+  st.t+=dts;
+  const wind=0.006; // km/s, en let vind mod øst i højden
+  // ---- nye partikler ----
+  if(reg===REG.PLI||reg===REG.COL){SPAWN.ash+=dt*(reg===REG.PLI?150:200);while(SPAWN.ash>=1){SPAWN.ash--;const th=rnd(0,6.28);spawn(ASH,{k:0,um:Math.random()<0.16,z:rnd(0,0.05),xi:Math.sqrt(Math.random())*0.9,th,age:0,life:reg===REG.PLI?400:rnd(260,420),R:0,up:0,c:rnd(0.75,1.1)});}
+    SPAWN.hot+=dt*40;while(SPAWN.hot>=1){SPAWN.hot--;const v=E.u0*rnd(0.15,0.35)/1000,a=rnd(0,6.28),el=rnd(1.05,1.45);spawn(HOT,{x:0,y:ventY,z:0,vx:v*Math.cos(el)*Math.cos(a),vy:v*Math.sin(el),vz:v*Math.cos(el)*Math.sin(a),age:0,life:30,s:0.12});}}
+  if(reg===REG.HAW||reg===REG.EFF){const Hf=reg===REG.HAW?E.fountain/1000:0.03;const v0=Math.sqrt(2*g*Hf);SPAWN.hot+=dt*(reg===REG.HAW?300:70);
+    while(SPAWN.hot>=1){SPAWN.hot--;const a=rnd(0,6.28),sp=rnd(0,0.16)*v0,vv=v0*rnd(0.75,1.05);spawn(HOT,{x:rnd(-0.03,0.03),y:ventY,z:rnd(-0.03,0.03),vx:sp*Math.cos(a),vy:vv,vz:sp*Math.sin(a),age:0,life:60,s:reg===REG.HAW?0.018+Hf*0.03:0.02});}
+    if(reg===REG.HAW){SPAWN.ash+=dt*6;while(SPAWN.ash>=1){SPAWN.ash--;spawn(ASH,{k:3,x:rnd(-0.1,0.1),y:ventY+Hf*rnd(0.8,1.2),z:rnd(-0.1,0.1),vx:wind*0.6,vy:0.004,vz:0,age:0,life:90,s:0.15,gr:0.3,c:1.1});}}}
+  if(reg===REG.STR||reg===REG.VUL){if(st.t>nextBurst){burstT=st.t;nextBurst=st.t+(reg===REG.STR?rnd(8,20):rnd(50,90));
+      const Hb=reg===REG.STR?E.fountain/1000:0.6;const v0=Math.sqrt(2*g*Hb);const nb=reg===REG.STR?160:110;
+      for(let k=0;k<nb;k++){const a=rnd(0,6.28),el=rnd(0.9,1.5),v=v0*rnd(0.5,1.15);spawn(HOT,{x:0,y:ventY,z:0,vx:v*Math.cos(el)*Math.cos(a),vy:v*Math.sin(el),vz:v*Math.cos(el)*Math.sin(a),age:0,life:80,s:reg===REG.STR?0.05:0.07});}
+      const na=reg===REG.STR?10:260;for(let k=0;k<na;k++)spawn(ASH,{k:reg===REG.STR?3:1,x:rnd(-0.08,0.08),y:ventY+rnd(0,0.1),z:rnd(-0.08,0.08),vx:rnd(-0.004,0.004),vy:reg===REG.STR?0.01:E.u0/1000*rnd(0.08,0.3),vz:rnd(-0.004,0.004),age:0,life:reg===REG.STR?50:rnd(120,220),s:0.12,gr:reg===REG.STR?0.8:0.25,c:rnd(0.8,1.05)});}}
+  if(reg===REG.DOME){domeR=Math.min(0.75,domeR+dts*Math.max(1.5e-4,E.Qv*2e-5));if(Math.random()<dt*0.5){const a=rnd(-2.8,-0.4);for(let k=0;k<14;k++){spawn(HOT,{roll:1,a:a+rnd(-0.1,0.1),r:domeR*0.8,y:0,v:rnd(0.008,0.02),age:0,life:rnd(60,140),s:0.06});}
+      for(let k=0;k<14;k++)spawn(ASH,{k:2,a:a+rnd(-0.15,0.15),r:domeR,h:0.05,v:rnd(0.008,0.016),age:0,life:rnd(80,160),c:rnd(0.95,1.15)});}}
+  // ---- bevægelse ----
+  const top=colTop,nb=colNB;let umbN=0;for(const p of ASH.list)if(p.up===1)umbN++;
+  for(const p of ASH.list){p.age+=dts;
+    if(p.k===0){// i søjlen
+      if(p.up===0){const pr=profAt(p.z);const u=pr?pr.u/1000:0;const rise=Math.max(0.004,u*(1-0.55*p.xi*p.xi));p.z+=rise*dts;
+        if(reg===REG.COL&&(p.z>=top*0.92||u<0.01)){p.up=2;p.a=-rnd(0.15,Math.PI-0.15);p.R=(pr?pr.b/1000:0.5)*p.xi+0.2;p.v=rnd(0.05,0.12);p.h=p.z;}
+        else if(reg===REG.PLI&&p.z>=nb*rnd(0.95,1.08)){if(p.um&&umbN<1900){umbN++;p.up=1;p.R=(pr?pr.b/1000:1)*p.xi;p.zu=p.z;p.v=rnd(0.03,0.06);p.life=p.age+rnd(1800,2600);}else if(p.z>=nb*1.05)p.life=Math.min(p.life,p.age+25);}}
+      else if(p.up===1){// paraplyskyen breder sig ud
+        p.R+=p.v*dts*Math.pow(Math.max(0.5,p.R)/3,-0.35);p.zu+=((nb+0.25*(top-nb)*Math.cos(p.th*3+p.R*0.1))-p.zu)*Math.min(1,dts*0.02);p.z=p.zu;}
+      else if(p.up===3){p.h+=0.007*dts;p.R+=0.004*dts;p.z=p.h;}
+      else{// sammenfald: ned og ud over jorden som pyroklastisk strøm
+        p.R+=p.v*dts;p.v*=Math.exp(-dts/200);const gx=Math.cos(p.a)*p.R,gz=Math.sin(p.a)*p.R;const gy=surf(gx,gz)-ventY;p.h+=(gy+0.15+0.05*p.R-p.h)*Math.min(1,dts*0.05);p.z=p.h;
+        if(Math.random()<dts*0.004&&p.R>3){p.up=3;p.life=Math.max(p.life,p.age+300);}}
+    }else if(p.k===1||p.k===3){p.vy-=p.vy*Math.min(1,dts*(p.k===1?0.02:0.01));p.x+=(p.vx+wind)*dts;p.y+=p.vy*dts;p.z+=p.vz*dts;p.s+=p.gr*0.003*dts;}
+    else if(p.k===2){p.r+=p.v*dts;p.h+=0.0015*dts;}}
+  ASH.list=ASH.list.filter(p=>p.age<p.life&&!(p.k===0&&p.up===2&&p.R>28));
+  for(const p of HOT.list){p.age+=dts;if(p.roll){p.r+=p.v*dts;p.v*=Math.exp(-dts/90);continue;}
+    p.vy-=g*dts;p.x+=p.vx*dts;p.y+=p.vy*dts;p.z+=p.vz*dts;const gy=surf(p.x,p.z);if(p.y<gy&&p.vy<0){p.y=gy;p.vx*=0.3;p.vz*=0.3;p.vy=0;p.land=(p.land||0)+dts;if(p.land>8)p.age=p.life;}}
+  HOT.list=HOT.list.filter(p=>p.age<p.life);
+  // lavastrømme vokser
+  if(reg===REG.EFF||reg===REG.HAW){const v=(reg===REG.EFF?1:0.7)*Math.min(0.012,0.0012+0.0005*Math.sqrt(E.Qv));lavaMat.uniforms.uLen.value=Math.min(14,lavaMat.uniforms.uLen.value+v*dts);}
+}
+function writeParticles(){const E=st.E,reg=E.regime;let n=0;const A=ASH;
+  for(const p of A.list){if(n>=A.N)break;let x,y,z,s,a,cr,cg,cb;
+    if(p.k===0){if(p.up===0||p.up===3){const pr=profAt(p.z);const b=pr?pr.b/1000:0.2;const rr=p.xi*b;x=Math.cos(p.th)*rr+0.006*p.z*p.z*0.4;z=Math.sin(p.th)*rr;y=ventY+p.z;s=Math.max(0.15,b*1.15);}
+      else if(p.up===1){x=Math.cos(p.th)*p.R+0.02*p.R;z=Math.sin(p.th)*p.R;y=ventY+p.z;s=Math.max(1.2,(colTop-colNB)*0.9+0.08*p.R);}
+      else{x=Math.cos(p.a)*p.R;z=Math.sin(p.a)*p.R;y=ventY+p.z;s=(p.up===3?0.9:0.5)+0.09*p.R;}
+      const f=Math.min(1,p.z/Math.max(1,colTop));const sh=0.32+0.32*f;cr=sh*p.c*1.02;cg=sh*p.c*0.97;cb=sh*p.c*0.92;
+      a=Math.min(1,p.age/3)*Math.min(1,(p.life-p.age)/30)*(p.up===1?0.55:0.75);
+      if(p.up===2){cr=0.4*p.c;cg=0.36*p.c;cb=0.33*p.c;}}
+    else if(p.k===2){x=Math.cos(p.a)*p.r;z=Math.sin(p.a)*p.r;y=surf(x,z)+0.05+p.h;s=0.15+0.05*p.r;cr=cg=cb=0.45*p.c;a=Math.min(1,p.age/4)*Math.min(1,(p.life-p.age)/20)*0.7;}
+    else{x=p.x;y=p.y;z=p.z;s=p.s;const sh=0.35*p.c;cr=sh*1.05;cg=sh;cb=sh*0.95;if(p.k===3){cr=cg=cb=0.62*p.c;}a=Math.min(1,p.age/2)*Math.min(1,(p.life-p.age)/(p.life*0.5))*0.75;}
+    A.pos[n*3]=x;A.pos[n*3+1]=y;A.pos[n*3+2]=z;A.siz[n]=s;A.col.set([cr,cg,cb,a],n*4);n++;}
+  for(let k=n;k<A.N;k++){A.col[k*4+3]=0;A.siz[k]=0;}
+  A.g.setDrawRange(0,n);A.g.attributes.position.needsUpdate=true;A.g.attributes.aCol.needsUpdate=true;A.g.attributes.aSize.needsUpdate=true;
+  const H=HOT;n=0;for(const p of H.list){if(n>=H.N)break;let x,y,z;
+    if(p.roll){x=Math.cos(p.a)*p.r;z=Math.sin(p.a)*p.r;y=surf(x,z)+0.03;}else{x=p.x;y=p.y;z=p.z;}
+    const cool=p.land?Math.max(0,1-p.land/6):1;const k=Math.max(0,1-p.age/p.life);const b=cool*(0.5+0.5*k);
+    H.pos[n*3]=x;H.pos[n*3+1]=y;H.pos[n*3+2]=z;H.siz[n]=p.s;const ib=reg===REG.HAW?0.45:0.75;H.col.set([ib*b,ib*0.4*b*b,ib*0.09*b*b*b,1],n*4);n++;}
+  H.g.setDrawRange(0,n);H.g.attributes.position.needsUpdate=true;H.g.attributes.aCol.needsUpdate=true;H.g.attributes.aSize.needsUpdate=true;
+  // dom, lys og mærker
+  dome.visible=reg===REG.DOME||reg===REG.VUL;const dr=reg===REG.VUL?0.35:domeR;dome.scale.set(dr*1.2,dr*0.55,dr*1.2);dome.position.set(0,ventY-0.02,0);
+  const glow={0:2.2,1:3.5,2:1.6,3:0.9,4:0.6,5:1.2,6:1.0}[reg];ventLight.intensity=glow*(0.85+0.15*Math.sin(performance.now()*0.01));
+  nbMark.visible=(reg===REG.PLI)&&st.lbl;nbMark.position.set(Math.min(30,colTop*1.4),ventY+colNB+1.2,0);}
+
+/* ---------- kamera ---------- */
+const CAMS={far:{look:[0,10,-6],az:0.5,el:0.16,d:105},cut:{look:[0,-2.5,0],az:0.0,el:0.05,d:44},near:{look:[0,shape.h,-1],az:0.5,el:0.62,d:11}};
+const orb={look:new THREE.Vector3(0,10,-6),az:0.5,el:0.16,d:105,tLook:new THREE.Vector3(0,10,-6),tAz:0.5,tEl:0.16,tD:105};
+function setCam(k){st.cam=k;const c=CAMS[k];const look=k==="near"?[0,surf(0,0)+0.3,-2.2]:k==="far"?[0,Math.max(4,colTop*0.42),-6]:c.look;orb.tLook.set(...look);orb.tAz=c.az;orb.tEl=c.el;orb.tD=k==="far"?Math.max(55,colTop*2.6+35):k==="near"?(st.E&&st.E.regime>=REG.PLI?12:st.E&&st.E.regime===REG.VUL?7:4.2):c.d;
+  if(k==="near"&&st.E){const f=st.E.regime===REG.HAW?st.E.fountain/1000*0.5:st.E.regime===REG.VUL?1.2:st.E.regime>=REG.PLI?3:0.15;orb.tLook.set(0,surf(0,0)+f,st.E.regime>=REG.PLI?-2.2:-0.6);}}
+let drag=null;
+cv.addEventListener("pointerdown",e=>{drag={x:e.clientX,y:e.clientY};try{cv.setPointerCapture(e.pointerId);}catch(_){}cv.style.cursor="grabbing";});
+cv.addEventListener("pointermove",e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag={x:e.clientX,y:e.clientY};orb.tAz-=dx*0.005;orb.tEl=Math.max(-0.05,Math.min(1.35,orb.tEl+dy*0.004));});
+cv.addEventListener("pointerup",()=>{drag=null;cv.style.cursor="grab";});
+cv.addEventListener("wheel",e=>{e.preventDefault();orb.tD=Math.max(4,Math.min(300,orb.tD*(1+e.deltaY*0.001)));},{passive:false});
+function resize(){const r=stage.getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/Math.max(1,r.height);camera.updateProjectionMatrix();
+  const sc=r.height*pr/(2*Math.tan(camera.fov*D2R/2));ASH.m.uniforms.uScale.value=sc;HOT.m.uniforms.uScale.value=sc;}
+
+/* ---------- aflæsninger ---------- */
+function updateReadouts(){const E=st.E,m=E.m,p=params();
+  $("#oSi").textContent=fmt(p.si,1)+" %";$("#oW").textContent=fmt(p.w,1)+" %";$("#oR").textContent=fmt(p.r,p.r<10?1:0)+" m";$("#oUa").textContent=sci(p.ua)+" m/s";$("#oD").textContent=(p.d<10?fmt(p.d,1):Math.round(p.d))+" "+T.hr;
+  const badge=$("#hReg");badge.textContent=T.reg[E.regime];badge.style.background=T.regCol[E.regime];
+  $("#hMag").textContent=magType(p.si)+", "+fmt(p.si,0)+" % SiO₂, "+fmt(p.w,1)+" % H₂O";
+  $("#rType").textContent=magType(p.si);$("#rT").textContent=Math.round(m.T-273.15)+" °C";$("#rEta").textContent="10"+sup(Math.round(m.logEta))+" Pa·s";
+  $("#rSat").textContent=E.zSat>6000?T.inCh:fmt(E.zSat/1000,1)+" km";$("#rFrag").textContent=E.zFrag>0?(E.zFrag<1000?Math.round(E.zFrag)+" m":fmt(E.zFrag/1000,1)+" km"):"—";
+  $("#rQ").textContent=sci(E.MER)+" kg/s";$("#rU").textContent=E.u0>0?Math.round(E.u0)+" m/s":(E.regime===REG.HAW||E.regime===REG.STR?Math.round(E.ventU*0.3)+" m/s":"—");
+  $("#rH").textContent=E.H>0?fmt(E.H/1000,1)+" km":"—";$("#rHm").textContent=(E.regime===REG.PLI||E.regime===REG.COL)?fmt(mastinH(E.MER),1)+" km":"—";
+  $("#rF").textContent=E.fountain>0?Math.round(E.fountain)+" m":"—";
+  const V=E.V;$("#rV").textContent=V>=1e9?fmt(V/1e9,V<1e10?1:0)+" km³":V>=1e6?fmt(V/1e6,V<1e7?1:0)+" "+T.mio+" m³":sci(V)+" m³";
+  $("#rVEI").textContent=String(E.vei);
+  $("#stageText").textContent=st.pre?T.preTxt[st.pre]:T.regTxt[E.regime];
+  $("#colTxt").textContent=E.col?(E.regime===REG.COL?T.colCollapse(fmt(E.H/1000,1)):T.colTxt(fmt(E.col.zNB/1000,1),fmt(E.H/1000,0))):T.colNo;}
+
+/* ---------- søjlediagram ---------- */
+function prepCv(c){const r=c.getBoundingClientRect();const dpr=Math.min(2,window.devicePixelRatio||1);const w=Math.max(10,r.width),h=Math.max(10,r.height);if(c.width!==Math.round(w*dpr)||c.height!==Math.round(h*dpr)){c.width=Math.round(w*dpr);c.height=Math.round(h*dpr);}const x=c.getContext("2d");x.setTransform(dpr,0,0,dpr,0,0);x.clearRect(0,0,w,h);return [x,w,h];}
+function drawColumn(){const [x,w,h]=prepCv($("#colCv"));const E=st.E;x.font="10.5px IBM Plex Mono, monospace";
+  const L=40,R=10,Tp=10,B=26,pw=w-L-R,ph=h-Tp-B;const P=E.col?E.col.prof:null;const Hm=Math.max(10,Math.ceil((P?E.H/1000*1.08:10)/5)*5);
+  const Y=z=>Tp+ph*(1-z/Hm);x.strokeStyle="#233244";x.fillStyle="#8fa29b";
+  for(let z=0;z<=Hm;z+=5){x.beginPath();x.moveTo(L,Y(z));x.lineTo(L+pw,Y(z));x.stroke();x.fillText(z+" km",2,Y(z)+3);}
+  if(!P){x.fillText(T.colNo,L+10,Tp+20);return;}
+  const bm=Math.max(...P.map(q=>q.b));const um=Math.max(...P.map(q=>q.u));const rm=Math.max(2,Math.max(...P.map(q=>q.rho/q.ra)));
+  // søjlens radius som silhuet i midten
+  x.fillStyle="rgba(255,255,255,.08)";x.beginPath();x.moveTo(L+pw/2,Y(0));for(const q of P)x.lineTo(L+pw/2+pw*0.45*q.b/bm,Y(q.z/1000));for(let k=P.length-1;k>=0;k--)x.lineTo(L+pw/2-pw*0.45*P[k].b/bm,Y(P[k].z/1000));x.closePath();x.fill();
+  x.strokeStyle="#ff9a4d";x.lineWidth=1.8;x.beginPath();P.forEach((q,k)=>{const X=L+pw*q.u/um,Yy=Y(q.z/1000);k?x.lineTo(X,Yy):x.moveTo(X,Yy);});x.stroke();
+  x.strokeStyle="#9fd0ff";x.beginPath();P.forEach((q,k)=>{const X=L+pw*Math.min(1,(q.rho/q.ra)/rm),Yy=Y(q.z/1000);k?x.lineTo(X,Yy):x.moveTo(X,Yy);});x.stroke();x.lineWidth=1;
+  x.setLineDash([4,3]);x.strokeStyle="rgba(159,208,255,.6)";x.beginPath();x.moveTo(L+pw/rm,Tp);x.lineTo(L+pw/rm,Tp+ph);x.stroke();
+  if(E.regime===REG.PLI){x.strokeStyle="rgba(255,255,255,.5)";x.beginPath();x.moveTo(L,Y(E.col.zNB/1000));x.lineTo(L+pw,Y(E.col.zNB/1000));x.stroke();x.fillStyle="#e6efea";x.fillText(T.lbl.umb,L+pw-x.measureText(T.lbl.umb).width-4,Y(E.col.zNB/1000)-4);}
+  x.setLineDash([]);x.fillStyle="#ff9a4d";x.fillText("0",L-3,h-12);x.fillText(Math.round(um)+" m/s",L+pw-50,h-12);x.fillStyle="#9fd0ff";x.fillText("ρ/ρₐ = 1",L+pw/rm+4,h-2);x.fillText(fmt(rm,0),L+pw-14,h-2);}
+/* ---------- kortet over udbrudsmåder ---------- */
+let mapImg=null,mapPending=0;
+function drawMapSoon(){clearTimeout(mapPending);mapPending=setTimeout(drawMap,60);}
+const MX0=48,MX1=76,MY0=-4,MY1=Math.log10(20);
+function drawMap(){const c=$("#mapCv");const [x,w,h]=prepCv(c);const p=params();const L=40,R=8,Tp=8,B=26,pw=w-L-R,ph=h-Tp-B;const nx=56,ny=40;
+  for(let i=0;i<nx;i++)for(let j=0;j<ny;j++){const si=MX0+(MX1-MX0)*(i+0.5)/nx,ua=Math.pow(10,MY0+(MY1-MY0)*(j+0.5)/ny);const e=eruption(si,p.w,p.r,ua,p.d);x.fillStyle=T.regCol[e.regime];x.globalAlpha=0.78;x.fillRect(L+pw*i/nx,Tp+ph*(1-(j+1)/ny),pw/nx+0.6,ph/ny+0.6);}
+  x.globalAlpha=1;x.font="10.5px IBM Plex Mono, monospace";x.fillStyle="#8fa29b";
+  for(let s=50;s<=75;s+=5)x.fillText(s,L+pw*(s-MX0)/(MX1-MX0)-6,h-12);x.fillText(T.mapX,L+pw-60,h-1);
+  for(let e=-4;e<=1;e++){const Yy=Tp+ph*(1-(e-MY0)/(MY1-MY0));x.fillText("10"+sup(e),4,Yy+4);}
+  const X=L+pw*(p.si-MX0)/(MX1-MX0),Yy=Tp+ph*(1-(Math.log10(p.ua)-MY0)/(MY1-MY0));x.strokeStyle="#000";x.lineWidth=3;x.beginPath();x.arc(X,Yy,6,0,7);x.stroke();x.strokeStyle="#fff";x.lineWidth=1.6;x.beginPath();x.arc(X,Yy,6,0,7);x.stroke();x.lineWidth=1;
+  $("#mapLeg").innerHTML=T.reg.map((n,k)=>"<span><i style=\"background:"+T.regCol[k]+"\"></i>"+n+"</span>").join("");}
+$("#mapCv").addEventListener("click",e=>{const c=$("#mapCv");const r=c.getBoundingClientRect();const L=40,R=8,Tp=8,B=26,pw=r.width-L-R,ph=r.height-Tp-B;const fx=(e.clientX-r.left-L)/pw,fy=1-(e.clientY-r.top-Tp)/ph;if(fx<0||fx>1||fy<0||fy>1)return;
+  $("#sSi").value=MX0+(MX1-MX0)*fx;$("#sUa").value=inv.ua(Math.pow(10,MY0+(MY1-MY0)*fy));clearPreset();compute();resetAnim();});
+
+/* ---------- styring ---------- */
+function applyPreset(k){const v=T.presets[k];st.pre=k;$("#sSi").value=v[0];$("#sW").value=v[1];$("#sR").value=inv.r(v[2]);$("#sUa").value=inv.ua(v[3]);$("#sD").value=inv.d(v[4]);
+  document.querySelectorAll("#pre .tab").forEach(b=>b.setAttribute("aria-selected",b.dataset.p===k?"true":"false"));compute();resetAnim();setCam(st.cam);}
+function clearPreset(){st.pre=null;document.querySelectorAll("#pre .tab").forEach(b=>b.setAttribute("aria-selected","false"));}
+document.querySelectorAll("#pre .tab").forEach(b=>b.onclick=()=>applyPreset(b.dataset.p));
+["#sSi","#sW","#sR","#sUa","#sD"].forEach(id=>{$(id).oninput=()=>{clearPreset();const r0=st.E.regime;compute();if(st.E.regime!==r0)resetAnim();};$(id).onchange=()=>{if(st.cam==="far")setCam("far");};});
+function togglePlay(on){st.running=on===undefined?!st.running:on;$("#playTxt").textContent=st.running?T.stop:T.start;$("#playIcon").innerHTML=st.running?'<path d="M4 4h12v12H4z"/>':'<path d="M5 3l12 7-12 7z"/>';}
+$("#play").onclick=()=>togglePlay();$("#restart").onclick=()=>{resetAnim();togglePlay(true);};
+function seg(id,fn){document.querySelectorAll(id+" button").forEach(b=>b.onclick=()=>{document.querySelectorAll(id+" button").forEach(c=>c.setAttribute("aria-pressed",c===b?"true":"false"));fn(b.dataset.v!==undefined?b.dataset.v:b.dataset.cam);});}
+seg("#tempo",v=>st.tempo=+v);seg("#cams",v=>setCam(v));
+$("#tScale").onchange=e=>{st.scale=e.target.checked;scaleGrp.visible=st.scale;};$("#tLbl").onchange=e=>{st.lbl=e.target.checked;};
+
+/* ======================= KLODEN MED VULKANER ======================= */
+const cv2=$("#cv2"),stage2=$("#stage2");
+const r2=new THREE.WebGLRenderer({canvas:cv2,antialias:true});r2.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+const sc2=new THREE.Scene();sc2.background=new THREE.Color(0x020408);const cam2=new THREE.PerspectiveCamera(36,1,0.01,100);
+function g2v(lat,lon,r){const c=Math.cos(lat*D2R);return new THREE.Vector3(c*Math.cos(lon*D2R)*r,Math.sin(lat*D2R)*r,-c*Math.sin(lon*D2R)*r);}
+const eMat=new THREE.MeshPhongMaterial({color:0x6a7a88,shininess:8});
+const loader=new THREE.TextureLoader();loader.setCrossOrigin("anonymous");loader.load(IMG+"earth-blue-marble.jpg",t=>{eMat.map=t;eMat.color.set(0xffffff);eMat.needsUpdate=true;});
+const eGrp=new THREE.Group();sc2.add(eGrp);eGrp.add(new THREE.Mesh(new THREE.SphereGeometry(1,96,64),eMat));
+sc2.add(new THREE.AmbientLight(0xffffff,0.62));const dl2=new THREE.DirectionalLight(0xffffff,0.55);sc2.add(dl2);
+{const cols=[0xc9d4dd,0xff6a3d,0x6fd3ff];for(const [typ,arr] of PBND){const pts=[];for(let k=0;k<arr.length;k+=2)pts.push(g2v(arr[k],arr[k+1],1.003));
+   // del linjen, hvor den krydser datolinjen
+   eGrp.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:cols[typ],transparent:true,opacity:typ===0?0.55:0.9})));}}
+const VCOL={s:"#ff6a3d",h:"#ffd34d",r:"#6fd3ff",c:"#e27bff"};
+function vSprite(col){const c=document.createElement("canvas");c.width=c.height=64;const x=c.getContext("2d");x.beginPath();x.moveTo(32,8);x.lineTo(56,54);x.lineTo(8,54);x.closePath();x.fillStyle=col;x.fill();x.lineWidth=5;x.strokeStyle="rgba(0,0,0,.75)";x.stroke();
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthTest:true}));return s;}
+const vMarks=VOLC.map((v,i)=>{const s=vSprite(VCOL[v[4]]);s.position.copy(g2v(v[2],v[3],1.012));eGrp.add(s);return {s,v,i};});
+const isEn=T.dec===".";let vSel=VOLC.findIndex(v=>v[0]==="Pinatubo");
+const selRing=vSprite("#ffffff");selRing.material.opacity=0.0;eGrp.add(selRing);
+function showVolcano(i){vSel=i;const v=VOLC[i];$("#vKind").textContent=T.vk[v[4]];$("#vName").textContent=isEn?v[1]:v[0];$("#vH").textContent=(v[5]<0?"−":"")+Math.abs(v[5]).toLocaleString(isEn?"en":"da")+" m";
+  $("#vLast").textContent=isEn?v[7]:v[6];$("#vNote").textContent=isEn?v[9]:v[8];
+  vMarks.forEach(m=>{const k=m.i===i?0.055:0.032;m.s.userData.k=k;});o2.tLat=v[2];o2.tLon=v[3];}
+const o2={lat:15,lon:120,d:3.2,tLat:15,tLon:120,tD:3.2};let drag2=null,moved2=0;
+cv2.addEventListener("pointerdown",e=>{drag2={x:e.clientX,y:e.clientY};moved2=0;try{cv2.setPointerCapture(e.pointerId);}catch(_){}});
+cv2.addEventListener("pointermove",e=>{if(!drag2)return;const dx=e.clientX-drag2.x,dy=e.clientY-drag2.y;drag2={x:e.clientX,y:e.clientY};moved2+=Math.abs(dx)+Math.abs(dy);const k=0.25*(o2.d-1)/1.6;o2.tLon-=dx*k;o2.tLat=Math.max(-80,Math.min(80,o2.tLat+dy*k));o2.lat=o2.tLat;o2.lon=o2.tLon;});
+cv2.addEventListener("pointerup",e=>{const click=drag2&&moved2<5;drag2=null;if(!click)return;const r=cv2.getBoundingClientRect();const mx=e.clientX-r.left,my=e.clientY-r.top;let best=-1,bd=22*22;
+  const cp=cam2.position.clone().normalize();
+  for(const m of vMarks){const wp=new THREE.Vector3();m.s.getWorldPosition(wp);if(wp.clone().normalize().dot(cp)<0.1)continue;const p=wp.project(cam2);const sx=(p.x+1)/2*r.width,sy=(1-p.y)/2*r.height;const d=(sx-mx)**2+(sy-my)**2;if(d<bd){bd=d;best=m.i;}}
+  if(best>=0)showVolcano(best);});
+cv2.addEventListener("wheel",e=>{e.preventDefault();o2.tD=Math.max(1.4,Math.min(5,o2.tD*(1+e.deltaY*0.001)));},{passive:false});
+function resize2(){const r=stage2.getBoundingClientRect();r2.setSize(r.width,r.height,false);cam2.aspect=r.width/Math.max(1,r.height);cam2.updateProjectionMatrix();}
+
+/* ======================= KLIMA ======================= */
+const so2=s=>0.5*Math.pow(600,s/100),so2inv=v=>100*Math.log(v/0.5)/Math.log(600);
+function drawClimate(){const M=so2(+$("#sSO2").value);$("#oSO2").textContent=(M<10?fmt(M,1):Math.round(M))+(isEn?" Mt":" mio. t");
+  const C=climate(M,6,10);const [x,w,h]=prepCv($("#climCv"));const L=46,R=52,Tp=10,B=24,pw=w-L-R,ph=h-Tp-B;
+  let Fm=0,Tm=0,Am=0;for(const o of C){Fm=Math.min(Fm,o.F);Tm=Math.min(Tm,o.T);Am=Math.max(Am,o.aod);}
+  const fS=Math.max(2,Math.ceil(-Fm/2)*2),tS=Math.max(0.2,Math.ceil(-Tm*5)/5);x.font="10.5px IBM Plex Mono, monospace";
+  const X=t=>L+pw*t/6;const YF=f=>Tp+ph*(-f/fS)*0.92+ph*0.04,YT=t=>Tp+ph*(-t/tS)*0.92+ph*0.04;
+  x.strokeStyle="#233244";for(let t=0;t<=6;t++){x.beginPath();x.moveTo(X(t),Tp);x.lineTo(X(t),Tp+ph);x.stroke();x.fillStyle="#8fa29b";x.fillText(t,X(t)-3,h-10);}
+  x.fillText(T.yrs,L+pw-x.measureText(T.yrs).width,h-1);
+  x.fillStyle="#9fd0ff";x.fillText("0",L-14,YF(0)+3);x.fillText("−"+fS+" W/m²",0,YF(-fS)+3);x.fillStyle="#ff9a4d";x.fillText("0",w-R+4,YT(0)+3);x.fillText("−"+fmt(tS,1)+" °C",w-R+2,YT(-tS)-6);
+  x.strokeStyle="#9fd0ff";x.lineWidth=1.8;x.beginPath();C.forEach((o,k)=>{k?x.lineTo(X(o.t),YF(o.F)):x.moveTo(X(o.t),YF(o.F));});x.stroke();
+  x.strokeStyle="#ff9a4d";x.beginPath();C.forEach((o,k)=>{k?x.lineTo(X(o.t),YT(o.T)):x.moveTo(X(o.t),YT(o.T));});x.stroke();x.lineWidth=1;
+  $("#cDT").textContent=fmt(Tm,2)+" °C";$("#cF").textContent=fmt(Fm,1)+" W/m²";$("#cAOD").textContent=fmt(Am,2);}
+$("#sSO2").oninput=()=>{document.querySelectorAll("#clim button").forEach(c=>c.setAttribute("aria-pressed","false"));drawClimate();};
+seg("#clim",v=>{$("#sSO2").value=so2inv(+v);drawClimate();});
+
+/* ======================= løkken ======================= */
+let vis1=true,vis2=true,last=performance.now(),fpsAcc=0,fpsN=0,cutTick=0;
+if("IntersectionObserver" in window){new IntersectionObserver(es=>es.forEach(e=>vis1=e.isIntersecting),{threshold:0.02}).observe(stage);new IntersectionObserver(es=>es.forEach(e=>vis2=e.isIntersecting),{threshold:0.02}).observe(stage2);}
+window.addEventListener("resize",()=>{resize();resize2();drawColumn();drawMap();drawClimate();});
+function frame(now){const dt=Math.min(0.1,(now-last)/1000);last=now;
+  if(vis1){if(st.running)stepParticles(dt);writeParticles();
+    // lyn i Plinius-søjlen
+    boltT-=dt;if(st.running&&st.E.regime===REG.PLI&&st.t>nextBolt){nextBolt=st.t+rnd(20,90);boltT=0.18;const pts=[];let y=ventY+rnd(1.5,4),x0=rnd(-0.6,0.6),z0=rnd(-0.6,0.2);for(let k=0;k<9;k++){pts.push(new THREE.Vector3(x0,y,z0));y+=rnd(0.4,1.1);x0+=rnd(-0.5,0.5);z0+=rnd(-0.3,0.3);}bolt.geometry.dispose();bolt.geometry=new THREE.BufferGeometry().setFromPoints(pts);}
+    boltMat.opacity=boltT>0?1:0;skyMat.uniforms.flash.value=boltT>0?0.5:0;
+    lavaMat.uniforms.uTime.value=now/1000;domeMat.uniforms.uT.value=now/1000;
+    if((cutTick++)%2===0)drawCut(st.E,now/1000);
+    for(const b of bubbles){b.y+=dt*(0.25+0.6*(b.y>-1?1:0))*(st.running?1:0)*Math.max(0.15,Math.min(3,Math.log10(1+st.E.ua*50)));if(b.y>0){b.y=-6+rnd(0,0.5);b.x=rnd(-1,1);}}
+    const k=Math.min(1,dt*2.5);orb.az+=(orb.tAz-orb.az)*k;orb.el+=(orb.tEl-orb.el)*k;orb.d+=(orb.tD-orb.d)*k;orb.look.lerp(orb.tLook,k);
+    camera.position.set(orb.look.x+orb.d*Math.cos(orb.el)*Math.sin(orb.az),orb.look.y+orb.d*Math.sin(orb.el),orb.look.z+orb.d*Math.cos(orb.el)*Math.cos(orb.az));camera.lookAt(orb.look);
+    // tiltal tegnefladen: lav opløsning, hvis billedet hakker
+    fpsAcc+=dt;fpsN++;if(fpsN>=40){const fps=fpsN/fpsAcc;if(fps<28&&pr>1){pr=Math.max(1,pr-0.5);renderer.setPixelRatio(pr);resize();}fpsAcc=0;fpsN=0;}
+    renderer.render(scene,camera);}
+  if(vis2){if(!drag2){o2.tLon+=dt*2;}const k=Math.min(1,dt*2.5);o2.lat+=(o2.tLat-o2.lat)*k;let dl=((o2.tLon-o2.lon+540)%360)-180;o2.lon+=dl*k;o2.d+=(o2.tD-o2.d)*k;
+    const p=g2v(o2.lat,o2.lon,o2.d);cam2.position.copy(p);cam2.lookAt(0,0,0);dl2.position.copy(p).add(new THREE.Vector3(0.5,1,0));
+    for(const m of vMarks){const s=(m.s.userData.k||0.032)*o2.d/3.2*1.6;m.s.scale.set(s,s,1);}
+    r2.render(sc2,cam2);}
+  requestAnimationFrame(frame);}
+
+/* start */
+togglePlay(st.running);resize();resize2();applyPreset("pinatubo");setCam("far");orb.look.copy(orb.tLook);orb.az=orb.tAz;orb.el=orb.tEl;orb.d=orb.tD;
+showVolcano(vSel);o2.lat=o2.tLat;o2.lon=o2.tLon;$("#sSO2").value=so2inv(18);drawClimate();
+requestAnimationFrame(frame);
+window.__vol={lavaGrp,surf,terrain,st,compute,applyPreset,setCam,ASH,HOT,step:n=>{for(let k=0;k<n;k++)stepParticles(0.1);}};
+})();
+</script>
+<script>
+/* ======================= YELLOWSTONE: HVIS SUPERVULKANEN GÅR I UDBRUD =======================
+   Askenedfaldet er en enkel model kalibreret til USGS' Ash3d-beregning (Mastin, Van Eaton og Lowenstern 2014):
+   330 km³ magma på en uge giver meter tæt på, decimeter i de nordlige Rocky Mountains, centimeter i Midtvesten
+   og millimeter ved kysterne. Paraplyskyen breder sig som en tyngdestrøm, R = (3λNQ/2π)^(1/3) t^(2/3)
+   (Suzuki og Koyaguchi 2009), med Q = 0,43·√k·M^(3/4)/N^(5/4). Tykkelsen falder med to eksponentialer
+   (grov aske tæt på, fin aske langt væk), og vinden strækker mønstret, mest for små udbrud. */
+(function(){
+"use strict";
+const G={"W":1000,"H":620,"kmPer":4.7024,"ys":[272.7,153.1],"land":"M868.8,106.5L920.2,92.6L921.4,85.3L926.3,82.7L928.4,84L930.6,79.2L929.5,76.5L933.6,66.6L932,58.6L933.5,53.4L932.6,47.1L939.2,26.6L942.4,26.5L943.5,29.9L947.4,30.4L955.4,24.3L963.9,28L974.5,58.8L980.6,59.1L982.5,66.7L985.9,68.6L988.8,67.2L991.2,73.5L993.5,74.2L991.4,78.7L988.5,79.1L984.9,83.6L981.9,84.3L979.8,89.7L978,87.7L972.6,89L973.1,95L968,94.6L967.2,89.2L965,93.3L965.7,101.4L958.2,109.1L957,106.7L955.9,112.5L952.9,111.3L950,114.4L950.6,117.7L947.3,125.6L945.7,132.9L945.7,138.9L950.6,142.5L947.5,145.2L945.4,151.3L951.2,152.1L957.8,160.7L962,161.3L966.2,157.6L968.2,160.7L960.9,164.2L957.3,167.5L955.3,163.6L949,171.1L943.2,165.2L943.7,175.3L931.7,180.8L920.6,184.1L911,193.1L902.4,205.5L903.1,209L907.3,208L908.7,210.7L908.5,225.6L906.1,234.5L903.6,237.4L901.9,245L899.4,246.9L899.3,242.1L894.7,241.7L886.3,236.9L886.4,229.5L884.3,233.7L889.4,241.2L890.8,245.5L896,250.9L900.5,257.6L897.3,269.1L895.4,280.2L892.6,285.9L891.9,292.8L890.1,290.5L890.2,281.7L892.4,273L888.9,273.4L886.1,264.7L883.6,267.1L880.4,265.9L878.1,260.6L882.8,259.4L876.9,256.7L878.5,254.3L875.4,246.8L880.1,237.9L876.5,237.5L876.6,240.6L872,246.7L872.2,253.6L874.2,263.1L877,266.5L872.2,265.5L877.3,268.9L877,271.3L868.6,270.3L865.8,267.2L860.5,269.6L865.5,269.4L868.8,272.6L875.8,273.5L881.9,277L881.7,282.4L884.8,289.4L878.8,291.7L884.8,294.5L884.3,298.5L877.6,294.5L879.8,298.2L884.9,300.8L892.1,298.6L900.2,313.4L894.4,304.2L894.6,308.7L898.2,315.2L892.8,313.9L893.5,317L889.2,318.3L886.6,321.8L882.7,319.8L883.9,323.8L895.9,320.7L897.1,327.3L898,322.1L901.8,321.1L903.1,326.9L897.3,335.5L891.3,335.8L889.9,333.4L886.4,336.1L881.9,336.5L891.5,338.9L888,346.5L881.7,343.9L885.9,347.5L894,345.1L896.1,346L890.4,352.9L882.8,354.5L873.4,366.9L871.7,375.7L862.8,378.1L855.4,384.3L851.2,392.9L850.5,398.4L837.8,414.5L829.9,420.8L823.1,433.5L819.7,435.7L818.8,450.7L816,452.7L815.8,460.6L825.6,484.8L835.9,500.8L845.9,512.4L845.5,519.9L844.1,511.8L838.4,507.3L841.8,515.7L857.6,540.8L860.2,543.2L864.2,554.7L864.7,571.1L862.8,584.4L855.6,589.9L847.8,591.8L847.3,587.6L839.5,576.8L831.5,574.6L826.6,564.7L822.5,562.6L820.6,554.9L816,556.2L812.1,552.3L806.3,542.2L810,534.2L805.8,532L805,537.9L800.8,535.5L802.1,520L800.8,510.7L797.8,507.3L785.7,499.6L775.8,489.8L768.2,486.7L762.9,488.4L762,492.3L754,496.6L743.8,500.2L742.5,495.8L733.5,490L718.7,486.3L703.8,489.5L707.9,486.9L707.3,483.6L703.9,484.8L702.2,489.7L692,492L686.5,483L684.9,490.9L673.6,492.4L669.2,491.4L660.9,493.8L655.9,498.5L642.5,494.6L639.2,500.5L644.2,502.8L652.9,498.6L651.6,502.6L656.4,504.4L659.9,501L661.4,506.2L654.3,511.6L659,515.9L669.6,520L667.2,524.7L663,523.8L651.5,515.6L647.9,516.6L647.4,522.6L645.3,524.5L641.5,520.3L637.3,521.2L634.2,524.8L622.8,521.9L625.6,521L621.6,516.7L617.8,515.9L614.2,511.7L609.6,509.9L602.5,516.9L594.1,516.4L583.5,512.7L572.9,513.4L567.7,512.6L569,515.5L564.7,516.1L551.6,522.6L556.1,519.4L550.9,519.6L551.5,514.7L545.8,516.1L548.8,523.8L543.8,528.8L541.2,533.6L529.4,541.6L513,540.2L517.7,546.1L509.7,551.8L502.5,553.6L505,554.8L502.2,559.9L496.7,560.9L499.8,564.8L497.9,570.7L494.9,573.2L489.7,569.8L491.3,573.8L495.7,575L494.3,581.3L496.8,592.6L503.2,604.8L498.6,607L489.1,603L479,601.4L461.3,593.4L458.8,586L454.4,579.5L453.2,567.5L448.1,563.1L443.1,555.6L437.1,548.8L436.4,544.7L430,531.2L417.2,517.5L411.9,513.1L408.1,513.6L397.7,511.1L387.9,516L384.2,525.9L376.3,530.6L359.3,520.5L351.8,513.1L348.7,505.4L348.9,502.1L343.7,489.5L333.5,480.8L324.2,470.2L321.8,468.7L316.3,460.7L281.4,457L280.2,467.5L223.9,460.7L153.7,421.2L156.7,416.8L109.2,412.1L107.6,408.6L108.6,402.2L106.4,393.1L96.8,380.7L90.6,378.8L90.1,372.1L84,370.5L78.5,367.2L77,363.3L71.5,358.1L55.3,353L52.8,349.7L55.9,338.3L52.4,334.2L53.3,330.6L46.8,318.6L40.2,303.6L40.9,297.9L44.1,294.8L43.7,289.6L38.9,287.1L36,281L37.3,267.4L43.5,276.3L40.8,263.7L44.3,262.7L53.2,265.1L48,261.6L45.5,262.3L40,259.8L37.5,266.2L31.6,258.9L30.8,249L28.3,246.2L23.4,235.6L24.3,224.5L26.5,219L26.3,212.9L21.2,201.8L22,196.1L29.2,186.3L32.9,177.2L32.6,167.1L34.4,162.8L32.9,158.9L35.1,148.2L34.3,142.3L41,131.1L46.5,124L54.9,99.8L62.1,82.1L63.2,76L66.2,68.5L72.6,69.3L70.4,66.8L64.2,65.6L66.8,58.3L67.2,62.7L69.5,57.8L67.3,52.2L72.2,51.1L68.4,48.3L67.7,39.1L68.4,33.1L66.2,26.5L67.9,15.4L77.7,23.4L91.7,29.3L95.9,29.1L96.2,35.4L93.2,36.7L86.2,43.5L98.4,35L95.8,39.3L93.9,49L90.3,47L86,50.7L92.3,52.2L97.9,48.2L99.9,37.8L103.4,34.1L100.4,28.1L102.4,27.6L99.5,22.1L102.4,21.9L103.2,16L101.6,15.5L100.9,9.8L208.2,19.5L315.5,31L422.7,44.4L529.3,59.5L529.2,50.7L533.9,52L534.9,59L538,65L546.9,66.6L552.6,69.5L557.6,67.1L563.7,66.9L571.7,70.6L573.3,74.2L577,72.6L587.8,78.4L598.3,74.3L600,76.4L610.3,75.3L612.1,77.6L623.5,76.4L633.4,69.8L637,68.5L669.8,82.8L696.6,94.4L699,100.3L703,104L708.7,101L713.8,111.3L719.5,109.7L722.3,112.2L721,116.6L739.7,124.9L753.4,165.1L750.8,177.6L750.2,188.4L742.4,197.5L742.5,205.3L744.9,208.3L751.3,211.1L755.7,210.4L773.5,194.4L790.4,187.6L808.9,173.4L810.4,170.5L807,166.4L803.5,158.4L810.3,153.2L841.8,146.3L845.5,135.1L849.3,128.2L853.2,124.5L861.8,110.7ZM929.5,189L939.4,184.4L933,190.3L919.9,199.8L908.3,204.9L905.6,203.9L907.3,199.7L911.8,195.4ZM978.1,91.6L974.3,92L975.4,89.4ZM903.6,207.3L903.6,207.3L903.6,207.3ZM960.8,170.4L956.5,172.9L957.5,169.6ZM947.7,171.4L947.7,171.4L947.7,171.4ZM970.5,170.2L970.5,170.2L970.5,170.2ZM904.5,321.5L904.5,321.5L904.5,321.5ZM909.6,335.3L909.6,335.3L909.6,335.3ZM905.5,337.6L905.5,337.6L905.5,337.6ZM895,353.4L895,353.4L895,353.4ZM822.9,564.9L822.9,564.9L822.9,564.9ZM821.6,562.8L821.6,562.8L821.6,562.8ZM863.2,588.9L863.2,588.9L863.2,588.9ZM612.2,517.6L612.2,517.6L612.2,517.6ZM505.5,559.3L505.5,559.3L505.5,559.3ZM510.6,553.3L510.6,553.3L510.6,553.3ZM498.5,573.5L498.5,573.5L498.5,573.5ZM545.9,529.2L545.9,529.2L545.9,529.2ZM502.6,600.2L500.5,596.2L498.6,585.2ZM56.1,364.1L56.1,364.1L56.1,364.1ZM68.3,386.6L68.3,386.6L68.3,386.6ZM87.1,400.3L87.1,400.3L87.1,400.3ZM60.5,367.7L60.5,367.7L60.5,367.7ZM64.4,364.7L70.1,367.8L65.2,367.6ZM89.9,387.4L89.9,387.4L89.9,387.4ZM99.1,17L99.1,17L99.1,17ZM94.5,19.9L94.5,19.9L94.5,19.9ZM99.2,29.5L101.3,34.2L98.4,33.3L97,26.9ZM945.7,172.1L945.7,172.1L945.7,172.1ZM909.5,226.4L909.5,226.4L909.5,226.4ZM898.7,273.1L898.7,273.1L898.7,273.1ZM894.1,353.3L894.1,353.3L894.1,353.3ZM845,603.8L845,603.8L845,603.8ZM855.1,598.4L855.1,598.4L855.1,598.4ZM858.8,595.3L858.8,595.3L858.8,595.3ZM850.9,601.2L850.9,601.2L850.9,601.2ZM817.4,458L817.4,458L817.4,458ZM840.2,605.8L840.2,605.8L840.2,605.8ZM858.1,539L858.1,539L858.1,539ZM835.8,607.9L835.8,607.9L835.8,607.9ZM671.1,507.9L671.1,507.9L671.1,507.9ZM676.6,495.4L676.6,495.4L676.6,495.4ZM686.4,493.5L686.4,493.5L686.4,493.5ZM663.4,499.8L663.4,499.8L663.4,499.8ZM672.1,505.5L672.1,505.5L672.1,505.5ZM752.2,500L752.2,500L752.2,500ZM89.1,49.9L89.1,49.9L89.1,49.9ZM97.3,47.4L97.3,47.4L97.3,47.4ZM97,42.5L97,42.5L97,42.5ZM97,22.3L97,22.3L97,22.3ZM972.1,96.9L972.1,96.9L972.1,96.9ZM274.2,630L272.7,628.7L274.7,630L274.2,630ZM278,630L278.2,628.9L269,625L264.4,616L268.2,615L253.9,604.3L253.4,601.6L248.1,602.4L251.8,596.8L244.8,599.3L241.1,595.8L241.2,588.6L246.7,582.8L245.7,577.3L241.9,572.7L236.1,572.1L233.2,562.9L226.5,560.1L222.8,555.8L220.9,547.7L223.4,543.1L215.3,541.4L211.5,539L205.5,528.2L201.6,525.6L197.4,516.6L193.6,511.4L193.2,505.4L190.4,503.1L190.3,498.5L185.4,487.1L184.8,479.4L180.8,467L183.6,458.2L172.8,452.5L173,449.6L167.5,444.8L163,447L149.2,435.1L151,441.5L147.1,452.6L148.7,457.6L149.3,468.6L147.9,474.8L149,480.1L161.3,496.2L165.7,505L165.9,509.3L171.5,513.2L172.7,520.3L176.9,523L177.6,537.4L184.9,545.6L186.6,553.9L190.1,557L191.7,566.7L193.8,562.3L197.9,566.9L201,581.1L200.8,589L205.4,595.8L207.2,605.1L210.7,613.9L208.9,618.4L209.7,624.3L214.7,630L201.9,630L201.9,630L200.8,628.6L193.3,622.3L181,608.5L180.5,603.7L183.5,593.6L182.5,583.4L179.3,575.8L173.7,572.5L167,565.2L165.6,556.3L162.5,559.5L155.5,560L151.3,553.5L139.7,545.5L138.6,540.3L130.5,531.5L130.1,528.9L139.5,532L145.4,530.9L148,536.2L148.3,528.1L152.8,519L151.5,514.5L137.4,493.4L134.1,491.7L125.3,482.2L123.5,477L124.9,469L121.8,465.8L122.2,456.4L118.3,451.7L118.6,446.1L113.8,436.5L115.9,430L112.2,425.7L109.2,412.1L109.2,412.1L156.7,416.8L153.7,421.2L223.9,460.7L280.2,467.5L281.4,457L316.3,460.7L321.8,468.7L324.2,470.2L333.5,480.8L343.7,489.5L348.9,502.1L348.7,505.4L351.8,513.1L359.3,520.5L376.3,530.6L384.2,525.9L387.9,516L397.7,511.1L408.1,513.6L411.9,513.1L417.2,517.5L430,531.2L436.4,544.7L437.1,548.8L443.1,555.6L448.1,563.1L453.2,567.5L454.4,579.5L458.8,586L461.3,593.4L479,601.4L489.1,603L498.6,607L503.2,604.8L501.5,613.6L495.5,626.9L494.8,630L278,630ZM215.7,630L218.3,625.3L223,629.9L223.1,630L215.7,630ZM213.8,609.3L213.8,609.3L213.8,609.3ZM173.5,507.5L166.2,497.7L166.7,493.9L173.4,501.5ZM128.3,523.2L124.7,521.7L128.9,517.1ZM192.7,511.6L190.3,516.8L185.8,514.3L187.8,507L191.9,505.9ZM69.8,490.6L67.4,486L69.5,484.7ZM153.1,440.5L153.1,440.5L153.1,440.5ZM205.6,584.2L205.6,584.2L205.6,584.2ZM187.5,620L187.5,620L187.5,620ZM180.3,615.3L176,608.9L181,599.4L178.5,607ZM74.1,-10L75.7,-7.7L84.1,-0.4L85.8,3.5L87.6,16.1L89.6,13.8L90.1,19.8L84.6,21.3L80,18.7L69.6,10.7L64.2,5.1L70,0.3L62.1,-1.3L60.3,-0.4L55.7,-5.5L59.1,-6.7L56.3,-10L74.1,-10ZM937.2,-10L934.4,-5.4L930.8,6.6L927.6,12.2L915.7,11.7L905.4,12.5L908.7,13.7L914,12.5L924.8,13.6L926.7,14.9L926.5,21.4L921,33.1L918.9,40.7L912.4,51L903.6,56.2L893.6,68.7L889.3,71.8L884.3,84.6L880.7,86.2L876.8,92.3L878.7,95.6L873.3,100.4L868.8,106.5L861.8,110.7L853.2,124.5L849.3,128.2L845.5,135.1L841.8,146.3L810.3,153.2L803.5,158.4L807,166.4L810.4,170.5L808.9,173.4L790.4,187.6L773.5,194.4L755.7,210.4L751.3,211.1L744.9,208.3L742.5,205.3L742.4,197.5L750.2,188.4L750.8,177.6L753.4,165.1L739.7,124.9L721,116.6L722.3,112.2L719.5,109.7L713.8,111.3L708.7,101L703,104L699,100.3L696.6,94.4L669.8,82.8L637,68.5L633.4,69.8L623.5,76.4L612.1,77.6L610.3,75.3L600,76.4L598.3,74.3L587.8,78.4L577,72.6L573.3,74.2L571.7,70.6L563.7,66.9L557.6,67.1L552.6,69.5L546.9,66.6L538,65L534.9,59L533.9,52L529.2,50.7L529.3,59.5L422.7,44.4L315.5,31L208.2,19.5L100.9,9.8L99.3,7.4L96.7,9L95.8,2L100.2,1.5L95.6,-0.1L99,-7.3L95.5,-3L92.2,-2.3L87.3,-6L86.1,-10L87.6,-10L87.6,-10L90.3,-9.2L90,-10L937.2,-10ZM998.5,-10L995.4,-6L992.1,-5.1L984.1,-6.2L977.5,-0.9L989.2,0.2L991.8,3.3L994.7,2.5L1000.7,-3.6L1006.1,-2.5L1005.8,6.4L1001.8,14.6L1009.5,12.8L1009.7,17L1010,17.3L1010,57.1L1010,57.1L1007.8,59.3L1004.1,59.8L1000.1,65.2L993.5,68.2L988.8,67.2L988.8,67.2L985.9,68.6L982.5,66.7L980.6,59.1L974.5,58.8L963.9,28L955.4,24.3L947.4,30.4L943.5,29.9L942.4,26.5L939.2,26.6L932.6,47.1L933.5,53.4L932,58.6L933.6,66.6L929.5,76.5L930.6,79.2L928.4,84L926.3,82.7L921.4,85.3L920.2,92.6L868.8,106.5L884.9,92.1L885.1,87L887.7,77L893.4,71.3L896.1,66.4L903.6,57.5L912.8,51.8L922.5,42.2L931.6,20.1L932.2,16.4L937.4,7.2L946.2,-4.2L952.1,-10L998.5,-10ZM82.6,-10L83.7,-7.9L83.7,-7.9L81.8,-10L82.6,-10ZM89.6,12.5L89.6,12.5L89.6,12.5ZM1007.7,-7.2L1007.7,-7.2L1007.7,-7.2ZM1007.6,-8.9L1007.6,-8.9L1007.6,-8.9ZM1008.9,82.2L1008.9,82.2L1008.9,82.2ZM998.2,76.2L998.2,76.2L998.2,76.2ZM884.5,91.1L878.3,93.3L884.5,85.3ZM881.7,89L881.7,89L881.7,89ZM915.7,48.2L915.7,48.2L915.7,48.2ZM91.4,9.8L91.4,9.8L91.4,9.8ZM925.3,597.5L927.9,599.6L929.6,608.7L925.4,609.3L922.2,603.1L918.2,599.7ZM926.2,557.8L921.9,555.9L924.4,552.1L923.6,544.4L914.8,536.4L926.3,542.8L927.9,547.1L925.7,549.9ZM921.2,587.5L922.4,593L916.9,598.4L906.9,592.4L910.9,582.2L909,578.5L914.5,579.9ZM895.7,544.6L907.1,541.9L907.8,543.6L901.5,545.6L893.1,550.5L890,549.3ZM928.1,578.6L928.1,578.6L928.1,578.6ZM1010,613.8L1006,615L1004.5,612.3L1010,613.5L1010,613.8ZM994.9,585.4L994.9,585.4L994.9,585.4ZM940.4,564.6L947.6,566.6L952.6,570.6ZM972.1,605.8L972.1,605.8L972.1,605.8ZM992.8,614L989,610.8L983,609.9L983.5,605.8ZM975.6,587.1L975.6,587.1L975.6,587.1Z","borders":"M100.9,9.8L208.2,19.5L315.5,31L422.7,44.4L529.3,59.5L529.2,50.7L533.9,52L534.9,59L538,65L546.9,66.6L552.6,69.5L557.6,67.1L563.7,66.9L571.7,70.6L573.3,74.2L577,72.6L587.8,78.4L598.3,74.3L600,76.4L610.3,75.3L612.1,77.6L623.5,76.4L633.4,69.8L637,68.5L669.8,82.8L696.6,94.4L699,100.3L703,104L708.7,101L713.8,111.3L719.5,109.7L722.3,112.2L721,116.6L739.7,124.9L753.4,165.1L750.8,177.6L750.2,188.4L742.4,197.5L742.5,205.3L744.9,208.3L751.3,211.1L755.7,210.4L773.5,194.4L790.4,187.6L808.9,173.4L810.4,170.5L807,166.4L803.5,158.4L810.3,153.2L841.8,146.3L845.5,135.1L849.3,128.2L853.2,124.5L861.8,110.7L868.8,106.5L920.2,92.6L921.4,85.3L926.3,82.7L928.4,84L930.6,79.2L929.5,76.5L933.6,66.6L932,58.6L933.5,53.4L932.6,47.1L939.2,26.6L942.4,26.5L943.5,29.9L947.4,30.4L955.4,24.3L963.9,28L974.5,58.8L980.6,59.1L982.5,66.7L985.9,68.6L988.8,67.2M503.2,604.8L498.6,607L489.1,603L479,601.4L461.3,593.4L458.8,586L454.4,579.5L453.2,567.5L448.1,563.1L443.1,555.6L437.1,548.8L436.4,544.7L430,531.2L417.2,517.5L411.9,513.1L408.1,513.6L397.7,511.1L387.9,516L384.2,525.9L376.3,530.6L359.3,520.5L351.8,513.1L348.7,505.4L348.9,502.1L343.7,489.5L333.5,480.8L324.2,470.2L321.8,468.7L316.3,460.7L281.4,457L280.2,467.5L223.9,460.7L153.7,421.2L156.7,416.8L109.2,412.1","states":"M679.6,491.4L674.4,455.7L674.4,384.1L672.2,381.9L672.2,381.6L721.6,376.4L736.3,425.1L744.1,438.5L741.2,442L740.5,449.2L743.4,456.5L743.3,464.4L745.9,468.5L694.1,475L693.7,478.1L698.8,482.1L700.2,487.6L697.5,491.7M156.8,416.7L160.7,416.5L162,410.1L158.5,408.1L159.5,400.7L165.1,394.6L165.3,389.1L167.9,385.7L174.3,382.6L171.2,377.5L167.9,363.6L169.6,360.6L169.2,353L170.1,337.7L177.5,337.7L181.1,341.2L183.7,337.6L186.9,318.6L279.3,331.9L263.6,465.6M745.9,468.5L749.7,474.9L803.2,470.1L804.9,474.8L807.5,474.1L806.1,464.4L807.5,463.1L818,464.1M721.6,376.4L746,372.9L768.9,369.1L765.7,377.3L772.9,381.2L775.3,380.8L783.4,392.3L790.1,395.8L791.5,398.5L797.7,402L797.7,404.3L802.2,408.4L807.7,410.7L810.8,419.5L813.7,420.5L817.9,426.3L818.7,430.3L823.5,431.3M679.6,219.1L714.5,214.6L714.7,216.1L719.3,248.9L723,277.2L721.8,278.7L724.2,284.5L718.3,287.8L712.9,288.1L714,292L710.1,298.3L707.4,299.2L706.4,305.3L700.1,305.4L698.7,303.2L696,309L690.6,308.2L685.1,313.7L680.1,310.7L675.9,310.2L668.5,315.2L667,312.9L675.8,291.8L672.1,282L673.6,277.5L667.6,221.7M412.3,270.8L533,271.7L540.9,275.6L537,282.8L542.1,290.1L546.3,292.3L547.9,342.8L443.8,343.3L409.5,342.4M946.2,133L939.4,127.1L938.4,122.7L925.1,83.8M946.5,166.3L941.9,160L935,162.2L934.8,161.9L906.4,169L905.9,152.1L919.4,148.9L938.9,144.1L942.2,139.2L945.6,137.8M949.7,170.6L947.3,166.9M582,110.6L577.5,111.8L578.3,125.7L571.7,130.4L569.2,137.9L573.4,140.9L571.7,144.5L571.6,156.9L576.3,161.4L587,166.3L588,169.3L595.7,173.6L598.7,177.3L600.3,185.2L511.2,189.1L510.5,146.5L506.6,143.9L503.7,139.4L508.2,134.2L508.4,131.6L507.7,122.3L504.4,114.5L503.2,92.3L498.6,80L498,70.4L499.1,67.2L496.9,59.9M885.5,232.3L886.4,229.2L896.5,218.1L889.2,213.5L885.1,207.7L886.7,203L884.7,200.9L890,190.2L905.6,195.1L905,202.8M904.8,203.6L902.5,208.1M885.1,234.3L884.9,233.8M746,372.9L745.8,367.3L750.6,364.7L750.2,362.2L754.4,357.9L759.7,356.9L763.7,352.5L768.2,350.6L773.9,342.7L774.6,344.8L781.3,339.2L784.8,339.3L789.1,332L789.5,327.4L815.2,323.9L877.3,311L896.5,306.4M860.6,380.2L834.6,362.3L813.3,365.9L813.1,363.2L807.3,359.1L783.6,362L768.9,369.1M508.4,131.6L385.7,128.4L390.2,56.9M547.9,342.8L548.3,354.6L552.8,380.8L553.3,422.6L545.8,420.3L538.6,415.4L537.4,417.4L531.5,416.2L527,418.7L520.9,418.7L517.6,422.2L506.1,416.3L501.1,421.6L500.2,417.2L495.7,419.4L490.9,415.5L488.1,418.6L485.9,415.5L477.8,411.5L475.5,413.7L465.7,409.9L461.8,409.9L461.5,407.1L451.9,405.7L446.3,401.5L447.3,355.4L390.9,353.3L391.6,341.4M799,188.2L800.3,194.5L875.1,178.2L880.2,180.8L882.1,186.1L890,190.2M886.4,229.2L883.4,229L880.4,232.6L815.6,246.7L797.2,250.3L793.2,228.8L787.4,197.5M511.2,189.1L509.5,195.6L510.4,199.8L508.5,208L511.7,213L507.5,209.2L496.8,204.3L487.5,204.3L484.5,206.8L476.3,201.2L381.1,197.8L384,150.7L385.7,128.4M553.3,422.6L555.9,424.7L562,424.3L562,424.3L562.6,436.9L563.6,461.2L568.7,468L568,470.4L574.7,479.9L574.6,488.4L570.9,500.2L572.5,506.5L568.2,512.5L570.1,515.4M314.9,460.2L313.6,454.9L384.1,460L387,413.9L390.2,353.2L390.9,353.3M381.1,197.8L378.1,245.2M290.3,237.3L378.1,245.2L413.3,247.1L412.3,270.8L409.5,342.4L391.6,341.4L319.6,336.3L279.3,331.9L290.3,237.3L255.3,232.9L258.5,209.3L266.6,151.2L268.1,138.9L384,150.7M935,162.2L938.8,175.8L938.4,178.3M909.9,194.3L908.1,191.9L911.5,188.2L909.9,186.6L906.4,169M533,271.7L527.3,264.4L524.5,258L545.3,257.8L567.5,256.6L596.1,254.2L602,259.4L601.2,267.6L603.9,274.7L616.4,285.7L618,292.8L621.4,291.8L628.1,293.9L627.3,299.6L624.5,306.3L625,309.3L632,314.7L641.4,320.4L643.8,327.2L642.2,330L647.1,336.6L650.1,336.6L650.2,344.1L645.8,348.5L644.5,348.7L643.5,348.8L644,354L640.9,360.9L628.8,362L633.8,355L632.1,349.7L548.3,354.6M815.6,246.7L817.8,258.8L823.5,251.2L826.1,251.4L828.4,246.6L834.4,247.9L838.5,242.7L844.4,244.8L848.5,249.6L847.6,254.4L836.8,248.6L837.2,255.8L830.9,266.9L828.2,265.4L824.6,276.7L817.8,273.7L817.8,277.6L814,289.1L810.2,297L810.9,301.3L807.2,302.7L800.4,308.1L795.2,310.8L792.2,308.8L787,313.1L781.8,310.2L780.3,306.1L773.9,304L765.8,294L765.5,287.2L770.3,285.8L772.3,281.3L770.8,277.3L773.3,271.3L776.4,274.5L777.6,266.9L781.8,260.7L786.4,260.2L791.8,251.4L791.8,242.7L793.2,236.5L790.9,230.8L793.2,228.8M602,259.4L602.6,254L606.8,252L609.1,241.7L605.9,238.6L606.8,234.3L613.6,232.6L618.8,229.2L621.2,223.8L620.9,216.5L617,214.5L611.8,207.9L660.8,203.8M668.5,315.2L666.5,318.6L668.3,323L661.2,325.8L662.3,333.2L653.5,330.4L650.7,331.9L650.1,336.6M640.9,360.9L642.6,363.4L637.2,367.8L639.4,369.7L633.9,375.3L636.4,381.8L632,385.6L633.4,387.6L628.5,390.5L628.1,399.5L624.7,401.1L622.9,408.2L618.9,411.3L621.1,415.1L616.8,420.9L619.1,422.9L620.2,430.8L619,434.1L562.6,436.9M34.5,162.4L52.4,167.1L105.4,180.9L105.4,180.9L89.1,250.2L105.2,273.3L119.9,294.6L143.2,328.2L167.9,363.6M900.5,258.9L889,261.4L880.4,232.6M600.3,185.2L603.4,190.9L601.6,193.8L604.3,203L610.5,205L611.8,207.9M524.5,258L522.3,254.9L523.5,250.6L521.1,237.2L518.3,235.7L518.6,229.3L514.9,223.5L511.7,213M723,277.2L729.7,276L734.9,282.7L741.7,283.1L745.4,285.4L747.7,283.2L751.9,285.1L758.8,280.2L760.3,283.9L765.5,287.2M780.3,306.1L774.3,313.7L768.1,318.3L766.1,324.1L761.9,328.3L752.5,333.2L752.3,333.6L718.8,337.6L698.2,339.3L674.7,342.4L670.6,341.8L671.3,346.1L645.8,348.5M644.5,348.7L643.5,348.8M886.5,274.5L885.6,274.7M899.5,269.5L892.3,273.1M862.6,263.3L863.3,259.3M861.2,256.3L865.1,256.4L863.3,259.3L861.2,256.3L853.1,253.5L853.6,250.8L848.5,249.6M738,211.8L714.7,216.1M657.6,142.1L654.8,140L656,136.5L652.7,136.8L652.7,136.8L653,128.9L646.8,126.1L647.1,123.6L640.3,122L635.8,122.5L630.5,120.1L613.3,117L609.2,112.6L609.2,112.6L608.1,112M632,385.6L672.2,381.9M657.1,498.1L649.5,487.3L650.9,479.1L613,482.1L612.5,475.8L615,475.3L614.5,469.6L622.8,454.7L620.5,453L625.2,449.4L621,446.5L621.1,436.6L619,434.1M266.6,151.2L261.9,143.9L259.7,148.7L246.3,146L244.2,148.6L237.8,146.7L236.3,149.5L234,146.9L233.1,139.1L228.1,136.1L228.9,131.6L225.2,124.5L225.2,118L222.7,115.1L215.8,119.8L212.9,116.8L213.6,111.8L216.4,110.5L215.9,106.8L220.9,93.1L211.9,85.6L212.4,84.3L207.5,75.4L202,70.3L203.2,64L199.3,56.6L203.8,33.2M919.4,148.9L917,146.5L917.8,142.3L915.3,129.2L917.7,115.8L916.3,110.6L919.6,108.8L922.5,104.3L920.1,99L920.4,92.4M890.8,100.6L892.3,109.4L895.1,113.4L895.1,123.1L898.2,129L898,133.5L901.2,133.5L905.1,150.9L905.9,152.1M72.4,68.3L75.9,72.1L78.8,71.9L82.2,78.3L81.1,85.4L88.3,90.1L96.6,88.2L101.2,88.9L106,93.1L116.8,92.5L122.3,94.1L126.7,92.8L140.8,93.4L143.4,92.4L176.6,99.5L178.2,104.2L180.8,105.6L182.1,110.1L173.1,122.3L170.7,127.5L164.4,133.5L163.6,138L168.3,141.6L164.5,149.8L156,191.8L105.4,180.9M752.5,333.2L789.5,327.4M186.9,318.6L207,201.5L258.5,209.3M188.7,30.2L176.5,89.7L176.6,99.5M207,201.5L156,191.8","grat":"M-0.4,630L94.5,227.1L150.4,-10M223.5,630L270.6,258.9L304.7,-10M441.5,630L449.1,272.1L455,-10M658.6,630L627.9,266.4L604.6,-10M879.5,630L805.2,242L756.9,-10M1010,301.7L978.9,199.1L915.4,-10M-10,445.8L-9.4,445.9L40,458.3L89.8,469.3L139.9,479.1L190.2,487.5L240.7,494.6L291.4,500.3L342.2,504.7L393.1,507.8L444.1,509.6L495.1,510L546,509L597,506.8L647.9,503.1L698.6,498.2L749.2,491.9L799.7,484.3L849.9,475.3L899.8,465.1L949.5,453.5L998.9,440.6L1010,437.4M-10,198.7L8,204.2L51.1,216.2L94.5,227.1L138.2,236.7L182.2,245.3L226.3,252.7L270.6,258.9L315.1,263.9L359.7,267.8L404.3,270.5L449.1,272.1L493.8,272.4L538.6,271.6L583.3,269.6L627.9,266.4L672.4,262.1L716.8,256.5L761.1,249.9L805.2,242L849,233L892.6,222.9L935.9,211.6L978.9,199.1L1010,189.2M118.1,-10L148.6,-2.4L186.3,6L224.1,13.3L262.1,19.7L300.3,25L338.6,29.4L377,32.7L415.5,35.1L454,36.4L492.6,36.7L531.1,36L569.6,34.3L608.1,31.5L646.4,27.8L684.7,23L722.8,17.3L760.8,10.5L798.5,2.7L836.1,-6L851.4,-10","cities":[["Bozeman",270.6,123,142],["Billings",312.4,125.9,227],["Idaho Falls",246.8,171.9,151],["Boise",177.4,156.9,451],["Salt Lake City",239.7,236.4,420],["Casper",342.2,198.5,392],["Rapid City",396.6,173.1,594],["Denver",359.4,274,701],["Calgary",242.3,-8.1,779],["Seattle",99.6,42.8,966],["Portland",81.6,88.9,952],["San Francisco",39,267.9,1230],["Las Vegas",163.3,334.6,993],["Los Angeles",95.3,372.4,1324],["Phoenix",210.9,408,1227],["Winnipeg",498.1,39,1187],["Minneapolis",563.6,152.3,1374],["Omaha",521.3,242.1,1250],["Kansas City",546.8,292.7,1457],["Dallas",508.5,444.1,1764],["Houston",538.7,514.9,2114],["Chicago",665.3,217.9,1884],["St. Louis",627,299.2,1816],["New Orleans",646.5,504.4,2421],["Toronto",799.2,154.9,2487],["Atlanta",748.9,402.2,2544],["Washington",862.7,256.5,2839],["New York",905.5,202.2,3005],["Miami",864.6,573.9,3431],["Boston",945,150.7,3177]]};
+const isEn=document.documentElement.lang==="en";
+const $=s=>document.querySelector(s);
+const dec=isEn?".":",";
+const fmt=(v,d)=>(v<0?"−":"")+Math.abs(v).toFixed(d).replace(".",dec);
+const grp=n=>Math.round(n).toLocaleString(isEn?"en":"da");
+const sup=n=>{const S="⁰¹²³⁴⁵⁶⁷⁸⁹";return (n<0?"⁻":"")+String(Math.abs(n)).split("").map(c=>S[+c]).join("");};
+const sci=v=>{const e=Math.floor(Math.log10(v));const m=v/Math.pow(10,e);return fmt(m,1)+"·10"+sup(e);};
+const reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const L=isEn?{
+  day:"Day",h:"h",days:"days",week:"week",month:"month",start:"Start",stop:"Stop",none:"—",notYet:"not yet",never:"no ash",
+  sc:{hydro:"Hydrothermal explosion",lava:"Lava flow",vei6:"Smaller explosive eruption",usgs:"USGS scenario",mesa:"Mesa Falls",lc:"Lava Creek",huck:"Huckleberry Ridge",custom:"Your own eruption"},
+  scTxt:{hydro:"Superheated water under a hot spring flashes to steam and blasts out a crater. Small explosions happen every year; one like Biscuit Basin in July 2024 every decade or so; the largest, Mary Bay, left a crater 2.5 km across. No ash outside the park.",
+    lava:"Thick rhyolite lava oozes out over months to years and covers a few hundred km² around the vent. About 80 such eruptions since the last caldera, the latest 70,000 years ago. This is the most likely kind of magmatic eruption.",
+    vei6:"An explosive eruption like Pinatubo 1991 or Krakatau 1883: a Plinian column and ash across several states, heaviest downwind.",
+    usgs:"The eruption modelled by the USGS: 330 km³ of magma in a week. The umbrella cloud spreads more than 1500 km in all directions, even against the wind.",
+    mesa:"1.3 million years ago: about 280 km³ of magma and the Henrys Fork caldera.",
+    lc:"631,000 years ago: about 1000 km³ of magma. The ground sank into the 75 × 45 km Yellowstone caldera that the park lies in today.",
+    huck:"2.08 million years ago: about 2450 km³ of magma, one of the largest eruptions known on Earth.",
+    custom:"Your own eruption: choose the amount of magma, the duration and the wind."},
+  conseq:[[0.0003,"Fine dust in the air. Airports and airspace close as long as the ash cloud is overhead."],[0.001,"A thin layer: roads become slippery, visibility drops, airports close. Irritates eyes and lungs."],[0.01,"Crops and pasture are damaged, power lines short-circuit, water treatment and drains clog."],[0.1,"Weak roofs can collapse, especially when the ash is wet. Crops are destroyed; livestock need fodder."],[0.3,"Many roofs collapse. The ash must be cleared, or the area evacuated."],[1,"Buildings are buried. The area must be abandoned for a long time."]],
+  clock:(d,h)=>"Day "+d+", "+h+" h",clockPre:"Before the eruption",
+  cloud:"umbrella cloud",pdc:"pyroclastic flows",cald:"caldera",lava:"lava",hydro:"crater",
+  ashKm:v=>"≈ "+grp(v)+" km³",vei:v=>String(v),
+  mt:" Mt",so2:"SO₂ in the stratosphere",yrs:"years after the eruption",pin:"Pinatubo 1991",
+}:{
+  day:"Dag",h:"t",days:"dage",week:"uge",month:"måned",start:"Start",stop:"Stop",none:"—",notYet:"endnu ikke",never:"ingen aske",
+  sc:{hydro:"Hydrotermisk eksplosion",lava:"Lavastrøm",vei6:"Mindre eksplosivt udbrud",usgs:"USGS-scenariet",mesa:"Mesa Falls",lc:"Lava Creek",huck:"Huckleberry Ridge",custom:"Dit eget udbrud"},
+  scTxt:{hydro:"Overophedet vand under en varm kilde bliver pludselig til damp og sprænger et krater. Små eksplosioner sker hvert år, en som Biscuit Basin i juli 2024 omkring hvert tiende år. Den største, Mary Bay, efterlod et krater på 2,5 km. Ingen aske uden for parken.",
+    lava:"Sej rhyolitlava presses langsomt ud over måneder til år og dækker nogle hundrede km² omkring krateret. Der har været omkring 80 af den slags udbrud siden den sidste kaldera, det seneste for 70 000 år siden. Det er den mest sandsynlige slags udbrud.",
+    vei6:"Et eksplosivt udbrud som Pinatubo 1991 eller Krakatau 1883: en Plinius-søjle og aske over flere stater, mest i vindens retning.",
+    usgs:"Udbruddet, som USGS har regnet på: 330 km³ magma på en uge. Paraplyskyen breder sig over 1500 km til alle sider, også mod vinden.",
+    mesa:"For 1,3 mio. år siden: omkring 280 km³ magma og Henrys Fork-kalderaen.",
+    lc:"For 631 000 år siden: omkring 1000 km³ magma. Jorden sank ned i den 75 × 45 km store Yellowstone-kaldera, som parken ligger i i dag.",
+    huck:"For 2,08 mio. år siden: omkring 2450 km³ magma, et af de største udbrud, man kender på Jorden.",
+    custom:"Dit eget udbrud: vælg magmamængden, varigheden og vinden."},
+  conseq:[[0.0003,"Fint støv i luften. Lufthavne og luftrum lukker, så længe askeskyen er over."],[0.001,"Et tyndt lag: vejene bliver glatte, man kan ikke se langt, og lufthavnene lukker. Asken irriterer øjne og lunger."],[0.01,"Afgrøder og græs tager skade, elledninger kortslutter, vandværker og kloakker stopper til."],[0.1,"Svage tage kan styrte sammen, især når asken er våd. Afgrøderne er ødelagt, og husdyrene må fodres."],[0.3,"Mange tage styrter sammen. Asken må ryddes, eller området må evakueres."],[1,"Bygningerne begraves. Området må opgives i lang tid."]],
+  clock:(d,h)=>"Dag "+d+", "+h+" t",clockPre:"Før udbruddet",
+  cloud:"paraplysky",pdc:"pyroklastiske strømme",cald:"kaldera",lava:"lava",hydro:"krater",
+  ashKm:v=>"≈ "+grp(v)+" km³",vei:v=>String(v),
+  mt:" mio. t",so2:"SO₂ i stratosfæren",yrs:"år efter udbruddet",pin:"Pinatubo 1991",
+};
+const COL={hydro:"#6fd3ff",lava:"#ff7a3d",vei6:"#ffb03d",usgs:"#e27bff",mesa:"#e27bff",lc:"#e27bff",huck:"#e27bff",custom:"#ffd36b"};
+const SC={hydro:{V:0},lava:{V:0},vei6:{V:10,D:2},usgs:{V:330,D:7},mesa:{V:280,D:7},lc:{V:1000,D:7},huck:{V:2450,D:7}};
+
+const S={sc:"usgs",V:330,D:7,wind:"w",t:0,run:!reduce,tempo:1,zoom:false,sel:"Billings"};
+const volS=v=>Math.pow(3000,v/100),volInv=V=>100*Math.log(Math.max(1,V))/Math.log(3000);
+
+/* ---------- fysikken ---------- */
+const BULK=3; // m³ løs aske pr. m³ magma
+function model(){
+  const V=S.V,D=S.D,on=V>0&&S.sc!=="hydro"&&S.sc!=="lava";
+  const m={on,V,D,bulk:V*BULK};
+  m.vei=m.bulk<=0?0:Math.min(8,Math.max(0,5+Math.floor(Math.log10(m.bulk)+0.05)));
+  if(!on){m.Rpf=0;return m;}
+  const w=S.wind==="w"?{u:30,eF:1.25}:{u:12,eF:0.7};
+  const s=V/330,s6=Math.pow(s,1/6),s23=Math.pow(s,2/3);
+  m.e=Math.min(0.85,Math.max(0.08,(0.65-0.2*Math.log10(V))*w.eF));
+  const norm=1.016/(1+m.e*m.e/2);
+  m.L1=70*s6;m.L2=550*s6;m.T1=22*s23*norm;m.T2=0.3*s23*norm;
+  m.MER=V*1e9*2500/(D*86400);
+  const Q=0.43*100*Math.pow(m.MER,0.75)/Math.pow(0.02,1.25);
+  m.Rc=Math.pow(3*0.2*0.02*Q/(2*Math.PI),1/3);    // m · s^(-2/3)
+  m.u=w.u;
+  m.Rpf=85*Math.cbrt(V/1000);                     // km
+  m.tmax=D+Math.max(4,Math.min(12,D));
+  // paraplyskyens rækkevidde (km) som funktion af tiden (dage), tabelleret
+  const N=800;m.tk=new Float32Array(N+1);m.gk=new Float32Array(N+1);
+  for(let k=0;k<=N;k++){const t=m.tmax*1.6*k/N;m.tk[k]=t;m.gk[k]=reach(m,t);}
+  return m;}
+function reach(m,t){const ts=Math.min(t,m.D)*86400;let R=m.Rc*Math.pow(ts,2/3)/1000;if(t>m.D)R+=0.5*m.u*(t-m.D)*86.4;return R+0.08*m.u*t*86.4;}
+function thickRe(m,re){return m.T1*Math.exp(-re/m.L1)+m.T2*Math.exp(-re/m.L2);}
+function arrival(m,re){const g=m.gk;if(re<=0)return 0;if(g[g.length-1]<re)return Infinity;let lo=0,hi=g.length-1;while(hi-lo>1){const mid=(lo+hi)>>1;if(g[mid]>=re)hi=mid;else lo=mid;}return m.tk[hi];}
+function frac(m,ta,re,t){const delay=0.12+re/2500;return Math.max(0,Math.min(1,(t-ta-delay)/m.D));}
+function pointAt(m,dxKm,dyKm){const r=Math.hypot(dxKm,dyKm);const c=r>0?dxKm/r:0;const re=r/(1+m.e*c);return {r,re,Tf:thickRe(m,re),ta:arrival(m,re)};}
+function areaOver(m,x){// km² med mere end x meter aske til sidst
+  if(thickRe(m,0)<x)return 0;let lo=0,hi=20000;for(let k=0;k<50;k++){const mid=(lo+hi)/2;if(thickRe(m,mid)>x)lo=mid;else hi=mid;}return lo*lo*Math.PI*(1+m.e*m.e/2);}
+function conseq(T){let s=L.conseq[0][1];if(T<L.conseq[0][0]*0.5)return "";for(const [lim,txt] of L.conseq)if(T>=lim)s=txt;return s;}
+function fmtT(T){if(!(T>0.00005))return "0";if(T<0.01)return fmt(T*1000,T<0.001?1:0)+" mm";if(T<1)return fmt(T*100,T<0.1?1:0)+" cm";return fmt(T,1)+" m";}
+
+/* ---------- farveskala for asken ---------- */
+const STOPS=[[-3.5,[250,244,205,0]],[-3,[250,238,185,0.42]],[-2,[244,200,112,0.58]],[-1,[228,135,62,0.7]],[-0.5,[205,84,52,0.78]],[0,[160,40,64,0.85]],[0.6,[88,18,66,0.9]],[1.2,[40,8,40,0.94]]];
+function ashCol(T){if(!(T>0))return null;const l=Math.log10(T);if(l<=STOPS[0][0])return null;for(let k=1;k<STOPS.length;k++){if(l<=STOPS[k][0]){const [a,ca]=STOPS[k-1],[b,cb]=STOPS[k];const f=(l-a)/(b-a);return ca.map((v,i)=>v+(cb[i]-v)*f);}}return STOPS[STOPS.length-1][1];}
+(function(){const bar=$("#ysBar");if(!bar)return;const st=[];for(let l=-3;l<=1;l+=0.25){const c=ashCol(Math.pow(10,l));st.push(`rgba(${c[0]|0},${c[1]|0},${c[2]|0},${Math.max(0.5,c[3])}) ${((l+3)/4*100).toFixed(0)}%`);}bar.style.background="linear-gradient(90deg,"+st.join(",")+")";})();
+
+/* ---------- kortet ---------- */
+const cv=$("#ysCv"),ctx=cv.getContext("2d");
+const P={land:new Path2D(G.land),states:new Path2D(G.states),borders:new Path2D(G.borders),grat:new Path2D(G.grat)};
+const grid=document.createElement("canvas"),gctx=grid.getContext("2d");
+let M=model(),view={k:1,ox:0,oy:0,w:10,h:10,dpr:1},cells=null,lastImg=-1;
+function setView(){const r=cv.getBoundingClientRect();const dpr=Math.min(2,window.devicePixelRatio||1);view.w=Math.max(10,r.width);view.h=Math.max(10,r.height);view.dpr=dpr;
+  cv.width=Math.round(view.w*dpr);cv.height=Math.round(view.h*dpr);
+  const k0=Math.min(view.w/G.W,view.h/G.H)*0.98;
+  if(S.zoom){const kmSpan=Math.max(420,M.Rpf*3.2);view.k=Math.min(view.w,view.h)/(kmSpan/G.kmPer);view.ox=view.w/2-G.ys[0]*view.k;view.oy=view.h/2-G.ys[1]*view.k;}
+  else if(view.w/view.h<1.2){const k1=Math.min(view.h/G.H,view.w/(G.W*0.62));view.k=k1;view.ox=Math.min(0,Math.max(view.w-G.W*k1,view.w*0.45-G.ys[0]*k1-60*k1));view.oy=(view.h-G.H*k1)/2;}
+  else{view.k=k0;view.ox=(view.w-G.W*k0)/2;view.oy=(view.h-G.H*k0)/2;}
+  buildCells();}
+const toS=(x,y)=>[view.ox+x*view.k,view.oy+y*view.k];
+const kmToPx=km=>km/G.kmPer*view.k;
+function buildCells(){if(!M.on){cells=null;return;}const cs=S.zoom?4:5;const gw=Math.ceil(view.w/cs),gh=Math.ceil(view.h/cs);
+  grid.width=gw;grid.height=gh;const n=gw*gh;cells={gw,gh,cs,Tf:new Float32Array(n),ta:new Float32Array(n),re:new Float32Array(n),img:gctx.createImageData(gw,gh)};
+  const kpu=G.kmPer/view.k;
+  for(let j=0;j<gh;j++)for(let i=0;i<gw;i++){const sx=(i+0.5)*cs,sy=(j+0.5)*cs;const dx=(sx-view.ox-G.ys[0]*view.k)*kpu,dy=(sy-view.oy-G.ys[1]*view.k)*kpu;
+    const p=pointAt(M,dx,dy);const q=j*gw+i;cells.Tf[q]=p.Tf;cells.ta[q]=p.ta;cells.re[q]=p.re;}
+  lastImg=-1;}
+function paintAsh(t){if(!cells)return;const {gw,gh,Tf,ta,re,img}=cells;const d=img.data;
+  for(let q=0;q<gw*gh;q++){const f=frac(M,ta[q],re[q],t);const c=f>0?ashCol(Tf[q]*f):null;const o=q*4;if(c){d[o]=c[0];d[o+1]=c[1];d[o+2]=c[2];d[o+3]=c[3]*255;}else d[o+3]=0;}
+  gctx.putImageData(img,0,0);}
+function cityPts(){return G.cities.map(c=>{const [sx,sy]=toS(c[1],c[2]);const dx=(c[1]-G.ys[0])*G.kmPer,dy=(c[2]-G.ys[1])*G.kmPer;return {n:c[0],sx,sy,dist:c[3],p:M.on?pointAt(M,dx,dy):null};});}
+const LABELS=new Set(["Billings","Boise","Salt Lake City","Denver","Seattle","San Francisco","Los Angeles","Minneapolis","Chicago","Dallas","Houston","New York","Miami","Calgary","Atlanta","Washington","Toronto","Kansas City","Phoenix","Rapid City","Casper"]);
+function draw(){const {w,h,dpr,k}=view;ctx.setTransform(dpr,0,0,dpr,0,0);
+  const sea=ctx.createLinearGradient(0,0,0,h);sea.addColorStop(0,"#0a1824");sea.addColorStop(1,"#071019");ctx.fillStyle=sea;ctx.fillRect(0,0,w,h);
+  ctx.save();ctx.translate(view.ox,view.oy);ctx.scale(k,k);
+  ctx.strokeStyle="rgba(143,162,155,.12)";ctx.lineWidth=1/k;ctx.stroke(P.grat);
+  ctx.fillStyle="#2b3a2e";ctx.fill(P.land);ctx.restore();
+  // asken
+  if(M.on){if(lastImg!==S.t){paintAsh(S.t);lastImg=S.t;}ctx.imageSmoothingEnabled=true;ctx.drawImage(grid,0,0,cells.gw*cells.cs,cells.gh*cells.cs);}
+  ctx.save();ctx.translate(view.ox,view.oy);ctx.scale(k,k);
+  ctx.strokeStyle="rgba(230,239,234,.28)";ctx.lineWidth=0.7/k;ctx.stroke(P.states);
+  ctx.strokeStyle="rgba(230,239,234,.6)";ctx.lineWidth=1.1/k;ctx.stroke(P.borders);
+  ctx.strokeStyle="rgba(230,239,234,.45)";ctx.lineWidth=0.9/k;ctx.stroke(P.land);ctx.restore();
+  const [yx,yy]=toS(G.ys[0],G.ys[1]);
+  // paraplyskyen
+  if(M.on&&S.t>0){const R=reach(M,S.t);const fade=S.t<M.D?1:Math.max(0,1-(S.t-M.D)/3);
+    if(fade>0){ctx.beginPath();for(let a=0;a<=96;a++){const th=a/96*2*Math.PI;const r=kmToPx(R*(1+M.e*Math.cos(th)));const x=yx+r*Math.cos(th),y=yy-r*Math.sin(th);a?ctx.lineTo(x,y):ctx.moveTo(x,y);}
+      ctx.closePath();ctx.fillStyle=`rgba(190,196,204,${0.16*fade})`;ctx.fill();ctx.setLineDash([5,4]);ctx.strokeStyle=`rgba(225,230,236,${0.75*fade})`;ctx.lineWidth=1.3;ctx.stroke();ctx.setLineDash([]);
+      const lx=yx+kmToPx(R*(1-M.e))*-0.72,ly=yy-kmToPx(R)*0.72;if(lx>4&&ly>14){ctx.font="500 11px IBM Plex Mono, monospace";ctx.fillStyle=`rgba(235,240,245,${fade})`;ctx.fillText(L.cloud,Math.max(6,lx-30),Math.max(14,ly));}}}
+  // pyroklastiske strømme
+  if(M.on&&S.t>0.02*M.D){const f=Math.min(1,(S.t-0.02*M.D)/(0.35*M.D));const r=kmToPx(M.Rpf*f);
+    ctx.beginPath();ctx.arc(yx,yy,r,0,2*Math.PI);ctx.fillStyle="rgba(255,90,70,.38)";ctx.fill();ctx.strokeStyle="rgba(255,120,90,.95)";ctx.lineWidth=1.4;ctx.stroke();
+    if(S.zoom||r>14){ctx.font="500 11px IBM Plex Mono, monospace";ctx.fillStyle="#ffb3a3";ctx.fillText(L.pdc,yx+r*0.72+4,yy+r*0.72+12);}}
+  // kalderaen, lava og krater
+  {const a=kmToPx(37),b=kmToPx(23);ctx.save();ctx.translate(yx,yy);ctx.rotate(-0.33);ctx.beginPath();ctx.ellipse(0,0,Math.max(a,3),Math.max(b,2),0,0,2*Math.PI);ctx.strokeStyle="#e27bff";ctx.lineWidth=1.6;ctx.stroke();ctx.restore();
+    if(S.sc==="lava"){const t=Math.min(1,S.t/(M.tmax||10)+0.25);ctx.beginPath();ctx.ellipse(yx-kmToPx(14),yy+kmToPx(10),Math.max(2,kmToPx(16*t)),Math.max(2,kmToPx(11*t)),0.4,0,2*Math.PI);ctx.fillStyle="rgba(255,110,50,.85)";ctx.fill();}
+    if(S.sc==="hydro"){const r=Math.max(3,kmToPx(1.25));ctx.beginPath();ctx.arc(yx+kmToPx(8),yy-kmToPx(4),r,0,2*Math.PI);ctx.fillStyle="#6fd3ff";ctx.fill();}
+    if(S.zoom){ctx.font="500 11px IBM Plex Mono, monospace";ctx.fillStyle="#e9b6ff";ctx.fillText("Yellowstone "+L.cald,yx+a*0.9,yy-b-6);}
+    else{ctx.font="600 11px IBM Plex Mono, monospace";ctx.fillStyle="#e9b6ff";ctx.fillText("Yellowstone",yx-36,yy-10);}}
+  // byerne
+  ctx.font="500 10.5px IBM Plex Mono, monospace";
+  for(const c of cityPts()){if(c.sx<-5||c.sy<-5||c.sx>w+5||c.sy>h+5)continue;const sel=c.n===S.sel;
+    ctx.beginPath();ctx.arc(c.sx,c.sy,sel?4.5:2.6,0,2*Math.PI);ctx.fillStyle=sel?"#ffd36b":"#e6efea";ctx.fill();if(sel){ctx.strokeStyle="#000";ctx.lineWidth=1;ctx.stroke();}
+    if(sel||S.zoom||(LABELS.has(c.n)&&w>520)){const T=c.p&&isFinite(c.p.ta)?c.p.Tf*frac(M,c.p.ta,c.p.re,S.t):0;const txt=c.n+(sel&&T>0.0001?" · "+fmtT(T):"");
+      ctx.lineWidth=3;ctx.strokeStyle="rgba(4,8,12,.85)";ctx.strokeText(txt,c.sx+6,c.sy+4);ctx.fillStyle=sel?"#ffd36b":"#dbe4ea";ctx.fillText(txt,c.sx+6,c.sy+4);}}
+  // målestok
+  {const km=S.zoom?50:500;const px=kmToPx(km);const x0=14,y0=h-14;ctx.strokeStyle="#dbe4ea";ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x0+px,y0);ctx.moveTo(x0,y0-4);ctx.lineTo(x0,y0+1);ctx.moveTo(x0+px,y0-4);ctx.lineTo(x0+px,y0+1);ctx.stroke();ctx.fillStyle="#dbe4ea";ctx.fillText(km+" km",x0+px+6,y0+3);}
+  // vindpil
+  if(M.on){const x0=w-70,y0=h-20;ctx.strokeStyle="#9fd0ff";ctx.fillStyle="#9fd0ff";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x0+40,y0);ctx.stroke();ctx.beginPath();ctx.moveTo(x0+46,y0);ctx.lineTo(x0+38,y0-5);ctx.lineTo(x0+38,y0+5);ctx.fill();ctx.fillText(M.u+" m/s",x0,y0-8);}
+}
+
+/* ---------- aflæsninger ---------- */
+function readouts(){const m=M;const on=m.on;
+  $("#ysBadge").textContent=L.sc[S.sc];$("#ysBadge").style.background=COL[S.sc];
+  $("#ysText").textContent=L.scTxt[S.sc];
+  $("#ysMag").textContent=S.sc==="hydro"?L.none:S.sc==="lava"?(isEn?"0.1–70 km³ lava":"0,1–70 km³ lava"):grp(m.V)+" km³";
+  $("#ysAsh").textContent=on?L.ashKm(m.bulk):L.none;
+  $("#ysVei").textContent=on?String(m.vei):S.sc==="hydro"?"0":"0–1";
+  $("#ysMer").textContent=on?sci(m.MER)+" kg/s":L.none;
+  $("#ysR").textContent=on&&S.t>0?grp(reach(m,S.t))+" km":L.none;
+  $("#ysPdc").textContent=on?(isEn?"up to ":"op til ")+grp(m.Rpf)+" km":L.none;
+  $("#ysA1").textContent=on?fmtArea(areaOver(m,0.01)):L.none;
+  $("#ysA10").textContent=on?fmtArea(areaOver(m,0.1)):L.none;
+  const d=Math.floor(S.t),hh=Math.floor((S.t-d)*24);$("#ysClock").textContent=L.clock(d,hh);
+  $("#oYsT").textContent=fmt(S.t,1)+" "+L.days;
+  $("#oYsV").textContent=on||S.sc==="custom"?grp(S.V)+" km³":L.none;
+  cityRead();}
+function fmtArea(a){if(a<1)return "0";return (a>=1e6?fmt(a/1e6,2)+(isEn?" million km²":" mio. km²"):grp(a)+" km²");}
+function cityRead(){const c=cityPts().find(c=>c.n===S.sel);if(!c)return;$("#ysCityHd").textContent=c.n;$("#ysCd").textContent=grp(c.dist)+" km";
+  if(!M.on||!c.p){$("#ysCnow").textContent=L.never;$("#ysCfin").textContent=L.never;$("#ysCarr").textContent=L.none;$("#ysCityTxt").textContent=S.sc==="hydro"||S.sc==="lava"?(isEn?"Nothing happens here.":"Her sker ingenting."):"";return;}
+  const p=c.p;const fin=isFinite(p.ta)?p.Tf:0;const now=isFinite(p.ta)?p.Tf*frac(M,p.ta,p.re,S.t):0;
+  $("#ysCnow").textContent=fmtT(now);$("#ysCfin").textContent=fmtT(fin);
+  $("#ysCarr").textContent=isFinite(p.ta)?(p.ta<1?fmt(p.ta*24,0)+" "+L.h:fmt(p.ta,1)+" "+L.days):L.none;
+  $("#ysCityTxt").textContent=conseq(fin);}
+function table(){const tb=$("#ysTbl tbody");const rows=cityPts().sort((a,b)=>a.dist-b.dist);
+  tb.innerHTML=rows.map(c=>{const p=c.p;const fin=p&&isFinite(p.ta)?p.Tf:0;const now=p&&isFinite(p.ta)?p.Tf*frac(M,p.ta,p.re,S.t):0;const arr=p&&isFinite(p.ta)?(p.ta<1?fmt(p.ta*24,0)+" "+L.h:fmt(p.ta,1)+" d"):"—";
+    return `<tr data-c="${c.n}" aria-selected="${c.n===S.sel}"><td>${c.n}</td><td>${grp(c.dist)}</td><td>${arr}</td><td>${fmtT(now)}</td><td>${fmtT(fin)}</td></tr>`;}).join("");}
+$("#ysTbl tbody").addEventListener("click",e=>{const tr=e.target.closest("tr");if(!tr)return;S.sel=tr.dataset.c;table();cityRead();draw();});
+cv.addEventListener("click",e=>{const r=cv.getBoundingClientRect();const x=e.clientX-r.left,y=e.clientY-r.top;let best=null,bd=22;for(const c of cityPts()){const d=Math.hypot(c.sx-x,c.sy-y);if(d<bd){bd=d;best=c;}}if(best){S.sel=best.n;table();cityRead();draw();}});
+
+/* ---------- klimaet ---------- */
+function clim(SO2,years){const dt=1/365,N=Math.round(years/dt),tauC=35/365;let so2=SO2,aer=0,T1=0,T2=0;const C1=8,C2=100,lam=1.25,gam=0.7,out=[];
+  for(let k=0;k<=N;k++){const conv=so2/tauC*dt;so2-=conv;
+    const tauR=aer<45?1:Math.max(0.45,1/Math.pow(aer/45,0.25)); // store partikler falder hurtigere ud
+    aer+=conv*1.5-aer/tauR*dt;const aod=aer<45?aer/150:0.3*Math.pow(aer/45,0.5);const F=-25*aod;
+    T1+=dt*(F-lam*T1-gam*(T1-T2))/C1;T2+=dt*gam*(T1-T2)/C2;if(k%7===0)out.push({t:k*dt,T:T1,aod});}
+  return out;}
+function prep(c){const r=c.getBoundingClientRect();const dpr=Math.min(2,window.devicePixelRatio||1);c.width=Math.round(r.width*dpr);c.height=Math.round(r.height*dpr);const x=c.getContext("2d");x.setTransform(dpr,0,0,dpr,0,0);return [x,r.width,r.height];}
+function drawClim(){const c=$("#ysClimCv");const [x,w,h]=prep(c);const so2=M.on?0.5*M.V:0;
+  const A=clim(so2,10),B=clim(18,10);let Tm=0,Am=0;for(const o of A){Tm=Math.min(Tm,o.T);Am=Math.max(Am,o.aod);}const Bm=Math.min(...B.map(o=>o.T));
+  const lo=Math.min(-0.5,Math.floor(Math.min(Tm,Bm)*2)/2);const Lm=44,R=10,Tp=10,Bt=36,pw=w-Lm-R,ph=h-Tp-Bt;
+  const X=t=>Lm+pw*t/10,Y=v=>Tp+ph*(v/lo);x.clearRect(0,0,w,h);x.font="10.5px IBM Plex Mono, monospace";
+  x.strokeStyle="#233244";x.fillStyle="#8fa29b";for(let t=0;t<=10;t+=2){x.beginPath();x.moveTo(X(t),Tp);x.lineTo(X(t),Tp+ph);x.stroke();x.fillText(t,X(t)-3,Tp+ph+14);}
+  const step=lo<-4?1:0.5;for(let v=0;v>=lo-1e-9;v-=step){x.beginPath();x.moveTo(Lm,Y(v));x.lineTo(Lm+pw,Y(v));x.stroke();x.fillText(fmt(v,step<1?1:0)+" °C",0,Y(v)+3);}
+  x.fillText(L.yrs,Lm+pw-x.measureText(L.yrs).width,h-3);
+  x.setLineDash([4,4]);x.strokeStyle="#9fd0ff";x.lineWidth=1.5;x.beginPath();B.forEach((o,k)=>k?x.lineTo(X(o.t),Y(o.T)):x.moveTo(X(o.t),Y(o.T)));x.stroke();x.setLineDash([]);
+  x.strokeStyle="#ff9a4d";x.lineWidth=2;x.beginPath();A.forEach((o,k)=>k?x.lineTo(X(o.t),Y(o.T)):x.moveTo(X(o.t),Y(o.T)));x.stroke();x.lineWidth=1;
+  $("#ysSO2").textContent=so2>0?grp(so2)+L.mt:L.none;$("#ysDT").textContent=so2>0?fmt(Tm,1)+" °C":L.none;$("#ysAOD").textContent=so2>0?fmt(Am,1):L.none;}
+
+/* ---------- styring ---------- */
+function applySc(k){S.sc=k;document.querySelectorAll("#ysPre .tab").forEach(b=>b.setAttribute("aria-selected",b.dataset.s===k?"true":"false"));
+  const v=SC[k];if(v){if(v.V>0){S.V=v.V;$("#sYsV").value=volInv(v.V);}if(v.D){S.D=v.D;segSet("#ysDur",v.D);}}
+  $("#sYsV").disabled=k==="hydro"||k==="lava";recompute(true);}
+function segSet(id,val){document.querySelectorAll(id+" button").forEach(b=>b.setAttribute("aria-pressed",String(+b.dataset.v===+val||b.dataset.v===val)));}
+function recompute(restart){M=model();$("#sYsT").max=String(M.on?M.tmax:10);if(restart){S.t=0;}S.t=Math.min(S.t,+$("#sYsT").max);$("#sYsT").value=S.t;setView();readouts();table();drawClim();draw();}
+document.querySelectorAll("#ysPre .tab").forEach(b=>b.onclick=()=>{applySc(b.dataset.s);togglePlay(true);});
+$("#sYsV").oninput=()=>{S.V=Math.round(volS(+$("#sYsV").value));if(S.sc!=="custom"){S.sc="custom";document.querySelectorAll("#ysPre .tab").forEach(b=>b.setAttribute("aria-selected","false"));}recompute(false);};
+$("#sYsT").oninput=()=>{S.t=+$("#sYsT").value;togglePlay(false);readouts();table();draw();};
+function seg(id,fn){document.querySelectorAll(id+" button").forEach(b=>b.onclick=()=>{document.querySelectorAll(id+" button").forEach(c=>c.setAttribute("aria-pressed",c===b?"true":"false"));fn(b.dataset.v);});}
+seg("#ysDur",v=>{S.D=+v;recompute(true);togglePlay(true);});
+seg("#ysWind",v=>{S.wind=v;recompute(false);});
+seg("#ysTempo",v=>{S.tempo=+v;});
+$("#ysZoom").onchange=e=>{S.zoom=e.target.checked;setView();draw();};
+function togglePlay(on){S.run=on===undefined?!S.run:on;$("#ysPlayTxt").textContent=S.run?L.stop:L.start;$("#ysPlayIcon").innerHTML=S.run?'<path d="M4 4h12v12H4z"/>':'<path d="M5 3l12 7-12 7z"/>';}
+$("#ysPlay").onclick=()=>{if(!S.run&&S.t>=+$("#sYsT").max)S.t=0;togglePlay();};
+$("#ysRestart").onclick=()=>{S.t=0;togglePlay(true);readouts();table();draw();};
+
+/* ---------- løkken ---------- */
+let vis=true,last=performance.now(),tabTick=0;
+if("IntersectionObserver" in window)new IntersectionObserver(es=>es.forEach(e=>vis=e.isIntersecting),{threshold:0.02}).observe($("#ysStage"));
+let rzT;window.addEventListener("resize",()=>{clearTimeout(rzT);rzT=setTimeout(()=>{setView();draw();drawClim();},80);});
+function frame(now){const dt=Math.min(0.1,(now-last)/1000);last=now;
+  if(vis&&S.run){const tmax=+$("#sYsT").max;S.t=Math.min(tmax,S.t+dt*S.tempo*tmax/36);$("#sYsT").value=S.t;if(S.t>=tmax)togglePlay(false);
+    readouts();if((tabTick++)%6===0)table();draw();}
+  requestAnimationFrame(frame);}
+if(reduce){S.t=0;}
+applySc("usgs");if(reduce){S.t=M.tmax;$("#sYsT").value=S.t;readouts();table();draw();}
+togglePlay(S.run);requestAnimationFrame(frame);
+window.__ys={S,model:()=>M,pointAt,G};
+})();
+
+</script>
+<script src="lang-switch.js" defer></script>
+</body></html>

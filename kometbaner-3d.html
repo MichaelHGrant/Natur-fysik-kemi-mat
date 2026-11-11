@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kometbaner i 3D — 220P/McNaught og C/2025 R3 med Gauss’ metode</title>
+<meta name="description" content="Interaktiv 3D-model af kometerne 220P/McNaught og C/2025 R3 (PanSTARRS): banerne om Solen, Jorden ved mine observationer, sigtelinjerne, Gauss-løsningerne og krumningspilen på himlen, der afgør om metoden virker.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --space:#05080f; --ink:#0a0f1b; --ink-2:#0e1524;
+  --hair:rgba(201,162,39,.28); --hair-soft:rgba(201,162,39,.13);
+  --brass:#c9a227; --brass-dim:#8d7326; --parchment:#ece3d2; --muted:#8d93a3;
+  --earth:#6fa8d6; --sun:#ffd479; --comet:#9fe3d0; --sight:#e8e4da; --gauss:#f2762e; --plate:#b48cf2; --fail:#e05a6a; --jup:#c9a27a;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0; background:var(--space); color:var(--parchment); font-family:'Inter',system-ui,sans-serif; overflow:hidden; -webkit-font-smoothing:antialiased}
+canvas#scene{position:fixed; inset:0; width:100%; height:100%; display:block; touch-action:none}
+.panel{background:linear-gradient(180deg,rgba(14,21,36,.93),rgba(8,12,22,.93)); border:1px solid var(--hair); border-radius:2px; backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); box-shadow:0 18px 50px rgba(0,0,0,.55)}
+.eyebrow{font-size:9.5px; font-weight:600; letter-spacing:.19em; text-transform:uppercase; color:var(--brass)}
+.rule{height:1px; background:var(--hair-soft); margin:11px 0}
+#masthead{position:fixed; top:16px; left:18px; z-index:20; max-width:min(48ch,70vw); pointer-events:none}
+#masthead h1{font-family:'Spectral',Georgia,serif; font-weight:600; font-size:clamp(19px,2.5vw,29px); line-height:1.12; margin:5px 0 0}
+#masthead h1 em{font-style:italic; color:var(--brass); font-weight:400}
+#masthead p{margin:7px 0 0; font-size:12.5px; line-height:1.5; color:var(--muted); max-width:42ch}
+#controls{position:fixed; top:140px; left:18px; z-index:20; width:292px; max-height:calc(100vh - 166px); overflow-y:auto; padding:14px 15px 16px; scrollbar-width:thin; scrollbar-color:var(--brass-dim) transparent}
+.grp{margin-bottom:14px} .grp:last-child{margin-bottom:0}
+.row{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:9px}
+.row label{font-size:12px; color:#c3c9d6}
+.val{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--brass); font-variant-numeric:tabular-nums}
+input[type=range]{-webkit-appearance:none; appearance:none; width:100%; height:16px; background:transparent; margin:4px 0 0; cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:1px; background:var(--hair)}
+input[type=range]::-moz-range-track{height:1px; background:var(--hair)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:13px; height:13px; margin-top:-6px; background:var(--brass); border-radius:50%; border:none}
+input[type=range]::-moz-range-thumb{width:13px; height:13px; background:var(--brass); border-radius:50%; border:none}
+.btns{display:flex; gap:6px; flex-wrap:wrap; margin-top:9px}
+button{font-family:'Inter',sans-serif; font-size:11px; font-weight:500; color:var(--parchment); background:rgba(201,162,39,.07); border:1px solid var(--hair); border-radius:2px; padding:6px 9px; cursor:pointer; transition:background .15s,border-color .15s}
+button:hover{background:rgba(201,162,39,.18); border-color:var(--brass)}
+button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
+button.on{background:var(--brass); color:#0a0f1b; border-color:var(--brass); font-weight:600}
+button.wide{flex:1; text-align:center}
+.transport{display:flex; gap:5px; margin-top:9px}
+.transport button{padding:7px 0; flex:1}
+.transport button.play{flex:2.1}
+.checks{display:grid; grid-template-columns:1fr 1fr; gap:6px 8px; margin-top:9px}
+.chk{display:flex; align-items:center; gap:6px; font-size:11.5px; color:#c3c9d6; cursor:pointer}
+.chk input{appearance:none; -webkit-appearance:none; width:12px; height:12px; flex:none; border:1px solid var(--hair); border-radius:1px; background:transparent; cursor:pointer; position:relative}
+.chk input:checked{background:var(--brass); border-color:var(--brass)}
+.chk input:checked::after{content:''; position:absolute; left:3.5px; top:1px; width:3px; height:6px; border:solid #0a0f1b; border-width:0 1.6px 1.6px 0; transform:rotate(42deg)}
+.swatch{width:9px; height:2px; flex:none; border-radius:1px}
+.note{font-size:10.5px; color:var(--muted); line-height:1.45; margin:8px 0 0}
+#readout{position:fixed; left:18px; bottom:18px; z-index:20; width:292px; padding:12px 15px 13px}
+#stamp{font-family:'Spectral',serif; font-size:17px; margin-top:5px}
+#stamp span{color:var(--muted); font-size:12px; font-family:'Inter',sans-serif}
+.dl{display:grid; grid-template-columns:auto 1fr; gap:4px 12px; font-size:11.5px; margin-top:4px}
+.dl dt{color:var(--muted)}
+.dl dd{margin:0; text-align:right; font-family:'IBM Plex Mono',monospace; font-variant-numeric:tabular-nums}
+#instrument{position:fixed; right:18px; bottom:66px; z-index:20; width:350px; padding:12px 13px 13px; max-height:calc(100vh - 130px); overflow-y:auto}
+#triples{display:flex; flex-direction:column; gap:4px; margin-top:8px}
+#triples button{text-align:left; font-size:10.5px; padding:5px 8px}
+#sky{width:324px; height:190px; display:block; margin-top:9px}
+#skyCap{font-size:10.5px; line-height:1.45; color:var(--muted); margin-top:7px}
+table.el{width:100%; border-collapse:collapse; font-size:10.5px; margin-top:8px; font-variant-numeric:tabular-nums}
+table.el th{color:var(--muted); font-weight:500; text-align:right; padding:2px 4px; border-bottom:1px solid var(--hair-soft)}
+table.el th:first-child,table.el td:first-child{text-align:left}
+table.el td{font-family:'IBM Plex Mono',monospace; text-align:right; padding:2px 4px}
+#topRight{position:fixed; top:18px; right:18px; z-index:25; display:flex; gap:6px}
+#topRight a,#topRight button{font:600 11px 'Inter',sans-serif; letter-spacing:.05em; color:var(--space); background:var(--brass); border:0; border-radius:2px; padding:7px 11px; text-decoration:none; cursor:pointer}
+#topRight a.ghost{background:rgba(14,21,36,.9); color:var(--parchment); border:1px solid var(--hair)}
+#topRight .sm{display:none}
+#sheetToggle,#skyToggle{display:none}
+#about{border:1px solid var(--hair); background:var(--ink); color:var(--parchment); padding:0; width:min(760px,94vw); max-height:90vh; border-radius:3px}
+#about::backdrop{background:rgba(2,4,9,.72)}
+#about .wrap{padding:22px 26px 26px; overflow-y:auto; max-height:90vh}
+#about h2{font-family:'Spectral',serif; font-weight:600; font-size:24px; margin:4px 0 10px}
+#about h3{font-family:'Spectral',serif; font-weight:600; font-size:17px; margin:20px 0 4px; color:var(--brass)}
+#about p,#about li{font-size:14px; line-height:1.6; color:#d9d2c3}
+#about a{color:var(--brass)}
+#about .close{float:right; position:sticky; top:0}
+.lbl{font:500 11px 'Inter',sans-serif; color:var(--parchment); text-shadow:0 0 6px #000,0 0 3px #000; white-space:nowrap; pointer-events:none}
+.lbl.sun{color:var(--sun)} .lbl.earth{color:var(--earth)} .lbl.comet{color:var(--comet)} .lbl.muted{color:var(--muted)} .lbl.gauss{color:var(--gauss)} .lbl.plate{color:var(--plate)} .lbl.fail{color:var(--fail)} .lbl.small{font-size:10px}
+body.shot #controls,body.shot #readout,body.shot #topRight,body.shot #masthead p{display:none}
+body.shot.nosky #instrument{display:none}
+@media (max-width:900px){
+  #masthead{max-width:58vw} #masthead p{display:none}
+  #topRight{top:12px; right:12px; flex-direction:column; align-items:flex-end}
+  #topRight .lg{display:none} #topRight .sm{display:inline}
+  #sheetToggle,#skyToggle{display:block}
+  #controls{top:auto; bottom:0; left:0; width:100%; max-height:62vh; border-radius:8px 8px 0 0; transform:translateY(101%); transition:transform .28s cubic-bezier(.4,0,.2,1); padding-bottom:calc(18px + env(safe-area-inset-bottom)); z-index:40}
+  #controls.open{transform:translateY(0)}
+  #readout{width:auto; left:10px; right:10px; bottom:62px; padding:9px 12px}
+  #readout .dl{grid-template-columns:auto 1fr auto 1fr; gap:3px 10px; font-size:11px}
+  #instrument{display:none}
+  #instrument.open{display:block; left:10px; right:10px; width:auto; bottom:auto; top:118px; max-height:calc(100vh - 250px)}
+  #sky{width:100%}
+}
+</style>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/app/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="mhgfysik">
+<script src="/app/app.js" defer></script>
+</head>
+<body>
+<canvas id="scene" aria-label="3D-model af kometbanerne om Solen"></canvas>
+
+<header id="masthead">
+  <div class="eyebrow" id="eyebrow">Gauss’ metode · egne billeder fra Djursland</div>
+  <h1 id="h1">Komet 220P/McNaught <em>i 3D</em></h1>
+  <p id="intro">Jorden ved hver observation, sigtelinjerne mod kometen og de baner, Gauss’ metode fandt. Krumningspilen på himlen afgør, om regnestykket virker.</p>
+</header>
+
+<div id="topRight">
+  <button id="aboutBtn" type="button">Om modellen</button>
+  <a class="ghost" href="kometbane-220P.html" id="storyLink"><span class="lg">Hele historien</span><span class="sm">Historien</span></a>
+  <button id="skyToggle" type="button">Himlen</button>
+  <button id="sheetToggle" type="button" aria-expanded="false">Betjening</button>
+</div>
+
+<section id="controls" class="panel" aria-label="Betjening">
+  <div class="grp">
+    <div class="eyebrow">Komet</div>
+    <div class="btns">
+      <button id="c220" class="on wide">220P/McNaught</button>
+      <button id="cR3" class="wide">C/2025 R3</button>
+    </div>
+  </div>
+  <div class="rule"></div>
+  <div class="grp">
+    <div class="eyebrow">Tid</div>
+    <div class="transport">
+      <button id="playBtn" class="play on">Pause</button>
+      <button id="revBtn" title="Kør tiden baglæns">&#8646;</button>
+      <button id="obsBtn" title="Spring til observationerne">Observationer</button>
+    </div>
+    <div class="row"><label for="tSlider">Dato</label><span class="val" id="tVal">—</span></div>
+    <input type="range" id="tSlider" min="0" max="1" step="0.01" value="0">
+    <div class="row"><label for="speed">Hastighed</label><span class="val" id="speedVal">5 d/s</span></div>
+    <input type="range" id="speed" min="-0.5" max="2" step="0.01" value="0.7">
+  </div>
+  <div class="rule"></div>
+  <div class="grp">
+    <div class="eyebrow">Kamera</div>
+    <div class="btns">
+      <button id="viewTop">Ovenfra</button>
+      <button id="viewEdge">Fra siden</button>
+      <button id="viewFree">Skrå</button>
+      <button id="viewClose">Tæt på</button>
+      <button id="viewPlane">Banens plan</button>
+    </div>
+  </div>
+  <div class="rule"></div>
+  <div class="grp">
+    <div class="eyebrow">Vis</div>
+    <div class="checks">
+      <label class="chk"><input type="checkbox" id="cTrue" checked><span class="swatch" style="background:var(--comet)"></span>Sand bane</label>
+      <label class="chk"><input type="checkbox" id="cSight" checked><span class="swatch" style="background:var(--sight)"></span>Sigtelinjer</label>
+      <label class="chk"><input type="checkbox" id="cSol" checked><span class="swatch" style="background:var(--gauss)"></span>Gauss-baner</label>
+      <label class="chk"><input type="checkbox" id="cLong"><span class="swatch" style="background:var(--muted)"></span>Hele sigtelinjen</label>
+      <label class="chk"><input type="checkbox" id="cPlan" checked><span class="swatch" style="background:var(--jup)"></span>Mars og Jupiter</label>
+      <label class="chk"><input type="checkbox" id="cGrid" checked><span class="swatch" style="background:var(--muted)"></span>Ekliptika</label>
+    </div>
+    <p class="note" id="solNote"></p>
+  </div>
+</section>
+
+<section id="readout" class="panel">
+  <div class="eyebrow" id="roTitle">Kometen</div>
+  <div id="stamp">—</div>
+  <dl class="dl">
+    <dt>Afstand til Solen r</dt><dd id="rR">—</dd>
+    <dt>Afstand til Jorden ρ</dt><dd id="rD">—</dd>
+    <dt>Fart</dt><dd id="rV">—</dd>
+    <dt>Over ekliptika</dt><dd id="rZ">—</dd>
+    <dt>Lysets løbetid</dt><dd id="rL">—</dd>
+  </dl>
+</section>
+
+<section id="instrument" class="panel" aria-label="Himmelsporet og krumningspilen">
+  <div class="eyebrow">Tre observationer · krumningspilen h</div>
+  <div id="triples"></div>
+  <canvas id="sky" width="648" height="380"></canvas>
+  <p id="skyCap"></p>
+  <table class="el" id="elTable"></table>
+</section>
+
+<dialog id="about" aria-labelledby="aboutTitle">
+  <div class="wrap">
+    <button class="close" type="button" id="aboutClose">Luk ✕</button>
+    <div class="eyebrow">Om modellen</div>
+    <h2 id="aboutTitle">Hvad du ser — og hvorfor det betyder noget</h2>
+    <p>Gauss’ metode bestemmer en bane ud fra tre <i>retninger</i> mod kometen og tre tidspunkter. Afstanden langs sigtelinjen måles ikke – den skal regnes ud. Slå <b>Hele sigtelinjen</b> til: kometen kunne ligge hvor som helst på linjen, og det er kun tyngdeloven og Jordens egen bevægelse, der udpeger det rigtige sted.</p>
+    <p>Hvor afstanden gemmer sig, ses i panelet med himmelsporet. Tre punkter på himlen bestemmer en storcirkel gennem det første og det sidste; midterpunktets afstand fra den er <b>krumningspilen</b> <i>h</i>. Er <i>h</i> mindre end måleusikkerheden σ, kan sporet ikke skelnes fra en storcirkel, og metoden falder tilbage på Jordens egen bane. Det grå bånd viser σ ≈ 40″ for teleskop-appens koordinater; det smalle bånd σ ≈ 2″ for pladeløst astrometri.</p>
+    <h3>Banerne</h3>
+    <ul>
+      <li><b>Sand bane</b> (turkis): JPL’s baneelementer for 220P og MPC’s for C/2025 R3.</li>
+      <li><b>Gauss over 2 døgn</b> (rød): faldt tilbage på Jordens bane, ρ = 0,007 AE.</li>
+      <li><b>Gauss over 12 døgn</b> (orange): app-koordinater, a = 3,35 AE.</li>
+      <li><b>Gauss over 27 døgn</b> (violet): pladeløst, a = 3,21 AE. Knudelængde og perihelargument er her sat lig JPL’s, da artiklen kun angiver a, e, i og q.</li>
+    </ul>
+    <p>Planeterne følger Kepler-ellipser med middelelementer. Kometernes positioner er regnet for de omtrentlige observationstidspunkter og korrigeret for lysets løbetid; parallaksen fra observatørens sted er ikke medtaget. Krumningspilene, modellen regner ud, ligger inden for få procent af de værdier, der står i artiklen.</p>
+    <h3>Mere</h3>
+    <p><a href="kometbane-220P.html">220P – hele historien med Gauss-laboratoriet</a> · <a href="kometbaneberegning.html">C/2025 R3 – artiklen</a> · <a href="kometbaner-lille-teleskop.pdf">Kvant-artiklen om begge kometer</a> · <a href="maanens-bane-19-aar.html">Månens bane over 19 år</a>, hvor Gauss’ forudsætning om et tolegemeproblem ikke holder.</p>
+  </div>
+</dialog>
+
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+const DEG=Math.PI/180, TAU=2*Math.PI, K=0.01720209895, MU=K*K, C_AU=173.1446326846693, AU_KM=149597870.7;
+const Q=new URLSearchParams(location.search);
+if(Q.get('shot')) document.body.classList.add('shot');
+if(Q.get('nosky')) document.body.classList.add('nosky');
+
+/* ============ Baner ============ */
+// elliptisk: {a,e,i,Om,w,Tp}; hyperbolsk/parabolsk nær: {q,e,i,Om,w,Tp}
+const EARTH={a:1.0000010, e:0.0167086, i:0, Om:0, w:102.9373, Tp:2461044.5};
+function meanEl(a,e,i,Om,varpi,L0,n){ // middelelementer J2000 → Tp
+  const M0=(L0-varpi)*DEG; return {a,e,i,Om,w:varpi-Om,Tp:2451545.0-M0/(n*DEG)}; }
+const MARS=meanEl(1.52371,0.09339,1.8497,49.5596,336.0564,355.4533,0.5240329);
+const JUP=meanEl(5.20289,0.04839,1.3044,100.4739,14.7285,34.3964,0.0830870);
+function frame(el){ const i=el.i*DEG,Om=el.Om*DEG,w=el.w*DEG; const cO=Math.cos(Om),sO=Math.sin(Om),ci=Math.cos(i),si=Math.sin(i),cw=Math.cos(w),sw=Math.sin(w);
+  return {P:[cO*cw-sO*sw*ci, sO*cw+cO*sw*ci, sw*si], Q:[-cO*sw-sO*cw*ci, -sO*sw+cO*cw*ci, cw*si]}; }
+function pos(el,t,out=[0,0,0],vel){
+  const F=el._F||(el._F=frame(el)); let x,y,vx,vy;
+  if(el.e<1){ const a=el.a??el.q/(1-el.e), e=el.e, n=Math.sqrt(MU/a**3); let M=n*(t-el.Tp); M=((M%TAU)+TAU)%TAU; let E=e<0.8?M:Math.PI;
+    for(let k=0;k<40;k++){ const d=(E-e*Math.sin(E)-M)/(1-e*Math.cos(E)); E-=d; if(Math.abs(d)<1e-13) break; }
+    const ce=Math.cos(E),se=Math.sin(E),b=a*Math.sqrt(1-e*e); x=a*(ce-e); y=b*se; const ed=n/(1-e*ce); vx=-a*se*ed; vy=b*ce*ed; }
+  else { const e=el.e, A=el.q/(e-1), n=Math.sqrt(MU/A**3), M=n*(t-el.Tp); // e sinh H − H = M
+    let lo=-40,hi=40; for(let k=0;k<200;k++){ const H=(lo+hi)/2; (e*Math.sinh(H)-H-M>0)?hi=H:lo=H; if(hi-lo<1e-14) break; }
+    const H=(lo+hi)/2, ch=Math.cosh(H), sh=Math.sinh(H), b=A*Math.sqrt(e*e-1); x=A*(e-ch); y=b*sh; const hd=n/(e*ch-1); vx=-A*sh*hd; vy=b*ch*hd; }
+  for(let k=0;k<3;k++) out[k]=x*F.P[k]+y*F.Q[k];
+  if(vel) for(let k=0;k<3;k++) vel[k]=vx*F.P[k]+vy*F.Q[k];
+  return out; }
+function orbitPts(el,n=480,rmax=7){
+  const F=frame(el), pts=[];
+  if(el.e<1){ const a=el.a, e=el.e, b=a*Math.sqrt(1-e*e); for(let k=0;k<=n;k++){ const E=k/n*TAU; const x=a*(Math.cos(E)-e), y=b*Math.sin(E); pts.push([0,1,2].map(j=>x*F.P[j]+y*F.Q[j])); } }
+  else { const q=el.q,e=el.e,p=q*(1+e); const nmax=Math.acos(Math.min(1,(p/rmax-1)/e)); for(let k=0;k<=n;k++){ const nu=-nmax+2*nmax*k/n; const r=p/(1+e*Math.cos(nu)); const x=r*Math.cos(nu), y=r*Math.sin(nu); pts.push([0,1,2].map(j=>x*F.P[j]+y*F.Q[j])); } }
+  return pts; }
+
+/* ============ Kometerne og mine observationer ============ */
+const D=(y,m,d,h=0)=>{ const a=Math.floor((14-m)/12), Y=y+4800-a, Mo=m+12*a-3; return d+Math.floor((153*Mo+2)/5)+365*Y+Math.floor(Y/4)-Math.floor(Y/100)+Math.floor(Y/400)-32045-0.5+h/24; };
+const t14=D(2026,8,14,21.6);
+const COMETS={
+ '220P':{ name:'220P/McNaught', short:'220P', el:{a:3.1207,e:0.50036,i:8.1206,Om:150.0862,w:180.5731,Tp:2461206.0},
+   range:[D(2026,3,1),D(2027,3,1)], story:'kometbane-220P.html', eyebrow:'Gauss’ metode · seks billeder fra Sostrup og ét fra Marshøj',
+   intro:'Jorden ved hver observation, sigtelinjerne mod kometen og de baner, Gauss’ metode fandt. Krumningspilen på himlen afgør, om regnestykket virker.',
+   obs:[['14. aug.',t14],['15. aug.',t14+0.97],['16. aug.',t14+1.94],['20. aug.',t14+6.03],['24. aug.',t14+10.93],['25. aug.',t14+11.90],['10. sep.',t14+26.98]],
+   triples:[
+     {lab:'14.–16. aug. · 1,94 døgn · x = 0,50',ix:[0,1,2],h:5.35,res:'Faldt tilbage på Jordens bane: ρ = 0,007 AE i stedet for 1,20 AE.',sol:'fail'},
+     {lab:'14./20./25. aug. · 11,90 døgn · x = 0,51',ix:[0,3,5],h:221,res:'Banen lukkede sig, men a = 3,35 AE mod 3,12 AE: app-koordinaternes −83″.',sol:'gauss'},
+     {lab:'14. aug./25. aug./10. sep. · 26,98 døgn · x = 0,44',ix:[0,5,6],h:1348,res:'Pladeløste positioner: a = 3,21 AE (2,8 % for stor), q og i inden for 0,6 %.',sol:'plate'},
+     {lab:'24./25. aug./10. sep. · 16,05 døgn · x = 0,06',ix:[4,5,6],h:126,res:'Midterpunktet sidder 6 % inde i buen: h falder til en tiendedel, og a bliver 2,26 AE.',sol:null},
+   ],
+   sols:{ fail:{name:'Gauss over 2 døgn: Jordens bane',el:{a:1.0000010,e:0.0167086,i:0,Om:0,w:102.9373},col:0xe05a6a,dash:true},
+          gauss:{name:'Gauss over 12 døgn (app-koordinater)',el:{a:3.351,e:0.554,i:7.78,Om:147.9,w:179.1},col:0xf2762e},
+          plate:{name:'Gauss over 27 døgn (pladeløst)',el:{a:3.207,e:0.512,i:8.17,Om:150.0862,w:180.5731},col:0xb48cf2} },
+   table:[['',  'a (AE)','e','i','q (AE)'],['JPL','3,121','0,500','8,12°','1,559'],['12 døgn','3,351','0,554','7,78°','1,495'],['27 døgn','3,207','0,512','8,17°','1,566']],
+   solNote:'Gauss-banerne er de tre løsninger fra artiklen: over 2 døgn (rød, stiplet), 12 døgn med app-koordinater (orange) og 27 døgn med pladeløste positioner (violet).' },
+ 'R3':{ name:'C/2025 R3 (PanSTARRS)', short:'R3', el:{q:0.498630,e:1.000360,i:124.7315,Om:38.6943,w:162.2247,Tp:2461150.3952},
+   range:[D(2026,2,1),D(2026,8,1)], story:'kometbaneberegning.html', eyebrow:'Gauss’ metode · tre billeder fra Marshøj',
+   intro:'En næsten parabolsk, retrograd bane fra Oortskyen. Mine tre billeder 8., 11. og 13. april 2026 giver med Gauss’ metode ρ ≈ 0,76 AE den 13. april; MPC’s bane giver 0,816 AE.',
+   obs:[['8. apr.',D(2026,4,8,2.75)],['11. apr.',D(2026,4,11,2.983)],['13. apr.',D(2026,4,13,2.833)]],
+   triples:[ {lab:'8./11./13. apr. · 5 døgn · x = 0,60',ix:[0,1,2],h:null,res:'Min uafhængige Gauss-beregning på de tre app-koordinater giver ρ ≈ 0,76 AE og v ≈ 57 km/s den 13. april. Med h/σ ≈ 3 er usikkerheden ca. ±0,14 AE.',sol:null} ],
+   sols:{}, table:[['','q (AE)','e','i','Ω'],['MPC','0,499','1,0004','124,73°','38,69°']],
+   solNote:'Banen hælder 124,7° mod ekliptika – kometen løber »baglæns« i forhold til planeterne. Den kommer aldrig tilbage.' }
+};
+
+/* ============ Scenen ============ */
+const SC=20; // 1 AE = 20 enheder
+const toV=(p,o=new THREE.Vector3())=>o.set(p[0]*SC,p[2]*SC,-p[1]*SC);
+const canvas=document.getElementById('scene');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,preserveDrawingBuffer:true}); renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+const labels=new CSS2DRenderer(); labels.domElement.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:10'; document.body.appendChild(labels.domElement);
+const scene=new THREE.Scene(); const camera=new THREE.PerspectiveCamera(42,1,0.01,5000);
+const controls=new OrbitControls(camera,canvas); controls.enableDamping=true; controls.minDistance=2; controls.maxDistance=800;
+function resize(){ renderer.setSize(innerWidth,innerHeight,false); labels.setSize(innerWidth,innerHeight); camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); }
+addEventListener('resize',resize); resize();
+const mkLabel=(t,c)=>{ const d=document.createElement('div'); d.className='lbl '+(c||''); d.textContent=t; return new CSS2DObject(d); };
+{ const g=new THREE.BufferGeometry(), n=1800, p=new Float32Array(n*3);
+  for(let k=0;k<n;k++){ const u=Math.random()*2-1, t=Math.random()*TAU, R=1800; p[k*3]=R*Math.sqrt(1-u*u)*Math.cos(t); p[k*3+1]=R*u; p[k*3+2]=R*Math.sqrt(1-u*u)*Math.sin(t); }
+  g.setAttribute('position',new THREE.BufferAttribute(p,3)); scene.add(new THREE.Points(g,new THREE.PointsMaterial({color:0x9aa3b8,size:1.1,sizeAttenuation:false,transparent:true,opacity:.7}))); }
+scene.add(new THREE.AmbientLight(0x50586a,1.4)); scene.add(new THREE.PointLight(0xfff1d6,3,0,0));
+const sun=new THREE.Mesh(new THREE.SphereGeometry(0.9,32,24),new THREE.MeshBasicMaterial({color:0xffd479})); scene.add(sun);
+{ const glow=new THREE.Mesh(new THREE.SphereGeometry(1.6,32,24),new THREE.MeshBasicMaterial({color:0xffd479,transparent:true,opacity:.18})); scene.add(glow);
+  const l=mkLabel('Solen','sun'); l.position.set(0,2.2,0); scene.add(l); }
+const grid=new THREE.Group(); scene.add(grid);
+{ const m=new THREE.LineBasicMaterial({color:0x8d93a3,transparent:true,opacity:.14});
+  for(const R of [1,2,3,4,5,6]){ const pts=[]; for(let k=0;k<=160;k++){const a=k/160*TAU; pts.push(new THREE.Vector3(R*SC*Math.cos(a),0,R*SC*Math.sin(a)));} grid.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),m)); }
+  for(let k=0;k<12;k++){ const a=k/12*TAU; grid.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0),new THREE.Vector3(6*SC*Math.cos(a),0,6*SC*Math.sin(a))]),m)); }
+  const disc=new THREE.Mesh(new THREE.CircleGeometry(6*SC,128),new THREE.MeshBasicMaterial({color:0x1b2740,transparent:true,opacity:.16,side:THREE.DoubleSide,depthWrite:false})); disc.rotation.x=-Math.PI/2; grid.add(disc);
+  const eq=mkLabel('♈','muted'); eq.position.set(6.3*SC,0,0); grid.add(eq);
+  for(const R of [1,3,5]){ const l=mkLabel(R+' AE','muted small'); l.position.set(0,0,-R*SC-0.6); grid.add(l); } }
+function line(pts,col,{dashed=false,opacity=1,width}={}){ const g=new THREE.BufferGeometry().setFromPoints(pts.map(p=>toV(p)));
+  const m=dashed?new THREE.LineDashedMaterial({color:col,dashSize:.6,gapSize:.45,transparent:true,opacity}):new THREE.LineBasicMaterial({color:col,transparent:true,opacity});
+  const l=new THREE.Line(g,m); if(dashed) l.computeLineDistances(); return l; }
+const planets=new THREE.Group(); scene.add(planets);
+planets.add(line(orbitPts(MARS),0xc97a5a,{opacity:.45})); planets.add(line(orbitPts(JUP),0xc9a27a,{opacity:.5}));
+const marsDot=new THREE.Mesh(new THREE.SphereGeometry(.28,16,12),new THREE.MeshStandardMaterial({color:0xc9603a})); planets.add(marsDot); { const l=mkLabel('Mars','muted'); l.position.set(0,.9,0); marsDot.add(l); }
+const jupDot=new THREE.Mesh(new THREE.SphereGeometry(.6,24,16),new THREE.MeshStandardMaterial({color:0xd8b48a})); planets.add(jupDot); { const l=mkLabel('Jupiter','muted'); l.position.set(0,1.4,0); jupDot.add(l); }
+scene.add(line(orbitPts(EARTH),0x6fa8d6,{opacity:.8}));
+const earth=new THREE.Mesh(new THREE.SphereGeometry(.38,24,16),new THREE.MeshStandardMaterial({color:0x6fa8d6,emissive:0x0b1a2c})); scene.add(earth);
+{ const l=mkLabel('Jorden','earth'); l.position.set(0,1,0); earth.add(l); }
+const comet=new THREE.Mesh(new THREE.SphereGeometry(.26,16,12),new THREE.MeshBasicMaterial({color:0x9fe3d0})); scene.add(comet);
+const cometLbl=mkLabel('','comet'); cometLbl.position.set(0,.9,0); comet.add(cometLbl);
+const tailGeo=new THREE.BufferGeometry(); tailGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(6),3));
+tailGeo.setAttribute('color',new THREE.BufferAttribute(new Float32Array([.62,.89,.82, 0.02,0.03,0.05]),3));
+const tail=new THREE.Line(tailGeo,new THREE.LineBasicMaterial({vertexColors:true,transparent:true,opacity:.95})); scene.add(tail);
+const trueGroup=new THREE.Group(), solGroup=new THREE.Group(), sightGroup=new THREE.Group(), longGroup=new THREE.Group(); scene.add(trueGroup,solGroup,sightGroup,longGroup);
+
+/* ============ Tilstand ============ */
+const S={c:Q.get('comet')==='R3'?'R3':'220P', t:0, playing:!Q.get('shot'), dir:1, speed:5, tri:+(Q.get('tri')||0)};
+const $=id=>document.getElementById(id);
+const MON=['jan.','feb.','mar.','apr.','maj','jun.','jul.','aug.','sep.','okt.','nov.','dec.'];
+const dateStr=jd=>{ const d=new Date((jd-2440587.5)*864e5); return d.getUTCDate()+'. '+MON[d.getUTCMonth()]+' '+d.getUTCFullYear(); };
+const fmt=(x,d)=>x.toLocaleString('da-DK',{minimumFractionDigits:d,maximumFractionDigits:d});
+function clearG(g){ while(g.children.length){ const o=g.children.pop(); o.traverse(x=>{ x.geometry&&x.geometry.dispose(); if(x.element) x.element.remove(); }); } }
+function apparent(el,t){ // geocentrisk retning med lystid
+  const R=pos(EARTH,t); let rho=1, r=[0,0,0];
+  for(let k=0;k<6;k++){ pos(el,t-rho/C_AU,r); rho=Math.hypot(r[0]-R[0],r[1]-R[1],r[2]-R[2]); }
+  const u=[(r[0]-R[0])/rho,(r[1]-R[1])/rho,(r[2]-R[2])/rho]; return {R,r,rho,u}; }
+const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]], dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2], nrm=a=>{const l=Math.hypot(...a); return a.map(x=>x/l);};
+function sagitta(el,ts){ const us=ts.map(t=>apparent(el,t).u); const n=nrm(cross(us[0],us[2])); return Math.asin(Math.abs(dot(us[1],n)))/DEG*3600; }
+
+function buildComet(){
+  const C=COMETS[S.c]; clearG(trueGroup); clearG(solGroup); clearG(sightGroup); clearG(longGroup);
+  trueGroup.add(line(orbitPts(C.el,600,6.5),0x9fe3d0,{opacity:.95}));
+  // perihel
+  { const F=frame(C.el), q=C.el.q??C.el.a*(1-C.el.e); const p=F.P.map(x=>x*q); const m=new THREE.Mesh(new THREE.SphereGeometry(.16,12,8),new THREE.MeshBasicMaterial({color:0x9fe3d0})); toV(p,m.position); trueGroup.add(m);
+    const l=mkLabel('perihel '+dateStr(C.el.Tp),'comet small'); l.position.set(0,.7,0); m.add(l);
+    // knudelinje-mærke: lodrette stave fra banen ned til ekliptika
+    const pts=orbitPts(C.el,72,6.5); for(const p2 of pts){ if(Math.hypot(...p2)>5.5) continue; const a=toV(p2), b=toV([p2[0],p2[1],0]); const g=new THREE.BufferGeometry().setFromPoints([a,b]);
+      trueGroup.add(new THREE.Line(g,new THREE.LineBasicMaterial({color:p2[2]>=0?0x9fe3d0:0x4a6a78,transparent:true,opacity:.22}))); } }
+  for(const [k,s] of Object.entries(C.sols)){ const el={...s.el,Tp:0}; const L=line(orbitPts(el,600),s.col,{dashed:!!s.dash,opacity:.95}); L.userData.sol=k; solGroup.add(L); }
+  // observationer
+  C.obs.forEach(([lab,t],k)=>{ const A=apparent(C.el,t), cm=pos(C.el,t-A.rho/C_AU);
+    const g=new THREE.Group(); g.userData.k=k;
+    const e=new THREE.Mesh(new THREE.SphereGeometry(.14,12,8),new THREE.MeshBasicMaterial({color:0x6fa8d6})); toV(A.R,e.position); g.add(e);
+    const c=new THREE.Mesh(new THREE.SphereGeometry(.14,12,8),new THREE.MeshBasicMaterial({color:0x9fe3d0})); toV(cm,c.position); g.add(c);
+    const L=line([A.R,cm],0xe8e4da,{opacity:.55}); L.userData.isSight=true; g.add(L);
+    const lb=mkLabel(lab,'small'); lb.position.copy(e.position).add(new THREE.Vector3(0,-.55,0)); g.add(lb); lb.userData.obsLabel=true;
+    sightGroup.add(g);
+    const far=[A.R[0]+A.u[0]*3.2, A.R[1]+A.u[1]*3.2, A.R[2]+A.u[2]*3.2]; longGroup.add(line([A.R,far],0x8d93a3,{dashed:true,opacity:.6}));
+  });
+  // brugerflade
+  $('h1').innerHTML=C.name.replace(/^(\S+)/,'Komet $1')+' <em>i 3D</em>'; $('eyebrow').textContent=C.eyebrow; $('intro').textContent=C.intro;
+  $('storyLink').href=C.story; $('roTitle').textContent=C.short==='R3'?'C/2025 R3':'220P/McNaught'; cometLbl.element.textContent=C.short;
+  $('c220').classList.toggle('on',S.c==='220P'); $('cR3').classList.toggle('on',S.c==='R3');
+  $('tSlider').min=C.range[0]; $('tSlider').max=C.range[1]; $('tSlider').step=0.05;
+  $('solNote').textContent=C.solNote; $('cSol').parentElement.style.display=Object.keys(C.sols).length?'':'none';
+  const tb=$('triples'); tb.innerHTML=''; C.triples.forEach((tr,k)=>{ const b=document.createElement('button'); b.textContent=tr.lab; b.onclick=()=>{ S.tri=k; selTriple(); }; tb.appendChild(b); });
+  $('elTable').innerHTML=C.table.map((r,i)=>'<tr>'+r.map(c=>i?`<td>${c}</td>`:`<th>${c}</th>`).join('')+'</tr>').join('');
+  if(S.tri>=C.triples.length) S.tri=0;
+  // beregn h for alle tripler (vises i panelet)
+  C.triples.forEach(tr=>{ tr.hModel=sagitta(C.el,tr.ix.map(i=>C.obs[i][1])); });
+  window.__INFO={comet:S.c, h:C.triples.map(t=>+t.hModel.toFixed(1)), rhoLast:+apparent(C.el,C.obs[C.obs.length-1][1]).rho.toFixed(4)};
+  selTriple();
+}
+function selTriple(){
+  const C=COMETS[S.c], tr=C.triples[S.tri];
+  [...$('triples').children].forEach((b,k)=>b.classList.toggle('on',k===S.tri));
+  sightGroup.children.forEach(g=>{ const on=tr.ix.includes(g.userData.k); g.children.forEach(o=>{ if(o.material) { o.material.opacity=on?(o.userData.isSight?1:1):0.25; o.material.transparent=true; if(o.userData.isSight) o.material.color.set(on?0xffd479:0xe8e4da); } if(o.element) o.element.style.opacity=on?1:.4; }); });
+  longGroup.children.forEach((l,k)=>l.visible=$('cLong').checked&&tr.ix.includes(k));
+  solGroup.children.forEach(l=>{ const on=l.userData.sol===tr.sol; l.material.opacity=on?1:.35; });
+  drawSky();
+}
+
+/* ============ Himmelsporet ============ */
+const sky=$('sky'), sx=sky.getContext('2d');
+function drawSky(){
+  const C=COMETS[S.c], tr=C.triples[S.tri], ts=tr.ix.map(i=>C.obs[i][1]);
+  const us=ts.map(t=>apparent(C.el,t).u), n=nrm(cross(us[0],us[2]));
+  const proj=u=>{ const y=Math.asin(dot(u,n)); const p=nrm(u.map((x,k)=>x-dot(u,n)*n[k])); const x=Math.atan2(dot(cross(us[0],p),n),dot(us[0],p)); return [x/DEG, y/DEG*3600]; };
+  const T0=ts[0]-0.15*(ts[2]-ts[0]), T1=ts[2]+0.15*(ts[2]-ts[0]); const track=[]; for(let k=0;k<=160;k++){ const t=T0+(T1-T0)*k/160; track.push(proj(apparent(C.el,t).u)); }
+  const pts=us.map(proj); const sign=Math.sign(pts[1][1])||1;
+  const W=sky.width,H=sky.height,pl=58,pr=12,pt=14,pb=34; sx.clearRect(0,0,W,H);
+  const xs=track.map(p=>p[0]); const x0=Math.min(...xs), x1=Math.max(...xs);
+  const hmod=tr.hModel; const yMax=Math.max(60, hmod*1.35, 45)*1;
+  const X=x=>pl+(W-pl-pr)*(x-x0)/(x1-x0), Y=y=>pt+(H-pt-pb)*(1-(sign*y+yMax*0.25)/(yMax*1.25));
+  sx.font='18px Inter, sans-serif';
+  // σ-bånd
+  sx.fillStyle='rgba(141,147,163,.16)'; sx.fillRect(pl,Y(40*1),W-pl-pr,Y(-40)-Y(40));
+  sx.fillStyle='rgba(180,140,242,.35)'; sx.fillRect(pl,Y(2),W-pl-pr,Math.max(1.5,Y(-2)-Y(2)));
+  // akser
+  sx.strokeStyle='rgba(201,162,39,.28)'; sx.lineWidth=1; sx.fillStyle='#8d93a3'; sx.textAlign='right';
+  const step=[10,20,50,100,200,500][[10,20,50,100,200,500].findIndex(s=>yMax/s<=4)]||500;
+  for(let v=-Math.floor(yMax*0.25/step)*step; v<=yMax; v+=step){ sx.beginPath(); sx.moveTo(pl,Y(v)); sx.lineTo(W-pr,Y(v)); sx.stroke(); sx.fillText(v+'″',pl-6,Y(v)+6); }
+  sx.textAlign='center'; sx.fillText('langs storcirklen (grader) →',(pl+W)/2,H-6);
+  // storcirklen
+  sx.strokeStyle='#ece3d2'; sx.setLineDash([6,5]); sx.beginPath(); sx.moveTo(pl,Y(0)); sx.lineTo(W-pr,Y(0)); sx.stroke(); sx.setLineDash([]);
+  // spor
+  sx.strokeStyle='#9fe3d0'; sx.lineWidth=2.2; sx.beginPath(); track.forEach((p,k)=>{ k?sx.lineTo(X(p[0]),Y(p[1])):sx.moveTo(X(p[0]),Y(p[1])); }); sx.stroke();
+  // pilen
+  sx.strokeStyle='#ffd479'; sx.lineWidth=2; sx.beginPath(); sx.moveTo(X(pts[1][0]),Y(0)); sx.lineTo(X(pts[1][0]),Y(pts[1][1])); sx.stroke();
+  pts.forEach((p,k)=>{ sx.fillStyle=k===1?'#ffd479':'#ece3d2'; sx.beginPath(); sx.arc(X(p[0]),Y(p[1]),5,0,TAU); sx.fill(); });
+  sx.fillStyle='#ffd479'; sx.textAlign='left'; sx.fillText('h = '+fmt(hmod,hmod<20?1:0)+'″',X(pts[1][0])+8,Y(pts[1][1]*0.55)+6);
+  sx.fillStyle='#8d93a3'; sx.font='15px Inter, sans-serif'; sx.textAlign='right'; sx.fillText('grå: σ ≈ 40″ (app) · violet: σ ≈ 2″ (pladeløst)',W-pr,pt+12);
+  const art=tr.h?` Artiklen: ${fmt(tr.h,tr.h<20?2:0)}″.`:` Modellen giver ρ = ${fmt(apparent(C.el,ts[2]).rho,3)} AE den 13. april.`;
+  $('skyCap').innerHTML=`Kometens spor på himlen (turkis) og storcirklen gennem første og sidste observation (stiplet). Krumningspilen fra modellen: <b style="color:#ffd479">${fmt(hmod,hmod<20?1:0)}″</b>, dvs. h/σ ≈ ${fmt(hmod/40,1)} med app-koordinater.${art} ${tr.res}`;
+}
+
+/* ============ Opdatering ============ */
+const tmpV=new THREE.Vector3(), vel=[0,0,0];
+function update(){
+  const C=COMETS[S.c]; const t=S.t;
+  const R=pos(EARTH,t); toV(R,earth.position);
+  toV(pos(MARS,t),marsDot.position); toV(pos(JUP,t),jupDot.position);
+  const r=pos(C.el,t,[0,0,0],vel); toV(r,comet.position);
+  const rn=Math.hypot(...r); const L=Math.min(0.2,0.05/(rn*rn)); const tp=tail.geometry.attributes.position.array;
+  toV(r,tmpV); tp[0]=tmpV.x; tp[1]=tmpV.y; tp[2]=tmpV.z; toV(r.map(x=>x*(1+L/rn)),tmpV); tp[3]=tmpV.x; tp[4]=tmpV.y; tp[5]=tmpV.z; tail.geometry.attributes.position.needsUpdate=true;
+  const rho=Math.hypot(r[0]-R[0],r[1]-R[1],r[2]-R[2]); const v=Math.hypot(...vel)*AU_KM/86400;
+  $('stamp').innerHTML=dateStr(t)+' <span>JD '+fmt(t,1)+'</span>';
+  $('rR').textContent=fmt(rn,3)+' AE'; $('rD').textContent=fmt(rho,3)+' AE'; $('rV').textContent=fmt(v,1)+' km/s';
+  $('rZ').textContent=fmt(r[2],3)+' AE'; $('rL').textContent=fmt(rho/C_AU*1440,1)+' min';
+  $('tSlider').value=t; $('tVal').textContent=dateStr(t);
+}
+
+/* ============ Betjening ============ */
+$('speed').oninput=e=>{ S.speed=10**(+e.target.value); $('speedVal').textContent=fmt(S.speed,S.speed<1?1:0)+' d/s'; };
+$('playBtn').onclick=()=>{ S.playing=!S.playing; $('playBtn').textContent=S.playing?'Pause':'Afspil'; $('playBtn').classList.toggle('on',S.playing); };
+$('revBtn').onclick=()=>{ S.dir*=-1; $('revBtn').classList.toggle('on',S.dir<0); };
+$('obsBtn').onclick=()=>{ const C=COMETS[S.c]; S.t=C.obs[0][1]-2; S.speed=1; $('speed').value=0; $('speed').dispatchEvent(new Event('input')); view('close'); update(); };
+$('tSlider').oninput=e=>{ S.t=+e.target.value; update(); };
+const setComet=c=>{ S.c=c; S.tri=0; S.t=COMETS[c].obs[0][1]-20; buildComet(); view('free'); update(); };
+$('c220').onclick=()=>setComet('220P'); $('cR3').onclick=()=>setComet('R3');
+$('cTrue').onchange=e=>trueGroup.visible=e.target.checked; $('cSight').onchange=e=>sightGroup.visible=e.target.checked;
+$('cSol').onchange=e=>solGroup.visible=e.target.checked; $('cLong').onchange=()=>selTriple();
+$('cPlan').onchange=e=>planets.visible=e.target.checked; $('cGrid').onchange=e=>grid.visible=e.target.checked;
+function view(kind){ const C=COMETS[S.c]; controls.target.set(0,0,0); camera.up.set(0,1,0); const Z=+(Q.get('zoom')||1);
+  const far=S.c==='220P'?1:0.6;
+  if(kind==='top') camera.position.set(0,260*far,0.01);
+  else if(kind==='edge') camera.position.set(0,4,250*far);
+  else if(kind==='close'){ const tr=C.triples[S.tri]; const tm=C.obs[tr.ix[1]][1]; const A=apparent(C.el,tm); const mid=[(A.R[0]+A.r[0])/2,(A.R[1]+A.r[1])/2,(A.R[2]+A.r[2])/2];
+    toV(mid,controls.target); const off=new THREE.Vector3(18,30,34).multiplyScalar(S.c==='R3'?0.75:1); camera.position.copy(controls.target).add(off); }
+  else if(kind==='plane'){ const F=frame(C.el); const Wn=[F.P[1]*F.Q[2]-F.P[2]*F.Q[1],F.P[2]*F.Q[0]-F.P[0]*F.Q[2],F.P[0]*F.Q[1]-F.P[1]*F.Q[0]];
+    const d=S.c==='R3'?2.1:7.5; toV(Wn.map(x=>x*d),camera.position); camera.up.copy(toV(F.P)); if(S.c==='R3'){ toV(F.P.map(x=>x*0.45),controls.target); camera.position.add(controls.target); } }
+  else camera.position.set(80*far,92*far,112*far);
+  if(Q.get('tx')) toV([+Q.get('tx'),+Q.get('ty')||0,0],controls.target);
+  const m=(camera.aspect<1?Math.min(2.2,0.8/camera.aspect):1)*Z; camera.position.sub(kind==='plane'||kind==='close'?controls.target:new THREE.Vector3()).multiplyScalar(m).add(controls.target);
+  camera.lookAt(controls.target); controls.update(); }
+$('viewTop').onclick=()=>view('top'); $('viewEdge').onclick=()=>view('edge'); $('viewFree').onclick=()=>view('free'); $('viewClose').onclick=()=>view('close'); $('viewPlane').onclick=()=>view('plane');
+$('sheetToggle').onclick=()=>{ const o=$('controls').classList.toggle('open'); $('sheetToggle').setAttribute('aria-expanded',o); };
+$('skyToggle').onclick=()=>$('instrument').classList.toggle('open');
+const ab=$('about'); $('aboutBtn').onclick=()=>{ try{ab.showModal()}catch(e){ab.setAttribute('open','')} }; $('aboutClose').onclick=()=>ab.close(); ab.addEventListener('click',e=>{ if(e.target===ab) ab.close(); });
+
+function syncLabels(){ scene.traverse(o=>{ if(o.isCSS2DObject){ let v=true,p=o; while(p){ if(!p.visible){v=false;break;} p=p.parent; } o.element.style.visibility=v?'visible':'hidden'; } }); }
+let last=performance.now();
+function loop(now){ const dt=Math.min(.1,(now-last)/1000); last=now; const C=COMETS[S.c];
+  if(S.playing){ S.t+=S.dir*S.speed*dt; if(S.t>C.range[1]) S.t=C.range[0]; if(S.t<C.range[0]) S.t=C.range[1]; update(); }
+  controls.update(); renderer.render(scene,camera); syncLabels(); labels.render(scene,camera); requestAnimationFrame(loop); }
+
+buildComet();
+S.t=Q.get('t')?+Q.get('t'):COMETS[S.c].obs[0][1]-20;
+for(const id of ['cTrue','cSight','cSol','cLong','cPlan','cGrid']){ const v=Q.get(id); if(v!==null){ $(id).checked=v==='1'; $(id).dispatchEvent(new Event('change')); } }
+$('speed').dispatchEvent(new Event('input'));
+if(!S.playing){ $('playBtn').textContent='Afspil'; $('playBtn').classList.remove('on'); }
+selTriple(); view(Q.get('view')||'free'); update(); requestAnimationFrame(loop);
+window.__READY=true;
+</script>
+<script src="lang-switch.js" defer></script>
+</body>
+</html>
