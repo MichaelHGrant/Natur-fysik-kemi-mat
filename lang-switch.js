@@ -167,6 +167,7 @@
     "plasmafysik.html": "plasmafysik-en.html",
     "principia.html": "principia-en.html",
     "relativitetsteori.html": "relativitetsteori-en.html",
+    "lorentz-roer.html": "lorentz-roer-en.html",
     "saturns-ringe.html": "saturns-ringe-en.html",
     "maanens-dannelse.html": "maanens-dannelse-en.html",
     "slaebetank.html": "slaebetank-en.html",
