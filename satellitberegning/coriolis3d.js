@@ -153,7 +153,7 @@
     const E = S.u.lengthSq() / 2 - MU / S.r.length();
     const aAx = E < 0 ? -MU / (2 * E) : 0;
     const P = E < 0 ? 2 * Math.PI * Math.sqrt(aAx ** 3 / MU) : 3 * 3600;
-    S.maxT = Math.min(Math.max(P * 4, 1800), 6 * 3600);
+    S.maxT = Infinity;   // kører, til man trykker pause
     push();
   }
 
@@ -172,8 +172,10 @@
     S.t += dt; S.theta = omega() * S.t;
   }
   function addPoint(line, idx, p) {
-    if (S.n[idx] >= MAXP) return;
     const a = line.geometry.attributes.position;
+    if (S.n[idx] >= MAXP) {               // sporet er fuldt: glem de ældste punkter
+      a.array.copyWithin(0, 300, MAXP * 3); S.n[idx] = MAXP - 100;
+    }
     a.setXYZ(S.n[idx], p.x, p.y, p.z); S.n[idx]++;
     a.needsUpdate = true; line.geometry.setDrawRange(0, S.n[idx]);
   }
